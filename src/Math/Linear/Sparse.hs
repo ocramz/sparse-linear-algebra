@@ -7,11 +7,12 @@ import Control.Monad (mapM_, forM_, replicateM)
 -- import Control.Monad.State.Class
 import Control.Monad.State
 
-import Control.Lens
+import Control.Lens hiding ((#))
 
 -- import Data.Functor ((<$>))
 import qualified Data.IntMap as IM
 import qualified Data.Foldable as F
+import qualified Data.List as L
 import Data.Maybe
 
 -- additive ring 
@@ -75,13 +76,24 @@ data SpVector a = SV { svDim :: Int ,
 emptySVector :: Int -> SpVector a
 emptySVector n = SV n IM.empty
 
+-- | create a sparse vector from an association list while discarding all zero entries
+mkSpVector :: (Num a, Eq a) => Int -> IM.IntMap a -> SpVector a
+mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds k d) im
+
+-- | ", from logically dense array (consecutive indices)
+mkSpVectorD :: (Num a, Eq a) => Int -> [a] -> SpVector a
+mkSpVectorD d ll = mkSpVector d (IM.fromList $ ixArray (take d ll))
+
+ixArray xs = zip [0..length xs-1] xs 
+
+
 insertSpVector :: Int -> a -> SpVector a -> SpVector a
 insertSpVector i x (SV d xim)
   | inBounds i d = SV d (IM.insert i x xim)
   | otherwise = error "insertSpVector : index out of bounds"
 
 instance Show a => Show (SpVector a) where
-  show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList x)
+  show (SV d x) = "SV (" ++ show d ++ ") "++ show (snd.unzip.IM.toList $ x)
 
 lookupDenseSV :: Num a => IM.Key -> SpVector a -> a
 lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im 
@@ -130,12 +142,36 @@ ncols = snd . smDim
 mkSpMatrix :: (Int, Int) -> SpMatrix a
 mkSpMatrix d = SM d IM.empty
 
+
+
 -- instance Show a => Show (SpMatrix a) where
 --   show (SM d x) = "SM " ++ show d ++ " "++ fmap show (IM.toList x)
 
+
+-- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
+showSparseMatrix [] = "(0,0):\n[]\n"
+showSparseMatrix m = show (length m, length (head m))++": \n"++
+    (unlines $ L.map (("["++) . (++"]") . L.intercalate "|")
+             $ L.transpose $ L.map column $ L.transpose m)
+
+column :: (Show a, Num a, Eq a) => [a] -> [[Char]]
+column c = let c'       = L.map showNonZero c
+               width    = L.maximum $ L.map length c'
+               offset x = replicate (width - (length x)) ' ' ++ x
+           in L.map offset c'
+
+showNonZero :: (Show a, Num a, Eq a) => a -> [Char]
+showNonZero x  = if x == 0 then " " else show x
+
+-- | Converts sparse matrix to plain list-matrix with all zeroes restored
+-- fillMx :: (Num α) => SparseMatrix α -> [[α]]
+-- fillMx m = [ [ m # (i,j) | j <- [1 .. nrows  m] ]
+--                          | i <- [1 .. ncols m] ]
+                                         
+
 -- | Looks up an element in the matrix (if not found, zero is returned)
 -- (#) :: (Num a) => SpMatrix a -> (Int,Int) -> a
--- m # (i,j) = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i ((svData . smData) m))
+-- m # (i,j) = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (smData m))
 
 
 inBounds :: (Ord a, Num a) => a -> a -> Bool
@@ -150,6 +186,33 @@ insertSpMatrix i j x (SM dims smd)
   | otherwise = error "insertSpMatrix : index out of bounds" where
       (dx, dy) = dims
       ri = fromMaybe (emptySVector dy) (IM.lookup i smd)
+
+
+-- indexSpM i j (SM _ im) a = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (svData im))
+
+
+
+
+
+inB1 i d s f
+  | inBounds i d = f
+  | otherwise = error s
+
+inB2 i d s f
+  | inBounds2 i d = f
+  | otherwise = error s  
+
+
+lookupSM i j (SM d im) =
+  IM.lookup i im >>= \(SV nv ve) -> case IM.lookup j ve of Just c -> return c
+                                                           Nothing -> return 0
+
+
+lookupColSV j (SV d im) = IM.lookup j im
+
+lookupSM' i j (SM d im) = IM.lookup i im >>= \(SV nv ve) ->
+  IM.findWithDefault 0 j ve
+
 
 -- spMatrixFromList d xs = fmap (\(ii, x) -> insertSpMatrix ii x (mkSpMatrix d)) xs 
 

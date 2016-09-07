@@ -45,7 +45,7 @@ test-suite spec
   build-depends:       base
                      , mtl >= 2.2.1
                      , sparse-linear-algebra
-                     -- , hspec
+                     , hspec
                      -- , QuickCheck
 
 source-repository head
