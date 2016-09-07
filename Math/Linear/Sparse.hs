@@ -51,32 +51,42 @@ instance Additive IM.IntMap where
 instance VectorSpace IM.IntMap where
   n .* im = IM.map (* n) im
   
--- instance Normed IM.IntMap where
---   im1 `dot` im2 = IM.foldr (*) im1 im2
- 
+instance Normed IM.IntMap where
+   a `dot` b = sum $ liftI2 (*) a b 
+
+
+   
 
 -- | fold functions are applied to non-zero values
-instance Foldable SparseVector where
+instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
   
 
 
-data SparseVector a = SV { svDim :: Int ,
+data SpVector a = SV { svDim :: Int ,
                            svData :: IM.IntMap a} deriving Eq
 
-instance Functor SparseVector where
+                      
+-- instances for SparseVector
+instance Functor SpVector where
   fmap f (SV n x) = SV n (fmap f x)
 
-instance Additive SparseVector where
+instance Additive SpVector where
   zero = SV 0 IM.empty
   (^+^) = liftU2 (+)
   (^-^) = liftU2 (-)
   liftU2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftU2 f2 x1 x2)
   liftI2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftI2 f2 x1 x2)
                       
-instance VectorSpace SparseVector where
+instance VectorSpace SpVector where
   n .* v = fmap (*n) v
 
--- instance Normed SparseVector where
---   v1 `dot` v2 = sum (IM.foldr (*) (svData v1) (svData v2))
+instance Normed SpVector where
+  sv1 `dot` sv2 = dot (svData sv1) (svData sv2)
+
   
+-- -- testing testing
+
+v1, v2 :: SpVector Double
+v1 = SV 5 (IM.fromList [(0, 4), (1, 3)])
+v2 = SV 4 (IM.fromList [(0, 2), (1, 3.2), (3, 15)])
