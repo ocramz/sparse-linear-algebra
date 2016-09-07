@@ -1,8 +1,18 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# language TemplateHaskell #-}
 module Math.Linear.Sparse where
+
+import Control.Monad (mapM_, forM_, replicateM)
+
+-- import Control.Monad.State.Class
+import Control.Monad.State
+
+import Control.Lens
 
 -- import Data.Functor ((<$>))
 import qualified Data.IntMap as IM
 import qualified Data.Foldable as F
+import Data.Maybe
 
 -- additive ring 
 class Functor f => Additive f where
@@ -60,8 +70,29 @@ instance Normed IM.IntMap where
 
 
 data SpVector a = SV { svDim :: Int ,
-                           svData :: IM.IntMap a} deriving Eq
+                       svData :: IM.IntMap a} deriving Eq
 
+emptySVector :: Int -> SpVector a
+emptySVector n = SV n IM.empty
+
+insertSpVector :: Int -> a -> SpVector a -> SpVector a
+insertSpVector i x (SV d xim)
+  | inBounds i d = SV d (IM.insert i x xim)
+  | otherwise = error "insertSpVector : index out of bounds"
+
+instance Show a => Show (SpVector a) where
+  show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList x)
+
+lookupDenseSV :: Num a => IM.Key -> SpVector a -> a
+lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im 
+
+findWithDefault0IM :: Num a => IM.Key -> IM.IntMap a -> a
+findWithDefault0IM i = IM.findWithDefault 0 i
+
+toDenseListSV :: Num b => SpVector b -> [b]
+toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
+
+    
                       
 -- instances for SparseVector
 instance Functor SpVector where
@@ -87,30 +118,238 @@ instance Normed SpVector where
 
 
 
+
+
 -- Sparse Matrices
 data SpMatrix a = SM {smDim :: (Int, Int),
                       smData :: IM.IntMap (SpVector a)} deriving Eq
+nrows = fst . smDim
+ncols = snd . smDim
+
+                  
+mkSpMatrix :: (Int, Int) -> SpMatrix a
+mkSpMatrix d = SM d IM.empty
+
+-- instance Show a => Show (SpMatrix a) where
+--   show (SM d x) = "SM " ++ show d ++ " "++ fmap show (IM.toList x)
+
+-- | Looks up an element in the matrix (if not found, zero is returned)
+-- (#) :: (Num a) => SpMatrix a -> (Int,Int) -> a
+-- m # (i,j) = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i ((svData . smData) m))
+
+
+inBounds :: (Ord a, Num a) => a -> a -> Bool
+inBounds i b = i>=0 && i<=b
+inBounds2 :: (Ord a, Num a) => (a, a) -> (a, a) -> Bool
+inBounds2 (i,j) (bx,by) = inBounds i bx && inBounds j by
+
+
+insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
+insertSpMatrix i j x (SM dims smd)
+  | inBounds2 (i,j) dims = SM dims (IM.insert i (insertSpVector j x ri) smd) 
+  | otherwise = error "insertSpMatrix : index out of bounds" where
+      (dx, dy) = dims
+      ri = fromMaybe (emptySVector dy) (IM.lookup i smd)
+
+-- spMatrixFromList d xs = fmap (\(ii, x) -> insertSpMatrix ii x (mkSpMatrix d)) xs 
+
+spMatrixFromList :: Monad m => (Int, Int) -> [(Int, Int, t)] -> m (SpMatrix t)
+spMatrixFromList d xx = go xx (mkSpMatrix d) where
+  go ((i,j,x):xs) mat = do
+    let mat' = insertSpMatrix i j x mat
+    go xs mat'
+  go [] m = return m
+  
+  
+
+  
 
 instance Functor SpMatrix where
   fmap f (SM d md) = SM d ((fmap . fmap) f md)
+
+
 
 instance Additive SpMatrix where
   zero = SM (0,0) IM.empty
   (^+^) = liftU2 (+)
   (^-^) = liftU2 (-)
-  -- liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) (liftU2 f2 x1 x2)
-  -- liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) (liftI2 f2 x1 x2)
-
+  liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
+  liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) ((liftI2.liftI2) f2 x1 x2)
 
 maxTup, minTup :: Ord t => (t, t) -> (t, t) -> (t, t)
 maxTup (x1,y1) (x2,y2) = (max x1 x2, max y1 y2)
 minTup (x1,y1) (x2,y2) = (min x1 x2, min y1 y2)
 
 
+matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
+matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
+
+(#>) = matVec
 
   
 -- -- testing testing
 
-v1, v2 :: SpVector Double
+v1 :: SpVector Int
 v1 = SV 5 (IM.fromList [(0, 4), (1, 3)])
+v2 :: SpVector Double
 v2 = SV 4 (IM.fromList [(0, 2), (1, 3.2), (3, 15)])
+
+m1 = mkSpMatrix (3,4)
+m2 = insertSpMatrix 1 3  pi m1
+m3 = insertSpMatrix 3 4 1 m2
+
+
+
+-- smInsert (ii,jj) x (SM (nrows, ncols))
+
+
+normSq v = v `dot` v
+
+-- | BiCSSTAB
+-- solve A x = b
+
+-- initial residual
+residual aa b x0 = b ^-^ (aa #> x0)
+
+converged :: SpMatrix Double -> SpVector Double -> SpVector Double -> Bool
+converged aa b x0 = normSq (residual aa b x0) <= eps
+
+eps = 1e-8
+
+bicgIter aa b r0 r0hat rim rhoim alphaim omegaim pim vim xim
+  | normSq hres <= eps = h
+  | normSq xires <= eps = xi
+  | otherwise = ri
+  where
+  rhoi = r0 `dot` rim
+  beta = rhoi * alphaim /(rhoim * omegaim)
+  pii = rim ^+^ (beta .* (pim ^-^ (omegaim .* vim)))
+  vi = aa #> pii
+  alphai = rhoi / (r0hat `dot` vi)
+  h = xim ^+^ (alphai .* vi)
+  hres = (aa #> h) ^-^ b  -- residual of candidate solution
+  s = rim ^-^ (alphai .* vi)
+  t = aa #> s
+  omegai = (t `dot` s) / (t `dot` t)
+  xi = h ^+^ (omegai .* s)
+  xires = (aa #> xi) ^-^ b -- residual of second candidate soln
+  ri = s ^-^ (omegai .* t)
+
+bicgStep :: SpMatrix Double
+                  -> SpVector Double
+                  -> SpVector Double
+                  -> SpVector Double
+                  -> BICG
+                  -> BICG
+bicgStep aa b r0 r0hat (BICG rim rhoim alphaim omegaim pim vim xim) =
+  BICG ri rhoi alphai omegai pii vi xi
+  where
+  rhoi = r0 `dot` rim
+  beta = rhoi * alphaim /(rhoim * omegaim)
+  pii = rim ^+^ (beta .* (pim ^-^ (omegaim .* vim)))
+  vi = aa #> pii
+  alphai = rhoi / (r0hat `dot` vi)
+  h = xim ^+^ (alphai .* vi)
+  hres = (aa #> h) ^-^ b  -- residual of candidate solution
+  s = rim ^-^ (alphai .* vi)
+  t = aa #> s
+  omegai = (t `dot` s) / (t `dot` t)
+  xi = h ^+^ (omegai .* s)
+  xires = (aa #> xi) ^-^ b -- residual of second candidate soln
+  ri = s ^-^ (omegai .* t)
+
+bicgStepState
+  :: MonadState BICG m =>
+     SpMatrix Double
+     -> SpVector Double -> SpVector Double -> SpVector Double -> m ()
+bicgStepState aa b r0 r0hat = modify (bicgStep aa b r0 r0hat)
+
+
+bicgNSteps
+  :: SpMatrix Double
+     -> SpVector Double
+     -> SpVector Double
+     -> SpVector Double
+     -> Int
+     -> BICG
+     -> BICG
+bicgNSteps aa b r0 r0hat n =
+  execState $ replicateM n (bicgStepState aa b r0 r0hat)
+
+
+
+bicgIter'' :: MonadState BICG m =>
+           SpMatrix Double ->   -- matrix
+           SpVector Double ->   -- rhs
+           SpVector Double ->   -- initial 
+           SpVector Double ->
+           m (SpVector Double)
+bicgIter'' aa b r0 r0hat = do
+  (BICG rim rhoim alphaim omegaim pim vim xim) <- get
+  let
+    rhoi = r0 `dot` rim
+    beta = rhoi * alphaim /(rhoim * omegaim)
+    pii = rim ^+^ (beta .* (pim ^-^ (omegaim .* vim)))
+    vi = aa #> pii
+    alphai = rhoi / (r0hat `dot` vi)
+    h = xim ^+^ (alphai .* vi)
+    hres = (aa #> h) ^-^ b  -- residual of candidate solution
+    s = rim ^-^ (alphai .* vi)
+    t = aa #> s
+    omegai = (t `dot` s) / (t `dot` t)
+    xi = h ^+^ (omegai .* s)
+    xires = (aa #> xi) ^-^ b -- residual of second candidate soln
+    ri = s ^-^ (omegai .* t)
+  put $ BICG ri rhoi alphai omegai pii vi xi  
+  if normSq hres <= eps
+     then return h
+     else if normSq xires <= eps
+          then return xi
+          else return ri
+
+
+-- _aa :: SpMatrix Double,    -- matrix
+-- _b :: SpVector Double,     -- rhs
+-- _r0 :: SpVector Double,    -- initial residual
+-- _r0hat :: SpVector Double, -- candidate solution: r0hat `dot` r0 >= 0
+
+data BICG =
+  BICG { _rim :: SpVector Double,   -- r_(i-1)
+         _rhoim :: Double,          -- rho_(i-1)
+         _alphaim :: Double,        -- alpha_(i-1)
+         _omegaim :: Double,        -- omega_(i-1)
+         _pim :: SpVector Double,   -- p_(i-1)
+         _vim :: SpVector Double,   -- v_(i-1)
+         _xim :: SpVector Double    -- x_(i-1)
+       } deriving (Eq, Show)
+
+makeLenses ''BICG
+
+
+
+
+
+zeroSV (SV n _) = SV n IM.empty
+
+
+bicgsState0 aa b x0 =
+  BICG
+    (b ^-^ (aa #> x0)) 1 1 1 v0 p0 x0 where
+      v0 = zeroSV x0
+      p0 = zeroSV x0
+
+-- n iterations of BiCGSTAB
+bicgsSolveNsteps
+  :: SpMatrix Double
+     -> SpVector Double
+     -> SpVector Double
+     -> SpVector Double
+     -> Int
+     -> SpVector Double
+bicgsSolveNsteps aa b x0 x0hat n =
+  _xim $ bicgNSteps aa b x0 x0hat n (bicgsState0 aa b x0)
+
+
+
+-- -- testing testing
+
