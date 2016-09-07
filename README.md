@@ -10,4 +10,7 @@ GPL3, see LICENSE
 
 ## Credits
 
-Inspired by https://github.com/laughedelic/sparse-lin-alg
+Inspired by
+
+* `linear` : https://hackage.haskell.org/package/linear
+* `sparse-lin-alg` : https://github.com/laughedelic/sparse-lin-alg
