@@ -57,10 +57,6 @@ instance Normed IM.IntMap where
 
    
 
--- | fold functions are applied to non-zero values
-instance Foldable SpVector where
-    foldr f d v = F.foldr f d (svData v)
-  
 
 
 data SpVector a = SV { svDim :: Int ,
@@ -70,6 +66,10 @@ data SpVector a = SV { svDim :: Int ,
 -- instances for SparseVector
 instance Functor SpVector where
   fmap f (SV n x) = SV n (fmap f x)
+
+-- | fold functions are applied to non-zero values
+instance Foldable SpVector where
+    foldr f d v = F.foldr f d (svData v)
 
 instance Additive SpVector where
   zero = SV 0 IM.empty
@@ -83,6 +83,30 @@ instance VectorSpace SpVector where
 
 instance Normed SpVector where
   sv1 `dot` sv2 = dot (svData sv1) (svData sv2)
+
+
+
+
+-- Sparse Matrices
+data SpMatrix a = SM {smDim :: (Int, Int),
+                      smData :: IM.IntMap (SpVector a)} deriving Eq
+
+instance Functor SpMatrix where
+  fmap f (SM d md) = SM d ((fmap . fmap) f md)
+
+instance Additive SpMatrix where
+  zero = SM (0,0) IM.empty
+  (^+^) = liftU2 (+)
+  (^-^) = liftU2 (-)
+  -- liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) (liftU2 f2 x1 x2)
+  -- liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) (liftI2 f2 x1 x2)
+
+
+maxTup, minTup :: Ord t => (t, t) -> (t, t) -> (t, t)
+maxTup (x1,y1) (x2,y2) = (max x1 x2, max y1 y2)
+minTup (x1,y1) (x2,y2) = (min x1 x2, min y1 y2)
+
+
 
   
 -- -- testing testing
