@@ -80,10 +80,11 @@ normSq v = v `dot` v
 
 -- | =======================================================
 
+-- | Sparse Vector
 data SpVector a = SV { svDim :: Int ,
                        svData :: IM.IntMap a} deriving Eq
 
--- | instances for SparseVector
+-- | instances for SpVector
 instance Functor SpVector where
   fmap f (SV n x) = SV n (fmap f x)
 
@@ -152,7 +153,7 @@ toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
 data SpMatrix a = SM {smDim :: (Int, Int),
                       smData :: IM.IntMap (SpVector a)} deriving Eq
 
--- | instances
+-- | instances for SpMatrix
 instance Functor SpMatrix where
   fmap f (SM d md) = SM d ((fmap . fmap) f md)
 
@@ -173,7 +174,8 @@ emptySpMatrix :: (Int, Int) -> SpMatrix a
 emptySpMatrix d = SM d IM.empty
 
 
-                 
+-- | nrows, ncols : size accessors
+nrows, ncols :: SpMatrix a -> Int
 nrows = fst . smDim
 ncols = snd . smDim
 
@@ -230,6 +232,7 @@ insertSpMatrix i j x (SM dims smd)
 
 
 
+-- FIXME : to throw an exception or just ignore the out-of-bound access ?
 
 inB1 i d s f
   | inBounds i d = f
@@ -240,10 +243,10 @@ inB2 i d s f
   | otherwise = error s  
 
 
+-- | sparse matrix (nested intmap) lookup
 lookupSM i j (SM d im) =
   IM.lookup i im >>= \(SV nv ve) -> case IM.lookup j ve of Just c -> return c
                                                            Nothing -> return 0
-
 
 lookupColSV j (SV d im) = IM.lookup j im
 
@@ -253,6 +256,7 @@ lookupSM' i j (SM d im) = IM.lookup i im >>= \(SV nv ve) ->
 
 -- spMatrixFromList d xs = fmap (\(ii, x) -> insertSpMatrix ii x (mkSpMatrix d)) xs 
 
+--  FIXME : implement `fromList` instead
 spMatrixFromList :: Monad m => (Int, Int) -> [(Int, Int, t)] -> m (SpMatrix t)
 spMatrixFromList d xx = go xx (emptySpMatrix d) where
   go ((i,j,x):xs) mat = do
@@ -289,6 +293,7 @@ matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
 
 -- | LINEAR SOLVERS : solve A x = b
 
+-- | numerical tolerance for e.g. solution convergence
 eps = 1e-8
 
 -- initial residua
