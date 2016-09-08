@@ -24,7 +24,7 @@ library
                      , base >= 4.7 && < 5
                      , containers
                      , hspec
-                     , lens
+                     -- , lens
                      , mtl >= 2.2.1
                      , monad-loops
 
