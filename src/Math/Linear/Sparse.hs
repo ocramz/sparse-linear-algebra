@@ -3,6 +3,7 @@
 module Math.Linear.Sparse where
 
 import Control.Monad (mapM_, forM_, replicateM)
+import Control.Monad.Loops
 
 -- import Control.Monad.State.Class
 import Control.Monad.State
@@ -15,7 +16,7 @@ import qualified Data.Foldable as F
 import qualified Data.List as L
 import Data.Maybe
 
--- additive ring 
+-- | Additive ring 
 class Functor f => Additive f where
   -- | zero element
   zero :: Num a => f a
@@ -23,10 +24,6 @@ class Functor f => Additive f where
   -- | componentwise operations
   (^+^) :: Num a => f a -> f a -> f a
   (^-^) :: Num a => f a -> f a -> f a
-
-  -- | linear interpolation. Doesn't really belong here though
-  
-  -- lerp :: Num a => a -> f a -> f a -> f a
 
   -- union binary lift
   liftU2 :: (a -> a -> a) -> f a -> f a -> f a
@@ -39,14 +36,25 @@ negated :: (Num a, Functor f) => f a -> f a
 negated = fmap negate
 
 
+
+-- | Vector space
 class Additive f => VectorSpace f where
   (.*) :: Num a => a -> f a -> f a
 
+-- linear interpolation
+lerp :: (VectorSpace f, Num a) => a -> f a -> f a -> f a
+lerp a u v = a .* u ^+^ ((1-a) .* v)
+
+-- | Normed vector space
 class VectorSpace f => Normed f where
   dot :: Num a => f a -> f a -> a
   -- norm :: Num a => a -> f a -> a
 
 
+
+-- | =======================================================
+
+-- | IntMap implementation (can be swapped out with different backends in case)
 instance Additive IM.IntMap where
   zero = IM.empty
   {-# INLINE zero #-}
@@ -68,7 +76,7 @@ instance Normed IM.IntMap where
 
    
 
-
+-- | =======================================================
 
 data SpVector a = SV { svDim :: Int ,
                        svData :: IM.IntMap a} deriving Eq
@@ -84,6 +92,8 @@ mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds k d) im
 mkSpVectorD :: (Num a, Eq a) => Int -> [a] -> SpVector a
 mkSpVectorD d ll = mkSpVector d (IM.fromList $ ixArray (take d ll))
 
+
+ixArray :: [b] -> [(Int, b)]
 ixArray xs = zip [0..length xs-1] xs 
 
 
@@ -130,7 +140,7 @@ instance Normed SpVector where
 
 
 
-
+-- | =======================================================
 
 -- Sparse Matrices
 data SpMatrix a = SM {smDim :: (Int, Int),
@@ -139,8 +149,8 @@ nrows = fst . smDim
 ncols = snd . smDim
 
                   
-mkSpMatrix :: (Int, Int) -> SpMatrix a
-mkSpMatrix d = SM d IM.empty
+emptySpMatrix :: (Int, Int) -> SpMatrix a
+emptySpMatrix d = SM d IM.empty
 
 
 
@@ -217,7 +227,7 @@ lookupSM' i j (SM d im) = IM.lookup i im >>= \(SV nv ve) ->
 -- spMatrixFromList d xs = fmap (\(ii, x) -> insertSpMatrix ii x (mkSpMatrix d)) xs 
 
 spMatrixFromList :: Monad m => (Int, Int) -> [(Int, Int, t)] -> m (SpMatrix t)
-spMatrixFromList d xx = go xx (mkSpMatrix d) where
+spMatrixFromList d xx = go xx (emptySpMatrix d) where
   go ((i,j,x):xs) mat = do
     let mat' = insertSpMatrix i j x mat
     go xs mat'
@@ -257,7 +267,7 @@ v1 = SV 5 (IM.fromList [(0, 4), (1, 3)])
 v2 :: SpVector Double
 v2 = SV 4 (IM.fromList [(0, 2), (1, 3.2), (3, 15)])
 
-m1 = mkSpMatrix (3,4)
+m1 = emptySpMatrix (3,4)
 m2 = insertSpMatrix 1 3  pi m1
 m3 = insertSpMatrix 3 4 1 m2
 
@@ -265,13 +275,14 @@ m3 = insertSpMatrix 3 4 1 m2
 
 -- smInsert (ii,jj) x (SM (nrows, ncols))
 
-
+normSq :: (Normed f, Num a) => f a -> a
 normSq v = v `dot` v
 
 -- | BiCSSTAB
 -- solve A x = b
 
--- initial residual
+-- initial residua
+residual :: Num a => SpMatrix a -> SpVector a -> SpVector a -> SpVector a
 residual aa b x0 = b ^-^ (aa #> x0)
 
 converged :: SpMatrix Double -> SpVector Double -> SpVector Double -> Bool
@@ -284,7 +295,7 @@ bicgIter aa b r0 r0hat rim rhoim alphaim omegaim pim vim xim
   | normSq xires <= eps = xi
   | otherwise = ri
   where
-  rhoi = r0 `dot` rim
+  rhoi = r0hat `dot` rim
   beta = rhoi * alphaim /(rhoim * omegaim)
   pii = rim ^+^ (beta .* (pim ^-^ (omegaim .* vim)))
   vi = aa #> pii
@@ -298,77 +309,8 @@ bicgIter aa b r0 r0hat rim rhoim alphaim omegaim pim vim xim
   xires = (aa #> xi) ^-^ b -- residual of second candidate soln
   ri = s ^-^ (omegai .* t)
 
-bicgStep :: SpMatrix Double
-                  -> SpVector Double
-                  -> SpVector Double
-                  -> SpVector Double
-                  -> BICG
-                  -> BICG
-bicgStep aa b r0 r0hat (BICG rim rhoim alphaim omegaim pim vim xim) =
-  BICG ri rhoi alphai omegai pii vi xi
-  where
-  rhoi = r0 `dot` rim
-  beta = rhoi * alphaim /(rhoim * omegaim)
-  pii = rim ^+^ (beta .* (pim ^-^ (omegaim .* vim)))
-  vi = aa #> pii
-  alphai = rhoi / (r0hat `dot` vi)
-  h = xim ^+^ (alphai .* vi)
-  hres = (aa #> h) ^-^ b  -- residual of candidate solution
-  s = rim ^-^ (alphai .* vi)
-  t = aa #> s
-  omegai = (t `dot` s) / (t `dot` t)
-  xi = h ^+^ (omegai .* s)
-  xires = (aa #> xi) ^-^ b -- residual of second candidate soln
-  ri = s ^-^ (omegai .* t)
-
-bicgStepState
-  :: MonadState BICG m =>
-     SpMatrix Double
-     -> SpVector Double -> SpVector Double -> SpVector Double -> m ()
-bicgStepState aa b r0 r0hat = modify (bicgStep aa b r0 r0hat)
 
 
-bicgNSteps
-  :: SpMatrix Double
-     -> SpVector Double
-     -> SpVector Double
-     -> SpVector Double
-     -> Int
-     -> BICG
-     -> BICG
-bicgNSteps aa b r0 r0hat n =
-  execState $ replicateM n (bicgStepState aa b r0 r0hat)
-
-
-
-bicgIter'' :: MonadState BICG m =>
-           SpMatrix Double ->   -- matrix
-           SpVector Double ->   -- rhs
-           SpVector Double ->   -- initial 
-           SpVector Double ->
-           m (SpVector Double)
-bicgIter'' aa b r0 r0hat = do
-  (BICG rim rhoim alphaim omegaim pim vim xim) <- get
-  let
-    rhoi = r0 `dot` rim
-    beta = rhoi * alphaim /(rhoim * omegaim)
-    pii = rim ^+^ (beta .* (pim ^-^ (omegaim .* vim)))
-    vi = aa #> pii
-    alphai = rhoi / (r0hat `dot` vi)
-    h = xim ^+^ (alphai .* vi)
-    hres = (aa #> h) ^-^ b  -- residual of candidate solution
-    s = rim ^-^ (alphai .* vi)
-    t = aa #> s
-    omegai = (t `dot` s) / (t `dot` t)
-    xi = h ^+^ (omegai .* s)
-    xires = (aa #> xi) ^-^ b -- residual of second candidate soln
-    ri = s ^-^ (omegai .* t)
-  put $ BICG ri rhoi alphai omegai pii vi xi  
-  if normSq hres <= eps
-     then return h
-     else if normSq xires <= eps
-          then return xi
-          else return ri
 
 
 -- _aa :: SpMatrix Double,    -- matrix
@@ -384,35 +326,160 @@ data BICG =
          _pim :: SpVector Double,   -- p_(i-1)
          _vim :: SpVector Double,   -- v_(i-1)
          _xim :: SpVector Double    -- x_(i-1)
-       } deriving (Eq, Show)
+       } deriving Eq
 
+instance Show BICG where
+  show (BICG r1 r2 a o p v x) = "r = " ++ show r1 ++ "\n" ++
+                                "rho = " ++ show r2 ++ "\n" ++
+                                "alpha = " ++ show a ++ "\n" ++
+                                "omega = " ++ show o ++ "\n" ++
+                                "p = " ++ show p ++ "\n" ++
+                                "v = " ++ show v ++ "\n" ++
+                                "x = " ++ show x ++ "\n"
+                                
 makeLenses ''BICG
-
-
-
 
 
 zeroSV (SV n _) = SV n IM.empty
 
 
+-- | initial BiCGSTAB state
+bicgsState0 :: SpMatrix Double -> SpVector Double -> SpVector Double -> BICG
 bicgsState0 aa b x0 =
   BICG
-    (b ^-^ (aa #> x0)) 1 1 1 v0 p0 x0 where
-      v0 = zeroSV x0
-      p0 = zeroSV x0
+    (b ^-^ (aa #> x0)) 1 1 1 z z x0 where
+      z = zeroSV x0
 
--- n iterations of BiCGSTAB
-bicgsSolveNsteps
+-- | one step of BiCGSTAB
+bicgStep :: SpMatrix Double
+                  -> SpVector Double
+                  -> SpVector Double
+                  -> SpVector Double
+                  -> BICG
+                  -> BICG
+bicgStep aa b r0 r0hat (BICG rim rhoim alphaim omegaim pim vim xim) =
+  BICG ri rhoi alphai omegai pii vi xnew
+  where
+  rhoi = r0hat `dot` rim
+  beta = rhoi * alphaim /(rhoim * omegaim)
+  pii = rim ^+^ (beta .* (pim ^-^ (omegaim .* vim)))
+  vi = aa #> pii
+  alphai = rhoi / (r0hat `dot` vi)
+  h = xim ^+^ (alphai .* vi)
+  hres = (aa #> h) ^-^ b  -- residual of candidate solution
+  s = rim ^-^ (alphai .* vi)
+  t = aa #> s
+  omegai = (t `dot` s) / (t `dot` t)
+  xi = h ^+^ (omegai .* s)
+  xires = (aa #> xi) ^-^ b -- residual of second candidate soln
+  ri = s ^-^ (omegai .* t)
+  xnew = xi
+  -- xnew | normSq hres <= eps = h
+  --      | otherwise = xi
+
+
+
+
+bicgNSteps
   :: SpMatrix Double
      -> SpVector Double
      -> SpVector Double
      -> SpVector Double
      -> Int
-     -> SpVector Double
-bicgsSolveNsteps aa b x0 x0hat n =
-  _xim $ bicgNSteps aa b x0 x0hat n (bicgsState0 aa b x0)
+     -> BICG
+     -> BICG
+bicgNSteps aa b r0 r0hat n =
+  execState $ replicateM n (modify $ bicgStep aa b r0 r0hat)
+
+-- | n iterations of BiCGSTAB
+-- bicgsSolveNsteps
+--   :: SpMatrix Double
+--      -> SpVector Double
+--      -> SpVector Double
+--      -> SpVector Double
+--      -> Int
+--      -> SpVector Double
+bicgsSolveNsteps aa b x0 n =
+  bicgNSteps aa b r0 r0hat n (bicgsState0 aa b x0) where
+    r0 = b ^-^ (aa #> x0)
+    r0hat = r0
+
+
+
+-- -- | solution with termination test
+-- bicgsSolve aa b r0 r0hat n = 
+--   untilC
+--     (\s -> normSq (_xim s) <= eps)
+--     n 
+--     (bicgStep aa b r0 r0hat)
+
+
+
+-- | terminate after n iterations or when q becomes true, whichever comes first
+untilC :: (a -> Bool) -> Int ->  (a -> a) -> a -> a
+untilC p n f = go n
+  where
+    go m x | p x || m <= 0 = x
+           | otherwise     = go (m-1) (f x)
+
 
 
 
 -- -- testing testing
 
+(m,n) = (2,2)
+
+aa0 :: SpMatrix Double
+aa0 = SM (m,n) im where
+  row0 = mkSpVectorD m [1,2]
+  row1 = mkSpVectorD n [3,4]
+  im = IM.fromList [(0, row0), (1, row1)]
+
+b0, x0 :: SpVector Double
+b0 = mkSpVectorD m [8,18]
+
+x0 = mkSpVectorD m [0,0]
+-- r0hat = mkSpVectorD m [1.1, 0.9]
+
+
+{-
+[1 2] [2] = [8]
+[3 4] [3]   [18]
+
+-}
+
+test0 :: Int -> BICG
+test0 = bicgsSolveNsteps aa0 b0 x0
+
+
+
+
+
+
+
+
+-- testing State
+
+
+data T0 = T0 {unT :: Int} deriving Eq
+instance Show T0 where
+  show (T0 x) = show x
+
+-- modifyT :: MonadState T0 m => (Int -> Int) -> m String
+modifyT f = state (\(T0 i) -> (i, T0 (f i)))
+  
+
+t00 = T0 0
+
+testT n = execState $ replicateM n (modifyT (+1)) 
+
+
+-- testT2 = execState $ when 
+  
+
+replicateSwitch p m f = loop m where
+      loop n | n <= 0 || p = pure ()
+             | otherwise = f *> loop (n-1)
+
+-- untilM p 
+               

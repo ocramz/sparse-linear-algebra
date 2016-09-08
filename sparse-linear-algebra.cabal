@@ -26,6 +26,7 @@ library
                      , hspec
                      , lens
                      , mtl >= 2.2.1
+                     , monad-loops
 
 executable sparse-linear-algebra
   default-language:    Haskell2010
