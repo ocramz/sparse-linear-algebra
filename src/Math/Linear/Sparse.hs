@@ -296,7 +296,7 @@ matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
 -- | numerical tolerance for e.g. solution convergence
 eps = 1e-8
 
--- initial residua
+-- | residual of candidate solution x0
 residual :: Num a => SpMatrix a -> SpVector a -> SpVector a -> SpVector a
 residual aa b x0 = b ^-^ (aa #> x0)
 
@@ -307,6 +307,7 @@ converged aa b x0 = normSq (residual aa b x0) <= eps
 
 -- | CGS
 
+-- | one step of CGS
 cgsStep :: SpMatrix Double -> SpVector Double -> CGS -> CGS
 cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
   where
@@ -355,6 +356,7 @@ instance Show CGS where
 -- _r0 :: SpVector Double,    -- initial residual
 -- _r0hat :: SpVector Double, -- candidate solution: r0hat `dot` r0 >= 0
 
+-- | one step of BiCGSTAB
 bicgstabStep :: SpMatrix Double -> SpVector Double -> BICGSTAB -> BICGSTAB
 bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
   aap = aa #> p
