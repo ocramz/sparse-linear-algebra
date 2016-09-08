@@ -385,13 +385,13 @@ bicgsInit aa b x0 =
 
 -- -- | n iterations of BiCGSTAB
 
-bicgsSolveN ::
+bicgsstabN ::
   SpMatrix Double -> -- matrix
   SpVector Double -> -- rhs
   SpVector Double -> -- initial solution
   Int ->             -- # iterations
   BICG
-bicgsSolveN aa b x0 n =
+bicgsstabN aa b x0 n =
   execState (replicateM n $ modify (bicgStep aa b r0 r0hat)) z where
      r0 = b ^-^ (aa #> x0)
      r0hat = r0

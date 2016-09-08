@@ -13,6 +13,8 @@ import Math.Linear.Sparse
 main :: IO ()
 main = hspec spec
 
+niter = 5
+
 spec :: Spec
 spec =
   describe "Lib" $ do
@@ -20,10 +22,10 @@ spec =
     --   True `shouldBe` True
     -- prop "ourAdd is commutative" $ \x y ->
     --   ourAdd x y `shouldBe` ourAdd y x
-    prop "BiCGSTAB" $ \n ->
-      normSq (_xim (test0 (n+1)) ^-^ x0true) <= eps
-    -- prop "CGS" $ \n ->
-    --   normSq
+    it "BiCGSTAB" $ 
+      normSq (_xim (bicgsstabN aa0 b0 x0 niter) ^-^ x0true) <= eps `shouldBe` True
+    it "CGS" $ 
+      normSq (_x (cgsN aa0 b0 x0 x0 niter) ^-^ x0true) <= eps `shouldBe` True
 
 
 
@@ -38,7 +40,7 @@ aa0 = SM (m,n) im where
 b0, x0 :: SpVector Double
 b0 = mkSpVectorD m [8,18]
 
-x0 = mkSpVectorD m [0,0]
+x0 = mkSpVectorD m [1,1]
 -- r0hat = mkSpVectorD m [1.1, 0.9]
 
 {-
@@ -49,5 +51,3 @@ x0 = mkSpVectorD m [0,0]
 
 x0true = mkSpVectorD n [2,3]
 
-test0 :: Int -> BICG
-test0 = bicgsSolveN aa0 b0 x0
