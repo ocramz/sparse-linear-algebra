@@ -73,6 +73,8 @@ instance VectorSpace IM.IntMap where
 instance Normed IM.IntMap where
    a `dot` b = sum $ liftI2 (*) a b 
 
+normSq :: (Normed f, Num a) => f a -> a
+normSq v = v `dot` v
 
    
 
@@ -260,23 +262,12 @@ matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
 (#>) = matVec
 
   
--- -- testing testing
-
-v1 :: SpVector Int
-v1 = SV 5 (IM.fromList [(0, 4), (1, 3)])
-v2 :: SpVector Double
-v2 = SV 4 (IM.fromList [(0, 2), (1, 3.2), (3, 15)])
-
-m1 = emptySpMatrix (3,4)
-m2 = insertSpMatrix 1 3  pi m1
-m3 = insertSpMatrix 3 4 1 m2
 
 
 
--- smInsert (ii,jj) x (SM (nrows, ncols))
 
-normSq :: (Normed f, Num a) => f a -> a
-normSq v = v `dot` v
+
+
 
 -- | BiCSSTAB
 -- solve A x = b
@@ -377,7 +368,9 @@ bicgStep aa b r0 r0hat (BICG rim rhoim alphaim omegaim pim vim xim) =
   -- xnew | normSq hres <= eps = h
   --      | otherwise = xi
 
-
+hVec b = x ^+^ (a .* v)
+  where (x,a,v) = (_xim b, _alphaim b, _vim b)
+  
 
 
 -- -- | n iterations of BiCGSTAB
@@ -417,29 +410,7 @@ untilC p n f = go n
 
 -- -- testing testing
 
-(m,n) = (2,2)
 
-aa0 :: SpMatrix Double
-aa0 = SM (m,n) im where
-  row0 = mkSpVectorD m [1,2]
-  row1 = mkSpVectorD n [3,4]
-  im = IM.fromList [(0, row0), (1, row1)]
-
-b0, x0 :: SpVector Double
-b0 = mkSpVectorD m [8,18]
-
-x0 = mkSpVectorD m [0,0]
--- r0hat = mkSpVectorD m [1.1, 0.9]
-
-
-{-
-[1 2] [2] = [8]
-[3 4] [3]   [18]
-
--}
-
-test0 :: Int -> BICG
-test0 = bicgsSolveN aa0 b0 x0
 
 
 
