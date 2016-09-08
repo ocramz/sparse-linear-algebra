@@ -81,6 +81,29 @@ normSq v = v `dot` v
 data SpVector a = SV { svDim :: Int ,
                        svData :: IM.IntMap a} deriving Eq
 
+-- | instances for SparseVector
+instance Functor SpVector where
+  fmap f (SV n x) = SV n (fmap f x)
+
+instance Foldable SpVector where
+    foldr f d v = F.foldr f d (svData v)
+
+instance Additive SpVector where
+  zero = SV 0 IM.empty
+  (^+^) = liftU2 (+)
+  (^-^) = liftU2 (-)
+  liftU2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftU2 f2 x1 x2)
+  liftI2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftI2 f2 x1 x2)
+                      
+instance VectorSpace SpVector where
+  n .* v = fmap (*n) v
+
+instance Normed SpVector where
+  sv1 `dot` sv2 = dot (svData sv1) (svData sv2)
+
+  
+
+
 emptySVector :: Int -> SpVector a
 emptySVector n = SV n IM.empty
 
@@ -116,41 +139,43 @@ toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
 
     
                       
--- instances for SparseVector
-instance Functor SpVector where
-  fmap f (SV n x) = SV n (fmap f x)
 
--- | fold functions are applied to non-zero values
-instance Foldable SpVector where
-    foldr f d v = F.foldr f d (svData v)
-
-instance Additive SpVector where
-  zero = SV 0 IM.empty
-  (^+^) = liftU2 (+)
-  (^-^) = liftU2 (-)
-  liftU2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftU2 f2 x1 x2)
-  liftI2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftI2 f2 x1 x2)
-                      
-instance VectorSpace SpVector where
-  n .* v = fmap (*n) v
-
-instance Normed SpVector where
-  sv1 `dot` sv2 = dot (svData sv1) (svData sv2)
 
 
 
 
 -- | =======================================================
 
--- Sparse Matrices
+-- | Sparse Matrices
 data SpMatrix a = SM {smDim :: (Int, Int),
                       smData :: IM.IntMap (SpVector a)} deriving Eq
+
+-- | instances
+instance Functor SpMatrix where
+  fmap f (SM d md) = SM d ((fmap . fmap) f md)
+
+instance Additive SpMatrix where
+  zero = SM (0,0) IM.empty
+  (^+^) = liftU2 (+)
+  (^-^) = liftU2 (-)
+  liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
+  liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) ((liftI2.liftI2) f2 x1 x2)
+
+-- | TODO : use semilattice properties instead
+maxTup, minTup :: Ord t => (t, t) -> (t, t) -> (t, t)
+maxTup (x1,y1) (x2,y2) = (max x1 x2, max y1 y2)
+minTup (x1,y1) (x2,y2) = (min x1 x2, min y1 y2)
+
+-- | empty matrix of size d
+emptySpMatrix :: (Int, Int) -> SpMatrix a
+emptySpMatrix d = SM d IM.empty
+
+
+                 
 nrows = fst . smDim
 ncols = snd . smDim
 
                   
-emptySpMatrix :: (Int, Int) -> SpMatrix a
-emptySpMatrix d = SM d IM.empty
 
 
 
@@ -237,22 +262,11 @@ spMatrixFromList d xx = go xx (emptySpMatrix d) where
 
   
 
-instance Functor SpMatrix where
-  fmap f (SM d md) = SM d ((fmap . fmap) f md)
 
 
 
-instance Additive SpMatrix where
-  zero = SM (0,0) IM.empty
-  (^+^) = liftU2 (+)
-  (^-^) = liftU2 (-)
-  liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
-  liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) ((liftI2.liftI2) f2 x1 x2)
 
-maxTup, minTup :: Ord t => (t, t) -> (t, t) -> (t, t)
-maxTup (x1,y1) (x2,y2) = (max x1 x2, max y1 y2)
-minTup (x1,y1) (x2,y2) = (min x1 x2, min y1 y2)
-
+-- | matrix action on a vector
 
 matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
 matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
@@ -262,7 +276,7 @@ matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
   
 
 
-
+-- | =======================================================
 
 -- | LINEAR SOLVERS : solve A x = b
 
@@ -327,7 +341,7 @@ instance Show CGS where
 -- _r0 :: SpVector Double,    -- initial residual
 -- _r0hat :: SpVector Double, -- candidate solution: r0hat `dot` r0 >= 0
 
-
+bicgstabStep :: SpMatrix Double -> SpVector Double -> BICGSTAB -> BICGSTAB
 bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
   aap = aa #> p
   alphaj = (r `dot` r0hat) / (aap `dot` r0hat)
@@ -344,6 +358,13 @@ data BICGSTAB = BICGSTAB { _xBicgstab :: SpVector Double,
                            _pBicgstab :: SpVector Double} deriving Eq
 
 
+bicgstabN
+  :: SpMatrix Double
+     -> SpVector Double
+     -> SpVector Double
+     -> SpVector Double
+     -> Int
+     -> BICGSTAB
 bicgstabN aa b x0 r0hat n =
   execState (replicateM n (modify (bicgstabStep aa r0hat))) bicgsInit where
    r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
