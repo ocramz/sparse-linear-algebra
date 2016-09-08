@@ -23,13 +23,13 @@ class Functor f => Additive f where
   (^+^) :: Num a => f a -> f a -> f a
   (^-^) :: Num a => f a -> f a -> f a
 
-  -- union binary lift
+  -- |union binary lift
   liftU2 :: (a -> a -> a) -> f a -> f a -> f a
 
-  -- intersection binary lift
+  -- |intersection binary lift
   liftI2 :: (a -> b -> c) -> f a -> f b -> f c
 
-
+-- | negate the values in a functor
 negated :: (Num a, Functor f) => f a -> f a
 negated = fmap negate
 
@@ -37,14 +37,16 @@ negated = fmap negate
 
 -- | Vector space
 class Additive f => VectorSpace f where
+  -- | multiplication by a scalar
   (.*) :: Num a => a -> f a -> f a
 
--- linear interpolation
+-- |linear interpolation
 lerp :: (VectorSpace f, Num a) => a -> f a -> f a -> f a
 lerp a u v = a .* u ^+^ ((1-a) .* v)
 
 -- | Normed vector space
 class VectorSpace f => Normed f where
+  -- | inner product
   dot :: Num a => f a -> f a -> a
   -- norm :: Num a => a -> f a -> a
 
@@ -103,7 +105,7 @@ instance Normed SpVector where
 
   
 
-
+-- | empty sparse vector (size n, no entries)
 emptySVector :: Int -> SpVector a
 emptySVector n = SV n IM.empty
 
@@ -115,7 +117,7 @@ mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds k d) im
 mkSpVectorD :: (Num a, Eq a) => Int -> [a] -> SpVector a
 mkSpVectorD d ll = mkSpVector d (IM.fromList $ ixArray (take d ll))
 
-
+-- | integer-indexed ziplist
 ixArray :: [b] -> [(Int, b)]
 ixArray xs = zip [0..length xs-1] xs 
 
