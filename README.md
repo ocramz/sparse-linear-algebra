@@ -4,7 +4,7 @@ Sparse linear algebra datastructures and algorithms in pure Haskell
 
 TravisCI : [![Build Status](https://travis-ci.org/ocramz/sparse-linear-algebra.png)](https://travis-ci.org/ocramz/sparse-linear-algebra)
 
-So far the only algorithms are two iterative linear solvers, Conjugate Gradient Squared (CGS) and BiConjugate Gradient Descent Stabilized (BiCGSTAB), the latter of which should work well also with non-Hermitian (i.e. asymmetric, for the real-valued case) operators. 
+So far the only algorithms are two iterative linear solvers, Conjugate Gradient Squared (CGS) and BiConjugate Gradient Stabilized (BiCGSTAB), the latter of which should work well also with non-Hermitian (i.e. asymmetric, for the real-valued case) operators. 
 
 This is also an experiment in principled scientific programming :
 
