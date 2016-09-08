@@ -22,6 +22,8 @@ spec =
     --   ourAdd x y `shouldBe` ourAdd y x
     prop "BiCGSTAB" $ \n ->
       normSq (_xim (test0 (n+1)) ^-^ x0true) <= eps
+    -- prop "CGS" $ \n ->
+    --   normSq
 
 
 
