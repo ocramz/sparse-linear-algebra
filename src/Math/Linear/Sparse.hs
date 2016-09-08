@@ -344,8 +344,8 @@ zeroSV (SV n _) = SV n IM.empty
 
 
 -- | initial BiCGSTAB state
-bicgsState0 :: SpMatrix Double -> SpVector Double -> SpVector Double -> BICG
-bicgsState0 aa b x0 =
+bicgsInit :: SpMatrix Double -> SpVector Double -> SpVector Double -> BICG
+bicgsInit aa b x0 =
   BICG
     (b ^-^ (aa #> x0)) 1 1 1 z z x0 where
       z = zeroSV x0
@@ -380,29 +380,19 @@ bicgStep aa b r0 r0hat (BICG rim rhoim alphaim omegaim pim vim xim) =
 
 
 
-bicgNSteps
-  :: SpMatrix Double
-     -> SpVector Double
-     -> SpVector Double
-     -> SpVector Double
-     -> Int
-     -> BICG
-     -> BICG
-bicgNSteps aa b r0 r0hat n =
-  execState $ replicateM n (modify $ bicgStep aa b r0 r0hat)
+-- -- | n iterations of BiCGSTAB
 
--- | n iterations of BiCGSTAB
--- bicgsSolveNsteps
---   :: SpMatrix Double
---      -> SpVector Double
---      -> SpVector Double
---      -> SpVector Double
---      -> Int
---      -> SpVector Double
-bicgsSolveNsteps aa b x0 n =
-  bicgNSteps aa b r0 r0hat n (bicgsState0 aa b x0) where
-    r0 = b ^-^ (aa #> x0)
-    r0hat = r0
+bicgsSolveN ::
+  SpMatrix Double -> -- matrix
+  SpVector Double -> -- rhs
+  SpVector Double -> -- initial solution
+  Int ->             -- # iterations
+  BICG
+bicgsSolveN aa b x0 n =
+  execState (replicateM n $ modify (bicgStep aa b r0 r0hat)) z where
+     r0 = b ^-^ (aa #> x0)
+     r0hat = r0
+     z = bicgsInit aa b x0
 
 
 
@@ -449,7 +439,7 @@ x0 = mkSpVectorD m [0,0]
 -}
 
 test0 :: Int -> BICG
-test0 = bicgsSolveNsteps aa0 b0 x0
+test0 = bicgsSolveN aa0 b0 x0
 
 
 
