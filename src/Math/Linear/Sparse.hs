@@ -329,73 +329,109 @@ instance Show CGS where
 -- _r0 :: SpVector Double,    -- initial residual
 -- _r0hat :: SpVector Double, -- candidate solution: r0hat `dot` r0 >= 0
 
-data BICG =
-  BICG { _rim :: SpVector Double,   -- r_(i-1)
-         _rhoim :: Double,          -- rho_(i-1)
-         _alphaim :: Double,        -- alpha_(i-1)
-         _omegaim :: Double,        -- omega_(i-1)
-         _pim :: SpVector Double,   -- p_(i-1)
-         _vim :: SpVector Double,   -- v_(i-1)
-         _xim :: SpVector Double    -- x_(i-1)
-       } deriving Eq
 
--- | one step of BiCGSTAB
-bicgStep :: SpMatrix Double
-                  -> SpVector Double
-                  -> SpVector Double
-                  -> SpVector Double
-                  -> BICG
-                  -> BICG
-bicgStep aa b r0 r0hat (BICG rim rhoim alphaim omegaim pim vim xim) =
-  BICG ri rhoi alphai omegai pii vi xnew
-  where
-  rhoi = r0hat `dot` rim
-  beta = rhoi * alphaim /(rhoim * omegaim)
-  pii = rim ^+^ (beta .* (pim ^-^ (omegaim .* vim)))
-  vi = aa #> pii
-  alphai = rhoi / (r0hat `dot` vi)
-  h = xim ^+^ (alphai .* vi)
-  hres = (aa #> h) ^-^ b  -- residual of candidate solution
-  s = rim ^-^ (alphai .* vi)
-  t = aa #> s
-  omegai = (t `dot` s) / (t `dot` t)
-  xi = h ^+^ (omegai .* s)
-  xires = (aa #> xi) ^-^ b -- residual of second candidate soln
-  ri = s ^-^ (omegai .* t)
-  xnew = xi
-  -- xnew | normSq hres <= eps = h    -- TODO : DOUBLE CHECK convergence criteria
-  --      | normSq xires <= eps = xi
-  --      | otherwise = zi
+bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
+  aap = aa #> p
+  alphaj = (r `dot` r0hat) / (aap `dot` r0hat)
+  sj = r ^-^ (alphaj .* aap)
+  aasj = aa #> sj
+  omegaj = (aasj `dot` sj) / (aasj `dot` aasj)
+  xj1 = x ^+^ (alphaj .* p) ^+^ (omegaj .* sj)
+  rj1 = sj ^-^ (omegaj .* aasj)
+  betaj = (rj1 `dot` r0hat)/(r `dot` r0hat) * alphaj / omegaj
+  pj1 = rj1 ^+^ (betaj .* (p ^-^ (omegaj .* aap)))
 
--- one of the internal BiCGSTAB vectors
-hVec b = x ^+^ (a .* v)
-  where (x,a,v) = (_xim b, _alphaim b, _vim b)
+data BICGSTAB = BICGSTAB { _xBicgstab :: SpVector Double,
+                           _rBicgstab :: SpVector Double,
+                           _pBicgstab :: SpVector Double} deriving Eq
+
+
+bicgstabN aa b x0 r0hat n =
+  execState (replicateM n (modify (bicgstabStep aa r0hat))) bicgsInit where
+   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+   p0 = r0
+   bicgsInit = BICGSTAB x0 r0 p0
+
+instance Show BICGSTAB where
+  show (BICGSTAB x r p) = "x = " ++ show x ++ "\n" ++
+                                "r = " ++ show r ++ "\n" ++
+                                "p = " ++ show p ++ "\n"
+
+
+-- cgsN aa b x0 rhat n =
+--   execState (replicateM n (modify (cgsStep aa rhat))) cgsInit where
+--   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+--   p0 = r0
+--   u0 = r0
+--   cgsInit = CGS x0 r0 p0 u0
+
+-- data BICG =
+--   BICG { _rim :: SpVector Double,   -- r_(i-1)
+--          _rhoim :: Double,          -- rho_(i-1)
+--          _alphaim :: Double,        -- alpha_(i-1)
+--          _omegaim :: Double,        -- omega_(i-1)
+--          _pim :: SpVector Double,   -- p_(i-1)
+--          _vim :: SpVector Double,   -- v_(i-1)
+--          _xim :: SpVector Double    -- x_(i-1)
+--        } deriving Eq
+
+-- -- | one step of BiCGSTAB
+-- bicgStep :: SpMatrix Double
+--                   -> SpVector Double
+--                   -> SpVector Double
+--                   -> SpVector Double
+--                   -> BICG
+--                   -> BICG
+-- bicgStep aa b r0 r0hat (BICG rim rhoim alphaim omegaim pim vim xim) =
+--   BICG ri rhoi alphai omegai pii vi xnew
+--   where
+--   rhoi = r0hat `dot` rim
+--   beta = rhoi * alphaim /(rhoim * omegaim)
+--   pii = rim ^+^ (beta .* (pim ^-^ (omegaim .* vim)))
+--   vi = aa #> pii
+--   alphai = rhoi / (r0hat `dot` vi)
+--   h = xim ^+^ (alphai .* vi)
+--   hres = (aa #> h) ^-^ b  -- residual of candidate solution
+--   s = rim ^-^ (alphai .* vi)
+--   t = aa #> s
+--   omegai = (t `dot` s) / (t `dot` t)
+--   xi = h ^+^ (omegai .* s)
+--   xires = (aa #> xi) ^-^ b -- residual of second candidate soln
+--   ri = s ^-^ (omegai .* t)
+--   xnew = xi
+--   -- xnew | normSq hres <= eps = h    -- TODO : DOUBLE CHECK convergence criteria
+--   --      | normSq xires <= eps = xi
+--   --      | otherwise = zi
+
+-- -- one of the internal BiCGSTAB vectors
+-- hVec b = x ^+^ (a .* v)
+--   where (x,a,v) = (_xim b, _alphaim b, _vim b)
   
 
 
 zeroSV (SV n _) = SV n IM.empty
 
--- | initial BiCGSTAB state
-bicgsInit :: SpMatrix Double -> SpVector Double -> SpVector Double -> BICG
-bicgsInit aa b x0 =
-  BICG
-    (b ^-^ (aa #> x0)) 1 1 1 z z x0 where
-      z = zeroSV x0
+-- -- | initial BiCGSTAB state
+-- bicgsInit :: SpMatrix Double -> SpVector Double -> SpVector Double -> BICG
+-- bicgsInit aa b x0 =
+--   BICG
+--     (b ^-^ (aa #> x0)) 1 1 1 z z x0 where
+--       z = zeroSV x0
 
 
--- -- | n iterations of BiCGSTAB
+-- -- -- | n iterations of BiCGSTAB
 
-bicgsstabN ::
-  SpMatrix Double -> -- matrix
-  SpVector Double -> -- rhs
-  SpVector Double -> -- initial solution
-  Int ->             -- # iterations
-  BICG
-bicgsstabN aa b x0 n =
-  execState (replicateM n $ modify (bicgStep aa b r0 r0hat)) z where
-     r0 = b ^-^ (aa #> x0)
-     r0hat = r0
-     z = bicgsInit aa b x0
+-- bicgsstabN ::
+--   SpMatrix Double -> -- matrix
+--   SpVector Double -> -- rhs
+--   SpVector Double -> -- initial solution
+--   Int ->             -- # iterations
+--   BICG
+-- bicgsstabN aa b x0 n =
+--   execState (replicateM n $ modify (bicgStep aa b r0 r0hat)) z where
+--      r0 = b ^-^ (aa #> x0)
+--      r0hat = r0
+--      z = bicgsInit aa b x0
 
 
 
@@ -408,17 +444,17 @@ bicgsstabN aa b x0 n =
 
 -- Show instance
 
-instance Show BICG where
-  show (BICG r1 r2 a o p v x) = "r = " ++ show r1 ++ "\n" ++
-                                "rho = " ++ show r2 ++ "\n" ++
-                                "alpha = " ++ show a ++ "\n" ++
-                                "omega = " ++ show o ++ "\n" ++
-                                "p = " ++ show p ++ "\n" ++
-                                "v = " ++ show v ++ "\n" ++
-                                "x = " ++ show x ++ "\n"
+-- instance Show BICG where
+--   show (BICG r1 r2 a o p v x) = "r = " ++ show r1 ++ "\n" ++
+--                                 "rho = " ++ show r2 ++ "\n" ++
+--                                 "alpha = " ++ show a ++ "\n" ++
+--                                 "omega = " ++ show o ++ "\n" ++
+--                                 "p = " ++ show p ++ "\n" ++
+--                                 "v = " ++ show v ++ "\n" ++
+--                                 "x = " ++ show x ++ "\n"
 
 -- BICG lenses                                
-makeLenses ''BICG
+-- makeLenses ''BICG
 
 
 

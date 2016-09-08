@@ -23,7 +23,7 @@ spec =
     -- prop "ourAdd is commutative" $ \x y ->
     --   ourAdd x y `shouldBe` ourAdd y x
     it "BiCGSTAB" $ 
-      normSq (_xim (bicgsstabN aa0 b0 x0 niter) ^-^ x0true) <= eps `shouldBe` True
+      normSq (_xBicgstab (bicgstabN aa0 b0 x0 x0 niter) ^-^ x0true) <= eps `shouldBe` True
     it "CGS" $ 
       normSq (_x (cgsN aa0 b0 x0 x0 niter) ^-^ x0true) <= eps `shouldBe` True
 
@@ -40,7 +40,7 @@ aa0 = SM (m,n) im where
 b0, x0 :: SpVector Double
 b0 = mkSpVectorD m [8,18]
 
-x0 = mkSpVectorD m [1,1]
+x0 = mkSpVectorD m [0.3,1.4]
 -- r0hat = mkSpVectorD m [1.1, 0.9]
 
 {-
