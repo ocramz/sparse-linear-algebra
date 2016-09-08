@@ -10,7 +10,7 @@ This is also an experiment in principled scientific programming :
 
 * set the stage by declaring typeclasses and some useful generic operations (normed linear vector spaces, i.e. finite-dimensional spaces equipped with an inner product that induces a distance function),
 
-* define appropriate data structures, and how they relates to those properties (sparse vectors and matrices, defined internally via `Data.IntMap`, are made instances of the VectorSpace and AdditiveGroup classes respectively). This allows to decouple the algorithms from the actual implementation of the backend,
+* define appropriate data structures, and how they relate to those properties (sparse vectors and matrices, defined internally via `Data.IntMap`, are made instances of the VectorSpace and AdditiveGroup classes respectively). This allows to decouple the algorithms from the actual implementation of the backend,
 
 * implement the algorithms, following 1:1 the textbook [1] 
 
