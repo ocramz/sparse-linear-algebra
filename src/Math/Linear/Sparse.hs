@@ -268,6 +268,13 @@ spMatrixFromList d xx = go xx (emptySpMatrix d) where
 
 -- | matrix action on a vector
 
+{- 
+FIXME : matVec is more generic than SpVector's :
+
+\m v -> fmap (`dot` v) m
+  :: (Normed f1, Num b, Functor f) => f (f1 b) -> f1 b -> f b
+-}
+
 matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
 matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
 
