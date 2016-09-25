@@ -8,6 +8,8 @@ import Control.Monad.Loops
 import Control.Monad.State
 
 import qualified Data.IntMap as IM
+-- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
+
 import qualified Data.Foldable as F
 import qualified Data.List as L
 import Data.Maybe
@@ -241,6 +243,25 @@ insertSpMatrix i j x (SM dims smd)
       (dx, dy) = dims
       ri = fromMaybe (emptySVector dy) (IM.lookup i smd)
 
+insert2 i j x mm = IM.insert i (IM.insert j x (mm IM.! j)) mm
+
+-- insert2' (i,j) x spm@(SM d@(di,dj) spmd) = SM d (IM.insert j x oldRowI)where
+--   oldRowI = fromMaybe (emptySVector dj) (IM.lookup i spmd) 
+
+-- insert21 = foldr insert2'
+
+
+  
+
+-- fromList :: [(Key,a)] -> IntMap a
+-- fromList xs
+--   = foldlStrict ins empty xs
+--   where
+--     ins t (k,x)  = insert k x t
+
+
+imIndex i im | IM.member i im = Just $ im IM.! i
+             | otherwise = Nothing
 
 -- indexSpM i j (SM _ im) a = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (svData im))
 
@@ -447,7 +468,11 @@ zeroSV (SV n _) = SV n IM.empty
 
 
 
-
+foldlStrict :: (a -> b -> a) -> a -> [b] -> a
+foldlStrict f = go
+  where
+    go z []     = z
+    go z (x:xs) = let z' = f z x in z' `seq` go z' xs
 
 
 
