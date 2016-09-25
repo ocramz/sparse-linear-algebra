@@ -39,6 +39,7 @@ negated = fmap negate
 class Additive f => VectorSpace f where
   -- | multiplication by a scalar
   (.*) :: Num a => a -> f a -> f a
+  
 
 -- |linear interpolation
 lerp :: (VectorSpace f, Num a) => a -> f a -> f a -> f a
@@ -102,7 +103,10 @@ instance VectorSpace SpVector where
   n .* v = fmap (*n) v
 
 instance Normed SpVector where
-  sv1 `dot` sv2 = dot (svData sv1) (svData sv2)
+  sv1 `dot` sv2
+    | d1 == d2 = dot (svData sv1) (svData sv2)
+    | otherwise = error $  "dot : vector sizes must coincide (instead : "++ show (d1, d2) ++ ")" where
+        (d1, d2) = (svDim sv1, svDim sv2)
 
   
 
@@ -128,8 +132,13 @@ insertSpVector i x (SV d xim)
   | inBounds i d = SV d (IM.insert i x xim)
   | otherwise = error "insertSpVector : index out of bounds"
 
+-- fromListSpUnsafe d iix = SV d (IM.fromList iix)
+
+fromListSV :: Int -> [(Int, a)] -> SpVector a
+fromListSV d iix = SV d (IM.fromList (filter ((`inBounds` d) . fst) iix )) 
+ 
 instance Show a => Show (SpVector a) where
-  show (SV d x) = "SV (" ++ show d ++ ") "++ show (snd.unzip.IM.toList $ x)
+  show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList $ x)
 
 lookupDenseSV :: Num a => IM.Key -> SpVector a -> a
 lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im 
@@ -179,9 +188,15 @@ nrows, ncols :: SpMatrix a -> Int
 nrows = fst . smDim
 ncols = snd . smDim
 
-                  
 
 
+
+
+-- | Show details and contents of sparse matrix
+
+sizeStr :: SpMatrix a -> String
+sizeStr m = unwords ["(",show (nrows m)," >< ",show (ncols m),")"]
+  
 
 -- instance Show a => Show (SpMatrix a) where
 --   show (SM d x) = "SM " ++ show d ++ " "++ fmap show (IM.toList x)
@@ -287,6 +302,33 @@ matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
 (#>) = matVec
 
   
+
+
+-- | matrix-matrix product
+
+-- matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
+--   | nc1 == nr2 = SM (nr1, nc2)
+
+
+
+
+-- | diagonal and identity matrices
+
+diagonalSM n vv = SM (n,n)
+
+ones n = replicate n 1
+
+identitySM n = diagonalSM n (ones n)
+
+
+
+
+-- | Givens rotation matrix
+
+givens m n i j theta
+  | inBounds2 (i,j) (m,n) = undefined where
+   c = cos theta
+   s = sin theta
 
 
 -- | =======================================================
