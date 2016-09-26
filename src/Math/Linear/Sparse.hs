@@ -116,6 +116,9 @@ instance Normed SpVector where
 emptySVector :: Int -> SpVector a
 emptySVector n = SV n IM.empty
 
+zeroSV :: Int -> SpVector a
+zeroSV n = SV n IM.empty
+
 -- | create a sparse vector from an association list while discarding all zero entries
 mkSpVector :: (Num a, Eq a) => Int -> IM.IntMap a -> SpVector a
 mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds k d) im
@@ -192,7 +195,7 @@ ncols = snd . smDim
 
 
 
-
+-- | ========= DISPLAY
 
 -- | Show details and contents of sparse matrix
 
@@ -200,8 +203,8 @@ sizeStr :: SpMatrix a -> String
 sizeStr m = unwords ["(",show (nrows m)," >< ",show (ncols m),")"]
   
 
--- instance Show a => Show (SpMatrix a) where
---   show (SM d x) = "SM " ++ show d ++ " "++ fmap show (IM.toList x)
+instance Show a => Show (SpMatrix a) where
+  show (SM d x) = "SM " ++ show d ++ " "++ show (IM.toList x)
 
 
 -- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
@@ -225,16 +228,23 @@ showNonZero x  = if x == 0 then " " else show x
 --                          | i <- [1 .. ncols m] ]
                                          
 
--- | Looks up an element in the matrix (if not found, zero is returned)
--- (#) :: (Num a) => SpMatrix a -> (Int,Int) -> a
--- m # (i,j) = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (smData m))
 
 
-inBounds :: (Ord a, Num a) => a -> a -> Bool
-inBounds i b = i>=0 && i<=b
-inBounds2 :: (Ord a, Num a) => (a, a) -> (a, a) -> Bool
-inBounds2 (i,j) (bx,by) = inBounds i bx && inBounds j by
 
+-- | ========= BUILDERS
+
+zeroSM :: Int -> Int -> SpMatrix a
+zeroSM m n = SM (m,n) IM.empty 
+
+-- spMatrixFromList d xs = fmap (\(ii, x) -> insertSpMatrix ii x (mkSpMatrix d)) xs 
+
+-- --  FIXME : implement `fromList` instead
+-- spMatrixFromList :: Monad m => (Int, Int) -> [(Int, Int, t)] -> m (SpMatrix t)
+-- spMatrixFromList d xx = go xx (emptySpMatrix d) where
+--   go ((i,j,x):xs) mat = do
+--     let mat' = insertSpMatrix i j x mat
+--     go xs mat'
+--   go [] m = return m
 
 insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
 insertSpMatrix i j x (SM dims smd)
@@ -243,14 +253,20 @@ insertSpMatrix i j x (SM dims smd)
       (dx, dy) = dims
       ri = fromMaybe (emptySVector dy) (IM.lookup i smd)
 
-insert2 i j x mm = IM.insert i (IM.insert j x (mm IM.! j)) mm
-
--- insert2' (i,j) x spm@(SM d@(di,dj) spmd) = SM d (IM.insert j x oldRowI)where
---   oldRowI = fromMaybe (emptySVector dj) (IM.lookup i spmd) 
-
--- insert21 = foldr insert2'
+spmFromList :: Foldable t => (Int, Int) -> t (Int, Int, a) -> SpMatrix a
+spmFromList (m,n) xx = foldl ins (zeroSM m n) xx where
+  ins t (i,j,x) = insertSpMatrix i j x t
 
 
+mkDiagonal :: Int -> [a] -> SpMatrix a
+mkDiagonal n xx = spmFromList (n,n) $ zip3 ii ii xx where
+  ii = [0..n-1]
+
+
+eye :: Num a => Int -> SpMatrix a
+eye n = mkDiagonal n (ones n)
+
+ones n = replicate n 1
   
 
 -- fromList :: [(Key,a)] -> IntMap a
@@ -260,12 +276,25 @@ insert2 i j x mm = IM.insert i (IM.insert j x (mm IM.! j)) mm
 --     ins t (k,x)  = insert k x t
 
 
-imIndex i im | IM.member i im = Just $ im IM.! i
-             | otherwise = Nothing
+-- imIndex i im | IM.member i im = Just $ im IM.! i
+--              | otherwise = Nothing
 
 -- indexSpM i j (SM _ im) a = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (svData im))
 
 
+
+-- | ========= LOOKUP
+
+-- | Looks up an element in the matrix (if not found, zero is returned)
+-- (#) :: (Num a) => SpMatrix a -> (Int,Int) -> a
+-- m # (i,j) = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (smData m))
+
+
+lookupWithDefaultSpm :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
+lookupWithDefaultSpm (SM d m) (i,j) =
+  fromMaybe 0 (IM.lookup i m >>= \(SV dv d) -> IM.lookup j d)
+
+(#) = lookupWithDefaultSpm
 
 
 -- FIXME : to throw an exception or just ignore the out-of-bound access ?
@@ -279,26 +308,17 @@ inB2 i d s f
   | otherwise = error s  
 
 
+
+
 -- | sparse matrix (nested intmap) lookup
 lookupSM i j (SM d im) =
   IM.lookup i im >>= \(SV nv ve) -> case IM.lookup j ve of Just c -> return c
                                                            Nothing -> return 0
 
-lookupColSV j (SV d im) = IM.lookup j im
-
-lookupSM' i j (SM d im) = IM.lookup i im >>= \(SV nv ve) ->
-  IM.findWithDefault 0 j ve
 
 
--- spMatrixFromList d xs = fmap (\(ii, x) -> insertSpMatrix ii x (mkSpMatrix d)) xs 
 
---  FIXME : implement `fromList` instead
-spMatrixFromList :: Monad m => (Int, Int) -> [(Int, Int, t)] -> m (SpMatrix t)
-spMatrixFromList d xx = go xx (emptySpMatrix d) where
-  go ((i,j,x):xs) mat = do
-    let mat' = insertSpMatrix i j x mat
-    go xs mat'
-  go [] m = return m
+
   
   
 
@@ -328,18 +348,18 @@ matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
 -- | matrix-matrix product
 
 -- matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
---   | nc1 == nr2 = SM (nr1, nc2)
+--   | nc1 == nr2 = SM (nr1, nc2) (fmap (\vm1 -> fmap (`dot` vm1) m2) m1)
 
 
 
 
 -- | diagonal and identity matrices
 
-diagonalSM n vv = SM (n,n)
+-- diagonalSM n vv = spMatrixFromList (n,n) (zip3 ii ii vv) where ii = [0 .. n-1]
 
-ones n = replicate n 1
+-- ones n = replicate n 1
 
-identitySM n = diagonalSM n (ones n)
+-- identitySM n = diagonalSM n (ones n)
 
 
 
@@ -350,6 +370,12 @@ givens m n i j theta
   | inBounds2 (i,j) (m,n) = undefined where
    c = cos theta
    s = sin theta
+
+
+
+
+
+
 
 
 -- | =======================================================
@@ -462,7 +488,8 @@ instance Show BICGSTAB where
 
 
 -- | utilities
-zeroSV (SV n _) = SV n IM.empty
+
+
 
 
 
@@ -473,6 +500,13 @@ foldlStrict f = go
   where
     go z []     = z
     go z (x:xs) = let z' = f z x in z' `seq` go z' xs
+
+
+inBounds :: (Ord a, Num a) => a -> a -> Bool
+inBounds i b = i>=0 && i<=b
+
+inBounds2 :: (Ord a, Num a) => (a, a) -> (a, a) -> Bool
+inBounds2 (i,j) (bx,by) = inBounds i bx && inBounds j by
 
 
 
