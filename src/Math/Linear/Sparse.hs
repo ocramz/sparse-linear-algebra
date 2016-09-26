@@ -197,16 +197,25 @@ nrows = fst . smDim
 ncols = snd . smDim
 
 
+data SMInfo = SMInfo { smNz :: Int,
+                       smSpy :: Double} deriving (Eq, Show)
+
+infoSM (SM (nr,nc) im) = SMInfo nz $ fromIntegral nz / fromIntegral (nr*nc) where
+  nz = IM.size im
+
+
 
 -- | ========= DISPLAY
 
 -- | Show details and contents of sparse matrix
 
 sizeStr :: SpMatrix a -> String
-sizeStr (SM (nr,nc) im) =
-  unwords ["SM:",show nr,"rows,",show nc,"columns,",show nz,"NZ (sparsity",show spy,")"] where
-  nz = IM.size im
-  spy = fromIntegral nz / fromIntegral (nr*nc)
+sizeStr sm =
+  unwords ["SM:",show (nrows sm),"rows,",show (ncols sm),"columns,",show nz,"NZ (sparsity",show spy,")"] where
+  (SMInfo nz spy) = infoSM sm 
+
+
+
   
 
 instance Show a => Show (SpMatrix a) where
@@ -251,12 +260,16 @@ printDenseSM' sm@(SM (nr,nc) im) nromax ncomax = mapM_ putStrLn rr_' where
   rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
        | otherwise = rr_
 
-
+printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
 printDenseSM sm = do
+  putStrLn ""
   putStrLn $ sizeStr sm
+  putStrLn ""
   printDenseSM' sm 5 5
+  putStrLn ""
 
   
+
 
 
 -- | ========= BUILDERS
