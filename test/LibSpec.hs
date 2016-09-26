@@ -16,7 +16,7 @@ main = hspec spec
 niter = 5
 
 spec :: Spec
-spec =
+spec = do
   describe "Lib" $ do
     -- it "works" $ do
     --   True `shouldBe` True
@@ -24,6 +24,7 @@ spec =
     --   ourAdd x y `shouldBe` ourAdd y x
     it "matVec : matrix-vector product" $
       normSq ((aa0 #> x0true) ^-^ b0 ) <= eps `shouldBe` True
+  describe "Linear solvers" $ do    
     it "BiCGSTAB" $ 
       normSq (_xBicgstab (bicgstabN aa0 b0 x0 x0 niter) ^-^ x0true) <= eps `shouldBe` True
     it "CGS" $ 
