@@ -210,7 +210,7 @@ sizeStr (SM (nr,nc) im) =
   
 
 instance Show a => Show (SpMatrix a) where
-  show (SM d x) = "SM " ++ show d ++ " "++ show (IM.toList x)
+  show sm@(SM d x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList x)
 
 
 -- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
@@ -246,11 +246,15 @@ toDenseRowClip sm irow ncomax
            h = take (ncomax - 2) dr
            t = last dr
 
-printDenseSM sm@(SM (nr,nc) im) nromax ncomax = mapM_ putStrLn rr_' where
+printDenseSM' sm@(SM (nr,nc) im) nromax ncomax = mapM_ putStrLn rr_' where
   rr_ = map (\i -> toDenseRowClip sm i ncomax) [0..nr - 1]
   rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
        | otherwise = rr_
 
+
+printDenseSM sm = do
+  putStrLn $ sizeStr sm
+  printDenseSM' sm 5 5
 
   
 
