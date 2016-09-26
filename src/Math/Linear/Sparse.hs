@@ -289,9 +289,13 @@ insertSpMatrix i j x (SM dims smd)
       ri = fromMaybe IM.empty (IM.lookup i smd)
 
 
-fromListSM :: Foldable t => (Int, Int) -> t (Int, Int, a) -> SpMatrix a
-fromListSM (m,n) xx = foldl ins (zeroSM m n) xx where
+fromListSM' :: Foldable t => t (Int, Int, a) -> SpMatrix a -> SpMatrix a
+fromListSM' iix sm = foldl ins sm iix where
   ins t (i,j,x) = insertSpMatrix i j x t
+
+fromListSM :: Foldable t => (Int, Int) -> t (Int, Int, a) -> SpMatrix a  
+fromListSM (m,n) iix = fromListSM' iix (zeroSM m n)
+  
 
 
 -- -- diagonal and identity matrix
@@ -406,8 +410,12 @@ matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
 
 -- | Givens rotation matrix
 
-givens m n i j theta
-  | inBounds2 (i,j) (m,n) = undefined where
+givens :: Floating a => Int -> Int -> Int -> a -> SpMatrix a
+givens n i j theta
+  | inBounds2 (i,j) (n,n) =
+       fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye n)
+  | otherwise = error "givens : indices out of bounds"      
+  where
    c = cos theta
    s = sin theta
 
