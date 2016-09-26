@@ -17,14 +17,16 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  describe "Lib" $ do
+  describe "Math.Linear.Sparse : library" $ do
     -- it "works" $ do
     --   True `shouldBe` True
     -- prop "ourAdd is commutative" $ \x y ->
     --   ourAdd x y `shouldBe` ourAdd y x
     it "matVec : matrix-vector product" $
       normSq ((aa0 #> x0true) ^-^ b0 ) <= eps `shouldBe` True
-  describe "Linear solvers" $ do    
+    it "eye : identity matrix" $
+      infoSM (eye 10) `shouldBe` SMInfo 10 0.1
+  describe "Math.Linear.Sparse : Linear solvers" $ do    
     it "BiCGSTAB" $ 
       normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "CGS" $ 

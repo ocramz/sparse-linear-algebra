@@ -200,8 +200,10 @@ ncols = snd . smDim
 data SMInfo = SMInfo { smNz :: Int,
                        smSpy :: Double} deriving (Eq, Show)
 
-infoSM (SM (nr,nc) im) = SMInfo nz $ fromIntegral nz / fromIntegral (nr*nc) where
-  nz = IM.size im
+infoSM :: SpMatrix a -> SMInfo
+infoSM (SM (nr,nc) im) = SMInfo nz spy where
+  nz = IM.foldr (+) 0 $ IM.map IM.size im
+  spy = fromIntegral nz / fromIntegral (nr*nc)
 
 
 
