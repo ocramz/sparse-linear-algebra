@@ -45,16 +45,15 @@ aa0 = SM (2,2) im where
 
 aa0r0, aa0r1 :: IM.IntMap Double
 aa0r0 = IM.fromList [(0,1),(1,2)]
-aa0r1 = IM.fromList [(2,3),(3,4)]
+aa0r1 = IM.fromList [(0,3),(1,4)]
 
 
 -- b0, x0 : r.h.s and initial solution resp.
-b0, x0 :: SpVector Double
+b0, x0, x0true :: SpVector Double
 b0 = mkSpVectorD 2 [8,18]
-
 x0 = mkSpVectorD 2 [0.3,1.4]
 
 
-
+-- x0true : true solution
 x0true = mkSpVectorD 2 [2,3]
 
