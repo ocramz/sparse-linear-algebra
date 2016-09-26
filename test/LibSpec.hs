@@ -13,7 +13,7 @@ import Math.Linear.Sparse
 main :: IO ()
 main = hspec spec
 
-niter = 5
+-- niter = 5
 
 spec :: Spec
 spec = do
@@ -26,9 +26,9 @@ spec = do
       normSq ((aa0 #> x0true) ^-^ b0 ) <= eps `shouldBe` True
   describe "Linear solvers" $ do    
     it "BiCGSTAB" $ 
-      normSq (_xBicgstab (bicgstabN aa0 b0 x0 x0 niter) ^-^ x0true) <= eps `shouldBe` True
+      normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "CGS" $ 
-      normSq (_x (cgsN aa0 b0 x0 x0 niter) ^-^ x0true) <= eps `shouldBe` True
+      normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
 
 
 {-

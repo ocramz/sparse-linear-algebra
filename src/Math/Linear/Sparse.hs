@@ -203,7 +203,10 @@ ncols = snd . smDim
 -- | Show details and contents of sparse matrix
 
 sizeStr :: SpMatrix a -> String
-sizeStr m = unwords ["(",show (nrows m)," >< ",show (ncols m),")"]
+sizeStr (SM (nr,nc) im) =
+  unwords ["SM:",show nr,"rows,",show nc,"columns,",show nz,"NZ (sparsity",show spy,")"] where
+  nz = IM.size im
+  spy = fromIntegral nz / fromIntegral (nr*nc)
   
 
 instance Show a => Show (SpMatrix a) where
@@ -231,7 +234,25 @@ showNonZero x  = if x == 0 then " " else show x
 --                          | i <- [1 .. ncols m] ]
                                          
 
+toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
+toDenseRow (SM (_,ncol) im) irow =
+  fmap (\icol -> im `lookupWithDIM` (irow,icol)) [0..ncol-1]
 
+toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
+toDenseRowClip sm irow ncomax
+  | ncols sm > ncomax = unwords (map show h) ++  " ... " ++ show t
+  | otherwise = show dr
+     where dr = toDenseRow sm irow
+           h = take (ncomax - 2) dr
+           t = last dr
+
+printDenseSM sm@(SM (nr,nc) im) nromax ncomax = mapM_ putStrLn rr_' where
+  rr_ = map (\i -> toDenseRowClip sm i ncomax) [0..nr - 1]
+  rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
+       | otherwise = rr_
+
+
+  
 
 
 -- | ========= BUILDERS
@@ -239,22 +260,7 @@ showNonZero x  = if x == 0 then " " else show x
 zeroSM :: Int -> Int -> SpMatrix a
 zeroSM m n = SM (m,n) IM.empty 
 
--- spMatrixFromList d xs = fmap (\(ii, x) -> insertSpMatrix ii x (mkSpMatrix d)) xs 
 
--- --  FIXME : implement `fromList` instead
--- spMatrixFromList :: Monad m => (Int, Int) -> [(Int, Int, t)] -> m (SpMatrix t)
--- spMatrixFromList d xx = go xx (emptySpMatrix d) where
---   go ((i,j,x):xs) mat = do
---     let mat' = insertSpMatrix i j x mat
---     go xs mat'
---   go [] m = return m
-
--- insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
--- insertSpMatrix i j x (SM dims smd)
---   | inBounds2 (i,j) dims = SM dims (IM.insert i (insertSpVector j x ri) smd) 
---   | otherwise = error "insertSpMatrix : index out of bounds" where
---       (dx, dy) = dims
---       ri = fromMaybe (emptySVector dy) (IM.lookup i smd)
 
 insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
 insertSpMatrix i j x (SM dims smd)
@@ -264,19 +270,21 @@ insertSpMatrix i j x (SM dims smd)
       ri = fromMaybe IM.empty (IM.lookup i smd)
 
 
-spmFromList :: Foldable t => (Int, Int) -> t (Int, Int, a) -> SpMatrix a
-spmFromList (m,n) xx = foldl ins (zeroSM m n) xx where
+fromListSM :: Foldable t => (Int, Int) -> t (Int, Int, a) -> SpMatrix a
+fromListSM (m,n) xx = foldl ins (zeroSM m n) xx where
   ins t (i,j,x) = insertSpMatrix i j x t
 
 
+-- -- diagonal and identity matrix
 mkDiagonal :: Int -> [a] -> SpMatrix a
-mkDiagonal n xx = spmFromList (n,n) $ zip3 ii ii xx where
+mkDiagonal n xx = fromListSM (n,n) $ zip3 ii ii xx where
   ii = [0..n-1]
 
 
 eye :: Num a => Int -> SpMatrix a
 eye n = mkDiagonal n (ones n)
 
+ones :: Num a => Int -> [a]
 ones n = replicate n 1
   
 
@@ -287,10 +295,7 @@ ones n = replicate n 1
 --     ins t (k,x)  = insert k x t
 
 
--- imIndex i im | IM.member i im = Just $ im IM.! i
---              | otherwise = Nothing
 
--- indexSpM i j (SM _ im) a = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (svData im))
 
 encode :: (Int, Int) -> (Rows, Cols) -> Int
 encode (nr,nc) (i,j) = i + (j * nr)
@@ -307,19 +312,17 @@ type Cols = Int
 -- | ========= LOOKUP
 
 -- | Looks up an element in the matrix (if not found, zero is returned)
--- (#) :: (Num a) => SpMatrix a -> (Int,Int) -> a
--- m # (i,j) = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (smData m))
-
-
--- lookupWithDefaultSpm :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
--- lookupWithDefaultSpm (SM d m) (i,j) =
---   fromMaybe 0 (IM.lookup i m >>= \(SV dv d) -> IM.lookup j d)
 
 lookupWithDefaultSpm :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
 lookupWithDefaultSpm (SM d m) (i,j) =
   fromMaybe 0 (IM.lookup i m >>= IM.lookup j)
 
+lookupWithDIM :: Num a => IM.IntMap (IM.IntMap a) -> (IM.Key, IM.Key) -> a
+lookupWithDIM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
+
 (#) = lookupWithDefaultSpm
+
+
 
 
 -- FIXME : to throw an exception or just ignore the out-of-bound access ?
@@ -432,15 +435,16 @@ data CGS = CGS { _x :: SpVector Double,
                  _p :: SpVector Double,
                  _u :: SpVector Double } deriving Eq
 
-cgsN ::
+cgs ::
   SpMatrix Double ->
   SpVector Double ->
   SpVector Double ->
   SpVector Double ->
-  Int ->
+  -- Int ->
   CGS
-cgsN aa b x0 rhat n =
-  execState (replicateM n (modify (cgsStep aa rhat))) cgsInit where
+cgs aa b x0 rhat =
+  -- execState (replicateM n (modify (cgsStep aa rhat))) cgsInit where
+  execState (untilConverged _x (cgsStep aa rhat)) cgsInit where
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
   p0 = r0
   u0 = r0
@@ -481,16 +485,16 @@ data BICGSTAB = BICGSTAB { _xBicgstab :: SpVector Double,
                            _pBicgstab :: SpVector Double} deriving Eq
 
 
-bicgstabN
+bicgstab
   :: SpMatrix Double
      -> SpVector Double
      -> SpVector Double
      -> SpVector Double
-     -> Int
+     -- -> Int
      -> BICGSTAB
-bicgstabN aa b x0 r0hat n =
-  execState (replicateM n (modify (bicgstabStep aa r0hat))) bicgsInit where
-  -- execState (untilConverged _xBicgstab (bicgstabStep aa r0hat)) bicgsInit where
+bicgstab aa b x0 r0hat =
+  -- execState (replicateM n (modify (bicgstabStep aa r0hat))) bicgsInit where
+  execState (untilConverged _xBicgstab (bicgstabStep aa r0hat)) bicgsInit where
    r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
    p0 = r0
    bicgsInit = BICGSTAB x0 r0 p0
