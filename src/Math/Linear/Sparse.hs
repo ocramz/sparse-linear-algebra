@@ -164,8 +164,11 @@ toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
 -- | =======================================================
 
 -- | Sparse Matrices
+-- data SpMatrix a = SM {smDim :: (Int, Int),
+--                       smData :: IM.IntMap (SpVector a)} deriving Eq
+
 data SpMatrix a = SM {smDim :: (Int, Int),
-                      smData :: IM.IntMap (SpVector a)} deriving Eq
+                     smData :: IM.IntMap (IM.IntMap a)} deriving Eq
 
 -- | instances for SpMatrix
 instance Functor SpMatrix where
@@ -246,12 +249,20 @@ zeroSM m n = SM (m,n) IM.empty
 --     go xs mat'
 --   go [] m = return m
 
+-- insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
+-- insertSpMatrix i j x (SM dims smd)
+--   | inBounds2 (i,j) dims = SM dims (IM.insert i (insertSpVector j x ri) smd) 
+--   | otherwise = error "insertSpMatrix : index out of bounds" where
+--       (dx, dy) = dims
+--       ri = fromMaybe (emptySVector dy) (IM.lookup i smd)
+
 insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
 insertSpMatrix i j x (SM dims smd)
-  | inBounds2 (i,j) dims = SM dims (IM.insert i (insertSpVector j x ri) smd) 
+  | inBounds2 (i,j) dims = SM dims (IM.insert i (IM.insert j x ri) smd) 
   | otherwise = error "insertSpMatrix : index out of bounds" where
       (dx, dy) = dims
-      ri = fromMaybe (emptySVector dy) (IM.lookup i smd)
+      ri = fromMaybe IM.empty (IM.lookup i smd)
+
 
 spmFromList :: Foldable t => (Int, Int) -> t (Int, Int, a) -> SpMatrix a
 spmFromList (m,n) xx = foldl ins (zeroSM m n) xx where
@@ -281,6 +292,16 @@ ones n = replicate n 1
 
 -- indexSpM i j (SM _ im) a = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (svData im))
 
+encode :: (Int, Int) -> (Rows, Cols) -> Int
+encode (nr,nc) (i,j) = i + (j * nr)
+
+decode :: (Int, Int) -> Int -> (Rows, Cols)
+decode (nr, nc) ci = (r, c) where (c,r ) = quotRem ci nr
+
+type Rows = Int
+type Cols = Int
+-- newtype Ix = Ix {unIx :: (Rows, Cols)} deriving Eq
+-- instance Show Ix where show (Ix ii) = show ii
 
 
 -- | ========= LOOKUP
@@ -290,9 +311,13 @@ ones n = replicate n 1
 -- m # (i,j) = maybe 0 (IM.findWithDefault 0 j) (IM.lookup i (smData m))
 
 
+-- lookupWithDefaultSpm :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
+-- lookupWithDefaultSpm (SM d m) (i,j) =
+--   fromMaybe 0 (IM.lookup i m >>= \(SV dv d) -> IM.lookup j d)
+
 lookupWithDefaultSpm :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
 lookupWithDefaultSpm (SM d m) (i,j) =
-  fromMaybe 0 (IM.lookup i m >>= \(SV dv d) -> IM.lookup j d)
+  fromMaybe 0 (IM.lookup i m >>= IM.lookup j)
 
 (#) = lookupWithDefaultSpm
 
@@ -310,11 +335,6 @@ inB2 i d s f
 
 
 
--- | sparse matrix (nested intmap) lookup
-lookupSM i j (SM d im) =
-  IM.lookup i im >>= \(SV nv ve) -> case IM.lookup j ve of Just c -> return c
-                                                           Nothing -> return 0
-
 
 
 
@@ -326,7 +346,7 @@ lookupSM i j (SM d im) =
 
 
 
-
+-- | ========= ALGEBRAIC PRIMITIVE OPERATIONS
 
 -- | matrix action on a vector
 
@@ -338,7 +358,7 @@ FIXME : matVec is more generic than SpVector's :
 -}
 
 matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
-matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
+matVec (SM (nrows,_) mdata) (SV n sv) = SV nrows $ fmap (`dot` sv) mdata
 
 (#>) = matVec
 
@@ -347,19 +367,17 @@ matVec (SM (nrows,_) mdata) sv = SV nrows $ fmap (`dot` sv) mdata
 
 -- | matrix-matrix product
 
--- matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
---   | nc1 == nr2 = SM (nr1, nc2) (fmap (\vm1 -> fmap (`dot` vm1) m2) m1)
+matMat :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
+matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
+  | nc1 == nr2 = SM (nr1, nc2) (fmap (\vm1 -> fmap (`dot` vm1) m2) m1)
+  | otherwise = error "matMat : incompatible matrix sizes"
 
 
 
 
 -- | diagonal and identity matrices
 
--- diagonalSM n vv = spMatrixFromList (n,n) (zip3 ii ii vv) where ii = [0 .. n-1]
 
--- ones n = replicate n 1
-
--- identitySM n = diagonalSM n (ones n)
 
 
 
@@ -472,9 +490,11 @@ bicgstabN
      -> BICGSTAB
 bicgstabN aa b x0 r0hat n =
   execState (replicateM n (modify (bicgstabStep aa r0hat))) bicgsInit where
+  -- execState (untilConverged _xBicgstab (bicgstabStep aa r0hat)) bicgsInit where
    r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
    p0 = r0
    bicgsInit = BICGSTAB x0 r0 p0
+   -- q (BICGSTAB xi _ _) = nor
 
 instance Show BICGSTAB where
   show (BICGSTAB x r p) = "x = " ++ show x ++ "\n" ++
@@ -489,11 +509,57 @@ instance Show BICGSTAB where
 
 -- | utilities
 
+-- transform state until a condition is met
+
+modifyUntil :: MonadState s m => (s -> Bool) -> (s -> s) -> m s
+modifyUntil q f = do
+  x <- get
+  let y = f x
+  put y
+  if q y then return y
+         else modifyUntil q f     
+  
+
+-- modify state and append, until max # of iterations is reached
+modifyInspectN :: MonadState s m => Int -> ([s] -> Bool) -> (s -> s) -> m s
+modifyInspectN nn q ff = go nn ff [] where
+   go n f xs = do
+    x <- get
+    if n <= 0
+      then do
+       put x
+       return x
+      else do
+       let y = f x
+           ys = y : xs
+       put y
+       if (length ys == n) && q ys
+         then return y
+         else go (n-1) f ys
+
+
+untilConverged :: MonadState a m => (a -> SpVector Double) -> (a -> a) -> m a
+untilConverged fproj = modifyInspectN 2 (normDiffConverged fproj)
+  where
+    normDiffConverged fp xx = normSq (foldrMap (^-^) (zeroSV 0) fp xx) <= eps
+              
+
+foldrMap :: (Foldable t, Functor t) => (a -> c -> c) -> c -> (a1 -> a) -> t a1 -> c
+foldrMap ff x0 pp = foldr ff x0 . fmap pp
 
 
 
 
 
+-- inspectBicgstabStates :: [BICGSTAB] -> Bool
+-- inspectBicgstabStates = withProjs (\[x0,x1] -> normSq (x0 ^-^ x1) <= eps) _xBicgstab
+ 
+
+
+-- gox n f xs = 
+
+
+-- misc
 
 foldlStrict :: (a -> b -> a) -> a -> [b] -> a
 foldlStrict f = go
@@ -547,5 +613,5 @@ replicateSwitch p m f = loop m where
       loop n | n <= 0 || p = pure ()
              | otherwise = f *> loop (n-1)
 
--- untilM p 
+
                

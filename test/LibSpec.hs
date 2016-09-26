@@ -33,8 +33,8 @@ spec =
 
 aa0 :: SpMatrix Double
 aa0 = SM (m,n) im where
-  row0 = mkSpVectorD n [1,2]
-  row1 = mkSpVectorD n [3,4]
+  row0 = IM.fromList [(0,1),(1,2)]
+  row1 = IM.fromList [(2,3),(3,4)]
   im = IM.fromList [(0, row0), (1, row1)]
 
 b0, x0 :: SpVector Double
