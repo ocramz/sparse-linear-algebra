@@ -191,6 +191,9 @@ emptySpMatrix :: (Int, Int) -> SpMatrix a
 emptySpMatrix d = SM d IM.empty
 
 
+
+-- | ========= MATRIX METADATA
+
 -- | nrows, ncols : size accessors
 nrows, ncols :: SpMatrix a -> Int
 nrows = fst . smDim
@@ -206,6 +209,14 @@ infoSM (SM (nr,nc) im) = SMInfo nz spy where
   spy = fromIntegral nz / fromIntegral (nr*nc)
 
 
+-- # NZ in row i
+nzRow :: SpMatrix a -> IM.Key -> Int
+nzRow (SM (nro,nco) imm) i | inBounds0 nro i = maybe 0 IM.size (IM.lookup i imm)
+                           | otherwise = error "nzRow : index out of bounds"
+
+
+
+
 
 -- | ========= DISPLAY
 
@@ -213,7 +224,7 @@ infoSM (SM (nr,nc) im) = SMInfo nz spy where
 
 sizeStr :: SpMatrix a -> String
 sizeStr sm =
-  unwords ["SM:",show (nrows sm),"rows,",show (ncols sm),"columns,",show nz,"NZ (sparsity",show spy,")"] where
+  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ (sparsity",show spy,")"] where
   (SMInfo nz spy) = infoSM sm 
 
 
@@ -221,7 +232,7 @@ sizeStr sm =
   
 
 instance Show a => Show (SpMatrix a) where
-  show sm@(SM d x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList x)
+  show sm@(SM d x) = "SM: " ++ sizeStr sm ++ " "++ show (IM.toList x)
 
 
 -- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
@@ -243,6 +254,10 @@ showNonZero x  = if x == 0 then " " else show x
 -- fillMx :: (Num α) => SparseMatrix α -> [[α]]
 -- fillMx m = [ [ m # (i,j) | j <- [1 .. nrows  m] ]
 --                          | i <- [1 .. ncols m] ]
+
+
+    
+
                                          
 
 toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
@@ -257,18 +272,21 @@ toDenseRowClip sm irow ncomax
            h = take (ncomax - 2) dr
            t = last dr
 
-printDenseSM' sm@(SM (nr,nc) im) nromax ncomax = mapM_ putStrLn rr_' where
-  rr_ = map (\i -> toDenseRowClip sm i ncomax) [0..nr - 1]
-  rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
-       | otherwise = rr_
 
 printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
 printDenseSM sm = do
-  putStrLn ""
+  newline
   putStrLn $ sizeStr sm
-  putStrLn ""
+  newline
   printDenseSM' sm 5 5
-  putStrLn ""
+  newline
+  where
+    newline = putStrLn ""
+    printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
+    printDenseSM' sm@(SM (nr,nc) im) nromax ncomax = mapM_ putStrLn rr_' where
+      rr_ = map (\i -> toDenseRowClip sm i ncomax) [0..nr - 1]
+      rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
+           | otherwise = rr_
 
   
 
@@ -339,9 +357,13 @@ type Cols = Int
 -- | ========= SUB-MATRICES
 
 
+rowsSM :: SpMatrix a -> Int -> Int -> SpMatrix a
+rowsSM (SM (nro,nco) im) i1 i2
+  | inBounds0 nro i1  && inBounds0 nro i2 && i2 >= i1 = SM (i2-i1,nco) imf
+  | otherwise = error $ "rowsSM : invalid indexing " ++ show (i1, i2) where
+      imf = IM.filterWithKey (\i _ -> inBounds i1 i2 i) im
 
--- rowsSM (SM d im) i1 i2
---   | inBounds2 d (i1, i2) = IM.filterWithKey (\i x -> inBounds)
+
 
 
 
@@ -662,7 +684,7 @@ type LB = Int
 type UB = Int
 
 inBounds :: LB -> UB -> Int -> Bool
-inBounds ibl ibu i = i>= ibl && i<=ibu
+inBounds ibl ibu i = i>= ibl && i<ibu
 
 inBounds2 :: (LB, UB) -> (Int, Int) -> Bool
 inBounds2 (ibl,ibu) (ix,iy) = inBounds ibl ibu ix && inBounds ibl ibu iy
