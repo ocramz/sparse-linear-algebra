@@ -2,6 +2,8 @@
 
 module Math.Linear.Sparse where
 
+import Control.Monad.Primitive
+
 import Control.Monad (mapM_, forM_, replicateM)
 import Control.Monad.Loops
 
@@ -9,6 +11,9 @@ import Control.Monad.State
 
 import qualified Data.IntMap as IM
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
+
+import qualified System.Random.MWC as MWC
+import qualified System.Random.MWC.Distributions as MWC
 
 import qualified Data.Foldable as F
 import qualified Data.List as L
@@ -87,6 +92,9 @@ normSq v = v `dot` v
 data SpVector a = SV { svDim :: Int ,
                        svData :: IM.IntMap a} deriving Eq
 
+dimSV :: SpVector a -> Int
+dimSV = svDim
+
 -- | instances for SpVector
 instance Functor SpVector where
   fmap f (SV n x) = SV n (fmap f x)
@@ -153,7 +161,7 @@ lookupDenseSV :: Num a => IM.Key -> SpVector a -> a
 lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im 
 
 findWithDefault0IM :: Num a => IM.Key -> IM.IntMap a -> a
-findWithDefault0IM i = IM.findWithDefault 0 i
+findWithDefault0IM = IM.findWithDefault 0
 
 toDenseListSV :: Num b => SpVector b -> [b]
 toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
@@ -300,10 +308,10 @@ ones n = replicate n 1
 
 
 encode :: (Int, Int) -> (Rows, Cols) -> Int
-encode (nr,nc) (i,j) = i + (j * nr)
+encode (nr,_) (i,j) = i + (j * nr)
 
 decode :: (Int, Int) -> Int -> (Rows, Cols)
-decode (nr, nc) ci = (r, c) where (c,r ) = quotRem ci nr
+decode (nr, _) ci = (r, c) where (c,r ) = quotRem ci nr
 
 type Rows = Int
 type Cols = Int
@@ -331,7 +339,7 @@ extractColSMU :: SpMatrix a -> IxCol -> SpMatrix a
 extractColSMU s jcol = SM d' imm' where
   imm' = IM.map ff (immSM s)
   d' = (nrows s, 1)
-  ff m = IM.filterWithKey (\j _ -> j==jcol) m
+  ff = IM.filterWithKey (\j _ -> j==jcol)
 
   
 -- safe : out-of-bounds indexing is thrown as an exception
@@ -357,14 +365,14 @@ lookupSM (SM d im) i j = IM.lookup i im >>= IM.lookup j
 
 -- | Looks up an element in the matrix (if not found, zero is returned)
 
-lookupWD_SM, (#) :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
+lookupWD_SM, (@@) :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
 lookupWD_SM (SM d m) (i,j) =
   fromMaybe 0 (IM.lookup i m >>= IM.lookup j)
 
 lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IM.Key, IM.Key) -> a
 lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
-(#) = lookupWD_SM
+(@@) = lookupWD_SM
 
 
 
@@ -436,20 +444,50 @@ matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
 
 
 
--- | Givens rotation matrix
+-- | ========= Givens rotation matrix
+
+
+hypot :: Floating a => a -> a -> a
+hypot x y = abs x * (sqrt (1 + y/x)**2)
+
+sign :: (Ord a, Num a, Num t) => a -> t
+sign x
+  | x > 0 = 1
+  | x==0 = 0
+  | otherwise = -1 
+
+givensCoef :: (Ord a, Floating a) => a -> a -> (a, a, a)
+givensCoef a b  -- returns (c, s, r) where r = norm (a, b)
+  | b==0 = (sign a, 0, abs a)
+  | a==0 = (0, sign b, abs b)
+  | abs a > abs b = let t = b/a
+                        u = sign a * abs ( sqrt (1+t**2))
+                      in (1/u, t/u, a*u)
+  | otherwise = let t = a/b
+                    u = sign b * abs ( sqrt (1+t**2))
+                in (t/u, 1/u, b*u)
+
+givens2x2 mm i j = fromListSM (2,2) (dense 2 2 [c, -s, s, c]) where
+  (c, s, _) = givensCoef a b
+  a = mm @@ (i,j)
+  b = mm @@ (i-1,j)
+
+
+
 
 data Givens = Givens !Double !Double deriving (Eq, Show)
 
 -- givens :: SpMatrix Double -> UB -> Int -> Int -> SpMatrix Double
-givens mm nr i j 
+givens mm i j 
   | validIxSM mm (i,j) && isSquareSM mm =
        fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
   | otherwise = error "givens : indices out of bounds"      
   where
    -- c = cos theta
    -- s = sin theta
-    x1 = mm # (i,j)
-    x2 = mm # (chooseNZix mm (i,j) nr , j)
+    x1 = mm @@ (i,j)
+    x2 = mm @@ (i-1, j)
+    -- x2 = mm # (chooseNZix mm (i,j) nr , j)
     Givens c s 
       | x2 == 0 = Givens 1 0 
       | otherwise = let cot = x1/x2
@@ -502,6 +540,29 @@ filterMaybe q ll
    end
 
 -}
+
+
+-- | ========= QR algorithm
+
+
+
+
+
+
+
+-- | ========= SVD
+
+{- Golub & Van Loan, sec 8.6.2 (p 452 segg.)
+
+SVD of A :
+
+* reduce A to upper bidiagonal form B (Alg. 5.4.2)
+* compute SVD of B (implicit-shift QR step, Alg. 8.3.2)
+
+-}
+
+
+
 
 
 
@@ -680,6 +741,56 @@ instance Show BICGSTAB where
                                 "p = " ++ show p ++ "\n"
 
 
+-- | ========= LINEAR SOLVERS INTERFACE
+
+data LinSolveMethod = CGS_ | BICGSTAB_ deriving (Eq, Show) 
+
+-- random starting vector
+linSolveM method aa b = do
+  let (m,n) = dimSM aa
+      mb = dimSV b
+  if m/=mb then error "linSolve : operand dimensions mismatch" else do
+    x0 <- randVec mb
+    case method of CGS_ -> return $ _xBicgstab (bicgstab aa b x0 x0)
+                   BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
+
+linSolve ::
+  LinSolveMethod -> SpMatrix Double -> SpVector Double -> SpVector Double
+linSolve method aa b
+  | m/=mb = error "linSolve : operand dimensions mismatch"
+  | otherwise = case method of
+      CGS_ ->  _xBicgstab (bicgstab aa b x0 x0)
+      BICGSTAB_ -> _x (cgs aa b x0 x0)
+     where
+      x0 = mkSpVectorD n $ replicate n 0.1 
+      (m,n) = dimSM aa
+      mb = dimSV b
+
+(<\>) :: SpMatrix Double -> SpVector Double -> SpVector Double      
+(<\>) = linSolve BICGSTAB_
+  
+
+
+
+
+
+-- | random matrices and vectors
+
+-- dense
+
+randMat n = do
+  g <- MWC.create
+  aav <- replicateM (n^2) (MWC.normal 0 1 g)
+  let ii_ = [0 .. n-1]
+      (ix_,iy_) = unzip $ concatMap (zip ii_ . replicate n) ii_
+  return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
+  
+
+randVec n = do
+  g <- MWC.create
+  bv <- replicateM n (MWC.normal 0 1 g)
+  let ii_ = [0..n-1]
+  return $ fromListSV n $ zip ii_ bv
 
 
 
@@ -734,6 +845,16 @@ untilConverged fproj = modifyInspectN 2 (normDiffConverged fproj)
 
 -- | misc utils
 
+
+--
+
+dense :: Int -> Int -> [c] -> [(Int, Int, c)]
+dense m n = zip3 (concat $ replicate n ii_) jj_ where
+  ii_ = [0 .. m-1]
+  jj_ = concatMap (replicate m) [0 .. n-1]
+
+
+-- folds
 
 foldrMap :: (Foldable t, Functor t) => (a -> c -> c) -> c -> (a1 -> a) -> t a1 -> c
 foldrMap ff x0 pp = foldr ff x0 . fmap pp

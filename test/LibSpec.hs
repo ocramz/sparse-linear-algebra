@@ -84,19 +84,7 @@ example 1 : random linear system
 -}
 
 
-randMat n = do
-  g <- MWC.create
-  aav <- replicateM (n^2) (MWC.normal 0 1 g)
-  let ii_ = [0 .. n-1]
-      (ix_,iy_) = unzip $ concatMap (zip ii_ . replicate n) ii_
-  return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
-  
 
-randVec n = do
-  g <- MWC.create
-  bv <- replicateM n (MWC.normal 0 1 g)
-  let ii_ = [0..n-1]
-  return $ fromListSV n $ zip ii_ bv
 
 solveRandom n = do
   aa <- randMat n

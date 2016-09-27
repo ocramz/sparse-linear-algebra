@@ -24,6 +24,7 @@ library
                      , base >= 4.7 && < 5
                      , containers
                      , hspec
+                     , primitive >= 0.6.1.0
                      -- , lens
                      , mtl >= 2.2.1
                      , monad-loops
@@ -36,6 +37,7 @@ executable sparse-linear-algebra
   build-depends:       base
                      , mtl >= 2.2.1
                      , mwc-random
+                     , primitive >= 0.6.1.0
                      , sparse-linear-algebra
 
 test-suite spec
@@ -46,10 +48,11 @@ test-suite spec
   main-is:             Spec.hs
   build-depends:       base
                      , containers
-                     , mtl >= 2.2.1
-                     , sparse-linear-algebra
                      , hspec
+                     , mtl >= 2.2.1
                      , mwc-random
+                     , primitive >= 0.6.1.0
+                     , sparse-linear-algebra
                      -- , QuickCheck
 
 source-repository head
