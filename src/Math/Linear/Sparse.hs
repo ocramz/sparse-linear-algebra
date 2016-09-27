@@ -314,22 +314,31 @@ type IxCol = Int
 
 -- | ========= SUB-MATRICES
 
+-- unsafe : no bounds checking
 extractRowSMU :: SpMatrix a -> IxRow -> SpMatrix a
 extractRowSMU s irow =
   SM (1, ncols s) $ IM.filterWithKey (\i _ -> irow == i) (immSM s)
 
-extractRowsSM :: SpMatrix a -> Int -> Int -> SpMatrix a
-extractRowsSM (SM (nro,nco) im) i1 i2
-  | inBounds0 nro i1  && inBounds0 nro i2 && i2 >= i1 = SM (i2-i1,nco) imf
-  | otherwise = error $ "rowsSM : invalid indexing " ++ show (i1, i2) where
-      imf = IM.filterWithKey (\i _ -> inBounds i1 i2 i) im
-
+extractRowsSMU :: SpMatrix a -> LB -> UB -> SpMatrix a
+extractRowsSMU s i1 i2 =
+  SM (1, ncols s) $ IM.filterWithKey (\i _ -> inBounds i1 i2 i) (immSM s)
 
 extractColSMU :: SpMatrix a -> IxCol -> SpMatrix a
 extractColSMU s jcol = SM d' imm' where
   imm' = IM.map ff (immSM s)
   d' = (nrows s, 1)
   ff m = IM.filterWithKey (\j _ -> j==jcol) m
+
+  
+-- safe : out-of-bounds indexing is thrown as an exception
+-- extractRowsSM :: SpMatrix a -> IxRow -> Int -> SpMatrix a
+extractRowsSM (SM (nro,nco) im) i1 i2
+  | inBounds0 nro i1  && inBounds0 nro i2 && i2 >= i1 = SM (i2-i1,nco) imf
+  | otherwise = error $ "rowsSM : invalid indexing " ++ show (i1, i2) where
+      imf = IM.filterWithKey (\i _ -> inBounds i1 i2 i) im
+
+
+
 
 
 

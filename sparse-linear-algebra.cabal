@@ -35,6 +35,7 @@ executable sparse-linear-algebra
   main-is:             Main.hs
   build-depends:       base
                      , mtl >= 2.2.1
+                     , mwc-random
                      , sparse-linear-algebra
 
 test-suite spec
@@ -48,6 +49,7 @@ test-suite spec
                      , mtl >= 2.2.1
                      , sparse-linear-algebra
                      , hspec
+                     , mwc-random
                      -- , QuickCheck
 
 source-repository head

@@ -1,9 +1,14 @@
 module LibSpec where
 
 import qualified Data.IntMap as IM
-  
+
+import Control.Monad (replicateM)
+
+import qualified System.Random.MWC as MWC
+import qualified System.Random.MWC.Distributions as MWC
+       
 import Test.Hspec
-import Test.Hspec.QuickCheck
+-- import Test.Hspec.QuickCheck
 
 import Lib
 import Math.Linear.Sparse
@@ -60,3 +65,20 @@ x0 = mkSpVectorD 2 [0.3,1.4]
 -- x0true : true solution
 x0true = mkSpVectorD 2 [2,3]
 
+
+
+
+-- --
+
+{-
+example 1 : random linear system
+
+-}
+
+
+randLS1 n = do
+  g <- MWC.create
+  aav <- replicateM (n^2) (MWC.normal 0 1 g)
+  let ii_ = [0 .. n-1]
+      (ix_,iy_) = unzip $ concatMap (zip ii_ . replicate n) ii_
+  return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
