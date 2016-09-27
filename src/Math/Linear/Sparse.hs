@@ -436,10 +436,35 @@ matVec (SM (nrows,_) mdata) (SV n sv) = SV nrows $ fmap (`dot` sv) mdata
 
 matMat :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
 matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
-  | nc1 == nr2 = SM (nr1, nc2) (fmap (\vm1 -> fmap (`dot` vm1) m2) m1)
+  | nc1 == nr2 = SM (nr1, nc2) $
+      fmap (\vm2 -> fmap (\vm1 -> vm1 `dot` vm2) m2) m1
   | otherwise = error "matMat : incompatible matrix sizes"
 
 
+
+-- lifting a binary operations onto pairs maps of maps, second operand is read in transposed order (to implement matrix multiplication)
+-- liftIMM f im1 im2
+
+
+-- liftFT f a b = map
+
+
+colMap imm i =
+  IM.filter (\m -> case IM.lookup i m  of
+                Just _ -> True
+                Nothing -> False ) imm
+
+immJoin imm = undefined where
+  immFlat = concatMap IM.toList imm
+
+
+fillRecIMM m0 m1 i =
+  case IM.lookup i m0 of Just x -> IM.insert i x m1
+                         Nothing -> m1
+
+
+matMat' (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
+  | nc1 == nr2 = SM (nr1, nc2) undefined
 
 
 -- | diagonal and identity matrices
