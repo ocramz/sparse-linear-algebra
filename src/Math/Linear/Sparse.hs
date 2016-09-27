@@ -194,6 +194,13 @@ emptySpMatrix d = SM d IM.empty
 
 -- | ========= MATRIX METADATA
 
+-- -- predicates
+validIxSM :: SpMatrix a -> (Int, Int) -> Bool
+validIxSM mm = inBounds02 (dimSM mm)
+
+isSquareSM :: SpMatrix a -> Bool
+isSquareSM m = nrows m == ncols m
+
 
 -- -- internal projection functions, do not export:
 immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
@@ -211,6 +218,8 @@ nrows = fst . smDim
 ncols = snd . smDim
 
 
+
+
 data SMInfo = SMInfo { smNz :: Int,
                        smSpy :: Double} deriving (Eq, Show)
 
@@ -223,10 +232,10 @@ infoSM s = SMInfo nz spy where
 -- # NZ in row i
 
 nzRowU :: SpMatrix a -> IM.Key -> Int
-nzRowU (SM _ imm) i = maybe 0 IM.size (IM.lookup i imm)
+nzRowU s i = maybe 0 IM.size (IM.lookup i $ immSM s)
 
 nzRow :: SpMatrix a -> IM.Key -> Int
-nzRow s i | inBounds0 (nrows s) i = maybe 0 IM.size (IM.lookup i $ immSM s)
+nzRow s i | inBounds0 (nrows s) i = nzRowU s i
           | otherwise = error "nzRow : index out of bounds"
 
 
@@ -297,19 +306,31 @@ type Cols = Int
 -- newtype Ix = Ix {unIx :: (Rows, Cols)} deriving Eq
 -- instance Show Ix where show (Ix ii) = show ii
 
-
+type IxRow = Int
+type IxCol = Int
 
 
 
 
 -- | ========= SUB-MATRICES
 
+extractRowSMU :: SpMatrix a -> IxRow -> SpMatrix a
+extractRowSMU s irow =
+  SM (1, ncols s) $ IM.filterWithKey (\i _ -> irow == i) (immSM s)
 
-rowsSM :: SpMatrix a -> Int -> Int -> SpMatrix a
-rowsSM (SM (nro,nco) im) i1 i2
+extractRowsSM :: SpMatrix a -> Int -> Int -> SpMatrix a
+extractRowsSM (SM (nro,nco) im) i1 i2
   | inBounds0 nro i1  && inBounds0 nro i2 && i2 >= i1 = SM (i2-i1,nco) imf
   | otherwise = error $ "rowsSM : invalid indexing " ++ show (i1, i2) where
       imf = IM.filterWithKey (\i _ -> inBounds i1 i2 i) im
+
+
+extractColSMU :: SpMatrix a -> IxCol -> SpMatrix a
+extractColSMU s jcol = SM d' imm' where
+  imm' = IM.map ff (immSM s)
+  d' = (nrows s, 1)
+  ff m = IM.filterWithKey (\j _ -> j==jcol) m
+
 
 
 
@@ -394,36 +415,49 @@ matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
 
 
 
-
 -- | Givens rotation matrix
 
 data Givens = Givens !Double !Double deriving (Eq, Show)
 
--- -- givens :: Floating a => Int -> Int -> Int -> a -> SpMatrix a
--- givens n i j theta
---   | inBounds2 (i,j) (n,n) =
---        fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye n)
---   | otherwise = error "givens : indices out of bounds"      
---   where
---    -- c = cos theta
---    -- s = sin theta
---     -- x1 = mm 
---     Givens c s 
---       | x2 == 0 = Givens 1 0 
---       | otherwise = let cot = x1/x2
---                         ta = x2/x1
---                         s1 = (1/sqrt (1 + cot**2))
---                         c1 = s1*cot
---                         c2 = 1/sqrt (1 + ta**2)
---                         s2 = c2 * ta
---                     in
---                     if abs x2 >= abs x1 then Givens c1 s1 
---                                         else Givens c2 s2
-                  
-
-
+-- givens :: SpMatrix Double -> UB -> Int -> Int -> SpMatrix Double
+givens mm nr i j 
+  | validIxSM mm (i,j) && isSquareSM mm =
+       fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
+  | otherwise = error "givens : indices out of bounds"      
+  where
+   -- c = cos theta
+   -- s = sin theta
+    x1 = mm # (i,j)
+    x2 = mm # (chooseNZix mm (i,j) nr , j)
+    Givens c s 
+      | x2 == 0 = Givens 1 0 
+      | otherwise = let cot = x1/x2
+                        ta = x2/x1
+                        s1 = (1/sqrt (1 + cot**2))
+                        c1 = s1*cot
+                        c2 = 1/sqrt (1 + ta**2)
+                        s2 = c2 * ta
+                    in
+                    if abs x2 >= abs x1 then Givens c1 s1 
+                                        else Givens c2 s2
 {-
+Givens method, row version: choose other row index i' s.t. i' is :
+* below the diagonal
+* corresponding element is nonzero
+-} 
+chooseNZix m (i,j) nr
+  | nr < nrows m - j = undefined
+   where
+     i_ = [j .. j + nr - 1] -- indices below the diagonal
+     elems = IM.filter
 
+filterMaybe q ll
+  | null ll' = Nothing
+  | otherwise = Just ll' where
+  ll' = L.filter q ll
+
+       
+{-
 %%%%Van Loan's Function, Chapter 7%%%%%%%%
   function [c,s] = GivensRotation(x1,x2);
 % Pre:
@@ -667,10 +701,6 @@ untilConverged fproj = modifyInspectN 2 (normDiffConverged fproj)
     normDiffConverged fp xx = normSq (foldrMap (^-^) (zeroSV 0) fp xx) <= eps
               
 
-foldrMap :: (Foldable t, Functor t) => (a -> c -> c) -> c -> (a1 -> a) -> t a1 -> c
-foldrMap ff x0 pp = foldr ff x0 . fmap pp
-
-
 
 
 
@@ -679,10 +709,13 @@ foldrMap ff x0 pp = foldr ff x0 . fmap pp
  
 
 
--- gox n f xs = 
 
 
--- misc
+-- | misc utils
+
+
+foldrMap :: (Foldable t, Functor t) => (a -> c -> c) -> c -> (a1 -> a) -> t a1 -> c
+foldrMap ff x0 pp = foldr ff x0 . fmap pp
 
 foldlStrict :: (a -> b -> a) -> a -> [b] -> a
 foldlStrict f = go
@@ -714,6 +747,21 @@ inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 
 
 
+
+
+
+
+
+--
+
+tm0 :: SpMatrix Double
+tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
+
+
+
+
+
+
 -- playground
 
 -- | terminate after n iterations or when q becomes true, whichever comes first
@@ -730,17 +778,17 @@ untilC p n f = go n
 -- testing State
 
 
-data T0 = T0 {unT :: Int} deriving Eq
-instance Show T0 where
-  show (T0 x) = show x
+-- data T0 = T0 {unT :: Int} deriving Eq
+-- instance Show T0 where
+--   show (T0 x) = show x
 
--- modifyT :: MonadState T0 m => (Int -> Int) -> m String
-modifyT f = state (\(T0 i) -> (i, T0 (f i)))
+-- -- modifyT :: MonadState T0 m => (Int -> Int) -> m String
+-- modifyT f = state (\(T0 i) -> (i, T0 (f i)))
   
 
-t00 = T0 0
+-- t00 = T0 0
 
-testT n = execState $ replicateM n (modifyT (+1)) 
+-- testT n = execState $ replicateM n (modifyT (+1)) 
 
 
 -- testT2 = execState $ when 
