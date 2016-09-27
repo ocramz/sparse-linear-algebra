@@ -36,6 +36,14 @@ spec = do
       normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "CGS" $ 
       normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
+  -- let n = 10    
+  -- describe ("random dense linear system of size " ++ show n ++ ", ") $
+  --   it "BiCGSTAB" $ do
+  --     aa <- randMat n
+  --     x <- randVec n
+  --     x0 <- randVec n
+  --     let b = aa #> x
+  --     normSq (_xBicgstab (bicgstab aa b x0 x0) ^-^ x) <= eps `shouldBe` True
 
 
 {-
@@ -76,7 +84,7 @@ example 1 : random linear system
 -}
 
 
-randMat1 n = do
+randMat n = do
   g <- MWC.create
   aav <- replicateM (n^2) (MWC.normal 0 1 g)
   let ii_ = [0 .. n-1]
@@ -84,13 +92,18 @@ randMat1 n = do
   return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
   
 
-randSol1 n = do
+randVec n = do
   g <- MWC.create
   bv <- replicateM n (MWC.normal 0 1 g)
   let ii_ = [0..n-1]
   return $ fromListSV n $ zip ii_ bv
 
-randRhs n = do
-  aa <- randMat1 n
-  x <- randSol1 n
-  return $ aa #> x
+solveRandom n = do
+  aa <- randMat n
+  x <- randVec n
+  -- x0 <- randVec n
+  let b = aa #> x
+      x0 = mkSpVectorD n $ replicate n 0
+  let xhatB = _xBicgstab (bicgstab aa b x0 x0)
+      xhatC = _x (cgs aa b x0 x0)
+  return (aa, x, x0, b, xhatB, xhatC)

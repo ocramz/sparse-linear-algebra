@@ -140,8 +140,12 @@ insertSpVector i x (SV d xim)
 -- fromListSpUnsafe d iix = SV d (IM.fromList iix)
 
 fromListSV :: Int -> [(Int, a)] -> SpVector a
-fromListSV d iix = SV d (IM.fromList (filter (inBounds0 d . fst) iix )) 
- 
+fromListSV d iix = SV d (IM.fromList (filter (inBounds0 d . fst) iix ))
+
+
+
+
+  
 instance Show a => Show (SpVector a) where
   show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList x)
 
