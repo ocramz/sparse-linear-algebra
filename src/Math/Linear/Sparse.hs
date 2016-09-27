@@ -194,6 +194,17 @@ emptySpMatrix d = SM d IM.empty
 
 -- | ========= MATRIX METADATA
 
+
+-- -- internal projection functions, do not export:
+immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
+immSM (SM _ imm) = imm
+
+dimSM :: SpMatrix t -> (Int, Int)
+dimSM (SM d _) = d
+
+nelSM :: SpMatrix t -> Int
+nelSM (SM (nr,nc) _) = nr*nc
+
 -- | nrows, ncols : size accessors
 nrows, ncols :: SpMatrix a -> Int
 nrows = fst . smDim
@@ -204,89 +215,25 @@ data SMInfo = SMInfo { smNz :: Int,
                        smSpy :: Double} deriving (Eq, Show)
 
 infoSM :: SpMatrix a -> SMInfo
-infoSM (SM (nr,nc) im) = SMInfo nz spy where
-  nz = IM.foldr (+) 0 $ IM.map IM.size im
-  spy = fromIntegral nz / fromIntegral (nr*nc)
+infoSM s = SMInfo nz spy where
+  nz = IM.foldr (+) 0 $ IM.map IM.size (immSM s)
+  spy = fromIntegral nz / fromIntegral (nelSM s)
 
 
 -- # NZ in row i
+
+nzRowU :: SpMatrix a -> IM.Key -> Int
+nzRowU (SM _ imm) i = maybe 0 IM.size (IM.lookup i imm)
+
 nzRow :: SpMatrix a -> IM.Key -> Int
-nzRow (SM (nro,nco) imm) i | inBounds0 nro i = maybe 0 IM.size (IM.lookup i imm)
-                           | otherwise = error "nzRow : index out of bounds"
+nzRow s i | inBounds0 (nrows s) i = maybe 0 IM.size (IM.lookup i $ immSM s)
+          | otherwise = error "nzRow : index out of bounds"
 
 
 
 
 
--- | ========= DISPLAY
 
--- | Show details and contents of sparse matrix
-
-sizeStr :: SpMatrix a -> String
-sizeStr sm =
-  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ (sparsity",show spy,")"] where
-  (SMInfo nz spy) = infoSM sm 
-
-
-
-  
-
-instance Show a => Show (SpMatrix a) where
-  show sm@(SM d x) = "SM: " ++ sizeStr sm ++ " "++ show (IM.toList x)
-
-
--- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
-showSparseMatrix [] = "(0,0):\n[]\n"
-showSparseMatrix m = show (length m, length (head m))++": \n"++
-    (unlines $ L.map (("["++) . (++"]") . L.intercalate "|")
-             $ L.transpose $ L.map column $ L.transpose m)
-
-column :: (Show a, Num a, Eq a) => [a] -> [[Char]]
-column c = let c'       = L.map showNonZero c
-               width    = L.maximum $ L.map length c'
-               offset x = replicate (width - (length x)) ' ' ++ x
-           in L.map offset c'
-
-showNonZero :: (Show a, Num a, Eq a) => a -> [Char]
-showNonZero x  = if x == 0 then " " else show x
-
--- | Converts sparse matrix to plain list-matrix with all zeroes restored
--- fillMx :: (Num α) => SparseMatrix α -> [[α]]
--- fillMx m = [ [ m # (i,j) | j <- [1 .. nrows  m] ]
---                          | i <- [1 .. ncols m] ]
-
-
-    
-
-                                         
-
-toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
-toDenseRow (SM (_,ncol) im) irow =
-  fmap (\icol -> im `lookupWithDIM` (irow,icol)) [0..ncol-1]
-
-toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
-toDenseRowClip sm irow ncomax
-  | ncols sm > ncomax = unwords (map show h) ++  " ... " ++ show t
-  | otherwise = show dr
-     where dr = toDenseRow sm irow
-           h = take (ncomax - 2) dr
-           t = last dr
-
-
-printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
-printDenseSM sm = do
-  newline
-  putStrLn $ sizeStr sm
-  newline
-  printDenseSM' sm 5 5
-  newline
-  where
-    newline = putStrLn ""
-    printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
-    printDenseSM' sm@(SM (nr,nc) im) nromax ncomax = mapM_ putStrLn rr_' where
-      rr_ = map (\i -> toDenseRowClip sm i ncomax) [0..nr - 1]
-      rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
-           | otherwise = rr_
 
   
 
@@ -300,11 +247,12 @@ zeroSM m n = SM (m,n) IM.empty
 
 
 insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
-insertSpMatrix i j x (SM dims smd)
-  | inBounds02 dims (i,j) = SM dims (IM.insert i (IM.insert j x ri) smd) 
+insertSpMatrix i j x s
+  | inBounds02 d (i,j) = SM d (IM.insert i (IM.insert j x ri) smd) 
   | otherwise = error "insertSpMatrix : index out of bounds" where
-      -- (dx, dy) = dims
       ri = fromMaybe IM.empty (IM.lookup i smd)
+      smd = immSM s
+      d = dimSM s
 
 
 fromListSM' :: Foldable t => t (Int, Int, a) -> SpMatrix a -> SpMatrix a
@@ -375,14 +323,14 @@ lookupSM (SM d im) i j = IM.lookup i im >>= IM.lookup j
 
 -- | Looks up an element in the matrix (if not found, zero is returned)
 
-lookupWithDefaultSpm, (#) :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
-lookupWithDefaultSpm (SM d m) (i,j) =
+lookupWD_SM, (#) :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
+lookupWD_SM (SM d m) (i,j) =
   fromMaybe 0 (IM.lookup i m >>= IM.lookup j)
 
-lookupWithDIM :: Num a => IM.IntMap (IM.IntMap a) -> (IM.Key, IM.Key) -> a
-lookupWithDIM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
+lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IM.Key, IM.Key) -> a
+lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
-(#) = lookupWithDefaultSpm
+(#) = lookupWD_SM
 
 
 
@@ -499,6 +447,72 @@ data Givens = Givens !Double !Double deriving (Eq, Show)
    end
 
 -}
+
+
+
+
+
+
+-- | ========= DISPLAY
+
+-- | Show details and contents of sparse matrix
+
+sizeStr :: SpMatrix a -> String
+sizeStr sm =
+  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ (sparsity",show spy,")"] where
+  (SMInfo nz spy) = infoSM sm 
+  
+
+instance Show a => Show (SpMatrix a) where
+  show sm@(SM d x) = "SM: " ++ sizeStr sm ++ " "++ show (IM.toList x)
+
+
+-- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
+showSparseMatrix [] = "(0,0):\n[]\n"
+showSparseMatrix m = show (length m, length (head m))++": \n"++
+    (unlines $ L.map (("["++) . (++"]") . L.intercalate "|")
+             $ L.transpose $ L.map column $ L.transpose m)
+
+column :: (Show a, Num a, Eq a) => [a] -> [[Char]]
+column c = let c'       = L.map showNonZero c
+               width    = L.maximum $ L.map length c'
+               offset x = replicate (width - (length x)) ' ' ++ x
+           in L.map offset c'
+
+showNonZero :: (Show a, Num a, Eq a) => a -> [Char]
+showNonZero x  = if x == 0 then " " else show x
+
+    
+
+toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
+toDenseRow (SM (_,ncol) im) irow =
+  fmap (\icol -> im `lookupWD_IM` (irow,icol)) [0..ncol-1]
+
+toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
+toDenseRowClip sm irow ncomax
+  | ncols sm > ncomax = unwords (map show h) ++  " ... " ++ show t
+  | otherwise = show dr
+     where dr = toDenseRow sm irow
+           h = take (ncomax - 2) dr
+           t = last dr
+
+
+printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
+printDenseSM sm = do
+  newline
+  putStrLn $ sizeStr sm
+  newline
+  printDenseSM' sm 5 5
+  newline
+  where
+    newline = putStrLn ""
+    printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
+    printDenseSM' sm@(SM (nr,nc) im) nromax ncomax = mapM_ putStrLn rr_' where
+      rr_ = map (\i -> toDenseRowClip sm i ncomax) [0..nr - 1]
+      rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
+           | otherwise = rr_
+
+
 
 
 
@@ -689,15 +703,13 @@ inBounds ibl ibu i = i>= ibl && i<ibu
 inBounds2 :: (LB, UB) -> (Int, Int) -> Bool
 inBounds2 (ibl,ibu) (ix,iy) = inBounds ibl ibu ix && inBounds ibl ibu iy
 
+
+-- ", lower bound = 0
 inBounds0 :: UB -> Int -> Bool
 inBounds0 = inBounds 0
 
-
--- inBounds0 :: (Ord a, Num a) => a -> a -> Bool
--- inBounds0 i b = i>=0 && i<=b
-
--- inBounds02 :: (Ord a, Num a) => (a, a) -> (a, a) -> Bool
-inBounds02 (i,j) (bx,by) = inBounds0 i bx && inBounds0 j by
+inBounds02 :: (UB, UB) -> (Int, Int) -> Bool
+inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 
 
 
