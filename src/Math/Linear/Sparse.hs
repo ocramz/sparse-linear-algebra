@@ -395,6 +395,14 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 -- | ========= ALGEBRAIC PRIMITIVE OPERATIONS
 
+
+-- | transpose
+
+transposeSM (SM (m,n) imm) = SM (n,m) imm' where
+  imm' = undefined
+
+
+
 -- | matrix action on a vector
 
 {- 
