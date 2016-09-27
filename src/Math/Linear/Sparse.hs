@@ -121,7 +121,7 @@ zeroSV n = SV n IM.empty
 
 -- | create a sparse vector from an association list while discarding all zero entries
 mkSpVector :: (Num a, Eq a) => Int -> IM.IntMap a -> SpVector a
-mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds k d) im
+mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds0 d k) im
 
 -- | ", from logically dense array (consecutive indices)
 mkSpVectorD :: (Num a, Eq a) => Int -> [a] -> SpVector a
@@ -134,16 +134,16 @@ ixArray xs = zip [0..length xs-1] xs
 
 insertSpVector :: Int -> a -> SpVector a -> SpVector a
 insertSpVector i x (SV d xim)
-  | inBounds i d = SV d (IM.insert i x xim)
+  | inBounds0 d i = SV d (IM.insert i x xim)
   | otherwise = error "insertSpVector : index out of bounds"
 
 -- fromListSpUnsafe d iix = SV d (IM.fromList iix)
 
 fromListSV :: Int -> [(Int, a)] -> SpVector a
-fromListSV d iix = SV d (IM.fromList (filter ((`inBounds` d) . fst) iix )) 
+fromListSV d iix = SV d (IM.fromList (filter (inBounds0 d . fst) iix )) 
  
 instance Show a => Show (SpVector a) where
-  show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList $ x)
+  show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList x)
 
 lookupDenseSV :: Num a => IM.Key -> SpVector a -> a
 lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im 
@@ -283,9 +283,9 @@ zeroSM m n = SM (m,n) IM.empty
 
 insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
 insertSpMatrix i j x (SM dims smd)
-  | inBounds2 (i,j) dims = SM dims (IM.insert i (IM.insert j x ri) smd) 
+  | inBounds02 dims (i,j) = SM dims (IM.insert i (IM.insert j x ri) smd) 
   | otherwise = error "insertSpMatrix : index out of bounds" where
-      (dx, dy) = dims
+      -- (dx, dy) = dims
       ri = fromMaybe IM.empty (IM.lookup i smd)
 
 
@@ -332,11 +332,28 @@ type Cols = Int
 -- instance Show Ix where show (Ix ii) = show ii
 
 
+
+
+
+
+-- | ========= SUB-MATRICES
+
+
+
+-- rowsSM (SM d im) i1 i2
+--   | inBounds2 d (i1, i2) = IM.filterWithKey (\i x -> inBounds)
+
+
+
+
 -- | ========= LOOKUP
+
+lookupSM :: SpMatrix a -> IM.Key -> IM.Key -> Maybe a
+lookupSM (SM d im) i j = IM.lookup i im >>= IM.lookup j
 
 -- | Looks up an element in the matrix (if not found, zero is returned)
 
-lookupWithDefaultSpm :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
+lookupWithDefaultSpm, (#) :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
 lookupWithDefaultSpm (SM d m) (i,j) =
   fromMaybe 0 (IM.lookup i m >>= IM.lookup j)
 
@@ -350,13 +367,13 @@ lookupWithDIM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 -- FIXME : to throw an exception or just ignore the out-of-bound access ?
 
-inB1 i d s f
-  | inBounds i d = f
-  | otherwise = error s
+-- inB1 i d s f
+--   | inBounds0 i d = f
+--   | otherwise = error s
 
-inB2 i d s f
-  | inBounds2 i d = f
-  | otherwise = error s  
+-- inB2 i d s f
+--   | inBounds02 i d = f
+--   | otherwise = error s  
 
 
 
@@ -410,14 +427,29 @@ matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
 
 -- | Givens rotation matrix
 
-givens :: Floating a => Int -> Int -> Int -> a -> SpMatrix a
-givens n i j theta
-  | inBounds2 (i,j) (n,n) =
-       fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye n)
-  | otherwise = error "givens : indices out of bounds"      
-  where
-   c = cos theta
-   s = sin theta
+data Givens = Givens !Double !Double deriving (Eq, Show)
+
+-- -- givens :: Floating a => Int -> Int -> Int -> a -> SpMatrix a
+-- givens n i j theta
+--   | inBounds2 (i,j) (n,n) =
+--        fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye n)
+--   | otherwise = error "givens : indices out of bounds"      
+--   where
+--    -- c = cos theta
+--    -- s = sin theta
+--     -- x1 = mm 
+--     Givens c s 
+--       | x2 == 0 = Givens 1 0 
+--       | otherwise = let cot = x1/x2
+--                         ta = x2/x1
+--                         s1 = (1/sqrt (1 + cot**2))
+--                         c1 = s1*cot
+--                         c2 = 1/sqrt (1 + ta**2)
+--                         s2 = c2 * ta
+--                     in
+--                     if abs x2 >= abs x1 then Givens c1 s1 
+--                                         else Givens c2 s2
+                  
 
 
 {-
@@ -623,11 +655,27 @@ foldlStrict f = go
     go z (x:xs) = let z' = f z x in z' `seq` go z' xs
 
 
-inBounds :: (Ord a, Num a) => a -> a -> Bool
-inBounds i b = i>=0 && i<=b
 
-inBounds2 :: (Ord a, Num a) => (a, a) -> (a, a) -> Bool
-inBounds2 (i,j) (bx,by) = inBounds i bx && inBounds j by
+-- bounds checking
+
+type LB = Int
+type UB = Int
+
+inBounds :: LB -> UB -> Int -> Bool
+inBounds ibl ibu i = i>= ibl && i<=ibu
+
+inBounds2 :: (LB, UB) -> (Int, Int) -> Bool
+inBounds2 (ibl,ibu) (ix,iy) = inBounds ibl ibu ix && inBounds ibl ibu iy
+
+inBounds0 :: UB -> Int -> Bool
+inBounds0 = inBounds 0
+
+
+-- inBounds0 :: (Ord a, Num a) => a -> a -> Bool
+-- inBounds0 i b = i>=0 && i<=b
+
+-- inBounds02 :: (Ord a, Num a) => (a, a) -> (a, a) -> Bool
+inBounds02 (i,j) (bx,by) = inBounds0 i bx && inBounds0 j by
 
 
 
@@ -664,9 +712,9 @@ testT n = execState $ replicateM n (modifyT (+1))
 -- testT2 = execState $ when 
   
 
-replicateSwitch p m f = loop m where
-      loop n | n <= 0 || p = pure ()
-             | otherwise = f *> loop (n-1)
+-- replicateSwitch p m f = loop m where
+--       loop n | n <= 0 || p = pure (#)
+--              | otherwise = f *> loop (n-1)
 
 
                
