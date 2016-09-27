@@ -282,6 +282,10 @@ fromListSM' iix sm = foldl ins sm iix where
 
 fromListSM :: Foldable t => (Int, Int) -> t (Int, Int, a) -> SpMatrix a  
 fromListSM (m,n) iix = fromListSM' iix (zeroSM m n)
+
+
+fromListDenseSM :: Int -> Int -> [a] -> SpMatrix a
+fromListDenseSM m n ll = fromListSM (m, n) $ dense m n ll
   
 
 

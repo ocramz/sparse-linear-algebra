@@ -29,6 +29,8 @@ spec = do
     --   ourAdd x y `shouldBe` ourAdd y x
     it "matVec : matrix-vector product" $
       normSq ((aa0 #> x0true) ^-^ b0 ) <= eps `shouldBe` True
+    it "matMat : matrix-matrix product" $
+      (m1 `matMat` m2) `shouldBe` m1m2
     it "eye : identity matrix" $
       infoSM (eye 10) `shouldBe` SMInfo 10 0.1
   describe "Math.Linear.Sparse : Linear solvers" $ do    
@@ -95,3 +97,18 @@ solveRandom n = do
   let xhatB = _xBicgstab (bicgstab aa b x0 x0)
       xhatC = _x (cgs aa b x0 x0)
   return (aa, x, x0, b, xhatB, xhatC)
+
+
+
+--
+
+{-
+matMat
+
+[1, 2] [5, 6] = [19, 22]
+[3, 4] [7, 8]   [43, 50]
+-}
+
+m1 = fromListDenseSM 2 2 [1,3,2,4]
+m2 = fromListDenseSM 2 2 [5, 7, 6, 8]
+m1m2 = fromListDenseSM 2 2 [19, 43, 22, 50]
