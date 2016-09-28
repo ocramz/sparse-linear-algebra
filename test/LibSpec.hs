@@ -38,13 +38,15 @@ spec = do
       normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "CGS" $ 
       normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
-  -- let n = 10    
-  -- describe ("random dense linear system of size " ++ show n ++ ", ") $
-  --   it "BiCGSTAB" $ do
-  --     aa <- randMat n
-  --     x <- randVec n
-  --     x0 <- randVec n
-  --     let b = aa #> x
+  let n = 10
+      nsp = 3
+  describe ("random sparse linear system of size " ++ show n ++ " and sparsity " ++ show (fromIntegral nsp/fromIntegral n)) $ it "<\\>" $ do
+    aa <- randSpMat n nsp
+    xtrue <- randSpVec n nsp
+    b <- randSpVec n nsp    
+    let b = aa #> xtrue
+    printDenseSM aa
+    normSq (aa <\> b ^-^ xtrue) <= eps `shouldBe` True
   --     normSq (_xBicgstab (bicgstab aa b x0 x0) ^-^ x) <= eps `shouldBe` True
 
 
@@ -94,11 +96,19 @@ solveRandom n = do
   -- x0 <- randVec n
   let b = aa #> xtrue
       dx = aa <\> b ^-^ xtrue
-  return (dx, normSq dx)    
+  return $ normSq dx
   -- let xhatB = _xBicgstab (bicgstab aa b x0 x0)
   --     xhatC = _x (cgs aa b x0 x0)
   -- return (aa, x, x0, b, xhatB, xhatC)
 
+
+
+solveSpRandom n nsp = do
+  aa <- randSpMat n nsp
+  xtrue <- randSpVec n nsp
+  let b = aa #> xtrue
+      dx = aa <\> b ^-^ xtrue
+  return $ (dx, normSq dx)
 
 
 --

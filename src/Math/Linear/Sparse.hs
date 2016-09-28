@@ -2,6 +2,8 @@
 
 module Math.Linear.Sparse where
 
+import Data.Monoid
+
 import Control.Monad.Primitive
 
 import Control.Monad (mapM_, forM_, replicateM)
@@ -9,7 +11,7 @@ import Control.Monad.Loops
 
 import Control.Monad.State
 
-import qualified Data.IntMap as IM
+import qualified Data.IntMap.Strict as IM
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
 
 import qualified System.Random.MWC as MWC
@@ -92,8 +94,14 @@ normSq v = v `dot` v
 data SpVector a = SV { svDim :: Int ,
                        svData :: IM.IntMap a} deriving Eq
 
+
 dimSV :: SpVector a -> Int
 dimSV = svDim
+
+-- internal : projection functions, do not export
+imSV :: SpVector a -> IM.IntMap a
+imSV = svData
+
 
 -- | instances for SpVector
 instance Functor SpVector where
@@ -121,8 +129,6 @@ instance Normed SpVector where
   
 
 -- | empty sparse vector (size n, no entries)
-emptySVector :: Int -> SpVector a
-emptySVector n = SV n IM.empty
 
 zeroSV :: Int -> SpVector a
 zeroSV n = SV n IM.empty
@@ -135,9 +141,7 @@ mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds0 d k) im
 mkSpVectorD :: (Num a, Eq a) => Int -> [a] -> SpVector a
 mkSpVectorD d ll = mkSpVector d (IM.fromList $ ixArray (take d ll))
 
--- | integer-indexed ziplist
-ixArray :: [b] -> [(Int, b)]
-ixArray xs = zip [0..length xs-1] xs 
+
 
 
 insertSpVector :: Int -> a -> SpVector a -> SpVector a
@@ -401,7 +405,9 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 
   
-  
+ifoldr f = go 0 where
+  go i z (x:xs) = f i z x <> go (i+1) z xs
+  go _ _ [] = mempty
 
   
 
@@ -414,6 +420,16 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 transposeSM (SM (m,n) imm) = SM (n,m) imm' where
   imm' = undefined
+
+
+
+
+transposeI imm = ll1 where
+  ll0 = IM.toList (IM.map IM.toList imm)
+  ll1 = map (\(kl,t) -> uncurry zip (replicate (length t) kl, t)) ll0
+  -- ll2 = IM.fromList $ ixArray $ map IM.fromList ll1
+  -- ll2 = IM.fromList $ map (\(a,(b,c)) -> (b, (a, c))) ll1
+
 
 
 
@@ -434,12 +450,14 @@ matVec (SM (nrows,_) mdata) (SV n sv) = SV nrows $ fmap (`dot` sv) mdata
   
 
 
+
+
 -- | matrix-matrix product
 
 matMat :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
 matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
   | nc1 == nr2 = SM (nr1, nc2) $
-      fmap (\vm2 -> fmap (\vm1 -> vm1 `dot` vm2) m2) m1
+      fmap (\vm1 -> fmap (`dot` vm1) m2) m1
   | otherwise = error "matMat : incompatible matrix sizes"
 
 
@@ -469,7 +487,7 @@ matMat' (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
   | nc1 == nr2 = SM (nr1, nc2) undefined
 
 
--- | diagonal and identity matrices
+
 
 
 
@@ -504,7 +522,7 @@ givens2x2 mm i j = fromListSM (2,2) (dense 2 2 [c, -s, s, c]) where
   b = mm @@ (i-1,j)
 
 
-
+-- alternative algorithm for Givens
 
 data Givens = Givens !Double !Double deriving (Eq, Show)
 
@@ -573,7 +591,12 @@ filterMaybe q ll
 -}
 
 
+
 -- | ========= QR algorithm
+
+{-
+applies Givens rotation iteratively to zero out sub-diagonal elements
+-}
 
 
 
@@ -611,22 +634,22 @@ sizeStr sm =
   
 
 instance Show a => Show (SpMatrix a) where
-  show sm@(SM d x) = "SM: " ++ sizeStr sm ++ " "++ show (IM.toList x)
+  show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList x)
 
 
--- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
-showSparseMatrix [] = "(0,0):\n[]\n"
-showSparseMatrix m = show (length m, length (head m))++": \n"++
-    (unlines $ L.map (("["++) . (++"]") . L.intercalate "|")
-             $ L.transpose $ L.map column $ L.transpose m)
+-- -- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
+-- showSparseMatrix [] = "(0,0):\n[]\n"
+-- showSparseMatrix m = show (length m, length (head m))++": \n"++
+--     (unlines $ L.map (("["++) . (++"]") . L.intercalate "|")
+--              $ L.transpose $ L.map column $ L.transpose m)
 
-column :: (Show a, Num a, Eq a) => [a] -> [[Char]]
-column c = let c'       = L.map showNonZero c
-               width    = L.maximum $ L.map length c'
-               offset x = replicate (width - (length x)) ' ' ++ x
-           in L.map offset c'
+-- column :: (Show a, Num a, Eq a) => [a] -> [[Char]]
+-- column c = let c'       = L.map showNonZero c
+--                width    = L.maximum $ L.map length c'
+--                offset x = replicate (width - (length x)) ' ' ++ x
+--            in L.map offset c'
 
-showNonZero :: (Show a, Num a, Eq a) => a -> [Char]
+showNonZero :: (Show a, Num a, Eq a) => a -> String
 showNonZero x  = if x == 0 then " " else show x
 
     
@@ -654,8 +677,8 @@ printDenseSM sm = do
   where
     newline = putStrLn ""
     printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
-    printDenseSM' sm@(SM (nr,nc) im) nromax ncomax = mapM_ putStrLn rr_' where
-      rr_ = map (\i -> toDenseRowClip sm i ncomax) [0..nr - 1]
+    printDenseSM' sm'@(SM (nr,_) _) nromax ncomax = mapM_ putStrLn rr_' where
+      rr_ = map (\i -> toDenseRowClip sm' i ncomax) [0..nr - 1]
       rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
            | otherwise = rr_
 
@@ -670,6 +693,7 @@ printDenseSM sm = do
 -- | LINEAR SOLVERS : solve A x = b
 
 -- | numerical tolerance for e.g. solution convergence
+eps :: Double
 eps = 1e-8
 
 -- | residual of candidate solution x0
@@ -805,23 +829,6 @@ linSolve method aa b
 
 
 
--- | random matrices and vectors
-
--- dense
-
-randMat n = do
-  g <- MWC.create
-  aav <- replicateM (n^2) (MWC.normal 0 1 g)
-  let ii_ = [0 .. n-1]
-      (ix_,iy_) = unzip $ concatMap (zip ii_ . replicate n) ii_
-  return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
-  
-
-randVec n = do
-  g <- MWC.create
-  bv <- replicateM n (MWC.normal 0 1 g)
-  let ii_ = [0..n-1]
-  return $ fromListSV n $ zip ii_ bv
 
 
 
@@ -874,10 +881,62 @@ untilConverged fproj = modifyInspectN 2 (normDiffConverged fproj)
 
 
 
+
+
+-- | random matrices and vectors
+
+-- dense
+
+randMat :: PrimMonad m => Int -> m (SpMatrix Double)
+randMat n = do
+  g <- MWC.create
+  aav <- replicateM (n^2) (MWC.normal 0 1 g)
+  let ii_ = [0 .. n-1]
+      (ix_,iy_) = unzip $ concatMap (zip ii_ . replicate n) ii_
+  return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
+  
+randVec :: PrimMonad m => Int -> m (SpVector Double)
+randVec n = do
+  g <- MWC.create
+  bv <- replicateM n (MWC.normal 0 1 g)
+  let ii_ = [0..n-1]
+  return $ fromListSV n $ zip ii_ bv
+
+
+
+-- sparse
+
+randSpMat :: Int -> Int -> IO (SpMatrix Double)
+randSpMat n nsp | nsp > n^2 = error "randSpMat : nsp must be < n^2 "
+                | otherwise = do
+  g <- MWC.create
+  aav <- replicateM nsp (MWC.normal 0 1 g)
+  ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
+  jj <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
+  return $ fromListSM (n,n) $ zip3 ii jj aav
+
+randSpVec :: Int -> Int -> IO (SpVector Double)
+randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
+                | otherwise = do
+  g <- MWC.create
+  aav <- replicateM nsp (MWC.normal 0 1 g)
+  ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
+  return $ fromListSV n $ zip ii aav
+
+
+
+
+
+
 -- | misc utils
 
 
 --
+
+-- | integer-indexed ziplist
+ixArray :: [b] -> [(Int, b)]
+ixArray xs = zip [0..length xs-1] xs 
+
 
 dense :: Int -> Int -> [c] -> [(Int, Int, c)]
 dense m n = zip3 (concat $ replicate n ii_) jj_ where
@@ -930,7 +989,8 @@ inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 tm0 :: SpMatrix Double
 tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
 
-
+tv0 :: SpVector Double
+tv0 = mkSpVectorD 2 [5, 6]
 
 
 
