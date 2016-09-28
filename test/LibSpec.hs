@@ -50,6 +50,27 @@ spec = do
   --     normSq (_xBicgstab (bicgstab aa b x0 x0) ^-^ x) <= eps `shouldBe` True
 
 
+
+-- run N iterations 
+
+-- runNBiC :: Int -> SpMatrix Double -> SpVector Double -> BICGSTAB
+runNBiC n aa b = map _xBicgstab $ runAppendN' (bicgstabStep aa x0) n bicgsInit where
+   x0 = mkSpVectorD nd $ replicate nd 0.9
+   nd = dimSV r0
+   r0 = b ^-^ (aa #> x0)    
+   p0 = r0
+   bicgsInit = BICGSTAB x0 r0 p0
+
+-- runNCGS :: Int -> SpMatrix Double -> SpVector Double -> CGS
+runNCGS n aa b = map _x $ runAppendN' (cgsStep aa x0) n cgsInit where
+  x0 = mkSpVectorD nd $ replicate nd 0.1
+  nd = dimSV r0
+  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+  p0 = r0
+  u0 = r0
+  cgsInit = CGS x0 r0 p0 u0  
+
+
 {-
 
 example 0 : 2x2 linear system
@@ -89,9 +110,10 @@ example 1 : random linear system
 
 
 
-
+-- dense
 solveRandom n = do
-  aa <- randMat n
+  aa0 <- randMat n
+  let aa = aa0 ^+^ eye n
   xtrue <- randVec n
   -- x0 <- randVec n
   let b = aa #> xtrue
@@ -101,15 +123,29 @@ solveRandom n = do
   --     xhatC = _x (cgs aa b x0 x0)
   -- return (aa, x, x0, b, xhatB, xhatC)
 
-
-
+-- sparse
+solveSpRandom :: Int -> Int -> IO Double
 solveSpRandom n nsp = do
-  aa <- randSpMat n nsp
+  aa0 <- randSpMat n nsp
+  let aa = aa0 ^+^ eye n
   xtrue <- randSpVec n nsp
-  let b = aa #> xtrue
+  let b = (aa ^+^ eye n) #> xtrue
       dx = aa <\> b ^-^ xtrue
-  return $ (dx, normSq dx)
+  return $ normSq dx
 
+
+
+-- `ndim` iterations
+
+solveRandomN ndim nsp niter = do
+  aa0 <- randSpMat ndim (nsp ^ 2)
+  let aa = aa0 ^+^ eye ndim
+  xtrue <- randSpVec ndim nsp
+  let b = aa #> xtrue
+      xhatB = head $ runNBiC niter aa b
+      xhatC = head $ runNCGS niter aa b
+  printDenseSM aa    
+  return (normSq (xhatB ^-^ xtrue), normSq (xhatC ^-^ xtrue))
 
 --
 

@@ -25,6 +25,7 @@ library
                      , containers
                      , hspec
                      , primitive >= 0.6.1.0
+                     , transformers >= 0.5.2.0
                      -- , lens
                      , mtl >= 2.2.1
                      , mwc-random
@@ -40,6 +41,7 @@ executable sparse-linear-algebra
                      , mwc-random
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra
+                     , transformers >= 0.5.2.0
 
 test-suite spec
   default-language:    Haskell2010
@@ -54,6 +56,7 @@ test-suite spec
                      , mwc-random
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra
+                     , transformers >= 0.5.2.0
                      -- , QuickCheck
 
 source-repository head

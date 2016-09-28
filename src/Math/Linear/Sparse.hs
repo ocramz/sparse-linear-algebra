@@ -10,6 +10,11 @@ import Control.Monad (mapM_, forM_, replicateM)
 import Control.Monad.Loops
 
 import Control.Monad.State
+import Control.Monad.Writer
+import Control.Monad.Trans
+
+import Control.Monad.Trans.State (runStateT)
+import Control.Monad.Trans.Writer (runWriterT)
 
 import qualified Data.IntMap.Strict as IM
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
@@ -433,6 +438,11 @@ transposeI imm = ll1 where
 
 
 
+
+
+
+
+
 -- | matrix action on a vector
 
 {- 
@@ -748,8 +758,6 @@ instance Show CGS where
                                 "u = " ++ show u ++ "\n"
   
 
-
-
 -- | BiCSSTAB
 
 -- _aa :: SpMatrix Double,    -- matrix
@@ -796,6 +804,15 @@ instance Show BICGSTAB where
                                 "p = " ++ show p ++ "\n"
 
 
+
+
+
+
+
+
+
+
+
 -- | ========= LINEAR SOLVERS INTERFACE
 
 data LinSolveMethod = CGS_ | BICGSTAB_ deriving (Eq, Show) 
@@ -820,6 +837,8 @@ linSolve method aa b
       x0 = mkSpVectorD n $ replicate n 0.1 
       (m,n) = dimSM aa
       mb = dimSV b
+
+-- <\> : sets default solver method 
 
 (<\>) :: SpMatrix Double -> SpVector Double -> SpVector Double      
 (<\>) = linSolve BICGSTAB_
@@ -867,16 +886,39 @@ modifyInspectN nn q ff = go nn ff [] where
 
 untilConverged :: MonadState a m => (a -> SpVector Double) -> (a -> a) -> m a
 untilConverged fproj = modifyInspectN 2 (normDiffConverged fproj)
-  where
-    normDiffConverged fp xx = normSq (foldrMap (^-^) (zeroSV 0) fp xx) <= eps
+
+-- convergence check (FIXME)
+normDiffConverged :: (Foldable t, Functor t) =>
+     (a -> SpVector Double) -> t a -> Bool
+normDiffConverged fp xx = normSq (foldrMap (^-^) (zeroSV 0) fp xx) <= eps
               
 
 
+-- run `niter` iterations and append the state `x` to a list `xs`, stop when either the `xs` satisfies a predicate `q` or when the counter reaches 0
+
+runAppendN :: ([t] -> Bool) -> (t -> t) -> Int -> t -> [t]
+runAppendN qq ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
+                          | otherwise = go qq ff niter x0 [] where
+  go q f n z xs = 
+    let x = f z in
+    if n <= 0 || q xs then xs
+                      else go q f (n-1) x (x : xs)
+
+-- ", NO convergence check 
+runAppendN' :: (t -> t) -> Int -> t -> [t]
+runAppendN' ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
+                        | otherwise = go ff niter x0 [] where
+  go f n z xs = 
+    let x = f z in
+    if n <= 0 then xs
+              else go f (n-1) x (x : xs)
+
+-- runN :: Int -> (a -> a) -> a -> a
+runN n stepf x0 = runAppendN' stepf n x0
+  
 
 
--- inspectBicgstabStates :: [BICGSTAB] -> Bool
--- inspectBicgstabStates = withProjs (\[x0,x1] -> normSq (x0 ^-^ x1) <= eps) _xBicgstab
- 
+
 
 
 
@@ -914,6 +956,7 @@ randSpMat n nsp | nsp > n^2 = error "randSpMat : nsp must be < n^2 "
   ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
   jj <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
   return $ fromListSM (n,n) $ zip3 ii jj aav
+
 
 randSpVec :: Int -> Int -> IO (SpVector Double)
 randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
@@ -1032,4 +1075,26 @@ untilC p n f = go n
 --              | otherwise = f *> loop (n-1)
 
 
+
+-- testing Writer
                
+-- asdfw n = runWriter $ do
+--   tell $ "potato " ++ show n
+--   tell "jam"
+--   return (n+1)
+
+
+-- --
+
+
+-- testing State and Writer
+
+
+
+-- runMyApp runA k maxDepth =
+--     let config = maxDepth
+--         state =  0
+--     in runStateT (runWriterT (runA k) config) state
+
+
+  
