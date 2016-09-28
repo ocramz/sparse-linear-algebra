@@ -356,7 +356,9 @@ extractRowsSM (SM (nro,nco) im) i1 i2
 
 
 
-
+-- asdff imm i =
+--   case IM.lookup i imm of Just a -> IM.singleton i a
+--                           -- Nothing ->
 
 
 

@@ -90,13 +90,14 @@ example 1 : random linear system
 
 solveRandom n = do
   aa <- randMat n
-  x <- randVec n
+  xtrue <- randVec n
   -- x0 <- randVec n
-  let b = aa #> x
-      x0 = mkSpVectorD n $ replicate n 0
-  let xhatB = _xBicgstab (bicgstab aa b x0 x0)
-      xhatC = _x (cgs aa b x0 x0)
-  return (aa, x, x0, b, xhatB, xhatC)
+  let b = aa #> xtrue
+      dx = aa <\> b ^-^ xtrue
+  return (dx, normSq dx)    
+  -- let xhatB = _xBicgstab (bicgstab aa b x0 x0)
+  --     xhatC = _x (cgs aa b x0 x0)
+  -- return (aa, x, x0, b, xhatB, xhatC)
 
 
 
