@@ -23,6 +23,9 @@ import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC
 
 import qualified Data.Foldable as F
+import qualified Data.Traversable as T
+
+
 import qualified Data.List as L
 import Data.Maybe
 
@@ -144,7 +147,7 @@ mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds0 d k) im
 
 -- | ", from logically dense array (consecutive indices)
 mkSpVectorD :: (Num a, Eq a) => Int -> [a] -> SpVector a
-mkSpVectorD d ll = mkSpVector d (IM.fromList $ ixArray (take d ll))
+mkSpVectorD d ll = mkSpVector d (IM.fromList $ denseIxArray (take d ll))
 
 
 
@@ -293,8 +296,9 @@ fromListSM :: Foldable t => (Int, Int) -> t (Int, Int, a) -> SpMatrix a
 fromListSM (m,n) iix = fromListSM' iix (zeroSM m n)
 
 
-fromListDenseSM :: Int -> Int -> [a] -> SpMatrix a
-fromListDenseSM m n ll = fromListSM (m, n) $ dense m n ll
+fromListDenseSM :: Int -> [a] -> SpMatrix a
+fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
+  n = length ll `div` m
   
 
 
@@ -409,10 +413,11 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 
 
-  
-ifoldr f = go 0 where
-  go i z (x:xs) = f i z x <> go (i+1) z xs
-  go _ _ [] = mempty
+ifoldr :: Num i =>
+     (a -> b -> b) -> b -> (i -> c -> d -> a) -> c -> [d] -> b  
+ifoldr mjoin mneutral f  = go 0 where
+  go i z (x:xs) = mjoin (f i z x) (go (i+1) z xs)
+  go _ _ [] = mneutral
 
   
 
@@ -434,6 +439,32 @@ transposeI imm = ll1 where
   ll1 = map (\(kl,t) -> uncurry zip (replicate (length t) kl, t)) ll0
   -- ll2 = IM.fromList $ ixArray $ map IM.fromList ll1
   -- ll2 = IM.fromList $ map (\(a,(b,c)) -> (b, (a, c))) ll1
+
+
+-- transposeI' ins imm = IM.foldlWithKey g IM.empty imm where
+--   g row1 i row2 = IM.foldlWithKey (\e1 j e2 -> ins i j e2) row2
+
+
+
+
+
+-- | mapping 
+
+mapColumn f im j =
+  IM.mapWithKey ff im where
+   ff i a = IM.mapWithKey (\jj aa -> if j==jj then f aa else aa) a
+
+
+-- | folding
+
+-- count sub-diagonal nonzeros
+
+countSubdiagonalNZ :: Num a => IM.IntMap (IM.IntMap a) -> a
+countSubdiagonalNZ im =
+  IM.foldlWithKey f 0 im where
+   f a i = IM.foldlWithKey (\a' j b' -> if i>j then a'+b' else 0) a
+
+countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
 
 
 
@@ -527,7 +558,7 @@ givensCoef a b  -- returns (c, s, r) where r = norm (a, b)
                 in (t/u, 1/u, b*u)
 
 givens2x2 :: (Ord a, Floating a) => SpMatrix a -> Int -> IM.Key -> SpMatrix a
-givens2x2 mm i j = fromListSM (2,2) (dense 2 2 [c, -s, s, c]) where
+givens2x2 mm i j = fromListSM (2,2) (denseIxArray2 2 [c, -s, s, c]) where
   (c, s, _) = givensCoef a b
   a = mm @@ (i,j)
   b = mm @@ (i-1,j)
@@ -607,18 +638,7 @@ Givens method, row version: choose other row index i' s.t. i' is :
 -- | ========= QR algorithm
 
 
-mapColumn f im j =
-  IM.mapWithKey ff im where
-   ff i a = IM.mapWithKey (\jj aa -> if j==jj then f aa else aa) a
 
--- count sub-diagonal nonzeros
-
-countSubdiagonalNZ :: Num a => IM.IntMap (IM.IntMap a) -> a
-countSubdiagonalNZ im =
-  IM.foldlWithKey f 0 im where
-   f a i = IM.foldlWithKey (\a' j b' -> if i>j then a'+b' else 0) a
-
-countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
 
 
 {-
@@ -997,14 +1017,16 @@ randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
 --
 
 -- | integer-indexed ziplist
-ixArray :: [b] -> [(Int, b)]
-ixArray xs = zip [0..length xs-1] xs 
+denseIxArray :: [b] -> [(Int, b)]
+denseIxArray xs = zip [0..length xs-1] xs 
 
 
-dense :: Int -> Int -> [c] -> [(Int, Int, c)]
-dense m n = zip3 (concat $ replicate n ii_) jj_ where
+denseIxArray2 :: Int -> [c] -> [(Int, Int, c)]
+denseIxArray2 m xs = zip3 (concat $ replicate n ii_) jj_ xs where
   ii_ = [0 .. m-1]
   jj_ = concatMap (replicate m) [0 .. n-1]
+  ln = length xs
+  n = ln `div` m
 
 
 -- folds

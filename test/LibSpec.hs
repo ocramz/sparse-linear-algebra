@@ -160,9 +160,9 @@ matMat
 [3, 4] [7, 8]   [43, 50]
 -}
 
-m1 = fromListDenseSM 2 2 [1,3,2,4]
-m2 = fromListDenseSM 2 2 [5, 7, 6, 8]
-m1m2 = fromListDenseSM 2 2 [19, 43, 22, 50]
+m1 = fromListDenseSM 2 [1,3,2,4]
+m2 = fromListDenseSM 2 [5, 7, 6, 8]
+m1m2 = fromListDenseSM 2 [19, 43, 22, 50]
 
 
 
