@@ -267,23 +267,39 @@ nzRow s i | inBounds0 (nrows s) i = nzRowU s i
 
 
 
+-- | ========= IntMap-of-IntMap stuff
 
+
+
+insertIM2 ::
+  IM.Key -> IM.Key -> a -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+insertIM2 i j x imm = IM.insert i (IM.insert j x ro) imm where
+  ro = maybe (IM.singleton j x) (IM.insert j x) (IM.lookup i imm)
+
+lookupIM2 ::
+  IM.Key -> IM.Key -> IM.IntMap (IM.IntMap a) -> Maybe a
+lookupIM2 i j imm = IM.lookup i imm >>= IM.lookup j
   
+fromListIM2 ::
+  Foldable t =>
+     t (IM.Key, IM.Key, a) -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+fromListIM2 iix sm = foldl ins sm iix where
+  ins t (i,j,x) = insertIM2 i j x t
+
+toListIM2 imm = l0 where
+  l0 = IM.mapWithKey (\i x -> uncurry zip (replicate (IM.size x) i, IM.toList x)) imm
 
 
-
--- | ========= BUILDERS
+-- | ========= SPARSE MATRIX BUILDERS
 
 zeroSM :: Int -> Int -> SpMatrix a
 zeroSM m n = SM (m,n) IM.empty 
 
 
-
 insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
 insertSpMatrix i j x s
-  | inBounds02 d (i,j) = SM d (IM.insert i (IM.insert j x ri) smd) 
+  | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
   | otherwise = error "insertSpMatrix : index out of bounds" where
-      ri = fromMaybe IM.empty (IM.lookup i smd)
       smd = immSM s
       d = dimSM s
 
@@ -434,15 +450,20 @@ transposeSM (SM (m,n) imm) = SM (n,m) imm' where
 
 
 
-transposeI imm = ll1 where
-  ll0 = IM.toList (IM.map IM.toList imm)
-  ll1 = map (\(kl,t) -> uncurry zip (replicate (length t) kl, t)) ll0
-  -- ll2 = IM.fromList $ ixArray $ map IM.fromList ll1
-  -- ll2 = IM.fromList $ map (\(a,(b,c)) -> (b, (a, c))) ll1
+-- transposeI imm = ll1 where
+--   ll0 = IM.toList (IM.map IM.toList imm)
+--   ll1 = map (\(kl,t) -> uncurry zip (replicate (length t) kl, t)) ll0
+--   -- ll2 = IM.fromList $ ixArray $ map IM.fromList ll1
+--   -- ll2 = IM.fromList $ map (\(a,(b,c)) -> (b, (a, c))) ll1
 
 
 -- transposeI' ins imm = IM.foldlWithKey g IM.empty imm where
 --   g row1 i row2 = IM.foldlWithKey (\e1 j e2 -> ins i j e2) row2
+
+transposeI ins imm =
+  IM.mapWithKey (\iro ro ->  IM.foldrWithKey (\j l x -> ins iro j l ) IM.empty ro) imm
+
+
 
 
 
@@ -474,6 +495,9 @@ countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
 
 
 
+
+
+
 -- | matrix action on a vector
 
 {- 
@@ -489,6 +513,9 @@ matVec (SM (nrows,_) mdata) (SV n sv) = SV nrows $ fmap (`dot` sv) mdata
 (#>) = matVec
 
   
+
+
+
 
 
 
@@ -866,6 +893,7 @@ linSolveM method aa b = do
     case method of CGS_ -> return $ _xBicgstab (bicgstab aa b x0 x0)
                    BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
 
+-- deterministic starting vector (every component at 0.1) 
 linSolve ::
   LinSolveMethod -> SpMatrix Double -> SpVector Double -> SpVector Double
 linSolve method aa b
@@ -1014,13 +1042,12 @@ randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
 -- | misc utils
 
 
---
 
 -- | integer-indexed ziplist
 denseIxArray :: [b] -> [(Int, b)]
 denseIxArray xs = zip [0..length xs-1] xs 
 
-
+-- ", 2d arrays
 denseIxArray2 :: Int -> [c] -> [(Int, Int, c)]
 denseIxArray2 m xs = zip3 (concat $ replicate n ii_) jj_ xs where
   ii_ = [0 .. m-1]
