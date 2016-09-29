@@ -27,27 +27,31 @@ spec = do
     --   True `shouldBe` True
     -- prop "ourAdd is commutative" $ \x y ->
     --   ourAdd x y `shouldBe` ourAdd y x
+    it "dot : inner product" $
+      tv0 `dot` tv0 `shouldBe` 61
     it "matVec : matrix-vector product" $
       normSq ((aa0 #> x0true) ^-^ b0 ) <= eps `shouldBe` True
     it "matMat : matrix-matrix product" $
       (m1 `matMat` m2) `shouldBe` m1m2
     it "eye : identity matrix" $
       infoSM (eye 10) `shouldBe` SMInfo 10 0.1
+    it "countSubdiagonalNZ : # of nonzero elements below the diagonal" $
+      countSubdiagonalNZSM tm1 `shouldBe` 1
   describe "Math.Linear.Sparse : Linear solvers" $ do    
-    it "BiCGSTAB" $ 
+    it "BiCGSTAB (2 x 2 dense)" $ 
       normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
-    it "CGS" $ 
+    it "CGS (2 x 2 dense)" $ 
       normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
-  let n = 10
-      nsp = 3
-  describe ("random sparse linear system of size " ++ show n ++ " and sparsity " ++ show (fromIntegral nsp/fromIntegral n)) $ it "<\\>" $ do
-    aa <- randSpMat n nsp
-    xtrue <- randSpVec n nsp
-    b <- randSpVec n nsp    
-    let b = aa #> xtrue
-    printDenseSM aa
-    normSq (aa <\> b ^-^ xtrue) <= eps `shouldBe` True
-  --     normSq (_xBicgstab (bicgstab aa b x0 x0) ^-^ x) <= eps `shouldBe` True
+  -- let n = 10
+  --     nsp = 3
+  -- describe ("random sparse linear system of size " ++ show n ++ " and sparsity " ++ show (fromIntegral nsp/fromIntegral n)) $ it "<\\>" $ do
+  --   aa <- randSpMat n nsp
+  --   xtrue <- randSpVec n nsp
+  --   b <- randSpVec n nsp    
+  --   let b = aa #> xtrue
+  --   printDenseSM aa
+  --   normSq (aa <\> b ^-^ xtrue) <= eps `shouldBe` True
+  -- --     normSq (_xBicgstab (bicgstab aa b x0 x0) ^-^ x) <= eps `shouldBe` True
 
 
 
@@ -159,3 +163,14 @@ matMat
 m1 = fromListDenseSM 2 2 [1,3,2,4]
 m2 = fromListDenseSM 2 2 [5, 7, 6, 8]
 m1m2 = fromListDenseSM 2 2 [19, 43, 22, 50]
+
+
+
+
+--
+
+{-
+countSubdiagonalNZ
+-}
+
+tm1 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]

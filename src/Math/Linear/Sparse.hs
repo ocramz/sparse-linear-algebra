@@ -526,6 +526,7 @@ givensCoef a b  -- returns (c, s, r) where r = norm (a, b)
                     u = sign b * abs ( sqrt (1+t**2))
                 in (t/u, 1/u, b*u)
 
+givens2x2 :: (Ord a, Floating a) => SpMatrix a -> Int -> IM.Key -> SpMatrix a
 givens2x2 mm i j = fromListSM (2,2) (dense 2 2 [c, -s, s, c]) where
   (c, s, _) = givensCoef a b
   a = mm @@ (i,j)
@@ -563,16 +564,17 @@ Givens method, row version: choose other row index i' s.t. i' is :
 * below the diagonal
 * corresponding element is nonzero
 -} 
-chooseNZix m (i,j) nr
-  | nr < nrows m - j = undefined
-   where
-     i_ = [j .. j + nr - 1] -- indices below the diagonal
-     elems = IM.filter
 
-filterMaybe q ll
-  | null ll' = Nothing
-  | otherwise = Just ll' where
-  ll' = L.filter q ll
+-- chooseNZix m (i,j) nr
+--   | nr < nrows m - j = undefined
+--    where
+--      i_ = [j .. j + nr - 1] -- indices below the diagonal
+--      elems = IM.filter
+
+-- filterMaybe q ll
+--   | null ll' = Nothing
+--   | otherwise = Just ll' where
+--   ll' = L.filter q ll
 
        
 {-
@@ -603,6 +605,21 @@ filterMaybe q ll
 
 
 -- | ========= QR algorithm
+
+
+mapColumn f im j =
+  IM.mapWithKey ff im where
+   ff i a = IM.mapWithKey (\jj aa -> if j==jj then f aa else aa) a
+
+-- count sub-diagonal nonzeros
+
+countSubdiagonalNZ :: Num a => IM.IntMap (IM.IntMap a) -> a
+countSubdiagonalNZ im =
+  IM.foldlWithKey f 0 im where
+   f a i = IM.foldlWithKey (\a' j b' -> if i>j then a'+b' else 0) a
+
+countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
+
 
 {-
 applies Givens rotation iteratively to zero out sub-diagonal elements
@@ -818,6 +835,9 @@ instance Show BICGSTAB where
 data LinSolveMethod = CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
 -- random starting vector
+linSolveM ::
+  PrimMonad m =>
+    LinSolveMethod -> SpMatrix Double -> SpVector Double -> m (SpVector Double)
 linSolveM method aa b = do
   let (m,n) = dimSM aa
       mb = dimSV b
@@ -914,7 +934,7 @@ runAppendN' ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
               else go f (n-1) x (x : xs)
 
 -- runN :: Int -> (a -> a) -> a -> a
-runN n stepf x0 = runAppendN' stepf n x0
+-- runN n stepf x0 = runAppendN' stepf n x0
   
 
 
