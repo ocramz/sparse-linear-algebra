@@ -158,7 +158,6 @@ insertSpVector i x (SV d xim)
   | inBounds0 d i = SV d (IM.insert i x xim)
   | otherwise = error "insertSpVector : index out of bounds"
 
--- fromListSpUnsafe d iix = SV d (IM.fromList iix)
 
 fromListSV :: Int -> [(Int, a)] -> SpVector a
 fromListSV d iix = SV d (IM.fromList (filter (inBounds0 d . fst) iix ))
@@ -303,7 +302,7 @@ transposeIM2 :: IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 transposeIM2 = ifoldlIM2 (flip insertIM2)
 
 
-
+-- map over outer IM and filter all inner IM's
 ifilterIM2 ::
   (IM.Key -> IM.Key -> a -> Bool) ->
   IM.IntMap (IM.IntMap a) ->
@@ -497,32 +496,25 @@ mapColumn f im j =
 
 -- count sub-diagonal nonzeros
 
--- countSubdiagonalNZ :: Num a => IM.IntMap (IM.IntMap a) -> a
--- countSubdiagonalNZ im =
---   IM.foldlWithKey f 0 im where
---    f a i = IM.foldlWithKey (\a' j b' -> if i>j then a'+b' else 0) a
 
--- 
-
-
--- countSubdiagonalNZ im =
---   IM.foldrWithKey f 0 im where
---    f irow row rowacc = IM.foldrWithKey (\j el acc -> if irow>j then ) 0 row
-   -- g j el acc = if
-
-
--- countSubdiagonalNZ im = go im 0 where
---   go mm count = IM.foldrWithKey f 0 im where
---    f irow row rowacc = IM.foldrWithKey (\j el acc -> if irow>j then count+1 else 0) 0 row
 
 countSubdiagonalNZ :: IM.IntMap (IM.IntMap a) -> Int
 countSubdiagonalNZ im =
   IM.size $ IM.filter (not . IM.null) (ifilterIM2 (\i j _ -> i>j) im)
 
-
+countSubdiagonalNZSM :: SpMatrix a -> Int
 countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
   
 
+
+
+-- | sparsify : remove 0s (!!!)
+
+sparsifyIM2 :: IM.IntMap (IM.IntMap Double) -> IM.IntMap (IM.IntMap Double)
+sparsifyIM2 = ifilterIM2 (\_ _ x -> x /= 0.0)
+
+sparsifySM :: SpMatrix Double -> IM.IntMap (IM.IntMap Double)
+sparsifySM (SM _ im) = sparsifyIM2 im
 
 
 
