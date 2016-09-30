@@ -268,37 +268,28 @@ nzRow s i | inBounds0 (nrows s) i = nzRowU s i
 
 
 
--- | ========= IntMap-of-IntMap stuff
+-- | ========= IntMap-of-IntMap (IM2) stuff
 
 
-
+-- insert an element
 insertIM2 ::
   IM.Key -> IM.Key -> a -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 insertIM2 i j x imm = IM.insert i (IM.insert j x ro) imm where
   ro = maybe (IM.singleton j x) (IM.insert j x) (IM.lookup i imm)
 
-
-
+-- lookup a key
 lookupIM2 ::
   IM.Key -> IM.Key -> IM.IntMap (IM.IntMap a) -> Maybe a
 lookupIM2 i j imm = IM.lookup i imm >>= IM.lookup j
-  
+
+-- populate an IM2 from a list of (row index, column index, value)  
 fromListIM2 ::
   Foldable t =>
      t (IM.Key, IM.Key, a) -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 fromListIM2 iix sm = foldl ins sm iix where
   ins t (i,j,x) = insertIM2 i j x t
 
--- toListIM2 imm = l0 where
---   l0 = IM.mapWithKey (\i x -> uncurry zip (replicate (IM.size x) i, IM.toList x)) imm
-
--- transposeIM2 :: IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
--- transposeIM2 m = IM.foldlWithKey'  accRow IM.empty m where
---   accRow    acc i row = IM.foldlWithKey' (accElem i) acc row
---   accElem i acc j x   = insertIM2 j i x acc
-
-
-
+-- fold over an IM2
 ifoldlIM2 ::
   (IM.Key -> IM.Key -> t -> IM.IntMap a -> IM.IntMap a) ->
   IM.IntMap (IM.IntMap t) ->  
@@ -307,8 +298,21 @@ ifoldlIM2 f m         = IM.foldlWithKey' accRow IM.empty m where
   accRow    acc i row = IM.foldlWithKey' (accElem i) acc row
   accElem i acc j x   = f i j x acc
 
+-- transposeIM2 : inner indices become outer ones and vice versa. No loss of information because both inner and outer IntMaps are nubbed.
 transposeIM2 :: IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 transposeIM2 = ifoldlIM2 (flip insertIM2)
+
+
+
+ifilterIM2 ::
+  (IM.Key -> IM.Key -> a -> Bool) ->
+  IM.IntMap (IM.IntMap a) ->
+  IM.IntMap (IM.IntMap a)
+ifilterIM2 f  =
+  IM.mapWithKey (\irow row -> IM.filterWithKey (f irow) row) 
+
+
+
   
 
 build g = g (:) []
@@ -507,9 +511,13 @@ mapColumn f im j =
    -- g j el acc = if
 
 
-countSubdiagonalNZ im = go im 0 where
-  go mm count = IM.foldrWithKey f 0 im where
-   f irow row rowacc = IM.foldrWithKey (\j el acc -> if irow>j then count+1 else 0) 0 row
+-- countSubdiagonalNZ im = go im 0 where
+--   go mm count = IM.foldrWithKey f 0 im where
+--    f irow row rowacc = IM.foldrWithKey (\j el acc -> if irow>j then count+1 else 0) 0 row
+
+countSubdiagonalNZ :: IM.IntMap (IM.IntMap a) -> Int
+countSubdiagonalNZ im =
+  IM.size $ IM.filter (not . IM.null) (ifilterIM2 (\i j _ -> i>j) im)
 
 
 countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
