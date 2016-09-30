@@ -29,8 +29,12 @@ spec = do
     --   ourAdd x y `shouldBe` ourAdd y x
     it "dot : inner product" $
       tv0 `dot` tv0 `shouldBe` 61
+    it "transposeSM : sparse matrix transpose" $
+      transposeSM m1 `shouldBe` m1t
     it "matVec : matrix-vector product" $
       normSq ((aa0 #> x0true) ^-^ b0 ) <= eps `shouldBe` True
+    it "vecMat : vector-matrix product" $
+      normSq ((x0true <# aa0) ^-^ aa0tx0 ) <= eps `shouldBe` True  
     it "matMat : matrix-matrix product" $
       (m1 `matMat` m2) `shouldBe` m1m2
     it "eye : identity matrix" $
@@ -82,6 +86,11 @@ example 0 : 2x2 linear system
 [1 2] [2] = [8]
 [3 4] [3]   [18]
 
+
+[1 3] [2] = [11]
+[2 4] [3]   [16]
+
+
 -}
 
 aa0 :: SpMatrix Double
@@ -103,6 +112,8 @@ x0 = mkSpVectorD 2 [0.3,1.4]
 x0true = mkSpVectorD 2 [2,3]
 
 
+
+aa0tx0 = mkSpVectorD 2 [11,16]
 
 
 -- --
@@ -164,7 +175,9 @@ m1 = fromListDenseSM 2 [1,3,2,4]
 m2 = fromListDenseSM 2 [5, 7, 6, 8]
 m1m2 = fromListDenseSM 2 [19, 43, 22, 50]
 
+-- transposeSM
 
+m1t = fromListDenseSM 2 [1,2,3,4]
 
 
 --

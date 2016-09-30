@@ -2,7 +2,7 @@
 
 module Math.Linear.Sparse where
 
-import Data.Monoid
+
 
 import Control.Monad.Primitive
 
@@ -22,6 +22,7 @@ import qualified Data.IntMap.Strict as IM
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC
 
+import Data.Monoid
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 
@@ -276,6 +277,8 @@ insertIM2 ::
 insertIM2 i j x imm = IM.insert i (IM.insert j x ro) imm where
   ro = maybe (IM.singleton j x) (IM.insert j x) (IM.lookup i imm)
 
+
+
 lookupIM2 ::
   IM.Key -> IM.Key -> IM.IntMap (IM.IntMap a) -> Maybe a
 lookupIM2 i j imm = IM.lookup i imm >>= IM.lookup j
@@ -286,8 +289,41 @@ fromListIM2 ::
 fromListIM2 iix sm = foldl ins sm iix where
   ins t (i,j,x) = insertIM2 i j x t
 
-toListIM2 imm = l0 where
-  l0 = IM.mapWithKey (\i x -> uncurry zip (replicate (IM.size x) i, IM.toList x)) imm
+-- toListIM2 imm = l0 where
+--   l0 = IM.mapWithKey (\i x -> uncurry zip (replicate (IM.size x) i, IM.toList x)) imm
+
+-- transposeIM2 :: IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+-- transposeIM2 m = IM.foldlWithKey'  accRow IM.empty m where
+--   accRow    acc i row = IM.foldlWithKey' (accElem i) acc row
+--   accElem i acc j x   = insertIM2 j i x acc
+
+
+
+ifoldlIM2 ::
+  (IM.Key -> IM.Key -> t -> IM.IntMap a -> IM.IntMap a) ->
+  IM.IntMap (IM.IntMap t) ->  
+  IM.IntMap a
+ifoldlIM2 f m         = IM.foldlWithKey' accRow IM.empty m where
+  accRow    acc i row = IM.foldlWithKey' (accElem i) acc row
+  accElem i acc j x   = f i j x acc
+
+transposeIM2 :: IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+transposeIM2 = ifoldlIM2 (flip insertIM2)
+  
+
+build g = g (:) []
+
+toList t = build (\c n -> foldr c n t)
+
+
+
+
+
+
+
+
+
+
 
 
 -- | ========= SPARSE MATRIX BUILDERS
@@ -385,9 +421,7 @@ extractRowsSM (SM (nro,nco) im) i1 i2
 
 
 
--- asdff imm i =
---   case IM.lookup i imm of Just a -> IM.singleton i a
---                           -- Nothing ->
+
 
 
 
@@ -429,11 +463,7 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 
 
-ifoldr :: Num i =>
-     (a -> b -> b) -> b -> (i -> c -> d -> a) -> c -> [d] -> b  
-ifoldr mjoin mneutral f  = go 0 where
-  go i z (x:xs) = mjoin (f i z x) (go (i+1) z xs)
-  go _ _ [] = mneutral
+
 
   
 
@@ -444,26 +474,9 @@ ifoldr mjoin mneutral f  = go 0 where
 
 -- | transpose
 
-transposeSM (SM (m,n) imm) = SM (n,m) imm' where
-  imm' = undefined
 
-
-
-
--- transposeI imm = ll1 where
---   ll0 = IM.toList (IM.map IM.toList imm)
---   ll1 = map (\(kl,t) -> uncurry zip (replicate (length t) kl, t)) ll0
---   -- ll2 = IM.fromList $ ixArray $ map IM.fromList ll1
---   -- ll2 = IM.fromList $ map (\(a,(b,c)) -> (b, (a, c))) ll1
-
-
--- transposeI' ins imm = IM.foldlWithKey g IM.empty imm where
---   g row1 i row2 = IM.foldlWithKey (\e1 j e2 -> ins i j e2) row2
-
-transposeI ins imm =
-  IM.mapWithKey (\iro ro ->  IM.foldrWithKey (\j l x -> ins iro j l ) IM.empty ro) imm
-
-
+transposeSM :: SpMatrix a -> SpMatrix a
+transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
 
 
@@ -480,20 +493,27 @@ mapColumn f im j =
 
 -- count sub-diagonal nonzeros
 
-countSubdiagonalNZ :: Num a => IM.IntMap (IM.IntMap a) -> a
-countSubdiagonalNZ im =
-  IM.foldlWithKey f 0 im where
-   f a i = IM.foldlWithKey (\a' j b' -> if i>j then a'+b' else 0) a
+-- countSubdiagonalNZ :: Num a => IM.IntMap (IM.IntMap a) -> a
+-- countSubdiagonalNZ im =
+--   IM.foldlWithKey f 0 im where
+--    f a i = IM.foldlWithKey (\a' j b' -> if i>j then a'+b' else 0) a
+
+-- 
+
+
+-- countSubdiagonalNZ im =
+--   IM.foldrWithKey f 0 im where
+--    f irow row rowacc = IM.foldrWithKey (\j el acc -> if irow>j then ) 0 row
+   -- g j el acc = if
+
+
+countSubdiagonalNZ im = go im 0 where
+  go mm count = IM.foldrWithKey f 0 im where
+   f irow row rowacc = IM.foldrWithKey (\j el acc -> if irow>j then count+1 else 0) 0 row
+
 
 countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
-
-
-
-
-
-
-
-
+  
 
 
 
@@ -512,9 +532,11 @@ matVec (SM (nrows,_) mdata) (SV n sv) = SV nrows $ fmap (`dot` sv) mdata
 
 (#>) = matVec
 
-  
 
+vecMat, (<#) :: Num a => SpVector a -> SpMatrix a -> SpVector a  
+vecMat (SV n sv) (SM (_, ncols) im) = SV ncols $ fmap (`dot` sv) (transposeIM2 im)
 
+(<#) = vecMat
 
 
 
@@ -522,37 +544,16 @@ matVec (SM (nrows,_) mdata) (SV n sv) = SV nrows $ fmap (`dot` sv) mdata
 
 -- | matrix-matrix product
 
-matMat :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
+matMat, (##) :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
 matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
   | nc1 == nr2 = SM (nr1, nc2) $
-      fmap (\vm1 -> fmap (`dot` vm1) m2) m1
+      fmap (\vm1 -> fmap (`dot` vm1) (transposeIM2 m2)) m1
   | otherwise = error "matMat : incompatible matrix sizes"
 
+(##) = matMat
 
 
--- lifting a binary operations onto pairs maps of maps, second operand is read in transposed order (to implement matrix multiplication)
--- liftIMM f im1 im2
 
-
--- liftFT f a b = map
-
-
-colMap imm i =
-  IM.filter (\m -> case IM.lookup i m  of
-                Just _ -> True
-                Nothing -> False ) imm
-
-immJoin imm = undefined where
-  immFlat = concatMap IM.toList imm
-
-
-fillRecIMM m0 m1 i =
-  case IM.lookup i m0 of Just x -> IM.insert i x m1
-                         Nothing -> m1
-
-
-matMat' (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
-  | nc1 == nr2 = SM (nr1, nc2) undefined
 
 
 
@@ -1067,6 +1068,12 @@ foldlStrict f = go
     go z []     = z
     go z (x:xs) = let z' = f z x in z' `seq` go z' xs
 
+-- indexed fold?
+ifoldr :: Num i =>
+     (a -> b -> b) -> b -> (i -> c -> d -> a) -> c -> [d] -> b  
+ifoldr mjoin mneutral f  = go 0 where
+  go i z (x:xs) = mjoin (f i z x) (go (i+1) z xs)
+  go _ _ [] = mneutral
 
 
 -- bounds checking
