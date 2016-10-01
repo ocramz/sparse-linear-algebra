@@ -590,6 +590,12 @@ vecMat (SV n sv) (SM (_, ncols) im) = SV ncols $ fmap (`dot` sv) (transposeIM2 i
 
 
 
+waxpy :: Num a => a -> SpMatrix a -> SpVector a -> SpVector a -> SpVector a
+waxpy w a x y = w .* (a #> x) ^+^ y
+
+
+
+
 
 -- | matrix-matrix product
 
