@@ -487,7 +487,8 @@ transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
 -- | mapping 
 
-mapColumn f im j =
+mapColumnIM2 :: (b -> b) -> IM.IntMap (IM.IntMap b) -> Int -> IM.IntMap (IM.IntMap b)
+mapColumnIM2 f im j =
   IM.mapWithKey ff im where
    ff i a = IM.mapWithKey (\jj aa -> if j==jj then f aa else aa) a
 
@@ -513,8 +514,8 @@ countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
 sparsifyIM2 :: IM.IntMap (IM.IntMap Double) -> IM.IntMap (IM.IntMap Double)
 sparsifyIM2 = ifilterIM2 (\_ _ x -> x /= 0.0)
 
-sparsifySM :: SpMatrix Double -> IM.IntMap (IM.IntMap Double)
-sparsifySM (SM _ im) = sparsifyIM2 im
+sparsifySM :: SpMatrix Double -> SpMatrix Double
+sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 
 
@@ -585,39 +586,22 @@ givensCoef a b  -- returns (c, s, r) where r = norm (a, b)
                     u = sign b * abs ( sqrt (1+t**2))
                 in (t/u, 1/u, b*u)
 
-givens2x2 :: (Ord a, Floating a) => SpMatrix a -> Int -> IM.Key -> SpMatrix a
-givens2x2 mm i j = fromListSM (2,2) (denseIxArray2 2 [c, -s, s, c]) where
-  (c, s, _) = givensCoef a b
-  a = mm @@ (i,j)
-  b = mm @@ (i-1,j)
-
-
--- alternative algorithm for Givens
-
-data Givens = Givens !Double !Double deriving (Eq, Show)
-
--- givens :: SpMatrix Double -> UB -> Int -> Int -> SpMatrix Double
+givens :: SpMatrix Double -> Int -> Int -> SpMatrix Double
 givens mm i j 
   | validIxSM mm (i,j) && isSquareSM mm =
        fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
   | otherwise = error "givens : indices out of bounds"      
   where
-   -- c = cos theta
-   -- s = sin theta
-    x1 = mm @@ (i,j)
-    x2 = mm @@ (i-1, j)
-    -- x2 = mm # (chooseNZix mm (i,j) nr , j)
-    Givens c s 
-      | x2 == 0 = Givens 1 0 
-      | otherwise = let cot = x1/x2
-                        ta = x2/x1
-                        s1 = (1/sqrt (1 + cot**2))
-                        c1 = s1*cot
-                        c2 = 1/sqrt (1 + ta**2)
-                        s2 = c2 * ta
-                    in
-                    if abs x2 >= abs x1 then Givens c1 s1 
-                                        else Givens c2 s2
+    (c, s, _) = givensCoef a b
+    a = mm @@ (i-1,j) -- FIXME to be chosen 
+    b = mm @@ (i,j)   -- element to zero out
+
+-- wikipedia test matrix
+
+tmw0 = sparsifySM $ fromListDenseSM 3 [6,5,0,5,1,4,0,4,3]
+
+
+
 {-
 Givens method, row version: choose other row index i' s.t. i' is :
 * below the diagonal
@@ -741,6 +725,8 @@ toDenseRowClip sm irow ncomax
            h = take (ncomax - 2) dr
            t = last dr
 
+newline :: IO ()
+newline = putStrLn ""
 
 printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
 printDenseSM sm = do
@@ -749,8 +735,7 @@ printDenseSM sm = do
   newline
   printDenseSM' sm 5 5
   newline
-  where
-    newline = putStrLn ""
+  where    
     printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
     printDenseSM' sm'@(SM (nr,_) _) nromax ncomax = mapM_ putStrLn rr_' where
       rr_ = map (\i -> toDenseRowClip sm' i ncomax) [0..nr - 1]
@@ -758,6 +743,32 @@ printDenseSM sm = do
            | otherwise = rr_
 
 
+toDenseListClip :: (Show a, Num a) => SpVector a -> Int -> [Char]
+toDenseListClip sv ncomax
+  | svDim sv > ncomax = unwords (map show h) ++  " ... " ++ show t
+  | otherwise = show dr
+     where dr = toDenseListSV sv
+           h = take (ncomax - 2) dr
+           t = last dr
+
+printDenseSV :: (Show t, Num t) => SpVector t -> IO ()
+printDenseSV sv = do
+  newline
+  printDenseSV' sv 5
+  newline where
+    printDenseSV' v@(SV nv vd) nco = putStrLn rr_' where
+      rr_ = toDenseListClip v nco :: String
+      rr_' | svDim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
+           | otherwise = rr_
+
+class PrintDense a where
+  prd :: a -> IO ()
+
+instance (Show a, Num a) => PrintDense (SpVector a) where
+  prd = printDenseSV
+
+instance (Show a, Num a) => PrintDense (SpMatrix a) where
+  prd = printDenseSM
 
 
 
