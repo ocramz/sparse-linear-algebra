@@ -3,7 +3,6 @@
 module Math.Linear.Sparse where
 
 
-
 import Control.Monad.Primitive
 
 import Control.Monad (mapM_, forM_, replicateM)
@@ -162,7 +161,8 @@ insertSpVector i x (SV d xim)
 fromListSV :: Int -> [(Int, a)] -> SpVector a
 fromListSV d iix = SV d (IM.fromList (filter (inBounds0 d . fst) iix ))
 
-
+toDenseListSV :: Num b => SpVector b -> [b]
+toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
 
 
   
@@ -175,13 +175,10 @@ lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im
 findWithDefault0IM :: Num a => IM.Key -> IM.IntMap a -> a
 findWithDefault0IM = IM.findWithDefault 0
 
-toDenseListSV :: Num b => SpVector b -> [b]
-toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
+
 
     
                       
-
-
 
 
 
@@ -194,7 +191,12 @@ toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
 data SpMatrix a = SM {smDim :: (Int, Int),
                      smData :: IM.IntMap (IM.IntMap a)} deriving Eq
 
+
+
 -- | instances for SpMatrix
+instance Show a => Show (SpMatrix a) where
+  show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList x)
+
 instance Functor SpMatrix where
   fmap f (SM d md) = SM d ((fmap . fmap) f md)
 
@@ -288,7 +290,7 @@ fromListIM2 ::
 fromListIM2 iix sm = foldl ins sm iix where
   ins t (i,j,x) = insertIM2 i j x t
 
--- fold over an IM2
+-- indexed fold over an IM2
 ifoldlIM2 ::
   (IM.Key -> IM.Key -> t -> IM.IntMap a -> IM.IntMap a) ->
   IM.IntMap (IM.IntMap t) ->  
@@ -310,6 +312,28 @@ ifilterIM2 ::
 ifilterIM2 f  =
   IM.mapWithKey (\irow row -> IM.filterWithKey (f irow) row) 
 
+
+-- map over IM2
+
+mapIM2 :: (a -> b) -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap b)
+mapIM2 = IM.map . IM.map   -- imapIM2 (\_ _ x -> f x)
+
+
+-- indexed map over IM2
+imapIM2 ::
+  (IM.Key -> IM.Key -> a -> b) ->
+  IM.IntMap (IM.IntMap a) ->
+  IM.IntMap (IM.IntMap b)
+imapIM2 f im = IM.mapWithKey ff im where
+  ff j x = IM.mapWithKey (`f` j) x
+
+
+
+
+-- map over a single `column`
+
+mapColumnIM2 :: (b -> b) -> IM.IntMap (IM.IntMap b) -> Int -> IM.IntMap (IM.IntMap b)
+mapColumnIM2 f im jj = imapIM2 (\i j x -> if j == jj then f x else x) im
 
 
   
@@ -487,10 +511,7 @@ transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
 -- | mapping 
 
-mapColumnIM2 :: (b -> b) -> IM.IntMap (IM.IntMap b) -> Int -> IM.IntMap (IM.IntMap b)
-mapColumnIM2 f im j =
-  IM.mapWithKey ff im where
-   ff i a = IM.mapWithKey (\jj aa -> if j==jj then f aa else aa) a
+
 
 
 -- | folding
@@ -516,6 +537,33 @@ sparsifyIM2 = ifilterIM2 (\_ _ x -> x /= 0.0)
 
 sparsifySM :: SpMatrix Double -> SpMatrix Double
 sparsifySM (SM d im) = SM d $ sparsifyIM2 im
+
+
+
+-- | ROUNDING operations (!!!)
+almostZero, almostOne :: Double -> Bool
+almostZero x = abs x <= eps
+almostOne x = x >= (1-eps) && x < (1+eps)
+
+withDefault :: (t -> Bool) -> t -> t -> t
+withDefault q d x | q x = d
+                  | otherwise = x
+
+roundZero, roundOne :: Double -> Double
+roundZero = withDefault almostZero 0
+roundOne = withDefault almostOne 1
+
+with2Defaults :: (t -> Bool) -> (t -> Bool) -> t -> t -> t -> t
+with2Defaults q1 q2 d1 d2 x | q1 x = d1
+                            | q2 x = d2
+                            | otherwise = x
+
+roundZeroOne :: Double -> Double
+roundZeroOne = with2Defaults almostZero almostOne 0 1                              
+
+roundZeroOneSM :: SpMatrix Double -> SpMatrix Double
+roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
+
 
 
 
@@ -560,6 +608,20 @@ matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
 
 
 
+-- | ========= predicates
+
+isOrthogonalSM :: SpMatrix Double -> Bool
+isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
+  rsm = roundZeroOneSM $ transposeSM sm ## sm
+
+
+
+
+
+
+
+
+
 
 
 
@@ -569,10 +631,10 @@ matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
 hypot :: Floating a => a -> a -> a
 hypot x y = abs x * (sqrt (1 + y/x)**2)
 
-sign :: (Ord a, Num a, Num t) => a -> t
+sign :: (Ord a, Num a) => a -> a
 sign x
   | x > 0 = 1
-  | x==0 = 0
+  | x == 0 = 0
   | otherwise = -1 
 
 givensCoef :: (Ord a, Floating a) => a -> a -> (a, a, a)
@@ -580,11 +642,11 @@ givensCoef a b  -- returns (c, s, r) where r = norm (a, b)
   | b==0 = (sign a, 0, abs a)
   | a==0 = (0, sign b, abs b)
   | abs a > abs b = let t = b/a
-                        u = sign a * abs ( sqrt (1+t**2))
-                      in (1/u, t/u, a*u)
+                        u = sign a * abs ( sqrt (1 + t**2))
+                      in (1/u, - t/u, a*u)
   | otherwise = let t = a/b
-                    u = sign b * abs ( sqrt (1+t**2))
-                in (t/u, 1/u, b*u)
+                    u = sign b * abs ( sqrt (1 + t**2))
+                in (t/u, - 1/u, b*u)
 
 givens :: SpMatrix Double -> Int -> Int -> SpMatrix Double
 givens mm i j 
@@ -593,12 +655,11 @@ givens mm i j
   | otherwise = error "givens : indices out of bounds"      
   where
     (c, s, _) = givensCoef a b
-    a = mm @@ (i-1,j) -- FIXME to be chosen 
+    a = mm @@ (i-1,j) -- FIXME to be chosen from column of b, below diagonal
     b = mm @@ (i,j)   -- element to zero out
 
--- wikipedia test matrix
 
-tmw0 = sparsifySM $ fromListDenseSM 3 [6,5,0,5,1,4,0,4,3]
+
 
 
 
@@ -682,93 +743,7 @@ SVD of A :
 
 
 
--- | ========= DISPLAY
 
--- | Show details and contents of sparse matrix
-
-sizeStr :: SpMatrix a -> String
-sizeStr sm =
-  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ (sparsity",show spy,")"] where
-  (SMInfo nz spy) = infoSM sm 
-  
-
-instance Show a => Show (SpMatrix a) where
-  show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList x)
-
-
--- -- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
--- showSparseMatrix [] = "(0,0):\n[]\n"
--- showSparseMatrix m = show (length m, length (head m))++": \n"++
---     (unlines $ L.map (("["++) . (++"]") . L.intercalate "|")
---              $ L.transpose $ L.map column $ L.transpose m)
-
--- column :: (Show a, Num a, Eq a) => [a] -> [[Char]]
--- column c = let c'       = L.map showNonZero c
---                width    = L.maximum $ L.map length c'
---                offset x = replicate (width - (length x)) ' ' ++ x
---            in L.map offset c'
-
-showNonZero :: (Show a, Num a, Eq a) => a -> String
-showNonZero x  = if x == 0 then " " else show x
-
-    
-
-toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
-toDenseRow (SM (_,ncol) im) irow =
-  fmap (\icol -> im `lookupWD_IM` (irow,icol)) [0..ncol-1]
-
-toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
-toDenseRowClip sm irow ncomax
-  | ncols sm > ncomax = unwords (map show h) ++  " ... " ++ show t
-  | otherwise = show dr
-     where dr = toDenseRow sm irow
-           h = take (ncomax - 2) dr
-           t = last dr
-
-newline :: IO ()
-newline = putStrLn ""
-
-printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
-printDenseSM sm = do
-  newline
-  putStrLn $ sizeStr sm
-  newline
-  printDenseSM' sm 5 5
-  newline
-  where    
-    printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
-    printDenseSM' sm'@(SM (nr,_) _) nromax ncomax = mapM_ putStrLn rr_' where
-      rr_ = map (\i -> toDenseRowClip sm' i ncomax) [0..nr - 1]
-      rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
-           | otherwise = rr_
-
-
-toDenseListClip :: (Show a, Num a) => SpVector a -> Int -> [Char]
-toDenseListClip sv ncomax
-  | svDim sv > ncomax = unwords (map show h) ++  " ... " ++ show t
-  | otherwise = show dr
-     where dr = toDenseListSV sv
-           h = take (ncomax - 2) dr
-           t = last dr
-
-printDenseSV :: (Show t, Num t) => SpVector t -> IO ()
-printDenseSV sv = do
-  newline
-  printDenseSV' sv 5
-  newline where
-    printDenseSV' v@(SV nv vd) nco = putStrLn rr_' where
-      rr_ = toDenseListClip v nco :: String
-      rr_' | svDim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
-           | otherwise = rr_
-
-class PrintDense a where
-  prd :: a -> IO ()
-
-instance (Show a, Num a) => PrintDense (SpVector a) where
-  prd = printDenseSV
-
-instance (Show a, Num a) => PrintDense (SpMatrix a) where
-  prd = printDenseSM
 
 
 
@@ -923,6 +898,109 @@ linSolve method aa b
 (<\>) :: SpMatrix Double -> SpVector Double -> SpVector Double      
 (<\>) = linSolve BICGSTAB_
   
+
+
+
+
+
+
+
+
+
+
+
+--
+
+
+
+
+
+
+
+-- | Show details and contents of sparse matrix
+
+sizeStr :: SpMatrix a -> String
+sizeStr sm =
+  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ (sparsity",show spy,")"] where
+  (SMInfo nz spy) = infoSM sm 
+
+
+
+
+
+-- -- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
+-- showSparseMatrix [] = "(0,0):\n[]\n"
+-- showSparseMatrix m = show (length m, length (head m))++": \n"++
+--     (unlines $ L.map (("["++) . (++"]") . L.intercalate "|")
+--              $ L.transpose $ L.map column $ L.transpose m)
+
+-- column :: (Show a, Num a, Eq a) => [a] -> [[Char]]
+-- column c = let c'       = L.map showNonZero c
+--                width    = L.maximum $ L.map length c'
+--                offset x = replicate (width - (length x)) ' ' ++ x
+--            in L.map offset c'
+
+showNonZero :: (Show a, Num a, Eq a) => a -> String
+showNonZero x  = if x == 0 then " " else show x
+
+    
+
+toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
+toDenseRow (SM (_,ncol) im) irow =
+  fmap (\icol -> im `lookupWD_IM` (irow,icol)) [0..ncol-1]
+
+toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
+toDenseRowClip sm irow ncomax
+  | ncols sm > ncomax = unwords (map show h) ++  " ... " ++ show t
+  | otherwise = show dr
+     where dr = toDenseRow sm irow
+           h = take (ncomax - 2) dr
+           t = last dr
+
+newline :: IO ()
+newline = putStrLn ""
+
+printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
+printDenseSM sm = do
+  newline
+  putStrLn $ sizeStr sm
+  newline
+  printDenseSM' sm 5 5
+  newline
+  where    
+    printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
+    printDenseSM' sm'@(SM (nr,_) _) nromax ncomax = mapM_ putStrLn rr_' where
+      rr_ = map (\i -> toDenseRowClip sm' i ncomax) [0..nr - 1]
+      rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
+           | otherwise = rr_
+
+
+toDenseListClip :: (Show a, Num a) => SpVector a -> Int -> [Char]
+toDenseListClip sv ncomax
+  | svDim sv > ncomax = unwords (map show h) ++  " ... " ++ show t
+  | otherwise = show dr
+     where dr = toDenseListSV sv
+           h = take (ncomax - 2) dr
+           t = last dr
+
+printDenseSV :: (Show t, Num t) => SpVector t -> IO ()
+printDenseSV sv = do
+  newline
+  printDenseSV' sv 5
+  newline where
+    printDenseSV' v@(SV nv vd) nco = putStrLn rr_' where
+      rr_ = toDenseListClip v nco :: String
+      rr_' | svDim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
+           | otherwise = rr_
+
+class PrintDense a where
+  prd :: a -> IO ()
+
+instance (Show a, Num a) => PrintDense (SpVector a) where
+  prd = printDenseSV
+
+instance (Show a, Num a) => PrintDense (SpMatrix a) where
+  prd = printDenseSM
 
 
 
@@ -1116,14 +1194,28 @@ inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 
 --
 
-tm0 :: SpMatrix Double
+tm0, tm1, tm2 :: SpMatrix Double
 tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
 
 tv0 :: SpVector Double
 tv0 = mkSpVectorD 2 [5, 6]
 
+-- wikipedia test matrix for Givens rotation
+
+tm1 = sparsifySM $ fromListDenseSM 3 [6,5,0,5,1,4,0,4,3]
+
+tm1g1 = givens tm1 1 0
+tm1a2 = tm1g1 ## tm1
+
+tm1g2 = givens tm1a2 2 1
+tm1a3 = tm1g2 ## tm1a2
+
+tm1q = transposeSM (tm1g2 ## tm1g1)
 
 
+-- wp test matrix for QR decomposition via Givens rotation
+
+tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
 
 -- playground
 
