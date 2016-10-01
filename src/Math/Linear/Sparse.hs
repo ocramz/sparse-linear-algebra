@@ -261,6 +261,20 @@ emptySpMatrix d = SM d IM.empty
 
 
 
+-- multiply matrix by a scalar
+matScale :: Num a => a -> SpMatrix a -> SpMatrix a
+matScale a = fmap (*a)
+
+-- Frobenius norm (sqrt of trace of M^T M)
+normFrobenius :: Floating a => SpMatrix a -> a
+normFrobenius m = sqrt $ foldlIM2 (+) 0 m' where
+  (SM _ m') = transposeSM m ## m
+  
+
+
+
+
+
 -- | ========= MATRIX METADATA
 
 -- -- predicates

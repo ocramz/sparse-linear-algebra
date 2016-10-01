@@ -35,6 +35,11 @@ ifoldlIM2 f m         = IM.foldlWithKey' accRow IM.empty m where
   accRow    acc i row = IM.foldlWithKey' (accElem i) acc row
   accElem i acc j x   = f i j x acc
 
+foldlIM2 :: (a -> b -> b) -> b -> IM.IntMap (IM.IntMap a) -> b
+foldlIM2 f empty mm = IM.foldl accRow empty mm where
+  accRow acc r = IM.foldl accElem acc r
+  accElem acc x = f x acc
+
 -- transposeIM2 : inner indices become outer ones and vice versa. No loss of information because both inner and outer IntMaps are nubbed.
 transposeIM2 :: IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 transposeIM2 = ifoldlIM2 (flip insertIM2)
