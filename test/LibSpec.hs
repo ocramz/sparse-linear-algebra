@@ -40,7 +40,7 @@ spec = do
     it "eye : identity matrix" $
       infoSM (eye 10) `shouldBe` SMInfo 10 0.1
     it "countSubdiagonalNZ : # of nonzero elements below the diagonal" $
-      countSubdiagonalNZSM tm1 `shouldBe` 1
+      countSubdiagonalNZSM m3 `shouldBe` 1
   describe "Math.Linear.Sparse : Linear solvers" $ do    
     it "BiCGSTAB (2 x 2 dense)" $ 
       normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
@@ -186,4 +186,4 @@ m1t = fromListDenseSM 2 [1,2,3,4]
 countSubdiagonalNZ
 -}
 
-tm1 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
+m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]

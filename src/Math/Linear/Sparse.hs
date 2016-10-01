@@ -68,11 +68,26 @@ class VectorSpace f => Normed f where
   dot :: Num a => f a -> f a -> a
   -- norm :: Num a => a -> f a -> a
 
+-- squared norm 
+normSq :: (Normed f, Num a) => f a -> a
+normSq v = v `dot` v
+
+-- Euclidean norm
+norm2 :: (Normed f, Floating a) => f a -> a
+norm2 v = sqrt (normSq v)
+
+
+-- p-norm (p > 0)
+normP :: (Additive t, Foldable t, Floating a) => a -> t a -> a
+normP p v = sum u**(1/p) where
+  f a b = (a*b)**p
+  u = liftI2 f v v
+
 
 
 -- | =======================================================
 
--- | IntMap implementation (can be swapped out with different backends in case)
+-- | IntMap implementation
 instance Additive IM.IntMap where
   zero = IM.empty
   {-# INLINE zero #-}
@@ -91,10 +106,8 @@ instance VectorSpace IM.IntMap where
 instance Normed IM.IntMap where
    a `dot` b = sum $ liftI2 (*) a b 
 
-normSq :: (Normed f, Num a) => f a -> a
-normSq v = v `dot` v
 
-   
+
 
 -- | =======================================================
 
@@ -184,9 +197,6 @@ findWithDefault0IM = IM.findWithDefault 0
 
 -- | =======================================================
 
--- | Sparse Matrices
--- data SpMatrix a = SM {smDim :: (Int, Int),
---                       smData :: IM.IntMap (SpVector a)} deriving Eq
 
 data SpMatrix a = SM {smDim :: (Int, Int),
                      smData :: IM.IntMap (IM.IntMap a)} deriving Eq
@@ -567,6 +577,8 @@ roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 
 
 
+
+
 -- | matrix action on a vector
 
 {- 
@@ -576,12 +588,13 @@ FIXME : matVec is more generic than SpVector's :
   :: (Normed f1, Num b, Functor f) => f (f1 b) -> f1 b -> f b
 -}
 
+-- matrix on vector
 matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
 matVec (SM (nrows,_) mdata) (SV n sv) = SV nrows $ fmap (`dot` sv) mdata
 
 (#>) = matVec
 
-
+-- vector on matrix (FIXME : transposes matrix: more costly than `matVec`)
 vecMat, (<#) :: Num a => SpVector a -> SpMatrix a -> SpVector a  
 vecMat (SV n sv) (SM (_, ncols) im) = SV ncols $ fmap (`dot` sv) (transposeIM2 im)
 
@@ -590,8 +603,7 @@ vecMat (SV n sv) (SM (_, ncols) im) = SV ncols $ fmap (`dot` sv) (transposeIM2 i
 
 
 
-waxpy :: Num a => a -> SpMatrix a -> SpVector a -> SpVector a -> SpVector a
-waxpy w a x y = w .* (a #> x) ^+^ y
+
 
 
 
@@ -616,6 +628,7 @@ matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
 
 -- | ========= predicates
 
+-- is the matrix orthogonal? i.e. Q^t ## Q == I
 isOrthogonalSM :: SpMatrix Double -> Bool
 isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
   rsm = roundZeroOneSM $ transposeSM sm ## sm
