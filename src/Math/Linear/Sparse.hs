@@ -267,8 +267,9 @@ matScale a = fmap (*a)
 
 -- Frobenius norm (sqrt of trace of M^T M)
 normFrobenius :: Floating a => SpMatrix a -> a
-normFrobenius m = sqrt $ foldlIM2 (+) 0 m' where
-  (SM _ m') = transposeSM m ## m
+normFrobenius m = sqrt $ foldlSM (+) 0 m' where
+  m' | nrows m > ncols m = transposeSM m ## m
+     | otherwise = m ## transposeSM m 
   
 
 
@@ -465,6 +466,11 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 
 
+-- | ========= SUMMARIES
+
+foldlSM :: (a -> b -> b) -> b -> SpMatrix a -> b
+foldlSM f n (SM _ m)= foldlIM2 f n m
+
 
 
 
@@ -518,25 +524,7 @@ sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 
 -- | ROUNDING operations (!!!)
-almostZero, almostOne :: Double -> Bool
-almostZero x = abs x <= eps
-almostOne x = x >= (1-eps) && x < (1+eps)
-
-withDefault :: (t -> Bool) -> t -> t -> t
-withDefault q d x | q x = d
-                  | otherwise = x
-
-roundZero, roundOne :: Double -> Double
-roundZero = withDefault almostZero 0
-roundOne = withDefault almostOne 1
-
-with2Defaults :: (t -> Bool) -> (t -> Bool) -> t -> t -> t -> t
-with2Defaults q1 q2 d1 d2 x | q1 x = d1
-                            | q2 x = d2
-                            | otherwise = x
-
-roundZeroOne :: Double -> Double
-roundZeroOne = with2Defaults almostZero almostOne 0 1                              
+                              
 
 roundZeroOneSM :: SpMatrix Double -> SpMatrix Double
 roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
@@ -653,12 +641,16 @@ givens mm i j
 Givens method, row version: choose other row index i' s.t. i' is :
 * below the diagonal
 * corresponding element is nonzero
+
+To zero out entry A(i, j) we must find row k such that A(k, j) is
+non-zero but A has zeros in row k for all columns less than j.
+
 -} 
 
--- chooseNZix m (i,j) nr
---   | nr < nrows m - j = undefined
---    where
---      i_ = [j .. j + nr - 1] -- indices below the diagonal
+chooseNZix m (i,j) nr
+  | nr < nrows m - j = undefined
+   where
+     i_ = [j .. j + nr - 1] -- indices below the diagonal
 --      elems = IM.filter
 
 -- filterMaybe q ll
@@ -895,13 +887,7 @@ linSolve method aa b
 
 
 
---
-
-
-
-
-
-
+-- | ========= PRETTY PRINTING
 
 -- | Show details and contents of sparse matrix
 
@@ -911,25 +897,9 @@ sizeStr sm =
   (SMInfo nz spy) = infoSM sm 
 
 
-
-
-
--- -- showSparseMatrix :: (Show α, Eq α, Num α) => [[α]] -> String
--- showSparseMatrix [] = "(0,0):\n[]\n"
--- showSparseMatrix m = show (length m, length (head m))++": \n"++
---     (unlines $ L.map (("["++) . (++"]") . L.intercalate "|")
---              $ L.transpose $ L.map column $ L.transpose m)
-
--- column :: (Show a, Num a, Eq a) => [a] -> [[Char]]
--- column c = let c'       = L.map showNonZero c
---                width    = L.maximum $ L.map length c'
---                offset x = replicate (width - (length x)) ' ' ++ x
---            in L.map offset c'
-
 showNonZero :: (Show a, Num a, Eq a) => a -> String
 showNonZero x  = if x == 0 then " " else show x
 
-    
 
 toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
 toDenseRow (SM (_,ncol) im) irow =
@@ -961,7 +931,7 @@ printDenseSM sm = do
            | otherwise = rr_
 
 
-toDenseListClip :: (Show a, Num a) => SpVector a -> Int -> [Char]
+toDenseListClip :: (Show a, Num a) => SpVector a -> Int -> String
 toDenseListClip sv ncomax
   | svDim sv > ncomax = unwords (map show h) ++  " ... " ++ show t
   | otherwise = show dr
@@ -974,7 +944,7 @@ printDenseSV sv = do
   newline
   printDenseSV' sv 5
   newline where
-    printDenseSV' v@(SV nv vd) nco = putStrLn rr_' where
+    printDenseSV' v nco = putStrLn rr_' where
       rr_ = toDenseListClip v nco :: String
       rr_' | svDim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
            | otherwise = rr_
@@ -998,6 +968,31 @@ instance (Show a, Num a) => PrintDense (SpMatrix a) where
 
 
 -- | utilities
+
+
+almostZero, almostOne :: Double -> Bool
+almostZero x = abs x <= eps
+almostOne x = x >= (1-eps) && x < (1+eps)
+
+withDefault :: (t -> Bool) -> t -> t -> t
+withDefault q d x | q x = d
+                  | otherwise = x
+
+roundZero, roundOne :: Double -> Double
+roundZero = withDefault almostZero 0
+roundOne = withDefault almostOne 1
+
+with2Defaults :: (t -> Bool) -> (t -> Bool) -> t -> t -> t -> t
+with2Defaults q1 q2 d1 d2 x | q1 x = d1
+                            | q2 x = d2
+                            | otherwise = x
+
+roundZeroOne :: Double -> Double
+roundZeroOne = with2Defaults almostZero almostOne 0 1
+
+
+
+
 
 -- transform state until a condition is met
 
@@ -1180,7 +1175,7 @@ inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 
 --
 
-tm0, tm1, tm2 :: SpMatrix Double
+tm0, tm1, tm2, tm3 :: SpMatrix Double
 tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
 
 tv0 :: SpVector Double
@@ -1202,6 +1197,16 @@ tm1q = transposeSM (tm1g2 ## tm1g1)
 -- wp test matrix for QR decomposition via Givens rotation
 
 tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
+
+
+
+
+tm3 = transposeSM $ fromListDenseSM 3 [1 .. 9]
+
+tm3g1 = fromListDenseSM 3 [1, 0,0, 0,c,-s, 0, s, c]
+  where c= 0.4961
+        s = 0.8682
+
 
 -- playground
 

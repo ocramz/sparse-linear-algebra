@@ -43,7 +43,8 @@ spec = do
       countSubdiagonalNZSM m3 `shouldBe` 1
   describe "Math.Linear.Sparse : Linear solvers" $ do    
     it "BiCGSTAB (2 x 2 dense)" $ 
-      normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
+      -- normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
+      normSq (aa0 <\> b0 ^-^ x0true) <= eps `shouldBe` True
     it "CGS (2 x 2 dense)" $ 
       normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
   -- let n = 10
