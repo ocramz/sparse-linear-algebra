@@ -20,6 +20,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Lib
                        Math.Linear.Sparse
+                       Math.Linear.Sparse.IntMap
   build-depends:       QuickCheck
                      , base >= 4.7 && < 5
                      , containers
