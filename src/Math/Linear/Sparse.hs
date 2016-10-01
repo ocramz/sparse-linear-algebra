@@ -68,22 +68,39 @@ lerp a u v = a .* u ^+^ ((1-a) .* v)
 class VectorSpace f => Normed f where
   -- | inner product
   dot :: Num a => f a -> f a -> a
-  -- norm :: Num a => a -> f a -> a
+
+
+-- some norms and related results
 
 -- squared norm 
 normSq :: (Normed f, Num a) => f a -> a
 normSq v = v `dot` v
 
+
+-- L1 norm
+norm1 :: (Foldable t, Num a, Functor t) => t a -> a
+norm1 v = sum (fmap abs v)
+
 -- Euclidean norm
 norm2 :: (Normed f, Floating a) => f a -> a
 norm2 v = sqrt (normSq v)
 
-
--- p-norm (p > 0)
-normP :: (Additive t, Foldable t, Floating a) => a -> t a -> a
+-- Lp norm (p > 0)
+normP :: (Foldable t, Functor t, Floating a) => a -> t a -> a
 normP p v = sum u**(1/p) where
+  u = fmap (**p) v
+
+-- infinity-norm
+normInfty :: (Foldable t, Ord a) => t a -> a
+normInfty = maximum
+
+
+
+-- -- Lp inner product (p > 0)
+dotLp :: (Additive t, Foldable t, Floating a) => a -> t a -> t a ->  a
+dotLp p v1 v2 = sum u**(1/p) where
   f a b = (a*b)**p
-  u = liftI2 f v v
+  u = liftI2 f v1 v2
 
 
 
