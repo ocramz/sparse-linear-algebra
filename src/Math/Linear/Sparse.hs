@@ -64,16 +64,20 @@ class Additive f => VectorSpace f where
 lerp :: (VectorSpace f, Num a) => a -> f a -> f a -> f a
 lerp a u v = a .* u ^+^ ((1-a) .* v)
 
--- | Normed vector space
-class VectorSpace f => Normed f where
+
+-- | Hilbert space (inner product)
+class VectorSpace f => Hilbert f where
   -- | inner product
   dot :: Num a => f a -> f a -> a
+
+class Hilbert f => Normed f where
+  norm :: (Floating a, Eq a) => a -> f a -> a
 
 
 -- some norms and related results
 
 -- squared norm 
-normSq :: (Normed f, Num a) => f a -> a
+normSq :: (Hilbert f, Num a) => f a -> a
 normSq v = v `dot` v
 
 
@@ -82,7 +86,7 @@ norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 norm1 v = sum (fmap abs v)
 
 -- Euclidean norm
-norm2 :: (Normed f, Floating a) => f a -> a
+norm2 :: (Hilbert f, Floating a) => f a -> a
 norm2 v = sqrt (normSq v)
 
 -- Lp norm (p > 0)
@@ -93,6 +97,8 @@ normP p v = sum u**(1/p) where
 -- infinity-norm
 normInfty :: (Foldable t, Ord a) => t a -> a
 normInfty = maximum
+
+
 
 
 
@@ -122,9 +128,13 @@ instance Additive IM.IntMap where
 instance VectorSpace IM.IntMap where
   n .* im = IM.map (* n) im
   
-instance Normed IM.IntMap where
+instance Hilbert IM.IntMap where
    a `dot` b = sum $ liftI2 (*) a b 
 
+instance Normed IM.IntMap where
+  norm p v | p==1 = norm1 v
+           | p==2 = norm2 v
+           | otherwise = normP p v
 
 
 
@@ -160,13 +170,17 @@ instance Additive SpVector where
 instance VectorSpace SpVector where
   n .* v = fmap (*n) v
 
-instance Normed SpVector where
+instance Hilbert SpVector where
   sv1 `dot` sv2
     | d1 == d2 = dot (svData sv1) (svData sv2)
     | otherwise = error $  "dot : vector sizes must coincide (instead : "++ show (d1, d2) ++ ")" where
         (d1, d2) = (svDim sv1, svDim sv2)
 
+instance Normed SpVector where
+  norm p (SV _ v) = norm p v
   
+
+
 
 -- | empty sparse vector (size n, no entries)
 
