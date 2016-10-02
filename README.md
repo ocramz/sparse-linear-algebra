@@ -8,13 +8,13 @@ Algorithms :
 
 * Iterative linear solvers
 
-** Conjugate Gradient Squared (CGS)
+    * Conjugate Gradient Squared (CGS)
 
-** BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems)
+    * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems)
 
 * Matrix decompositions
 
-** QR factorization
+    * QR factorization
 
 
 
