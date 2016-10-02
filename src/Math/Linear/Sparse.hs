@@ -266,7 +266,7 @@ matScale :: Num a => a -> SpMatrix a -> SpMatrix a
 matScale a = fmap (*a)
 
 -- Frobenius norm (sqrt of trace of M^T M)
-normFrobenius :: Floating a => SpMatrix a -> a
+normFrobenius :: SpMatrix Double -> Double
 normFrobenius m = sqrt $ foldlSM (+) 0 m' where
   m' | nrows m > ncols m = transposeSM m ## m
      | otherwise = m ## transposeSM m 
@@ -279,9 +279,11 @@ normFrobenius m = sqrt $ foldlSM (+) 0 m' where
 -- | ========= MATRIX METADATA
 
 -- -- predicates
+-- are the supplied indices within matrix bounds?
 validIxSM :: SpMatrix a -> (Int, Int) -> Bool
 validIxSM mm = inBounds02 (dimSM mm)
 
+-- is the matrix square?
 isSquareSM :: SpMatrix a -> Bool
 isSquareSM m = nrows m == ncols m
 
@@ -516,7 +518,7 @@ countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
 -- | sparsify : remove 0s (!!!)
 
 sparsifyIM2 :: IM.IntMap (IM.IntMap Double) -> IM.IntMap (IM.IntMap Double)
-sparsifyIM2 = ifilterIM2 (\_ _ x -> x /= 0.0)
+sparsifyIM2 = ifilterIM2 (\_ _ x -> abs x >= eps)
 
 sparsifySM :: SpMatrix Double -> SpMatrix Double
 sparsifySM (SM d im) = SM d $ sparsifyIM2 im
@@ -575,6 +577,11 @@ matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
 (##) = matMat
 
 
+-- | sparsified matrix-matrix product (prunes all elements `x` for which `abs x <= eps`)
+matMatSparsified, (#~#)  :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
+
+(#~#) = matMatSparsified
 
 
 
@@ -625,14 +632,14 @@ givensCoef a b  -- returns (c, s, r) where r = norm (a, b)
 givens :: SpMatrix Double -> Int -> Int -> SpMatrix Double
 givens mm i j 
   | validIxSM mm (i,j) && isSquareSM mm =
-       fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
+       sparsifySM $ fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
   | otherwise = error "givens : indices out of bounds"      
   where
     (c, s, _) = givensCoef a b
-    a = mm @@ (i-1,j) -- FIXME to be chosen from column of b, below diagonal
-    b = mm @@ (i,j)   -- element to zero out
-
-
+    -- a = mm @@ (i-1,j) -- FIXME to be chosen from column of b, below diagonal
+    i' = head $ fromMaybe (error $ "givens: no compatible rows for entry " ++ show (i,j)) (candidateRows (immSM mm) i j)
+    a = mm @@ (i', j)
+    b = mm @@ (i, j)   -- element to zero out
 
 
 
@@ -642,21 +649,24 @@ Givens method, row version: choose other row index i' s.t. i' is :
 * below the diagonal
 * corresponding element is nonzero
 
-To zero out entry A(i, j) we must find row k such that A(k, j) is
+QR.C1 ) To zero out entry A(i, j) we must find row k such that A(k, j) is
 non-zero but A has zeros in row k for all columns less than j.
 
 -} 
 
-chooseNZix m (i,j) nr
-  | nr < nrows m - j = undefined
-   where
-     i_ = [j .. j + nr - 1] -- indices below the diagonal
---      elems = IM.filter
 
--- filterMaybe q ll
---   | null ll' = Nothing
---   | otherwise = Just ll' where
---   ll' = L.filter q ll
+-- is the `k`th the first nonzero column in the row?
+firstNonZeroColumn :: IM.IntMap a -> IM.Key -> Bool
+firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
+                          isNothing (IM.lookupLT k mm)
+
+-- returns a set of rows {k} that satisfy QR.C1
+candidateRows :: IM.IntMap (IM.IntMap a) -> IM.Key -> IM.Key -> Maybe [IM.Key]
+candidateRows mm i j | IM.null u = Nothing
+                     | otherwise = Just (IM.keys u) where
+  u = IM.filterWithKey (\irow row -> irow /= i &&
+                                     firstNonZeroColumn row j) mm
+
 
        
 {-
@@ -1175,7 +1185,7 @@ inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 
 --
 
-tm0, tm1, tm2, tm3 :: SpMatrix Double
+tm0, tm1, tm2, tm3, tm4 :: SpMatrix Double
 tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
 
 tv0 :: SpVector Double
@@ -1206,6 +1216,11 @@ tm3 = transposeSM $ fromListDenseSM 3 [1 .. 9]
 tm3g1 = fromListDenseSM 3 [1, 0,0, 0,c,-s, 0, s, c]
   where c= 0.4961
         s = 0.8682
+
+
+--
+
+tm4 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
 
 
 -- playground
