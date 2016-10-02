@@ -667,9 +667,7 @@ applies Givens rotation iteratively to zero out sub-diagonal elements
 -}
 
 qr :: SpMatrix Double -> (SpMatrix Double, SpMatrix Double)
-qr mm
-  | countSubdiagonalNZSM rmat == 0 = (qmat, rmat)
-  | otherwise = error "qr : QR decomposition failed ! (R not upper triangular)" where
+qr mm = (qmat, rmat)  where
   indices = subdiagIndicesSM mm
   qmat = transposeSM $ foldr (#~#) (eye (nrows mm)) $ gmats mm
   rmat = (transposeSM qmat) #~# mm

@@ -47,6 +47,13 @@ spec = do
       normSq (aa0 <\> b0 ^-^ x0true) <= eps `shouldBe` True
     it "CGS (2 x 2 dense)" $ 
       normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
+  describe "Math.Linear.Sparse : QR decomposition" $ do    
+    it "QR (4 x 4 sparse)" $ do
+      let (q, r) = qr tm4
+      normFrobenius ((q #~# r) ^-^ tm4) <= eps `shouldBe` True
+    it "QR (3 x 3 dense)" $ do
+      let (q, r) = qr tm2
+      normFrobenius ((q #~# r) ^-^ tm2) <= eps `shouldBe` True      
   -- let n = 10
   --     nsp = 3
   -- describe ("random sparse linear system of size " ++ show n ++ " and sparsity " ++ show (fromIntegral nsp/fromIntegral n)) $ it "<\\>" $ do
