@@ -698,9 +698,9 @@ applies Givens rotation iteratively to zero out sub-diagonal elements
 
 qr :: SpMatrix Double -> (SpMatrix Double, SpMatrix Double)
 qr mm = (qmat, rmat)  where
-  indices = subdiagIndicesSM mm
-  qmat = transposeSM $ foldr (#~#) (eye (nrows mm)) $ gmats mm
-  rmat = (transposeSM qmat) #~# mm
+  qmat = transposeSM $ foldr (#~#) ee $ gmats mm -- Q = (G_n * G_n-1 ... * G_1)^T
+  rmat = (transposeSM qmat) #~# mm               -- R = Q^T A
+  ee = eye (nrows mm)
       
 -- Givens matrices in order [GN, G(N-1), .. ]
 gmats :: SpMatrix Double -> [SpMatrix Double]
@@ -799,6 +799,9 @@ instance Show CGS where
                                 "r = " ++ show r ++ "\n" ++
                                 "p = " ++ show p ++ "\n" ++
                                 "u = " ++ show u ++ "\n"
+
+
+
   
 
 -- | BiCSSTAB
@@ -891,6 +894,20 @@ linSolve method aa b
 (<\>) = linSolve BICGSTAB_
   
 
+
+
+
+-- | TODO : if system is poorly conditioned, is it better to warn the user or just switch solvers (e.g. via the pseudoinverse) ?
+
+-- linSolveQR aa b init f1 stepf
+--   | isInfinite k = do
+--        tell "linSolveQR : rank-deficient system"
+--   | otherwise = do
+--        solv aa b init
+--     where
+--      (q, r) = qr aa
+--      k = conditionNumberSM r
+--      solv aa b init = execState (untilConverged f1 stepf) init
 
 
 
