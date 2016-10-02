@@ -1,3 +1,4 @@
+{-# language ScopedTypeVariables #-}
 module LibSpec where
 
 import qualified Data.IntMap as IM
@@ -23,10 +24,8 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "Math.Linear.Sparse : library" $ do
-    -- it "works" $ do
-    --   True `shouldBe` True
-    -- prop "ourAdd is commutative" $ \x y ->
-    --   ourAdd x y `shouldBe` ourAdd y x
+    -- prop "subtraction is cancellative" $ \(x :: SpVector Double) ->
+    --   x ^-^ x `shouldBe` zero
     it "dot : inner product" $
       tv0 `dot` tv0 `shouldBe` 61
     it "transposeSM : sparse matrix transpose" $
