@@ -4,7 +4,7 @@ Sparse linear algebra datastructures and algorithms in Haskell
 
 TravisCI : [![Build Status](https://travis-ci.org/ocramz/sparse-linear-algebra.png)](https://travis-ci.org/ocramz/sparse-linear-algebra)
 
-This library provides common linear algebra and numerical analysis functionality, and doesn't require any bindings to external libraries. It is not optimized for performance (yet), but it serves as an experimental platform for scientific computation in a purely functional setting.
+This library provides common numerical analysis functionality, without requiring any external bindings. It is not optimized for performance (yet), but it serves as an experimental platform for scientific computation in a purely functional setting.
 
 Algorithms :
 
@@ -17,6 +17,10 @@ Algorithms :
 * Matrix decompositions
 
     * QR factorization
+
+* Utilities : Vector and matrix norms, matrix condition number
+
+* Predicates : Matrix orthogonality test (A^T A ~= I)
 
 
 

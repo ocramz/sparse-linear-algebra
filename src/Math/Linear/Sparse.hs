@@ -144,7 +144,6 @@ instance Normed IM.IntMap where
 data SpVector a = SV { svDim :: Int ,
                        svData :: IM.IntMap a} deriving Eq
 
-
 dimSV :: SpVector a -> Int
 dimSV = svDim
 
