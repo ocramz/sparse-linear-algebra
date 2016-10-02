@@ -491,9 +491,6 @@ transposeSM :: SpMatrix a -> SpMatrix a
 transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
 
-
-
-
 -- | mapping 
 
 
@@ -502,16 +499,18 @@ transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 -- | folding
 
 -- count sub-diagonal nonzeros
-
-
-
-countSubdiagonalNZ :: IM.IntMap (IM.IntMap a) -> Int
-countSubdiagonalNZ im =
-  IM.size $ IM.filter (not . IM.null) (ifilterIM2 (\i j _ -> i>j) im)
-
 countSubdiagonalNZSM :: SpMatrix a -> Int
 countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
+
+
+-- | filtering
   
+
+--  filtering index set
+subdiagIndicesSM :: SpMatrix a -> [(IM.Key, IM.Key)]
+subdiagIndicesSM (SM _ im) = subdiagIndices im
+
+
 
 
 
@@ -527,7 +526,6 @@ sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 -- | ROUNDING operations (!!!)
                               
-
 roundZeroOneSM :: SpMatrix Double -> SpMatrix Double
 roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 
@@ -629,20 +627,6 @@ givensCoef a b  -- returns (c, s, r) where r = norm (a, b)
                     u = sign b * abs ( sqrt (1 + t**2))
                 in (t/u, - 1/u, b*u)
 
-givens :: SpMatrix Double -> Int -> Int -> SpMatrix Double
-givens mm i j 
-  | validIxSM mm (i,j) && isSquareSM mm =
-       sparsifySM $ fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
-  | otherwise = error "givens : indices out of bounds"      
-  where
-    (c, s, _) = givensCoef a b
-    -- a = mm @@ (i-1,j) -- FIXME to be chosen from column of b, below diagonal
-    i' = head $ fromMaybe (error $ "givens: no compatible rows for entry " ++ show (i,j)) (candidateRows (immSM mm) i j)
-    a = mm @@ (i', j)
-    b = mm @@ (i, j)   -- element to zero out
-
-
-
 
 {-
 Givens method, row version: choose other row index i' s.t. i' is :
@@ -651,9 +635,18 @@ Givens method, row version: choose other row index i' s.t. i' is :
 
 QR.C1 ) To zero out entry A(i, j) we must find row k such that A(k, j) is
 non-zero but A has zeros in row k for all columns less than j.
+-}
 
--} 
-
+givens :: SpMatrix Double -> Int -> Int -> SpMatrix Double
+givens mm i j 
+  | validIxSM mm (i,j) && isSquareSM mm =
+       sparsifySM $ fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
+  | otherwise = error "givens : indices out of bounds"      
+  where
+    (c, s, _) = givensCoef a b
+    i' = head $ fromMaybe (error $ "givens: no compatible rows for entry " ++ show (i,j)) (candidateRows (immSM mm) i j)
+    a = mm @@ (i', j)
+    b = mm @@ (i, j)   -- element to zero out
 
 -- is the `k`th the first nonzero column in the row?
 firstNonZeroColumn :: IM.IntMap a -> IM.Key -> Bool
@@ -667,44 +660,27 @@ candidateRows mm i j | IM.null u = Nothing
   u = IM.filterWithKey (\irow row -> irow /= i &&
                                      firstNonZeroColumn row j) mm
 
-
-       
-{-
-%%%%Van Loan's Function, Chapter 7%%%%%%%%
-  function [c,s] = GivensRotation(x1,x2);
-% Pre:
-%   x1,x2   scalars
-% Post:
-%   c,s     c^2+s^2=1 so -s*x1 + c*x2 = 0.
-%
-   if x2==0
-      c = 1;
-          s = 0;
-   else
-      if abs(x2)>=abs(x1)
-             cotangent = x1/x2;
-                 s = 1/sqrt(1+cotangent^2);
-                 c = s*cotangent;
-          else
-             tangent = x2/x1;
-                 c = 1/sqrt(1+tangent^2);
-                 s = c*tangent;
-          end
-   end
-
--}
-
-
-
 -- | ========= QR algorithm
-
-
-
-
 
 {-
 applies Givens rotation iteratively to zero out sub-diagonal elements
 -}
+
+qr :: SpMatrix Double -> (SpMatrix Double, SpMatrix Double)
+qr mm
+  | countSubdiagonalNZSM rmat == 0 = (qmat, rmat)
+  | otherwise = error "qr : QR decomposition failed ! (R not upper triangular)" where
+  indices = subdiagIndicesSM mm
+  qmat = transposeSM $ foldr (#~#) (eye (nrows mm)) $ gmats mm
+  rmat = (transposeSM qmat) #~# mm
+      
+-- Givens matrices in order [GN, G(N-1), .. ]
+gmats :: SpMatrix Double -> [SpMatrix Double]
+gmats mm = reverse $ gm mm (subdiagIndicesSM mm) where
+ gm m ((i,j):is) = let g = givens m i j
+                   in g : gm (g #~# m) is
+ gm _ [] = []
+
 
 
 
