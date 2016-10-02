@@ -195,9 +195,15 @@ mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds0 d k) im
 mkSpVectorD :: (Num a, Eq a) => Int -> [a] -> SpVector a
 mkSpVectorD d ll = mkSpVector d (IM.fromList $ denseIxArray (take d ll))
 
+-- ", don't filter zero elements
+mkSpVector1 :: Int -> IM.IntMap a -> SpVector a
+mkSpVector1 d ll = SV d $ IM.filterWithKey (\ k _ -> inBounds0 d k) ll
+
+mkSpVector1D :: Int -> [a] -> SpVector a
+mkSpVector1D d ll = mkSpVector1 d (IM.fromList $ denseIxArray (take d ll))
 
 
-
+-- insert
 insertSpVector :: Int -> a -> SpVector a -> SpVector a
 insertSpVector i x (SV d xim)
   | inBounds0 d i = SV d (IM.insert i x xim)
@@ -214,6 +220,9 @@ toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
   
 instance Show a => Show (SpVector a) where
   show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList x)
+
+
+-- | lookup
 
 lookupDenseSV :: Num a => IM.Key -> SpVector a -> a
 lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im 
@@ -504,6 +513,19 @@ countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
 
 
 -- | filtering
+
+extractDiagonalSM :: (Num a, Eq a) => SpMatrix a -> SpVector a
+extractDiagonalSM (SM (m,n) im) = mkSpVectorD m $ extractDiagonalIM2 im
+
+-- extract with default
+extractDiagonalDSM :: (Num a, Eq a) => SpMatrix a -> SpVector a
+extractDiagonalDSM mm = mkSpVector1D n $ foldr ins [] ll  where
+  ll = [0 .. n - 1]
+  n = nrows mm
+  ins i acc = mm@@(i,i) : acc
+  
+
+
   
 
 --  filtering index set
@@ -599,6 +621,15 @@ isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
 
 
 
+
+
+-- | ========= condition number
+
+conditionNumberSM :: (Ord a, Fractional a) => SpMatrix a -> a
+conditionNumberSM m = lmax / lmin where
+  u = extractDiagonalDSM m  -- FIXME : need to extract with default element 0 
+  lmax = abs (maximum u)
+  lmin = abs (minimum u)
 
 
 

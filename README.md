@@ -1,8 +1,10 @@
 # sparse-linear-algebra
 
-Sparse linear algebra datastructures and algorithms in pure Haskell
+Sparse linear algebra datastructures and algorithms in Haskell
 
 TravisCI : [![Build Status](https://travis-ci.org/ocramz/sparse-linear-algebra.png)](https://travis-ci.org/ocramz/sparse-linear-algebra)
+
+This library provides common linear algebra and numerical analysis functionality, and doesn't require any bindings to external libraries. It is not optimized for performance (yet), but it serves as an experimental platform for scientific computation in a purely functional setting.
 
 Algorithms :
 
