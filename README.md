@@ -24,6 +24,8 @@ Algorithms :
 
 
 
+----------
+
 This is also an experiment in principled scientific programming :
 
 * set the stage by declaring typeclasses and some useful generic operations (normed linear vector spaces, i.e. finite-dimensional spaces equipped with an inner product that induces a distance function),
