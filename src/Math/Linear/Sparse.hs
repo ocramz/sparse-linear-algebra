@@ -532,36 +532,14 @@ type IxCol = Int
 
 -- | ========= SUB-MATRICES
 
--- unsafe : no bounds checking
-extractRowSMU :: SpMatrix a -> IxRow -> SpMatrix a
-extractRowSMU s irow =
-  SM (1, ncols s) $ IM.filterWithKey (\i _ -> irow == i) (immSM s)
-
-extractRowsSMU :: SpMatrix a -> LB -> UB -> SpMatrix a
-extractRowsSMU s i1 i2 =
-  SM (1, ncols s) $ IM.filterWithKey (\i _ -> inBounds i1 i2 i) (immSM s)
-
-extractColSMU :: SpMatrix a -> IxCol -> SpMatrix a
-extractColSMU s jcol = SM d' imm' where
-  imm' = IM.map ff (immSM s)
-  d' = (nrows s, 1)
-  ff = IM.filterWithKey (\j _ -> j==jcol)
-
-  
--- safe : out-of-bounds indexing is thrown as an exception
--- extractRowsSM :: SpMatrix a -> IxRow -> Int -> SpMatrix a
-extractRowsSM (SM (nro,nco) im) i1 i2
-  | inBounds0 nro i1  && inBounds0 nro i2 && i2 >= i1 = SM (i2-i1,nco) imf
-  | otherwise = error $ "rowsSM : invalid indexing " ++ show (i1, i2) where
-      imf = IM.filterWithKey (\i _ -> inBounds i1 i2 i) im
-
-
 
 extractSubmatrixSM :: SpMatrix a -> (Int, Int) -> (Int, Int) -> SpMatrix a
 extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
   | q = SM (m', n') imm'
-  | otherwise = error $ "rowsSM : invalid indexing " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
-  imm' = mapKeysIM2 (\i -> i - i1) (\j -> j - j1)$ IM.filter (not . IM.null) $ ifilterIM2 ff im
+  | otherwise = error $ "extractSubmatrixSM : invalid indexing " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
+  imm' = mapKeysIM2 (\i -> i - i1) (\j -> j - j1) $  -- rebalance keys
+          IM.filter (not . IM.null) $                -- remove all-null rows
+          ifilterIM2 ff im                           -- keep `submatrix`
   ff i j _ = i1 <= i &&
              i <= i2 &&
              j1 <= j &&
@@ -573,9 +551,26 @@ extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
       inBounds0 c j2 &&      
       i2 >= i1
 
+extractRowSM :: SpMatrix a -> Int -> SpMatrix a
+extractRowSM sm i = extractSubmatrixSM sm (i, i) (0, ncols sm - 1)
 
--- rebalanceKeys m imin jmin
+extractColSM :: SpMatrix a -> Int -> SpMatrix a
+extractColSM sm j = extractSubmatrixSM sm (0, nrows sm - 1) (j, j)
 
+
+toSV :: SpMatrix a -> SpVector a
+toSV (SM (m,n) im) = SV d $ snd . head $ IM.toList im where
+  d | m==1 && n>1 = n 
+    | n==1 && m>1 = m
+    | otherwise = error $ "toSV : incompatible dimensions " ++ show (m,n)
+
+
+-- extract row or column and place into SpVector
+extractCol :: SpMatrix a -> Int -> SpVector a
+extractCol m i = toSV $ extractColSM m i
+
+extractRow :: SpMatrix a -> Int -> SpVector a
+extractRow m j = toSV $ extractRowSM m j
 
 
 
