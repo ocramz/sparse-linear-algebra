@@ -100,6 +100,11 @@ normInfty = maximum
 
 
 
+-- normalize
+normalize :: (Normed f, Floating a, Eq a) => a -> f a -> f a
+normalize n v = (1 / norm n v) .* v
+
+
 
 
 -- -- Lp inner product (p > 0)
@@ -107,6 +112,16 @@ dotLp :: (Additive t, Foldable t, Floating a) => a -> t a -> t a ->  a
 dotLp p v1 v2 = sum u**(1/p) where
   f a b = (a*b)**p
   u = liftI2 f v1 v2
+
+
+-- reciprocal
+reciprocal :: (Functor f, Fractional b) => f b -> f b
+reciprocal = fmap (\x -> 1 / x)
+
+
+-- scale
+scale :: (Num b, Functor f) => b -> f b -> f b
+scale n = fmap (* n)
 
 
 
@@ -167,7 +182,7 @@ instance Additive SpVector where
   liftI2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftI2 f2 x1 x2)
                       
 instance VectorSpace SpVector where
-  n .* v = fmap (*n) v
+  n .* v = scale n v
 
 instance Hilbert SpVector where
   sv1 `dot` sv2
@@ -185,6 +200,11 @@ instance Normed SpVector where
 
 zeroSV :: Int -> SpVector a
 zeroSV n = SV n IM.empty
+
+
+singletonSV :: a -> SpVector a
+singletonSV x = SV 1 (IM.singleton 0 x)
+
 
 -- | create a sparse vector from an association list while discarding all zero entries
 mkSpVector :: (Num a, Eq a) => Int -> IM.IntMap a -> SpVector a
@@ -231,8 +251,35 @@ findWithDefault0IM = IM.findWithDefault 0
 
 
 
+
+-- | SV manipulation
+
+tailSV :: SpVector a -> SpVector a
+tailSV (SV n sv) = SV (n-1) ta where
+  ta = IM.mapKeys (\i -> i - 1) $ IM.delete 0 sv
+  
+
+headSV :: Num a => SpVector a -> a
+headSV sv = fromMaybe 0 (IM.lookup 0 (imSV sv))
+
+
+
+-- | concatenate SpVector
+
+
+concatSV :: SpVector a -> SpVector a -> SpVector a
+concatSV (SV n1 s1) (SV n2 s2) = SV (n1+n2) (IM.union s1 s2') where
+  s2' = IM.mapKeys (+ n1) s2
+
+
+
+
     
-                      
+
+
+
+
+    
 
 
 
@@ -489,6 +536,7 @@ horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
 
 
 
+
 -- | ========= LOOKUP
 
 lookupSM :: SpMatrix a -> IM.Key -> IM.Key -> Maybe a
@@ -537,6 +585,7 @@ ifoldlSM f n (SM _ m) = ifoldlIM2' f n m
 
 
 -- | mapping 
+
 
 
 
@@ -776,6 +825,27 @@ gmats mm = reverse $ gm mm (subdiagIndicesSM mm) where
 
 
 
+-- | ========= Householder vector (G & VL Alg.5.1.1)
+
+house :: (Ord a, Floating a) => SpVector a -> (SpVector a, a)
+house x = (v, beta) where
+  n = svDim x
+  tx = tailSV x
+  sigma = tx `dot` tx
+  vtemp = singletonSV 1 `concatSV` tx
+  (v, beta) | sigma == 0 = (vtemp, 0)
+            | otherwise = let mu = sqrt (headSV x**2 + sigma)
+                              xh = headSV x
+                              vh | xh <= 1 = xh - mu
+                                 | otherwise = - sigma / (xh + mu)
+                              vnew = (1 / vh) .* insertSpVector 0 vh vtemp     
+                          in (vnew, 2 * xh**2 / (sigma + vh**2))
+
+                         
+
+
+
+
 
 
 -- | ========= SVD
@@ -942,10 +1012,12 @@ linSolve ::
   LinSolveMethod -> SpMatrix Double -> SpVector Double -> SpVector Double
 linSolve method aa b
   | m/=mb = error "linSolve : operand dimensions mismatch"
-  | otherwise = case method of
-      CGS_ ->  _xBicgstab (bicgstab aa b x0 x0)
-      BICGSTAB_ -> _x (cgs aa b x0 x0)
-     where
+  | otherwise = solve aa b where
+      solve aa' b' | isDiagonalSM aa = (reciprocal aa') #> b'
+                   | otherwise = solveWith aa' b' 
+      solveWith aa' b' = case method of
+                                CGS_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
+                                BICGSTAB_ -> _x (cgs aa' b' x0 x0)
       x0 = mkSpVectorD n $ replicate n 0.1 
       (m,n) = dimSM aa
       mb = dimSV b
@@ -953,7 +1025,7 @@ linSolve method aa b
 -- <\> : sets default solver method 
 
 (<\>) :: SpMatrix Double -> SpVector Double -> SpVector Double      
-(<\>) = linSolve BICGSTAB_
+(<\>) = linSolve BICGSTAB_ 
   
 
 

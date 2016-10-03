@@ -34,6 +34,7 @@ ifoldlIM2' :: (IM.Key -> IM.Key -> a -> b -> b) -> b -> IM.IntMap (IM.IntMap a) 
 ifoldlIM2' f empty mm = IM.foldlWithKey' accRow empty mm where
   accRow acc i r = IM.foldlWithKey' (accElem i) acc r
   accElem i acc j x = f i j x acc
+{-# inline ifoldlIM2' #-}
 
 ifoldlIM2 ::
   (IM.Key -> IM.Key -> t -> IM.IntMap a -> IM.IntMap a) ->
@@ -42,18 +43,19 @@ ifoldlIM2 ::
 ifoldlIM2 f m         = IM.foldlWithKey' accRow IM.empty m where
   accRow    acc i row = IM.foldlWithKey' (accElem i) acc row
   accElem i acc j x   = f i j x acc
+{-# inline ifoldlIM2 #-}  
 
 foldlIM2 :: (a -> b -> b) -> b -> IM.IntMap (IM.IntMap a) -> b
 foldlIM2 f empty mm = IM.foldl accRow empty mm where
   accRow acc r = IM.foldl accElem acc r
   accElem acc x = f x acc
-
+{-# inline foldlIM2 #-}
 
 
 -- transposeIM2 : inner indices become outer ones and vice versa. No loss of information because both inner and outer IntMaps are nubbed.
 transposeIM2 :: IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 transposeIM2 = ifoldlIM2 (flip insertIM2)
-
+{-# inline transposeIM2 #-}
 
 -- specialized folds
 
@@ -73,7 +75,7 @@ ifilterIM2 ::
   IM.IntMap (IM.IntMap a)
 ifilterIM2 f  =
   IM.mapWithKey (\irow row -> IM.filterWithKey (f irow) row) 
-
+{-# inline ifilterIM2 #-}
 
 -- specialized filtering function
 
