@@ -222,6 +222,17 @@ mkSpVector1D :: Int -> [a] -> SpVector a
 mkSpVector1D d ll = mkSpVector1 d (IM.fromList $ denseIxArray (take d ll))
 
 
+
+-- vector of `1`s
+onesSV :: Num a => Int -> SpVector a
+onesSV d = SV d $ IM.fromList $ denseIxArray $ replicate d 1
+
+zerosSV :: Num a => Int -> SpVector a
+zerosSV d = SV d $ IM.fromList $ denseIxArray $ replicate d 0
+
+
+
+
 -- insert
 insertSpVector :: Int -> a -> SpVector a -> SpVector a
 insertSpVector i x (SV d xim)
@@ -239,6 +250,13 @@ toListSV sv = IM.toList (imSV sv)
 -- to dense list (default = 0)
 toDenseListSV :: Num b => SpVector b -> [b]
 toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
+
+
+
+
+
+
+
 
 
   
@@ -279,6 +297,19 @@ concatSV (SV n1 s1) (SV n2 s2) = SV (n1+n2) (IM.union s1 s2') where
 
 
 
+
+
+
+
+
+
+-- | promote a SV to SM
+
+svToSM :: SpVector a -> SpMatrix a
+svToSM (SV n d) = SM (n, 1) $ IM.singleton 0 d
+
+
+
     
 
 -- | outer vector product
@@ -290,6 +321,11 @@ outerProdSV v1 v2 = fromListSM (m, n) ixy where
   ixy = [(i,j, x * y) | (i,x) <- toListSV v1 , (j, y) <- toListSV v2]
 
 (><) = outerProdSV
+
+
+
+
+
 
 
 
@@ -491,6 +527,9 @@ type IxCol = Int
 
 
 
+
+
+
 -- | ========= SUB-MATRICES
 
 -- unsafe : no bounds checking
@@ -517,6 +556,25 @@ extractRowsSM (SM (nro,nco) im) i1 i2
       imf = IM.filterWithKey (\i _ -> inBounds i1 i2 i) im
 
 
+
+extractSubmatrixSM :: SpMatrix a -> (Int, Int) -> (Int, Int) -> SpMatrix a
+extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
+  | q = SM (m', n') imm'
+  | otherwise = error $ "rowsSM : invalid indexing " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
+  imm' = mapKeysIM2 (\i -> i - i1) (\j -> j - j1)$ IM.filter (not . IM.null) $ ifilterIM2 ff im
+  ff i j _ = i1 <= i &&
+             i <= i2 &&
+             j1 <= j &&
+             j <= j2
+  (m', n') = (i2-i1 + 1, j2-j1 + 1)
+  q = inBounds0 r i1  &&
+      inBounds0 r i2 &&
+      inBounds0 c j1  &&
+      inBounds0 c j2 &&      
+      i2 >= i1
+
+
+-- rebalanceKeys m imin jmin
 
 
 
@@ -761,11 +819,21 @@ conditionNumberSM m = lmax / lmin where
 -- | ========= Householder transformation
 
 householderMatrix :: Num a => a -> SpVector a -> SpMatrix a
-householderMatrix beta v = eye n ^-^ scale beta (v >< v) where
-  n = svDim v
+householderMatrix beta x = eye n ^-^ scale beta (x >< x) where
+  n = svDim x
 
+
+-- a vector `x` uniquely defines an orthogonal plane; the Householder operator reflects any point `v` with respect to this plane:
+-- v' = (I - 2 x >< x) v 
 householderRefl :: SpVector Double -> SpMatrix Double
 householderRefl = householderMatrix 2.0
+
+
+
+
+
+
+
 
 
 

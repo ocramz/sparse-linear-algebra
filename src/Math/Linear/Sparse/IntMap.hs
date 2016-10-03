@@ -123,6 +123,16 @@ imapIM2 f im = IM.mapWithKey ff im where
 
 
 
+-- mapping keys
+
+mapKeysIM2 ::
+  (IM.Key -> IM.Key) -> (IM.Key -> IM.Key) -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+mapKeysIM2 fi fj im = IM.map adjCols adjRows where
+  adjRows = IM.mapKeys fi im
+  adjCols = IM.mapKeys fj 
+
+
+
 
 -- map over a single `column`
 
