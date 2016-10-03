@@ -551,6 +551,7 @@ extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
       inBounds0 c j2 &&      
       i2 >= i1
 
+-- extract row / column
 extractRowSM :: SpMatrix a -> Int -> SpMatrix a
 extractRowSM sm i = extractSubmatrixSM sm (i, i) (0, ncols sm - 1)
 
@@ -571,6 +572,8 @@ extractCol m i = toSV $ extractColSM m i
 
 extractRow :: SpMatrix a -> Int -> SpVector a
 extractRow m j = toSV $ extractRowSM m j
+
+
 
 
 
@@ -799,9 +802,12 @@ isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
 
 -- | ========= condition number
 
-conditionNumberSM :: (Ord a, Fractional a) => SpMatrix a -> a
-conditionNumberSM m = lmax / lmin where
-  u = extractDiagonalDSM m  -- FIXME : need to extract with default element 0 
+conditionNumberSM :: SpMatrix Double -> Double
+conditionNumberSM m | isInfinite kappa = error "Infinite condition number : rank-deficient system"
+                    | otherwise = kappa where
+  kappa = lmax / lmin
+  (_, r) = qr m
+  u = extractDiagonalDSM r  -- FIXME : need to extract with default element 0 
   lmax = abs (maximum u)
   lmin = abs (minimum u)
 
@@ -1224,7 +1230,7 @@ instance (Show a, Num a) => PrintDense (SpMatrix a) where
 
 
 
--- | utilities
+-- | rounding to 0 or 1 within some predefined numerical precision
 
 
 almostZero, almostOne :: Double -> Bool
@@ -1251,7 +1257,7 @@ roundZeroOne = with2Defaults almostZero almostOne 0 1
 
 
 
--- transform state until a condition is met
+-- | transform state until a condition is met
 
 modifyUntil :: MonadState s m => (s -> Bool) -> (s -> s) -> m s
 modifyUntil q f = do
