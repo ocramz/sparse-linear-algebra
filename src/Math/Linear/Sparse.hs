@@ -756,6 +756,20 @@ conditionNumberSM m = lmax / lmin where
 
 
 
+
+
+-- | ========= Householder transformation
+
+householderMatrix :: Num a => a -> SpVector a -> SpMatrix a
+householderMatrix beta v = eye n ^-^ scale beta (v >< v) where
+  n = svDim v
+
+householderRefl :: SpVector Double -> SpMatrix Double
+householderRefl = householderMatrix 2.0
+
+
+
+
 -- | ========= Givens rotation matrix
 
 
@@ -811,6 +825,10 @@ candidateRows mm i j | IM.null u = Nothing
                      | otherwise = Just (IM.keys u) where
   u = IM.filterWithKey (\irow row -> irow /= i &&
                                      firstNonZeroColumn row j) mm
+
+
+
+
 
 -- | ========= QR algorithm
 
