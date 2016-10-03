@@ -18,7 +18,7 @@ Algorithms :
 
     * QR factorization
 
-* Utilities : Vector and matrix norms, matrix condition number, Givens rotation
+* Utilities : Vector and matrix norms, matrix condition number, Givens rotation, Householder reflection
 
 * Predicates : Matrix orthogonality test (A^T A ~= I)
 
