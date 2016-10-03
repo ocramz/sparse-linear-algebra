@@ -116,7 +116,7 @@ dotLp p v1 v2 = sum u**(1/p) where
 
 -- reciprocal
 reciprocal :: (Functor f, Fractional b) => f b -> f b
-reciprocal = fmap (\x -> 1 / x)
+reciprocal = fmap recip
 
 
 -- scale
