@@ -467,22 +467,22 @@ extractRowsSM (SM (nro,nco) im) i1 i2
 
 -- | ========= MATRIX STACKING
 
-vertStackSM :: SpMatrix a -> SpMatrix a -> SpMatrix a
+vertStackSM, (-=-) :: SpMatrix a -> SpMatrix a -> SpMatrix a
 vertStackSM mm1 mm2 = SM (m, n) $ IM.union u1 u2 where
-  m = nrows mm1 + nrows mm2
+  nro1 = nrows mm1
+  m = nro1 + nrows mm2
   n = max (ncols mm1) (ncols mm2)
   u1 = immSM mm1
-  u2 = IM.mapKeys (+ m) (immSM mm2)
+  u2 = IM.mapKeys (+ nro1) (immSM mm2)
 
-horizStackSM :: SpMatrix a -> SpMatrix a -> SpMatrix a
-horizStackSM mm1 mm2 = SM (m, n) $ IM.union u1 u2 where
-  m = max (nrows mm1) (nrows mm2)
-  nco1 = ncols mm1
-  n = nco1 + ncols mm2
-  u1 = immSM mm1
-  u2 = IM.map (IM.mapKeys (+ nco1)) (immSM mm2)
+(-=-) = vertStackSM
 
 
+horizStackSM, (-||-) :: SpMatrix a -> SpMatrix a -> SpMatrix a
+horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
+  t = transposeSM
+
+(-||-) = horizStackSM
 
 
 
