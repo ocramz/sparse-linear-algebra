@@ -295,6 +295,19 @@ validIxSM mm = inBounds02 (dimSM mm)
 isSquareSM :: SpMatrix a -> Bool
 isSquareSM m = nrows m == ncols m
 
+-- is the matrix diagonal?
+isDiagonalSM :: SpMatrix a -> Bool
+isDiagonalSM m = IM.size d == nrows m where
+  d = IM.filterWithKey ff (immSM m)
+  ff irow row = IM.size row == 1 &&
+                IM.size (IM.filterWithKey (\j e -> j == irow) row) == 1
+
+
+
+
+
+
+
 
 -- -- internal projection functions, do not export:
 immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
@@ -355,6 +368,7 @@ insertSpMatrix i j x s
       d = dimSM s
 
 
+-- | from list (row, col, value)
 fromListSM' :: Foldable t => t (Int, Int, a) -> SpMatrix a -> SpMatrix a
 fromListSM' iix sm = foldl ins sm iix where
   ins t (i,j,x) = insertSpMatrix i j x t
@@ -369,7 +383,18 @@ fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
   
 
 
--- -- diagonal and identity matrix
+-- | to List
+
+-- toDenseListSM : populate missing entries with 0
+toDenseListSM :: Num t => SpMatrix t -> [(Int, Int, t)]
+toDenseListSM m =
+  [(i, j, m @@ (i, j)) | i <- [0 .. nrows m - 1], j <- [0 .. ncols m- 1]]
+
+
+
+
+
+-- -- create diagonal and identity matrix
 mkDiagonal :: Int -> [a] -> SpMatrix a
 mkDiagonal n xx = fromListSM (n,n) $ zip3 ii ii xx where
   ii = [0..n-1]
@@ -440,6 +465,28 @@ extractRowsSM (SM (nro,nco) im) i1 i2
 
 
 
+-- | ========= MATRIX STACKING
+
+vertStackSM :: SpMatrix a -> SpMatrix a -> SpMatrix a
+vertStackSM mm1 mm2 = SM (m, n) $ IM.union u1 u2 where
+  m = nrows mm1 + nrows mm2
+  n = max (ncols mm1) (ncols mm2)
+  u1 = immSM mm1
+  u2 = IM.mapKeys (+ m) (immSM mm2)
+
+horizStackSM :: SpMatrix a -> SpMatrix a -> SpMatrix a
+horizStackSM mm1 mm2 = SM (m, n) $ IM.union u1 u2 where
+  m = max (nrows mm1) (nrows mm2)
+  nco1 = ncols mm1
+  n = nco1 + ncols mm2
+  u1 = immSM mm1
+  u2 = IM.map (IM.mapKeys (+ nco1)) (immSM mm2)
+
+
+
+
+
+
 
 
 -- | ========= LOOKUP
@@ -476,27 +523,17 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 
 
--- | ========= SUMMARIES
+-- | ========= MISC SpMatrix OPERATIONS
 
 foldlSM :: (a -> b -> b) -> b -> SpMatrix a -> b
 foldlSM f n (SM _ m)= foldlIM2 f n m
 
+ifoldlSM :: (IM.Key -> IM.Key -> a -> b -> b) -> b -> SpMatrix a -> b
+ifoldlSM f n (SM _ m) = ifoldlIM2' f n m
 
 
 
 
-  
-
-
-
--- | ========= ALGEBRAIC PRIMITIVE OPERATIONS
-
-
--- | transpose
-
-
-transposeSM :: SpMatrix a -> SpMatrix a
-transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
 
 -- | mapping 
@@ -513,10 +550,10 @@ countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
 
 -- | filtering
 
-extractDiagonalSM :: (Num a, Eq a) => SpMatrix a -> SpVector a
-extractDiagonalSM (SM (m,n) im) = mkSpVectorD m $ extractDiagonalIM2 im
+-- extractDiagonalSM :: (Num a, Eq a) => SpMatrix a -> SpVector a
+-- extractDiagonalSM (SM (m,n) im) = mkSpVectorD m $ extractDiagonalIM2 im
 
--- extract with default
+-- extract with default 0
 extractDiagonalDSM :: (Num a, Eq a) => SpMatrix a -> SpVector a
 extractDiagonalDSM mm = mkSpVector1D n $ foldr ins [] ll  where
   ll = [0 .. n - 1]
@@ -525,9 +562,12 @@ extractDiagonalDSM mm = mkSpVector1D n $ foldr ins [] ll  where
   
 
 
+
+
   
 
---  filtering index set
+--  filtering the index subset that lies below the diagonal
+
 subdiagIndicesSM :: SpMatrix a -> [(IM.Key, IM.Key)]
 subdiagIndicesSM (SM _ im) = subdiagIndices im
 
@@ -549,6 +589,28 @@ sparsifySM (SM d im) = SM d $ sparsifyIM2 im
                               
 roundZeroOneSM :: SpMatrix Double -> SpMatrix Double
 roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
+
+
+
+
+
+
+
+  
+
+
+
+-- | ========= ALGEBRAIC PRIMITIVE OPERATIONS
+
+
+-- | transpose
+
+
+transposeSM :: SpMatrix a -> SpMatrix a
+transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
+
+
+
 
 
 

@@ -57,9 +57,9 @@ transposeIM2 = ifoldlIM2 (flip insertIM2)
 
 -- specialized folds
 
--- extract diagonal elements
-extractDiagonalIM2 :: IM.IntMap (IM.IntMap a) -> [a]
-extractDiagonalIM2 = ifoldlIM2' (\i j x xs -> if i==j then x : xs else xs) []
+-- -- extract diagonal elements
+-- extractDiagonalIM2 :: IM.IntMap (IM.IntMap a) -> [a]
+-- extractDiagonalIM2 = ifoldlIM2' (\i j x xs -> if i==j then x : xs else xs) []
 
 
 
