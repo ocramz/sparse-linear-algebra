@@ -232,6 +232,11 @@ insertSpVector i x (SV d xim)
 fromListSV :: Int -> [(Int, a)] -> SpVector a
 fromListSV d iix = SV d (IM.fromList (filter (inBounds0 d . fst) iix ))
 
+-- toList
+toListSV :: SpVector a -> [(IM.Key, a)]
+toListSV sv = IM.toList (imSV sv)
+
+-- to dense list (default = 0)
 toDenseListSV :: Num b => SpVector b -> [b]
 toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
 
@@ -276,10 +281,16 @@ concatSV (SV n1 s1) (SV n2 s2) = SV (n1+n2) (IM.union s1 s2') where
 
     
 
+-- | outer vector product
 
+outerProdSV, (><) :: Num a => SpVector a -> SpVector a -> SpMatrix a
+outerProdSV v1 v2 = fromListSM (m, n) ixy where
+  m = svDim v1
+  n = svDim v2
+  ixy = [(i,j, x * y) | (i,x) <- toListSV v1 , (j, y) <- toListSV v2]
 
+(><) = outerProdSV
 
-    
 
 
 
