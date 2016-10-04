@@ -109,6 +109,9 @@ normalize n v = (1 / norm n v) .* v
 
 
 
+
+
+
 -- -- Lp inner product (p > 0)
 dotLp :: (Additive t, Foldable t, Floating a) => a -> t a -> t a ->  a
 dotLp p v1 v2 = sum u**(1/p) where
@@ -124,6 +127,8 @@ reciprocal = fmap recip
 -- scale
 scale :: (Num b, Functor f) => b -> f b -> f b
 scale n = fmap (* n)
+
+
 
 
 
@@ -148,6 +153,7 @@ instance FiniteDim SpMatrix where
 
 
 
+-- | accessing inner data (do not export)
 
 class Additive f => HasData f a where
   type HDData f a :: * 
@@ -160,6 +166,9 @@ instance HasData SpVector a where
 instance HasData SpMatrix a where
   type HDData SpMatrix a = IM.IntMap (IM.IntMap a)
   dat = smData
+
+
+
 
 
 -- | =======================================================
@@ -177,16 +186,12 @@ instance Additive IM.IntMap where
   x ^-^ y = x ^+^ negated y
   {-# INLINE (^-^) #-}
 
-instance FiniteDim IM.IntMap where
-  type FDSize IM.IntMap = Int
-  dim = IM.size
-
 instance VectorSpace IM.IntMap where
   n .* im = IM.map (* n) im
   
 instance Hilbert IM.IntMap where
-   a `dot` b | dim a == dim b =  sum $ liftI2 (*) a b
-             | otherwise = error $ "dot : sizes must coincide, instead we got " ++ show (dim a, dim b)
+   a `dot` b = sum $ liftI2 (*) a b
+              
 
 instance Normed IM.IntMap where
   norm p v | p==1 = norm1 v
@@ -227,7 +232,10 @@ instance VectorSpace SpVector where
   n .* v = scale n v
 
 instance Hilbert SpVector where
-  sv1 `dot` sv2 = dot (svData sv1) (svData sv2)
+  a `dot` b | dim a == dim b = dot (dat a) (dat b)
+            | otherwise =
+                     error $ "dot : sizes must coincide, instead we got " ++
+                           show (dim a, dim b)
 
 
 instance Normed SpVector where
@@ -1490,8 +1498,11 @@ inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 tm0, tm1, tm2, tm3, tm4 :: SpMatrix Double
 tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
 
-tv0 :: SpVector Double
+tv0, tv1 :: SpVector Double
 tv0 = mkSpVectorD 2 [5, 6]
+
+
+tv1 = SV 2 $ IM.singleton 0 1
 
 -- wikipedia test matrix for Givens rotation
 
