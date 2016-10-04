@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
 
 module Math.Linear.Sparse where
 
@@ -149,6 +149,19 @@ instance FiniteDim SpMatrix where
 
 
 
+class Additive f => HasData f a where
+  type HDData f a :: * 
+  dat :: f a -> HDData f a
+
+instance HasData SpVector a where
+  type HDData SpVector a = IM.IntMap a
+  dat = svData
+
+instance HasData SpMatrix a where
+  type HDData SpMatrix a = IM.IntMap (IM.IntMap a)
+  dat = smData
+
+
 -- | =======================================================
 
 -- | IntMap implementation
@@ -164,11 +177,16 @@ instance Additive IM.IntMap where
   x ^-^ y = x ^+^ negated y
   {-# INLINE (^-^) #-}
 
+instance FiniteDim IM.IntMap where
+  type FDSize IM.IntMap = Int
+  dim = IM.size
+
 instance VectorSpace IM.IntMap where
   n .* im = IM.map (* n) im
   
 instance Hilbert IM.IntMap where
-   a `dot` b = sum $ liftI2 (*) a b 
+   a `dot` b | dim a == dim b =  sum $ liftI2 (*) a b
+             | otherwise = error $ "dot : sizes must coincide, instead we got " ++ show (dim a, dim b)
 
 instance Normed IM.IntMap where
   norm p v | p==1 = norm1 v
@@ -209,10 +227,8 @@ instance VectorSpace SpVector where
   n .* v = scale n v
 
 instance Hilbert SpVector where
-  sv1 `dot` sv2
-    | d1 == d2 = dot (svData sv1) (svData sv2)
-    | otherwise = error $  "dot : vector sizes must coincide (instead : "++ show (d1, d2) ++ ")" where
-        (d1, d2) = (dim sv1, dim sv2)
+  sv1 `dot` sv2 = dot (svData sv1) (svData sv2)
+
 
 instance Normed SpVector where
   norm p (SV _ v) = norm p v
@@ -247,10 +263,11 @@ mkSpVector1D d ll = mkSpVector1 d (IM.fromList $ denseIxArray (take d ll))
 
 
 
--- vector of `1`s
+-- | DENSE vector of `1`s
 onesSV :: Num a => Int -> SpVector a
 onesSV d = SV d $ IM.fromList $ denseIxArray $ replicate d 1
 
+-- | DENSE vector of `0`s
 zerosSV :: Num a => Int -> SpVector a
 zerosSV d = SV d $ IM.fromList $ denseIxArray $ replicate d 0
 
