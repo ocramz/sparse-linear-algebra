@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
 
 module Math.Linear.Sparse where
 
@@ -32,6 +32,8 @@ import qualified Data.List as L
 import Data.Maybe
 
 
+
+-- | ========= CLASSES and common operations
 
 -- | Additive ring 
 class Functor f => Additive f where
@@ -122,6 +124,28 @@ reciprocal = fmap recip
 -- scale
 scale :: (Num b, Functor f) => b -> f b -> f b
 scale n = fmap (* n)
+
+
+
+
+
+-- | finite-dimensional objects
+
+class Additive f => FiniteDim f where
+  type FDSize f :: *
+  dim :: f a -> FDSize f
+
+
+instance FiniteDim SpVector where
+  type FDSize SpVector = Int
+  dim = svDim
+
+
+instance FiniteDim SpMatrix where
+  type FDSize SpMatrix = (Int, Int)
+  dim = smDim
+
+
 
 
 
