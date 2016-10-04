@@ -847,15 +847,15 @@ conditionNumberSM m | isInfinite kappa = error "Infinite condition number : rank
 
 -- | ========= Householder transformation
 
-householderMatrix :: Num a => a -> SpVector a -> SpMatrix a
-householderMatrix beta x = eye n ^-^ scale beta (x >< x) where
+hhMat :: Num a => a -> SpVector a -> SpMatrix a
+hhMat beta x = eye n ^-^ scale beta (x >< x) where
   n = svDim x
 
 
 -- a vector `x` uniquely defines an orthogonal plane; the Householder operator reflects any point `v` with respect to this plane:
 -- v' = (I - 2 x >< x) v 
-householderRefl :: SpVector Double -> SpMatrix Double
-householderRefl = householderMatrix 2.0
+hhRefl :: SpVector Double -> SpMatrix Double
+hhRefl = hhMat 2.0
 
 
 
@@ -953,13 +953,14 @@ gmats mm = reverse $ gm mm (subdiagIndicesSM mm) where
 
 -- | ========= Householder vector (G & VL Alg. 5.1.1, function `house`)
 
-householderVector :: (Ord a, Floating a) => SpVector a -> (SpVector a, a)
-householderVector x = (v, beta) where
+-- hhV :: (Ord a, Floating a) => SpVector a -> (SpVector a, a)
+hhV :: SpVector Double -> (SpVector Double, Double)
+hhV x = (v, beta) where
   n = svDim x
   tx = tailSV x
   sigma = tx `dot` tx
   vtemp = singletonSV 1 `concatSV` tx
-  (v, beta) | sigma == 0 = (vtemp, 0)
+  (v, beta) | sigma <= eps = (vtemp, 0)
             | otherwise = let mu = sqrt (headSV x**2 + sigma)
                               xh = headSV x
                               vh | xh <= 1 = xh - mu
