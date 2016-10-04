@@ -559,9 +559,12 @@ extractColSM :: SpMatrix a -> Int -> SpMatrix a
 extractColSM sm j = extractSubmatrixSM sm (0, nrows sm - 1) (j, j)
 
 
+
+-- demote (n x 1) or (1 x n) SpMatrix to SpVector
 toSV :: SpMatrix a -> SpVector a
 toSV (SM (m,n) im) = SV d $ snd . head $ IM.toList im where
-  d | m==1 && n>1 = n 
+  d | m==1 && n==1 = 1
+    | m==1 && n>1 = n 
     | n==1 && m>1 = m
     | otherwise = error $ "toSV : incompatible dimensions " ++ show (m,n)
 
@@ -736,7 +739,7 @@ transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 -- | matrix action on a vector
 
 {- 
-FIXME : matVec is more generic than SpVector's :
+FIXME : matVec is more general than SpVector's :
 
 \m v -> fmap (`dot` v) m
   :: (Normed f1, Num b, Functor f) => f (f1 b) -> f1 b -> f b
@@ -802,6 +805,7 @@ isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
 
 -- | ========= condition number
 
+-- uses the R matrix from the QR factorization
 conditionNumberSM :: SpMatrix Double -> Double
 conditionNumberSM m | isInfinite kappa = error "Infinite condition number : rank-deficient system"
                     | otherwise = kappa where
@@ -923,10 +927,10 @@ gmats mm = reverse $ gm mm (subdiagIndicesSM mm) where
 
 
 
--- | ========= Householder vector (G & VL Alg.5.1.1)
+-- | ========= Householder vector (G & VL Alg. 5.1.1, function `house`)
 
-house :: (Ord a, Floating a) => SpVector a -> (SpVector a, a)
-house x = (v, beta) where
+householderVector :: (Ord a, Floating a) => SpVector a -> (SpVector a, a)
+householderVector x = (v, beta) where
   n = svDim x
   tx = tailSV x
   sigma = tx `dot` tx
@@ -1159,7 +1163,7 @@ linSolve method aa b
 
 sizeStr :: SpMatrix a -> String
 sizeStr sm =
-  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ (sparsity",show spy,")"] where
+  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ ( sparsity",show spy,")"] where
   (SMInfo nz spy) = infoSM sm 
 
 
