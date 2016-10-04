@@ -212,7 +212,7 @@ instance Hilbert SpVector where
   sv1 `dot` sv2
     | d1 == d2 = dot (svData sv1) (svData sv2)
     | otherwise = error $  "dot : vector sizes must coincide (instead : "++ show (d1, d2) ++ ")" where
-        (d1, d2) = (svDim sv1, svDim sv2)
+        (d1, d2) = (dim sv1, dim sv2)
 
 instance Normed SpVector where
   norm p (SV _ v) = norm p v
@@ -340,8 +340,8 @@ svToSM (SV n d) = SM (n, 1) $ IM.singleton 0 d
 
 outerProdSV, (><) :: Num a => SpVector a -> SpVector a -> SpMatrix a
 outerProdSV v1 v2 = fromListSM (m, n) ixy where
-  m = svDim v1
-  n = svDim v2
+  m = dim v1
+  n = dim v2
   ixy = [(i,j, x * y) | (i,x) <- toListSV v1 , (j, y) <- toListSV v2]
 
 (><) = outerProdSV
@@ -358,7 +358,7 @@ outerProdSV v1 v2 = fromListSM (m, n) ixy where
 
 
 data SpMatrix a = SM {smDim :: (Int, Int),
-                     smData :: IM.IntMap (IM.IntMap a)} deriving Eq
+                      smData :: IM.IntMap (IM.IntMap a)} deriving Eq
 
 
 
@@ -407,7 +407,7 @@ normFrobenius m = sqrt $ foldlSM (+) 0 m' where
 -- -- predicates
 -- are the supplied indices within matrix bounds?
 validIxSM :: SpMatrix a -> (Int, Int) -> Bool
-validIxSM mm = inBounds02 (dimSM mm)
+validIxSM mm = inBounds02 (dim mm)
 
 -- is the matrix square?
 isSquareSM :: SpMatrix a -> Bool
@@ -418,7 +418,7 @@ isDiagonalSM :: SpMatrix a -> Bool
 isDiagonalSM m = IM.size d == nrows m where
   d = IM.filterWithKey ff (immSM m)
   ff irow row = IM.size row == 1 &&
-                IM.size (IM.filterWithKey (\j e -> j == irow) row) == 1
+                IM.size (IM.filterWithKey (\j _ -> j == irow) row) == 1
 
 
 
@@ -439,8 +439,8 @@ nelSM (SM (nr,nc) _) = nr*nc
 
 -- | nrows, ncols : size accessors
 nrows, ncols :: SpMatrix a -> Int
-nrows = fst . smDim
-ncols = snd . smDim
+nrows = fst . dim
+ncols = snd . dim
 
 
 
@@ -483,7 +483,7 @@ insertSpMatrix i j x s
   | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
   | otherwise = error "insertSpMatrix : index out of bounds" where
       smd = immSM s
-      d = dimSM s
+      d = dim s
 
 
 -- | from list (row, col, value)
@@ -634,13 +634,13 @@ horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
 -- | ========= LOOKUP
 
 lookupSM :: SpMatrix a -> IM.Key -> IM.Key -> Maybe a
-lookupSM (SM d im) i j = IM.lookup i im >>= IM.lookup j
+lookupSM (SM _ im) i j = IM.lookup i im >>= IM.lookup j
 
 -- | Looks up an element in the matrix (if not found, zero is returned)
 
 lookupWD_SM, (@@) :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
-lookupWD_SM (SM d m) (i,j) =
-  fromMaybe 0 (IM.lookup i m >>= IM.lookup j)
+lookupWD_SM sm (i,j) =
+  fromMaybe 0 (lookupSM sm i j)
 
 lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IM.Key, IM.Key) -> a
 lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
@@ -697,7 +697,7 @@ countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
 -- extractDiagonalSM (SM (m,n) im) = mkSpVectorD m $ extractDiagonalIM2 im
 
 -- extract with default 0
-extractDiagonalDSM :: (Num a, Eq a) => SpMatrix a -> SpVector a
+extractDiagonalDSM :: Num a => SpMatrix a -> SpVector a
 extractDiagonalDSM mm = mkSpVector1D n $ foldr ins [] ll  where
   ll = [0 .. n - 1]
   n = nrows mm
@@ -771,13 +771,13 @@ FIXME : matVec is more general than SpVector's :
 
 -- matrix on vector
 matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
-matVec (SM (nrows,_) mdata) (SV n sv) = SV nrows $ fmap (`dot` sv) mdata
+matVec (SM (nr,_) mdata) (SV _ sv) = SV nr $ fmap (`dot` sv) mdata
 
 (#>) = matVec
 
 -- vector on matrix (FIXME : transposes matrix: more costly than `matVec`)
 vecMat, (<#) :: Num a => SpVector a -> SpMatrix a -> SpVector a  
-vecMat (SV n sv) (SM (_, ncols) im) = SV ncols $ fmap (`dot` sv) (transposeIM2 im)
+vecMat (SV _ sv) (SM (_, nc) im) = SV nc $ fmap (`dot` sv) (transposeIM2 im)
 
 (<#) = vecMat
 
@@ -849,7 +849,7 @@ conditionNumberSM m | isInfinite kappa = error "Infinite condition number : rank
 
 hhMat :: Num a => a -> SpVector a -> SpMatrix a
 hhMat beta x = eye n ^-^ scale beta (x >< x) where
-  n = svDim x
+  n = dim x
 
 
 -- a vector `x` uniquely defines an orthogonal plane; the Householder operator reflects any point `v` with respect to this plane:
@@ -956,7 +956,7 @@ gmats mm = reverse $ gm mm (subdiagIndicesSM mm) where
 -- hhV :: (Ord a, Floating a) => SpVector a -> (SpVector a, a)
 hhV :: SpVector Double -> (SpVector Double, Double)
 hhV x = (v, beta) where
-  n = svDim x
+  n = dim x
   tx = tailSV x
   sigma = tx `dot` tx
   vtemp = singletonSV 1 `concatSV` tx
@@ -1130,10 +1130,10 @@ linSolveM ::
   PrimMonad m =>
     LinSolveMethod -> SpMatrix Double -> SpVector Double -> m (SpVector Double)
 linSolveM method aa b = do
-  let (m,n) = dimSM aa
-      mb = dimSV b
-  if m/=mb then error "linSolve : operand dimensions mismatch" else do
-    x0 <- randVec mb
+  let (m, n) = dim aa
+      nb     = dim b
+  if n /= nb then error "linSolve : operand dimensions mismatch" else do
+    x0 <- randVec nb
     case method of CGS_ -> return $ _xBicgstab (bicgstab aa b x0 x0)
                    BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
 
@@ -1141,7 +1141,7 @@ linSolveM method aa b = do
 linSolve ::
   LinSolveMethod -> SpMatrix Double -> SpVector Double -> SpVector Double
 linSolve method aa b
-  | m/=mb = error "linSolve : operand dimensions mismatch"
+  | n /= nb = error "linSolve : operand dimensions mismatch"
   | otherwise = solve aa b where
       solve aa' b' | isDiagonalSM aa = (reciprocal aa') #> b'
                    | otherwise = solveWith aa' b' 
@@ -1149,8 +1149,8 @@ linSolve method aa b
                                 CGS_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
                                 BICGSTAB_ -> _x (cgs aa' b' x0 x0)
       x0 = mkSpVectorD n $ replicate n 0.1 
-      (m,n) = dimSM aa
-      mb = dimSV b
+      (m, n) = dim aa
+      nb     = dim b
 
 -- <\> : sets default solver method 
 
@@ -1228,7 +1228,7 @@ printDenseSM sm = do
 
 toDenseListClip :: (Show a, Num a) => SpVector a -> Int -> String
 toDenseListClip sv ncomax
-  | svDim sv > ncomax = unwords (map show h) ++  " ... " ++ show t
+  | dim sv > ncomax = unwords (map show h) ++  " ... " ++ show t
   | otherwise = show dr
      where dr = toDenseListSV sv
            h = take (ncomax - 2) dr
@@ -1241,7 +1241,7 @@ printDenseSV sv = do
   newline where
     printDenseSV' v nco = putStrLn rr_' where
       rr_ = toDenseListClip v nco :: String
-      rr_' | svDim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
+      rr_' | dim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
            | otherwise = rr_
 
 class PrintDense a where
