@@ -13,11 +13,13 @@ insertIM2 ::
   IM.Key -> IM.Key -> a -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 insertIM2 i j x imm = IM.insert i ro imm where
   ro = maybe (IM.singleton j x) (IM.insert j x) (IM.lookup i imm)
+{-# inline insertIM2 #-}  
 
 -- lookup a key
 lookupIM2 ::
   IM.Key -> IM.Key -> IM.IntMap (IM.IntMap a) -> Maybe a
 lookupIM2 i j imm = IM.lookup i imm >>= IM.lookup j
+{-# inline lookupIM2 #-}  
 
 -- populate an IM2 from a list of (row index, column index, value)  
 fromListIM2 ::

@@ -799,10 +799,12 @@ transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
 
 -- | A^T B
+(#^#) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
 a #^# b = transposeSM a #~# b
 
 
 -- | A B^T
+(##^) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
 a ##^ b = a #~# transposeSM b
 
 
@@ -984,9 +986,9 @@ applies Givens rotation iteratively to zero out sub-diagonal elements
 -}
 
 qr :: SpMatrix Double -> (SpMatrix Double, SpMatrix Double)
-qr mm = (qmat, rmat)  where
-  qmat = transposeSM $ foldr (#~#) ee $ gmats mm -- Q = (G_n * G_n-1 ... * G_1)^T
-  rmat = (transposeSM qmat) #~# mm               -- R = Q^T A
+qr mm = (transposeSM qmatt, rmat)  where
+  qmatt = foldr (#~#) ee $ gmats mm -- Q^T = (G_n * G_n-1 ... * G_1)
+  rmat = qmatt #~# mm               -- R = Q^T A
   ee = eye (nrows mm)
       
 -- Givens matrices in order [GN, G(N-1), .. ]
