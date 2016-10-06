@@ -11,7 +11,7 @@ import qualified Data.IntMap.Strict as IM
 -- insert an element
 insertIM2 ::
   IM.Key -> IM.Key -> a -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
-insertIM2 i j x imm = IM.insert i (IM.insert j x ro) imm where
+insertIM2 i j x imm = IM.insert i ro imm where
   ro = maybe (IM.singleton j x) (IM.insert j x) (IM.lookup i imm)
 
 -- lookup a key
