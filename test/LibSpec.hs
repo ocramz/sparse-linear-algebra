@@ -47,12 +47,11 @@ spec = do
     it "CGS (2 x 2 dense)" $ 
       normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
   describe "Math.Linear.Sparse : QR decomposition" $ do    
-    it "QR (4 x 4 sparse)" $ do
-      let (q, r) = qr tm4
-      normFrobenius ((q #~# r) ^-^ tm4) <= eps `shouldBe` True
-    it "QR (3 x 3 dense)" $ do
-      let (q, r) = qr tm2
-      normFrobenius ((q #~# r) ^-^ tm2) <= eps `shouldBe` True      
+    it "QR (4 x 4 sparse)" $
+      checkQr tm4 `shouldBe` True
+    it "QR (3 x 3 dense)" $ 
+      checkQr tm2 `shouldBe` True
+    
   -- let n = 10
   --     nsp = 3
   -- describe ("random sparse linear system of size " ++ show n ++ " and sparsity " ++ show (fromIntegral nsp/fromIntegral n)) $ it "<\\>" $ do
@@ -121,6 +120,33 @@ x0true = mkSpVectorD 2 [2,3]
 
 
 aa0tx0 = mkSpVectorD 2 [11,16]
+
+
+
+
+
+
+
+{- 4x4 system -}
+
+aa1 :: SpMatrix Double
+aa1 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
+
+x1, b1 :: SpVector Double
+x1 = mkSpVectorD 4 [1,2,3,4]
+
+b1 = mkSpVectorD 4 [30,56,60,101]
+
+
+
+{- 3x3 system -}
+aa2 :: SpMatrix Double
+aa2 = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
+x2, b2 :: SpVector Double
+x2 = mkSpVectorD 3 [3,2,3]
+
+b2 = mkSpVectorD 3 [4,-2,4]
+
 
 
 -- --
@@ -194,3 +220,12 @@ countSubdiagonalNZ
 -}
 
 m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
+
+
+{- QR-}
+
+checkQr :: SpMatrix Double -> Bool
+checkQr a = c1 && c2 where
+  (q, r) = qr a
+  c1 = normFrobenius ((q #~# r) ^-^ a) <= eps
+  c2 = isOrthogonalSM q

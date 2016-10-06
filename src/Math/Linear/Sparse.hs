@@ -147,7 +147,7 @@ instance FiniteDim SpVector where
 
 
 instance FiniteDim SpMatrix where
-  type FDSize SpMatrix = (Int, Int)
+  type FDSize SpMatrix = (Rows, Cols)
   dim = smDim
 
 
@@ -382,7 +382,9 @@ outerProdSV v1 v2 = fromListSM (m, n) ixy where
 -- | =======================================================
 
 
-data SpMatrix a = SM {smDim :: (Int, Int),
+
+
+data SpMatrix a = SM {smDim :: (Rows, Cols),
                       smData :: IM.IntMap (IM.IntMap a)} deriving Eq
 
 
@@ -429,6 +431,13 @@ normFrobenius m = sqrt $ foldlSM (+) 0 m' where
 
 -- | ========= MATRIX METADATA
 
+-- type synonyms
+type Rows = Int
+type Cols = Int
+
+type IxRow = Int
+type IxCol = Int
+
 -- -- predicates
 -- are the supplied indices within matrix bounds?
 validIxSM :: SpMatrix a -> (Int, Int) -> Bool
@@ -456,7 +465,7 @@ isDiagonalSM m = IM.size d == nrows m where
 immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
 immSM (SM _ imm) = imm
 
-dimSM :: SpMatrix t -> (Int, Int)
+dimSM :: SpMatrix t -> (Rows, Cols)
 dimSM (SM d _) = d
 
 nelSM :: SpMatrix t -> Int
@@ -503,7 +512,7 @@ zeroSM :: Int -> Int -> SpMatrix a
 zeroSM m n = SM (m,n) IM.empty 
 
 
-insertSpMatrix :: Int -> Int -> a -> SpMatrix a -> SpMatrix a
+insertSpMatrix :: IxRow -> IxCol -> a -> SpMatrix a -> SpMatrix a
 insertSpMatrix i j x s
   | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
   | otherwise = error "insertSpMatrix : index out of bounds" where
@@ -512,11 +521,11 @@ insertSpMatrix i j x s
 
 
 -- | from list (row, col, value)
-fromListSM' :: Foldable t => t (Int, Int, a) -> SpMatrix a -> SpMatrix a
+fromListSM' :: Foldable t => t (IxRow, IxCol, a) -> SpMatrix a -> SpMatrix a
 fromListSM' iix sm = foldl ins sm iix where
   ins t (i,j,x) = insertSpMatrix i j x t
 
-fromListSM :: Foldable t => (Int, Int) -> t (Int, Int, a) -> SpMatrix a  
+fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
 fromListSM (m,n) iix = fromListSM' iix (zeroSM m n)
 
 
@@ -529,7 +538,7 @@ fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
 -- | to List
 
 -- toDenseListSM : populate missing entries with 0
-toDenseListSM :: Num t => SpMatrix t -> [(Int, Int, t)]
+toDenseListSM :: Num t => SpMatrix t -> [(IxRow, IxCol, t)]
 toDenseListSM m =
   [(i, j, m @@ (i, j)) | i <- [0 .. nrows m - 1], j <- [0 .. ncols m- 1]]
 
@@ -539,8 +548,7 @@ toDenseListSM m =
 
 -- -- create diagonal and identity matrix
 mkDiagonal :: Int -> [a] -> SpMatrix a
-mkDiagonal n xx = fromListSM (n,n) $ zip3 ii ii xx where
-  ii = [0..n-1]
+mkDiagonal n = mkSubDiagonal n 0
 
 
 eye :: Num a => Int -> SpMatrix a
@@ -548,7 +556,22 @@ eye n = mkDiagonal n (ones n)
 
 ones :: Num a => Int -> [a]
 ones n = replicate n 1
+
+
   
+
+
+-- super- and sub- diagonal
+
+mkSubDiagonal :: Int -> Int -> [a] -> SpMatrix a
+mkSubDiagonal n o xx | abs o < n = if o >= 0
+                                   then fz ii jj xx
+                                   else fz jj ii xx
+                     | otherwise = error "mkSubDiagonal : offset > dimension" where
+  ii = [0 .. n-1]
+  jj = [abs o .. n - 1]
+  fz a b x = fromListSM (n,n) (zip3 a b x)
+
 
 -- fromList :: [(Key,a)] -> IntMap a
 -- fromList xs
@@ -565,13 +588,7 @@ encode (nr,_) (i,j) = i + (j * nr)
 decode :: (Int, Int) -> Int -> (Rows, Cols)
 decode (nr, _) ci = (r, c) where (c,r ) = quotRem ci nr
 
-type Rows = Int
-type Cols = Int
--- newtype Ix = Ix {unIx :: (Rows, Cols)} deriving Eq
--- instance Show Ix where show (Ix ii) = show ii
 
-type IxRow = Int
-type IxCol = Int
 
 
 
@@ -774,11 +791,19 @@ roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 -- | transpose
 
 
-transposeSM :: SpMatrix a -> SpMatrix a
+transposeSM, (#^) :: SpMatrix a -> SpMatrix a
 transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
+(#^) = transposeSM
 
 
+
+-- | A^T B
+a #^# b = transposeSM a #~# b
+
+
+-- | A B^T
+a ##^ b = a #~# transposeSM b
 
 
 
@@ -1277,6 +1302,9 @@ instance (Show a, Num a) => PrintDense (SpVector a) where
 
 instance (Show a, Num a) => PrintDense (SpMatrix a) where
   prd = printDenseSM
+
+
+
 
 
 
