@@ -35,3 +35,5 @@ script: stack $ARGS --no-terminal --install-ghc test --haddock
 cache:
   directories:
   - $HOME/.stack
+
+

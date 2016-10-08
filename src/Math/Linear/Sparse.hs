@@ -171,6 +171,22 @@ instance HasData SpMatrix a where
 
 
 
+
+-- | sparse data
+
+class (FiniteDim f, HasData f a) => Sparse f a where
+  spy :: Fractional b => f a -> b
+
+
+instance Sparse SpVector a where
+  spy = spySV
+
+instance Sparse SpMatrix a where
+  spy = spySM
+
+
+
+
 -- | =======================================================
 
 -- | IntMap implementation
@@ -213,6 +229,8 @@ dimSV = svDim
 imSV :: SpVector a -> IM.IntMap a
 imSV = svData
 
+spySV s = fromIntegral (IM.size (dat s)) /fromIntegral (svDim s)
+
 
 -- | instances for SpVector
 instance Functor SpVector where
@@ -240,7 +258,9 @@ instance Hilbert SpVector where
 
 instance Normed SpVector where
   norm p (SV _ v) = norm p v
-  
+
+
+
 
 
 
@@ -486,6 +506,10 @@ infoSM :: SpMatrix a -> SMInfo
 infoSM s = SMInfo nz spy where
   nz = IM.foldr (+) 0 $ IM.map IM.size (immSM s)
   spy = fromIntegral nz / fromIntegral (nelSM s)
+
+nzSM s = sum $ fmap IM.size (immSM s)
+
+spySM s = fromIntegral (nzSM s) / fromIntegral (nelSM s)
 
 
 -- # NZ in row i
