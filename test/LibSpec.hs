@@ -226,9 +226,9 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 {- mkSubDiagonal -}
 
-testSubDiagonal n = (m4, x4, m4 <\> x4) where
-  m4 :: SpMatrix Double
-  m4 = mksd (-2) l1 ^+^
+testSubDiagonal n = (m, x, b) where
+  m :: SpMatrix Double
+  m = mksd (-2) l1 ^+^
        mksd 0 l2 ^+^
        mksd 2 l3
     where
@@ -236,8 +236,9 @@ testSubDiagonal n = (m4, x4, m4 <\> x4) where
     l1 = replicate n (-1)
     l2 = replicate n 2
     l3 = l1
-  x4 :: SpVector Double
-  x4 = mkSpVectorD n (replicate 50 2)
+  x :: SpVector Double
+  x = mkSpVectorD n (replicate n 2)
+  b = m #> x
 
 
 {- QR-}
