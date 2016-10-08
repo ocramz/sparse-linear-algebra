@@ -134,7 +134,7 @@ scale n = fmap (* n)
 
 
 
--- | finite-dimensional objects
+-- | FiniteDim : finite-dimensional objects
 
 class Additive f => FiniteDim f where
   type FDSize f :: *
@@ -153,7 +153,7 @@ instance FiniteDim SpMatrix where
 
 
 
--- | accessing inner data (do not export)
+-- | HasData : accessing inner data (do not export)
 
 class Additive f => HasData f a where
   type HDData f a :: * 
@@ -172,7 +172,7 @@ instance HasData SpMatrix a where
 
 
 
--- | sparse data
+-- | Sparse : sparse datastructures
 
 class (FiniteDim f, HasData f a) => Sparse f a where
   spy :: Fractional b => f a -> b
@@ -183,6 +183,8 @@ instance Sparse SpVector a where
 
 instance Sparse SpMatrix a where
   spy = spySM
+
+
 
 
 
@@ -225,11 +227,15 @@ data SpVector a = SV { svDim :: Int ,
 dimSV :: SpVector a -> Int
 dimSV = svDim
 
+spySV :: Fractional b => SpVector a -> b
+spySV s = fromIntegral (IM.size (dat s)) / fromIntegral (svDim s)
+
+
 -- internal : projection functions, do not export
 imSV :: SpVector a -> IM.IntMap a
 imSV = svData
 
-spySV s = fromIntegral (IM.size (dat s)) /fromIntegral (svDim s)
+
 
 
 -- | instances for SpVector
@@ -503,12 +509,12 @@ data SMInfo = SMInfo { smNz :: Int,
                        smSpy :: Double} deriving (Eq, Show)
 
 infoSM :: SpMatrix a -> SMInfo
-infoSM s = SMInfo nz spy where
-  nz = IM.foldr (+) 0 $ IM.map IM.size (immSM s)
-  spy = fromIntegral nz / fromIntegral (nelSM s)
+infoSM s = SMInfo (nzSM s) (spySM s)
 
+nzSM :: SpMatrix a -> Int
 nzSM s = sum $ fmap IM.size (immSM s)
 
+spySM :: Fractional b => SpMatrix a -> b
 spySM s = fromIntegral (nzSM s) / fromIntegral (nelSM s)
 
 
@@ -521,6 +527,26 @@ nzRow :: SpMatrix a -> IM.Key -> Int
 nzRow s i | inBounds0 (nrows s) i = nzRowU s i
           | otherwise = error "nzRow : index out of bounds"
 
+
+
+
+-- | bandwidth bounds (min, max)
+
+bwMinSM :: SpMatrix a -> Int
+bwMinSM = fst . bwBoundsSM
+
+bwMaxSM :: SpMatrix a -> Int
+bwMaxSM = snd . bwBoundsSM
+
+bwBoundsSM :: SpMatrix a -> (Int, Int)
+bwBoundsSM s = -- b
+                (snd $ IM.findMin b,
+                snd $ IM.findMax b)
+  where
+  ss = immSM s
+  fmi = fst . IM.findMin
+  fma = fst . IM.findMax
+  b = fmap (\x -> fma x - fmi x + 1:: Int) ss
 
 
 
@@ -690,6 +716,8 @@ horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
   t = transposeSM
 
 (-||-) = horizStackSM
+
+
 
 
 
