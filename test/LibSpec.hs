@@ -226,11 +226,11 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 {- mkSubDiagonal -}
 
-testSubDiagonal n = (m, x, b) where
+testLaplacian1 n = (m, x, b) where
   m :: SpMatrix Double
-  m = mksd (-2) l1 ^+^
+  m = mksd (-1) l1 ^+^
        mksd 0 l2 ^+^
-       mksd 2 l3
+       mksd 1 l3
     where
     mksd = mkSubDiagonal n
     l1 = replicate n (-1)
