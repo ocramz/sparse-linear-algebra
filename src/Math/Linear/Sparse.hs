@@ -44,11 +44,7 @@ class Functor f => Additive f where
   (^+^) :: Num a => f a -> f a -> f a
   (^-^) :: Num a => f a -> f a -> f a
 
-  -- |union binary lift
-  liftU2 :: (a -> a -> a) -> f a -> f a -> f a
 
-  -- |intersection binary lift
-  liftI2 :: (a -> b -> c) -> f a -> f b -> f c
 
 -- | negate the values in a functor
 negated :: (Num a, Functor f) => f a -> f a
@@ -113,7 +109,7 @@ normalize n v = (1 / norm n v) .* v
 
 
 -- -- Lp inner product (p > 0)
-dotLp :: (Additive t, Foldable t, Floating a) => a -> t a -> t a ->  a
+dotLp :: (Set t, Foldable t, Floating a) => a -> t a -> t a ->  a
 dotLp p v1 v2 = sum u**(1/p) where
   f a b = (a*b)**p
   u = liftI2 f v1 v2
@@ -187,18 +183,28 @@ instance Sparse SpMatrix a where
 
 
 
+class Functor f => Set f where
+  -- |union binary lift
+  liftU2 :: (a -> a -> a) -> f a -> f a -> f a
+
+  -- |intersection binary lift
+  liftI2 :: (a -> b -> c) -> f a -> f b -> f c  
+
+
 
 
 -- | =======================================================
+
+instance Set IM.IntMap where
+  liftU2 = IM.unionWith
+  {-# INLINE liftU2 #-}
+  liftI2 = IM.intersectionWith
+  {-# INLINE liftI2 #-}
 
 -- | IntMap implementation
 instance Additive IM.IntMap where
   zero = IM.empty
   {-# INLINE zero #-}
-  liftU2 = IM.unionWith
-  {-# INLINE liftU2 #-}
-  liftI2 = IM.intersectionWith
-  {-# INLINE liftI2 #-}
   (^+^) = liftU2 (+)
   {-# INLINE (^+^) #-}
   x ^-^ y = x ^+^ negated y
@@ -242,6 +248,10 @@ imSV = svData
 instance Functor SpVector where
   fmap f (SV n x) = SV n (fmap f x)
 
+instance Set SpVector where  
+  liftU2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftU2 f2 x1 x2)
+  liftI2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftI2 f2 x1 x2)
+  
 instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
 
@@ -249,8 +259,7 @@ instance Additive SpVector where
   zero = SV 0 IM.empty
   (^+^) = liftU2 (+)
   (^-^) = liftU2 (-)
-  liftU2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftU2 f2 x1 x2)
-  liftI2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftI2 f2 x1 x2)
+
                       
 instance VectorSpace SpVector where
   n .* v = scale n v
@@ -422,12 +431,15 @@ instance Show a => Show (SpMatrix a) where
 instance Functor SpMatrix where
   fmap f (SM d md) = SM d ((fmap . fmap) f md)
 
+instance Set SpMatrix where
+  liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
+  liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) ((liftI2.liftI2) f2 x1 x2)
+  
 instance Additive SpMatrix where
   zero = SM (0,0) IM.empty
   (^+^) = liftU2 (+)
   (^-^) = liftU2 (-)
-  liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
-  liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) ((liftI2.liftI2) f2 x1 x2)
+
 
 -- | TODO : use semilattice properties instead
 maxTup, minTup :: Ord t => (t, t) -> (t, t) -> (t, t)
