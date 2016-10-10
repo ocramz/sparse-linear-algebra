@@ -50,6 +50,8 @@ class Functor f => Additive f where
 negated :: (Num a, Functor f) => f a -> f a
 negated = fmap negate
 
+x `minus` y = x ^+^ negated y
+
 
 
 -- | Vector space
@@ -1049,18 +1051,20 @@ candidateRows mm i j | IM.null u = Nothing
 applies Givens rotation iteratively to zero out sub-diagonal elements
 -}
 
+
 qr :: SpMatrix Double -> (SpMatrix Double, SpMatrix Double)
 qr mm = (transposeSM qmatt, rmat)  where
-  qmatt = foldr (#~#) ee $ gmats mm -- Q^T = (G_n * G_n-1 ... * G_1)
+  qmatt = F.foldl' (#~#) ee $ gmats mm -- Q^T = (G_n * G_n-1 ... * G_1)
   rmat = qmatt #~# mm               -- R = Q^T A
   ee = eye (nrows mm)
       
--- Givens matrices in order [GN, G(N-1), .. ]
+-- Givens matrices in order [G1, G2, .. , G_N ]
 gmats :: SpMatrix Double -> [SpMatrix Double]
-gmats mm = reverse $ gm mm (subdiagIndicesSM mm) where
+gmats mm = gm mm (subdiagIndicesSM mm) where
  gm m ((i,j):is) = let g = givens m i j
                    in g : gm (g #~# m) is
  gm _ [] = []
+
 
 
 
