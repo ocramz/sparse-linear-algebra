@@ -1055,7 +1055,7 @@ applies Givens rotation iteratively to zero out sub-diagonal elements
 qr :: SpMatrix Double -> (SpMatrix Double, SpMatrix Double)
 qr mm = (transposeSM qmatt, rmat)  where
   qmatt = F.foldl' (#~#) ee $ gmats mm -- Q^T = (G_n * G_n-1 ... * G_1)
-  rmat = qmatt #~# mm               -- R = Q^T A
+  rmat = qmatt #~# mm                  -- R = Q^T A
   ee = eye (nrows mm)
       
 -- Givens matrices in order [G1, G2, .. , G_N ]
@@ -1068,6 +1068,14 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 
 
+
+-- -- | QR algorithm, state transformer version
+-- gmatST0 (m, (i,j):is) = (m', is) where    -- WRONG, 
+--   g = givens m i j                        
+--   m' = g #~# m
+-- gmatST0 (m, []) = (eye (nrows m), [])
+
+-- gmatST m = gmatST0 (m, subdiagIndicesSM m)
 
 
 
