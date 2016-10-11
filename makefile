@@ -1,12 +1,12 @@
 AUTHOR = ocramz
-REPO = petsc-hs
+REPO = sparse-linear-algebra
 
 .DEFAULT_GOAL := help
 
 
 
 help:
-	@echo "Use \`make <target>\` where <target> is one of"
+	@echo "  Use \`make <target>\` where <target> is one of"
 	@echo "  clean          remove .stack-work/"
 	@echo "  build          build and link (`stack build`)"
 	@echo "  build-profile  (`stack build --profile`)"
@@ -22,9 +22,12 @@ build:
 
 build-profile:
 	stack build --profile
+	# stack build --executable-profiling --library-profiling --ghc-options="-fprof-auto -rtsopts"
 
 test-profile:
-	stack test --profile
+	# stack test --profile
+        # stack exec $(stack path --dist-dir)/build/spec -- +RTS -h
+	stack test --ghc-options "+RTS -h -RTS"
 
 
 all:
