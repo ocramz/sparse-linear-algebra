@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
+-- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
 
 module Math.Linear.Sparse where
 
@@ -1070,12 +1071,16 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 
 -- -- | QR algorithm, state transformer version
--- gmatST0 (m, (i,j):is) = (m', is) where    -- WRONG, 
+-- gmatST0 (m, (i,j):is) = (m', is) where    -- WRONG, possible access to []
 --   g = givens m i j                        
 --   m' = g #~# m
 -- gmatST0 (m, []) = (eye (nrows m), [])
 
 -- gmatST m = gmatST0 (m, subdiagIndicesSM m)
+
+
+
+
 
 
 
