@@ -195,6 +195,11 @@ class Functor f => Set f where
 
 
 
+-- class (Set f, Sparse f a) => SparseSet f a
+
+-- instance SparseSet SpVector a where
+
+
 
 -- | =======================================================
 
