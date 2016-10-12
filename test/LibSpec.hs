@@ -226,6 +226,7 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 {- mkSubDiagonal -}
 
+testLaplacian1 :: Int -> SpMatrix Double
 testLaplacian1 n = m where
   m :: SpMatrix Double
   m = mksd (-1) l1 ^+^
@@ -240,10 +241,10 @@ testLaplacian1 n = m where
   -- x = mkSpVectorD n (replicate n 2)
   -- b = m #> x
 
-aa3 = testLaplacian1 100 :: SpMatrix Double
-x3 = mkSpVectorD 100 (concat $ replicate 20 [1,2,3,4,5]) :: SpVector Double
-
-b3 = aa3 #> x3
+t3 n = normSq $ (aa <\> b) ^-^ xhat where
+  aa = testLaplacian1 n :: SpMatrix Double
+  xhat = mkSpVectorD n (concat $ replicate 20 [1,2,3,4,5]) :: SpVector Double
+  b = aa #> xhat
 
 {- QR-}
 

@@ -1087,6 +1087,15 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 
 
+-- | ========= Eigenvalues, using QR
+
+eigs :: SpMatrix Double -> SpVector Double
+eigs m = extractDiagonalDSM r where
+  (_, r) = qr m
+
+
+
+
 
 
 -- | ========= Householder vector (G & VL Alg. 5.1.1, function `house`)
