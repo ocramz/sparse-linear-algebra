@@ -205,7 +205,7 @@ matMat
 -}
 
 m1 = fromListDenseSM 2 [1,3,2,4]
-m2 = fromListDenseSM 2 [5, 7, 6, 8]
+m2 = fromListDenseSM 2 [5, 7, 6, 8]     
 m1m2 = fromListDenseSM 2 [19, 43, 22, 50]
 
 -- transposeSM
@@ -219,7 +219,7 @@ m1t = fromListDenseSM 2 [1,2,3,4]
 countSubdiagonalNZ
 -}
 
-m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
+m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)] 
 
 
 
@@ -241,10 +241,10 @@ testLaplacian1 n = m where
   -- x = mkSpVectorD n (replicate n 2)
   -- b = m #> x
 
-t3 n = normSq $ (aa <\> b) ^-^ xhat where
-  aa = testLaplacian1 n :: SpMatrix Double
-  xhat = mkSpVectorD n (concat $ replicate 20 [1,2,3,4,5]) :: SpVector Double
-  b = aa #> xhat
+-- t3 n = normSq $ (aa <\> b) ^-^ xhat where
+--   aa = testLaplacian1 n :: SpMatrix Double
+--   xhat = mkSpVectorD n (concat $ replicate 20 [1,2,3,4,5]) :: SpVector Double
+--   b = aa #> xhat
 
 {- QR-}
 
@@ -253,3 +253,6 @@ checkQr a = c1 && c2 where
   (q, r) = qr a
   c1 = normFrobenius ((q #~# r) ^-^ a) <= eps
   c2 = isOrthogonalSM q
+
+
+aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
