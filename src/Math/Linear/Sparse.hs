@@ -1089,10 +1089,7 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 -- | ========= Eigenvalues, using QR
 
--- eigs :: SpMatrix Double -> SpVector Double
--- eigs m = extractDiagonalDSM r where
---   (_, r) = qr m
-
+eigs :: SpMatrix Double -> SpVector Double
 eigs m = extractDiagonalDSM ee where
   go m' 0 = m'
   go mm n = let (q, r) = qr mm
