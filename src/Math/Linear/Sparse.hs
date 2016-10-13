@@ -1096,8 +1096,14 @@ eigs m = extractDiagonalDSM ee where
             in go (r #~# q) (n-1)
   ee = go m 5
 
-
-
+-- | ", using MonadState
+eigsSt :: SpMatrix Double -> SpVector Double
+eigsSt m = extractDiagonalDSM $ execState (ctest eigsStep) m where
+  eigsStep m = (r #~# q) where (q, r) = qr m
+  ctest g = modifyInspectN 2 f g where
+    f [m1, m2] = let dm1 = extractDiagonalDSM m1
+                     dm2 = extractDiagonalDSM m2
+                 in norm2 (dm1 ^-^ dm2) <= 1e-16
 
 
 
