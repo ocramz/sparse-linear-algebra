@@ -1096,14 +1096,18 @@ eigs m = extractDiagonalDSM ee where
             in go (r #~# q) (n-1)
   ee = go m 5
 
+
 -- | ", using MonadState
 eigsSt :: SpMatrix Double -> SpVector Double
-eigsSt m = extractDiagonalDSM $ execState (ctest eigsStep) m where
+eigsSt m = extractDiagonalDSM $ execState (convergtest eigsStep) m where
   eigsStep m = (r #~# q) where (q, r) = qr m
-  ctest g = modifyInspectN 2 f g where
+  convergtest g = modifyInspectN 2 f g where
     f [m1, m2] = let dm1 = extractDiagonalDSM m1
                      dm2 = extractDiagonalDSM m2
-                 in norm2 (dm1 ^-^ dm2) <= 1e-16
+                 in norm2 (dm1 ^-^ dm2) <= eps
+
+
+
 
 
 
@@ -1344,8 +1348,8 @@ linSolve method aa b
 
 sizeStr :: SpMatrix a -> String
 sizeStr sm =
-  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ ( sparsity",show spy,")"] where
-  (SMInfo nz spy) = infoSM sm 
+  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ ( sparsity",show sy,")"] where
+  (SMInfo nz sy) = infoSM sm 
 
 
 showNonZero :: (Show a, Num a, Eq a) => a -> String
@@ -1461,20 +1465,21 @@ modifyUntil q f = do
 
 -- modify state and append, until max # of iterations is reached
 modifyInspectN :: MonadState s m => Int -> ([s] -> Bool) -> (s -> s) -> m s
-modifyInspectN nn q ff = go nn ff [] where
-   go n f xs = do
+modifyInspectN n q ff | n > 0 = go ff [] nimax
+                      | otherwise = error "modifyInspectN : n must be > 0" where
+   nimax = 10
+   go f xs nim = do
     x <- get
-    if n <= 0
-      then do
-       put x
-       return x
-      else do
-       let y = f x
-           ys = y : xs
-       put y
-       if (length ys == n) && q ys
-         then return y
-         else go (n-1) f ys
+    let y = f x
+        ys = y : xs
+    put y
+    if q ys
+         then do
+           put y
+           return y
+         else do
+           put y
+           go f (take n ys) (nim - 1)
 
 
 untilConverged :: MonadState a m => (a -> SpVector Double) -> (a -> a) -> m a
@@ -1483,7 +1488,7 @@ untilConverged fproj = modifyInspectN 2 (normDiffConverged fproj)
 -- convergence check (FIXME)
 normDiffConverged :: (Foldable t, Functor t) =>
      (a -> SpVector Double) -> t a -> Bool
-normDiffConverged fp xx = normSq (foldrMap (^-^) (zeroSV 0) fp xx) <= eps
+normDiffConverged fp xx = normSq (foldrMap fp (^-^) (zeroSV 0) xx) <= eps
               
 
 
@@ -1583,8 +1588,8 @@ denseIxArray2 m xs = zip3 (concat $ replicate n ii_) jj_ xs where
 
 -- folds
 
-foldrMap :: (Foldable t, Functor t) => (a -> c -> c) -> c -> (a1 -> a) -> t a1 -> c
-foldrMap ff x0 pp = foldr ff x0 . fmap pp
+foldrMap :: (Foldable t, Functor t) => (a -> b) -> (b -> c -> c) -> c -> t a -> c
+foldrMap ff gg x0 = foldr gg x0 . fmap ff
 
 foldlStrict :: (a -> b -> a) -> a -> [b] -> a
 foldlStrict f = go
