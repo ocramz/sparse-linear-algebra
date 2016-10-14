@@ -11,7 +11,8 @@ import Control.Monad.Primitive
 import Control.Monad (mapM_, forM_, replicateM)
 import Control.Monad.Loops
 
-import Control.Monad.State
+import Control.Monad.Cont
+import Control.Monad.State.Strict
 import Control.Monad.Writer
 import Control.Monad.Trans
 
@@ -1321,6 +1322,9 @@ linSolve method aa b
 
 
 
+
+
+
 -- | TODO : if system is poorly conditioned, is it better to warn the user or just switch solvers (e.g. via the pseudoinverse) ?
 
 -- linSolveQR aa b init f1 stepf
@@ -1480,6 +1484,63 @@ modifyInspectN n q ff | n > 0 = go ff [] nimax
          else do
            put y
            go f (take n ys) (nim - 1)
+
+-- modifyInspect2 q ff nimax = go ff [] 0 where
+--   go f ll niter = do
+--     x <- get
+--     let y = f x
+
+abort :: Applicative m => r -> ContT r m a
+abort result = ContT (\_ -> pure result)
+
+-- <ertes> > flip evalState 0 . flip runContT return . forever $ do x <- get; if
+-- 	x < 10 then modify (1 +) else abort x
+
+
+-- loopUntil :: (s -> Bool) -> (s -> s) -> s -> s
+-- loopUntil q f = execState st where
+--   st = do
+--     x <- get
+--     if q x then modify f else put x
+
+loopUntil :: (t -> Bool) -> (t -> t) -> t -> t
+loopUntil q f x
+  | q x = x
+  | otherwise = loopUntil q f (f x)
+
+loopUntilIx :: (Ord a, Num a) => (b -> Bool) -> (b -> b) -> a -> b -> b
+loopUntilIx q f nmax x
+  | nmax < 0 = error "loopUntilIx : nmax must be > 0"
+  | otherwise = go 0 x where
+      go i xx | i >= nmax || q xx = xx
+              | otherwise = go (i + 1) (f xx)
+
+
+-- loopUntilIxPairs p f nmax x0 = go 0 x0 [] where
+--   -- go i x [] =
+--   --   let x' = f x in go (i + 1) x' [x']
+--   go i x ll =
+--     let x' = f x in go (i + 1) x' x':ll
+
+
+data TempSolutionDiff a = TSD { tsdIter :: Int,
+                                tsdPrev :: SpVector a,
+                                tsdCurr :: SpVector a } deriving (Eq, Show)
+
+updateTSD :: SpVector a -> TempSolutionDiff a -> TempSolutionDiff a
+updateTSD vnew (TSD i _ vc) = TSD (succ i) vc vnew
+
+checkTSD ::
+  (SpVector t -> SpVector t -> Bool) -> Int -> TempSolutionDiff t -> Bool
+checkTSD fq nitermax (TSD i vp vc) = i <= nitermax && fq vp vc
+
+
+
+
+
+
+
+
 
 
 untilConverged :: MonadState a m => (a -> SpVector Double) -> (a -> a) -> m a
@@ -1682,7 +1743,7 @@ untilC :: (a -> Bool) -> Int ->  (a -> a) -> a -> a
 untilC p n f = go n
   where
     go m x | p x || m <= 0 = x
-           | otherwise     = go (m-1) (f x)
+           | otherwise     = True `seq` go (m-1) (f x)
 
 
 
