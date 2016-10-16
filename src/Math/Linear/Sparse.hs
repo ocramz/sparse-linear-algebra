@@ -151,6 +151,30 @@ instance FiniteDim SpMatrix where
   dim = smDim
 
 
+-- unary dimension-checking bracket
+withDim :: (FiniteDim f, Show e) =>
+     f a
+     -> (FDSize f -> f a -> Bool)
+     -> (f a -> c)
+     -> (f a -> e)
+     -> String
+     -> c
+withDim x p f ef e | p (dim x) x = f x
+                   | otherwise = error e' where e' = e ++ show (ef x)
+
+-- binary dimension-checking bracket
+withDim2 :: (FiniteDim f, FiniteDim g, Show e) =>
+     f a
+     -> g b
+     -> (FDSize f -> FDSize g -> f a -> g b -> Bool)
+     -> (f a -> g b -> c)
+     -> (f a -> g b -> e)
+     -> String
+     -> c
+withDim2 x y p f ef e | p (dim x) (dim y) x y = f x y
+                      | otherwise = error e' where e' = e ++ show (ef x y)
+
+
 
 
 -- | HasData : accessing inner data (do not export)
@@ -914,6 +938,18 @@ vecMat (SV n sv) (SM (nr, nc) im)
 
 
 
+matVecU (SM (nr, nc) mm) (SV nv v) = SV nr $ fmap (`dot` v) mm
+
+vecMatU (SV n sv) (SM (nr, nc) im) =
+  SV nc $ fmap (`dot` sv) (transposeIM2 im)
+
+
+
+
+
+matVec' mm vv =
+  withDim2 mm vv (\(nro, nco) nv _ _ -> nco == nv) matVecU
+   (\ m v -> unwords ["matVec : mismatching dimensions", show (dim m), show (dim v)])
 
 
 
