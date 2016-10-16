@@ -4,6 +4,7 @@ module LibSpec where
 import qualified Data.IntMap as IM
 
 import Control.Monad (replicateM)
+import Control.Monad.State.Strict (execState)
 
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC
@@ -40,6 +41,10 @@ spec = do
       infoSM (eye 10) `shouldBe` SMInfo 10 0.1
     it "countSubdiagonalNZ : # of nonzero elements below the diagonal" $
       countSubdiagonalNZSM m3 `shouldBe` 1
+    it "modifyInspectN : early termination by iteration count" $
+      execState (modifyInspectN 2 ((< eps) . diffSqL) (/2)) 1 `shouldBe` 1/8
+    it "modifyInspectN : termination by value convergence" $
+      execState (modifyInspectN (2^16) ((< eps) . head) (/2)) 1 < eps `shouldBe` True 
   describe "Math.Linear.Sparse : Linear solvers" $ do    
     it "BiCGSTAB (2 x 2 dense)" $ 
       -- normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
