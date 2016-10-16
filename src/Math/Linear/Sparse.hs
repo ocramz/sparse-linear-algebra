@@ -156,10 +156,10 @@ withDim :: (FiniteDim f, Show e) =>
      f a
      -> (FDSize f -> f a -> Bool)
      -> (f a -> c)
-     -> (f a -> e)
      -> String
+     -> (f a -> e)
      -> c
-withDim x p f ef e | p (dim x) x = f x
+withDim x p f e ef | p (dim x) x = f x
                    | otherwise = error e' where e' = e ++ show (ef x)
 
 -- binary dimension-checking bracket
@@ -168,11 +168,13 @@ withDim2 :: (FiniteDim f, FiniteDim g, Show e) =>
      -> g b
      -> (FDSize f -> FDSize g -> f a -> g b -> Bool)
      -> (f a -> g b -> c)
-     -> (f a -> g b -> e)
      -> String
+     -> (f a -> g b -> e)
      -> c
-withDim2 x y p f ef e | p (dim x) (dim y) x y = f x y
+withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
                       | otherwise = error e' where e' = e ++ show (ef x y)
+
+
 
 
 
@@ -791,13 +793,6 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 -- FIXME : to throw an exception or just ignore the out-of-bound access ?
 
--- inB1 i d s f
---   | inBounds0 i d = f
---   | otherwise = error s
-
--- inB2 i d s f
---   | inBounds02 i d = f
---   | otherwise = error s  
 
 
 
@@ -918,6 +913,8 @@ FIXME : matVec is more general than SpVector's :
   :: (Normed f1, Num b, Functor f) => f (f1 b) -> f1 b -> f b
 -}
 
+
+
 -- matrix on vector
 matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
 matVec (SM (nr, nc) mdata) (SV n sv)
@@ -928,8 +925,8 @@ matVec (SM (nr, nc) mdata) (SV n sv)
 
 -- vector on matrix (FIXME : transposes matrix: more costly than `matVec`)
 vecMat, (<#) :: Num a => SpVector a -> SpMatrix a -> SpVector a  
-vecMat (SV n sv) (SM (nr, nc) im)
-  | n == nr =  SV nc $ fmap (`dot` sv) (transposeIM2 im)
+vecMat (SV n sv) (SM (nr, nc) mdata)
+  | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
   | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)
 
 (<#) = vecMat
@@ -938,32 +935,55 @@ vecMat (SV n sv) (SM (nr, nc) im)
 
 
 
-matVecU (SM (nr, nc) mm) (SV nv v) = SV nr $ fmap (`dot` v) mm
-
-vecMatU (SV n sv) (SM (nr, nc) im) =
-  SV nc $ fmap (`dot` sv) (transposeIM2 im)
 
 
 
 
 
-matVec' mm vv =
-  withDim2 mm vv (\(nro, nco) nv _ _ -> nco == nv) matVecU
-   (\ m v -> unwords ["matVec : mismatching dimensions", show (dim m), show (dim v)])
+-- matVec' mm vv =
+--   withDim2 mm vv (\(nro, nco) nv _ _ -> nco == nv) matVecU "matVec : mismatching dimensions"
+--    (\ m v -> unwords [show (dim m), show (dim v)])
 
+
+-- asdfm ll = unwords (map (show . dim) ll)
 
 
 
 
 -- | matrix-matrix product
 
+-- unsafe matMat
+matMatU :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
+matMatU m1 m2 =
+  SM (nrows m1, ncols m2) im where
+    im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
+
+
+-- matMat, (##) :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
+-- matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
+--   | nc1 == nr2 = SM (nr1, nc2) $
+--       fmap (\vm1 -> fmap (`dot` vm1) (transposeIM2 m2)) m1
+--   | otherwise = error "matMat : incompatible matrix sizes"
+
 matMat, (##) :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
-matMat (SM (nr1,nc1) m1) (SM (nr2,nc2) m2)
-  | nc1 == nr2 = SM (nr1, nc2) $
-      fmap (\vm1 -> fmap (`dot` vm1) (transposeIM2 m2)) m1
-  | otherwise = error "matMat : incompatible matrix sizes"
+matMat m1 m2
+  | c1 == r2 = matMatU m1 m2
+  | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
+      d1@(r1, c1) = dim m1
+      d2@(r2, c2) = dim m2
+    
 
 (##) = matMat
+
+-- matMat m1 m2 =
+--   withDim2 m1 m2
+--     (\(r1,c1) (r2,c2) _ _ -> c1 == r2)
+--     matMatU
+--     "matMat : incompatible matrix sizes"
+--     (\m1 m2 -> unwords [show (dim m1), show (dim m2)])
+
+
+
 
 
 -- | sparsified matrix-matrix product (prunes all elements `x` for which `abs x <= eps`)
@@ -1135,14 +1155,14 @@ eigs m = extractDiagonalDSM ee where
   go m' 0 = m'
   go mm n = let (q, r) = qr mm
             in go (r #~# q) (n-1)
-  ee = go m 5
+  ee = go m 50
 
 
 -- | ", using MonadState
 eigsSt :: SpMatrix Double -> SpVector Double
 eigsSt m = extractDiagonalDSM $ execState (convergtest eigsStep) m where
   eigsStep m = (r #~# q) where (q, r) = qr m
-  convergtest g = modifyInspectN 2 f g where
+  convergtest g = modifyInspectN 20 f g where
     f [m1, m2] = let dm1 = extractDiagonalDSM m1
                      dm2 = extractDiagonalDSM m2
                  in norm2 (dm1 ^-^ dm2) <= eps
@@ -1508,71 +1528,59 @@ modifyUntil q f = do
   
 
 -- modify state and append, until max # of iterations is reached
-modifyInspectN :: MonadState s m => Int -> ([s] -> Bool) -> (s -> s) -> m s
-modifyInspectN n q ff | n > 0 = go ff [] nimax
-                      | otherwise = error "modifyInspectN : n must be > 0" where
-   nimax = 10
-   go f xs nim = do
-    x <- get
-    let y = f x
-        ys = y : xs
-    put y
-    if q ys
-         then do
-           put y
-           return y
-         else do
-           put y
-           go f (take n ys) (nim - 1)
-
--- modifyInspect2 q ff nimax = go ff [] 0 where
---   go f ll niter = do
+-- modifyInspectN :: MonadState s m => Int -> ([s] -> Bool) -> (s -> s) -> m s
+-- modifyInspectN n q ff | n > 0 = go ff [] nimax
+--                       | otherwise = error "modifyInspectN : n must be > 0" where
+--    nimax = 10
+--    go f xs nim = do
 --     x <- get
 --     let y = f x
-
-abort :: Applicative m => r -> ContT r m a
-abort result = ContT (\_ -> pure result)
-
--- <ertes> > flip evalState 0 . flip runContT return . forever $ do x <- get; if
--- 	x < 10 then modify (1 +) else abort x
-
-
--- loopUntil :: (s -> Bool) -> (s -> s) -> s -> s
--- loopUntil q f = execState st where
---   st = do
---     x <- get
---     if q x then modify f else put x
-
-loopUntil :: (t -> Bool) -> (t -> t) -> t -> t
-loopUntil q f x
-  | q x = x
-  | otherwise = loopUntil q f (f x)
-
-loopUntilIx :: (Ord a, Num a) => (b -> Bool) -> (b -> b) -> a -> b -> b
-loopUntilIx q f nmax x
-  | nmax < 0 = error "loopUntilIx : nmax must be > 0"
-  | otherwise = go 0 x where
-      go i xx | i >= nmax || q xx = xx
-              | otherwise = go (i + 1) (f xx)
+--         ys = y : xs
+--     put y
+--     if q ys
+--          then do
+--            put y
+--            return y
+--          else do
+--            put y
+--            go f (take n ys) (nim - 1)
 
 
--- loopUntilIxPairs p f nmax x0 = go 0 x0 [] where
---   -- go i x [] =
---   --   let x' = f x in go (i + 1) x' [x']
---   go i x ll =
---     let x' = f x in go (i + 1) x' x':ll
+
+loopUntilAcc :: Int -> ([t] -> Bool) -> (t -> t)  -> t -> t
+loopUntilAcc nitermax q f x = go 0 [] x where
+  go i ll xx | length ll < 2 = go (i + 1) (y : ll) y 
+             | otherwise = if q ll || i == nitermax
+                           then xx
+                           else go (i + 1) (take 2 $ y:ll) y
+                where y = f xx
+
+modifyInspectN ::
+  MonadState s m => Int -> ([s] -> Bool) -> (s -> s) -> m s
+modifyInspectN nitermax q f 
+  | nitermax > 0 = go 0 []
+  | otherwise = error "modifyInspectN : n must be > 0" where
+      go i ll = do
+        x <- get
+        let y = f x
+        if length ll < 2
+          then do put y
+                  go (i + 1) (y : ll)
+          else if q ll || i == nitermax
+               then do put y
+                       return y
+               else do put y
+                       go (i + 1) (take 2 $ y : ll)
 
 
-data TempSolutionDiff a = TSD { tsdIter :: Int,
-                                tsdPrev :: SpVector a,
-                                tsdCurr :: SpVector a } deriving (Eq, Show)
+meanl :: (Foldable t, Fractional a) => t a -> a
+meanl xx = 1/fromIntegral (length xx) * sum xx
 
-updateTSD :: SpVector a -> TempSolutionDiff a -> TempSolutionDiff a
-updateTSD vnew (TSD i _ vc) = TSD (succ i) vc vnew
+norm2l :: (Foldable t, Functor t, Floating a) => t a -> a
+norm2l xx = sqrt $ sum (fmap (**2) xx)
 
-checkTSD ::
-  (SpVector t -> SpVector t -> Bool) -> Int -> TempSolutionDiff t -> Bool
-checkTSD fq nitermax (TSD i vp vc) = i <= nitermax && fq vp vc
+
+diffSqL xx = (x1 - x2)**2 where [x1, x2] = [head xx, xx!!1]
 
 
 
@@ -1584,7 +1592,7 @@ checkTSD fq nitermax (TSD i vp vc) = i <= nitermax && fq vp vc
 
 
 untilConverged :: MonadState a m => (a -> SpVector Double) -> (a -> a) -> m a
-untilConverged fproj = modifyInspectN 2 (normDiffConverged fproj)
+untilConverged fproj = modifyInspectN 100 (normDiffConverged fproj)
 
 -- convergence check (FIXME)
 normDiffConverged :: (Foldable t, Functor t) =>
