@@ -18,7 +18,13 @@ Algorithms :
 
     * QR factorization
 
-* Utilities : Matrix eigenvalues (QR algorithm and Rayleigh quotient iteration), vector and matrix norms, matrix condition number, Givens rotation, Householder reflection
+* Eigenvalue algorithms
+
+    * QR algorithm
+
+    * Rayleigh quotient iteration
+
+* Utilities : Vector and matrix norms, matrix condition number, Givens rotation, Householder reflection
 
 * Predicates : Matrix orthogonality test (A^T A ~= I)
 
