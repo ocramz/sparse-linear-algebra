@@ -1150,24 +1150,38 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 -- | ========= Eigenvalues, using QR
 
-eigs :: SpMatrix Double -> SpVector Double
-eigs m = extractDiagonalDSM ee where
+eigs :: Int -> SpMatrix Double -> SpVector Double
+eigs nitermax m = extractDiagonalDSM ee where
   go m' 0 = m'
   go mm n = let (q, r) = qr mm
             in go (r #~# q) (n-1)
-  ee = go m 50
+  ee = go m nitermax
 
 
 -- | ", using MonadState
-eigsSt :: SpMatrix Double -> SpVector Double
-eigsSt m = extractDiagonalDSM $ execState (convergtest eigsStep) m where
-  eigsStep m = (r #~# q) where (q, r) = qr m
-  convergtest g = modifyInspectN 20 f g where
+
+eigsSt :: Int -> SpMatrix Double -> SpVector Double
+eigsSt nitermax m = extractDiagonalDSM $ execState (convergtest eigsStep) m where
+  eigsStep m = r #~# q where (q, r) = qr m
+  convergtest g = modifyInspectN nitermax f g where
     f [m1, m2] = let dm1 = extractDiagonalDSM m1
                      dm2 = extractDiagonalDSM m2
                  in norm2 (dm1 ^-^ dm2) <= eps
 
 
+
+
+
+
+-- | ========= Eigenvalues, using Rayleigh iteration
+
+rayleighStep ::
+  SpMatrix Double -> (SpVector Double, Double) -> (SpVector Double, Double)
+rayleighStep aa (b, mu) = (b', mu') where
+  ii = eye (nrows aa)
+  nom = (aa ^-^ (mu `matScale` ii)) <\> b
+  b' = normalize 2 nom
+  mu' = b' `dot` (aa #> b') / (b' `dot` b')
 
 
 
@@ -1526,27 +1540,6 @@ modifyUntil q f = do
   if q y then return y
          else modifyUntil q f     
   
-
--- modify state and append, until max # of iterations is reached
--- modifyInspectN :: MonadState s m => Int -> ([s] -> Bool) -> (s -> s) -> m s
--- modifyInspectN n q ff | n > 0 = go ff [] nimax
---                       | otherwise = error "modifyInspectN : n must be > 0" where
---    nimax = 10
---    go f xs nim = do
---     x <- get
---     let y = f x
---         ys = y : xs
---     put y
---     if q ys
---          then do
---            put y
---            return y
---          else do
---            put y
---            go f (take n ys) (nim - 1)
-
-
-
 loopUntilAcc :: Int -> ([t] -> Bool) -> (t -> t)  -> t -> t
 loopUntilAcc nitermax q f x = go 0 [] x where
   go i ll xx | length ll < 2 = go (i + 1) (y : ll) y 
@@ -1555,6 +1548,7 @@ loopUntilAcc nitermax q f x = go 0 [] x where
                            else go (i + 1) (take 2 $ y:ll) y
                 where y = f xx
 
+-- modify state and append, until max # of iterations is reached
 modifyInspectN ::
   MonadState s m => Int -> ([s] -> Bool) -> (s -> s) -> m s
 modifyInspectN nitermax q f 

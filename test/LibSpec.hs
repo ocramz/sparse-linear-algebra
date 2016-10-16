@@ -256,3 +256,13 @@ checkQr a = c1 && c2 where
 
 
 aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
+
+
+
+
+{- eigenvalues -}
+
+
+aa3 = fromListDenseSM 3 [1,1,3,2,2,2,3,1,1] :: SpMatrix Double
+
+b3 = mkSpVectorD 3 [1,1,1] :: SpVector Double
