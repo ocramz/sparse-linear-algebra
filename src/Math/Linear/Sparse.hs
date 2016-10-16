@@ -1150,18 +1150,9 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 -- | ========= Eigenvalues, using QR
 
-eigs :: Int -> SpMatrix Double -> SpVector Double
-eigs nitermax m = extractDiagonalDSM ee where
-  go m' 0 = m'
-  go mm n = let (q, r) = qr mm
-            in go (r #~# q) (n-1)
-  ee = go m nitermax
 
-
--- | ", using MonadState
-
-eigsSt :: Int -> SpMatrix Double -> SpVector Double
-eigsSt nitermax m = extractDiagonalDSM $ execState (convergtest eigsStep) m where
+eigsQR :: Int -> SpMatrix Double -> SpVector Double
+eigsQR nitermax m = extractDiagonalDSM $ execState (convergtest eigsStep) m where
   eigsStep m = r #~# q where (q, r) = qr m
   convergtest g = modifyInspectN nitermax f g where
     f [m1, m2] = let dm1 = extractDiagonalDSM m1
@@ -1176,12 +1167,23 @@ eigsSt nitermax m = extractDiagonalDSM $ execState (convergtest eigsStep) m wher
 -- | ========= Eigenvalues, using Rayleigh iteration
 
 rayleighStep ::
-  SpMatrix Double -> (SpVector Double, Double) -> (SpVector Double, Double)
+  SpMatrix Double ->
+  (SpVector Double, Double) ->
+  (SpVector Double, Double)    -- updated estimate of (eigenvector, eigenvalue)
 rayleighStep aa (b, mu) = (b', mu') where
   ii = eye (nrows aa)
   nom = (aa ^-^ (mu `matScale` ii)) <\> b
   b' = normalize 2 nom
   mu' = b' `dot` (aa #> b') / (b' `dot` b')
+
+eigRayleigh :: Int                -- max # iterations
+     -> SpMatrix Double           -- matrix
+     -> (SpVector Double, Double) -- initial guess of (eigenvector, eigenvalue)
+     -> (SpVector Double, Double) -- final estimate of (eigenvector, eigenvalue)
+eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
+  convergtest g = modifyInspectN nitermax f g where
+    f [(b1, _), (b2, _)] = norm2 (b2 ^-^ b1) <= eps 
+
 
 
 
