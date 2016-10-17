@@ -275,6 +275,15 @@ b3 = mkSpVectorD 3 [1,1,1] :: SpVector Double
 
 
 
+-- aa4 : eigenvalues 1 (mult.=2) and -1
+aa4 = fromListDenseSM 3 [3,2,-2,2,2,-1,6,5,-4] :: SpMatrix Double
+
+b4 = fromListDenseSV 3 [-3,-3,-3] :: SpVector Double
+
+
+
+
+
 
 
 

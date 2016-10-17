@@ -294,15 +294,20 @@ instance Normed SpVector where
 
 
 
--- | empty sparse vector (size n, no entries)
+
+
+-- ** Creation
+
+-- | empty sparse vector (length n, no entries)
 zeroSV :: Int -> SpVector a
 zeroSV n = SV n IM.empty
 
 
+-- | singleton sparse vector (length 1)
 singletonSV :: a -> SpVector a
 singletonSV x = SV 1 (IM.singleton 0 x)
 
--- ** Creation
+
 
 -- | create a sparse vector from an association list while discarding all zero entries
 mkSpVector :: (Num a, Eq a) => Int -> IM.IntMap a -> SpVector a
@@ -332,6 +337,7 @@ zerosSV d = SV d $ IM.fromList $ denseIxArray $ replicate d 0
 
 
 
+-- * Element insertion
 
 -- |insert element `x` at index `i` in a preexisting SpVector
 insertSpVector :: Int -> a -> SpVector a -> SpVector a
@@ -474,6 +480,116 @@ emptySpMatrix d = SM d IM.empty
 
 
 
+
+-- ** Creation
+
+-- | Zero SpMatrix of size (m, n)
+zeroSM :: Int -> Int -> SpMatrix a
+zeroSM m n = SM (m,n) IM.empty
+
+
+-- *** Diagonal matrix
+mkDiagonal :: Int -> [a] -> SpMatrix a
+mkDiagonal n = mkSubDiagonal n 0
+
+-- *** Identity matrix
+eye :: Num a => Int -> SpMatrix a
+eye n = mkDiagonal n (replicate n 1)
+
+
+-- *** Super- or sub- diagonal matrix
+
+mkSubDiagonal :: Int -> Int -> [a] -> SpMatrix a
+mkSubDiagonal n o xx | abs o < n = if o >= 0
+                                   then fz ii jj xx
+                                   else fz jj ii xx
+                     | otherwise = error "mkSubDiagonal : offset > dimension" where
+  ii = [0 .. n-1]
+  jj = [abs o .. n - 1]
+  fz a b x = fromListSM (n,n) (zip3 a b x)
+
+
+-- fromList :: [(Key,a)] -> IntMap a
+-- fromList xs
+--   = foldlStrict ins empty xs
+--   where
+--     ins t (k,x)  = insert k x t
+
+
+
+-- * fromList
+
+-- | Add to existing SpMatrix using data from list (row, col, value)
+fromListSM' :: Foldable t => t (IxRow, IxCol, a) -> SpMatrix a -> SpMatrix a
+fromListSM' iix sm = foldl ins sm iix where
+  ins t (i,j,x) = insertSpMatrix i j x t
+
+-- | Create new SpMatrix using data from list (row, col, value)
+fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
+fromListSM (m,n) iix = fromListSM' iix (zeroSM m n)
+
+
+-- | Create new SpMatrix assuming contiguous, 0-based indexing of elements
+fromListDenseSM :: Int -> [a] -> SpMatrix a
+fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
+  n = length ll `div` m
+
+
+-- * toList
+
+-- |Populate list with SpMatrix contents and populate missing entries with 0
+toDenseListSM :: Num t => SpMatrix t -> [(IxRow, IxCol, t)]
+toDenseListSM m =
+  [(i, j, m @@ (i, j)) | i <- [0 .. nrows m - 1], j <- [0 .. ncols m- 1]]
+
+
+
+
+
+-- ** Element insertion
+
+-- | Insert an element in a preexisting Spmatrix at the specified indices
+insertSpMatrix :: IxRow -> IxCol -> a -> SpMatrix a -> SpMatrix a
+insertSpMatrix i j x s
+  | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
+  | otherwise = error "insertSpMatrix : index out of bounds" where
+      smd = immSM s
+      d = dim s
+
+
+
+
+
+
+-- ** Lookup
+
+lookupSM :: SpMatrix a -> IxRow -> IxCol -> Maybe a
+lookupSM (SM _ im) i j = IM.lookup i im >>= IM.lookup j
+
+-- | Looks up an element in the matrix with a default (if the element is not found, zero is returned)
+
+lookupWD_SM, (@@) :: Num a => SpMatrix a -> (IxRow, IxCol) -> a
+lookupWD_SM sm (i,j) =
+  fromMaybe 0 (lookupSM sm i j)
+
+lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IxRow, IxCol) -> a
+lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
+
+-- | Zero-default lookup, infix form
+(@@) = lookupWD_SM
+
+
+
+
+-- FIXME : to throw an exception or just ignore the out-of-bound access ?
+
+
+
+
+
+
+
+
 -- *** Multiply matrix by a scalar
 matScale :: Num a => a -> SpMatrix a -> SpMatrix a
 matScale a = fmap (*a)
@@ -522,15 +638,17 @@ isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
 
 
 
--- | Internal data (do not export)
+
+
+
+
+
+
+-- *** Matrix data and metadata
+
+-- | Data in internal representation (do not export)
 immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
 immSM (SM _ imm) = imm
-
-
-
-
-
--- *** Metadata
 
 -- | (Number of rows, Number of columns)
 dimSM :: SpMatrix t -> (Rows, Cols)
@@ -602,77 +720,18 @@ bwBoundsSM s = -- b
 
 
 
--- ** Creation
-
--- | Zero SpMatrix of size (m, n)
-zeroSM :: Int -> Int -> SpMatrix a
-zeroSM m n = SM (m,n) IM.empty
-
--- | Add to existing SpMatrix using data from list (row, col, value)
-fromListSM' :: Foldable t => t (IxRow, IxCol, a) -> SpMatrix a -> SpMatrix a
-fromListSM' iix sm = foldl ins sm iix where
-  ins t (i,j,x) = insertSpMatrix i j x t
-
--- | Create new SpMatrix using data from list (row, col, value)
-fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
-fromListSM (m,n) iix = fromListSM' iix (zeroSM m n)
-
-
--- | Create new SpMatrix assuming contiguous, 0-based indexing of elements
-fromListDenseSM :: Int -> [a] -> SpMatrix a
-fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
-  n = length ll `div` m
-
-
--- *** Diagonal matrix
-mkDiagonal :: Int -> [a] -> SpMatrix a
-mkDiagonal n = mkSubDiagonal n 0
-
--- *** Identity matrix
-eye :: Num a => Int -> SpMatrix a
-eye n = mkDiagonal n (replicate n 1)
-
-
-
--- *** Super- or sub- diagonal matrix
-
-mkSubDiagonal :: Int -> Int -> [a] -> SpMatrix a
-mkSubDiagonal n o xx | abs o < n = if o >= 0
-                                   then fz ii jj xx
-                                   else fz jj ii xx
-                     | otherwise = error "mkSubDiagonal : offset > dimension" where
-  ii = [0 .. n-1]
-  jj = [abs o .. n - 1]
-  fz a b x = fromListSM (n,n) (zip3 a b x)
-
-
--- fromList :: [(Key,a)] -> IntMap a
--- fromList xs
---   = foldlStrict ins empty xs
---   where
---     ins t (k,x)  = insert k x t
 
 
 
 
--- ** Element insertion
 
--- | Insert an element in a preexisting Spmatrix at the specified indices
-insertSpMatrix :: IxRow -> IxCol -> a -> SpMatrix a -> SpMatrix a
-insertSpMatrix i j x s
-  | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
-  | otherwise = error "insertSpMatrix : index out of bounds" where
-      smd = immSM s
-      d = dim s
+
 
 
 
   
 
--- |Convert SpMatrix to list and populate missing entries with 0
-toDenseListSM :: Num t => SpMatrix t -> [(IxRow, IxCol, t)]
-toDenseListSM m =
-  [(i, j, m @@ (i, j)) | i <- [0 .. nrows m - 1], j <- [0 .. ncols m- 1]]
+
 
 
 
@@ -779,27 +838,7 @@ horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
 
 
 
--- ** Matrix element lookup
 
-lookupSM :: SpMatrix a -> IxRow -> IxCol -> Maybe a
-lookupSM (SM _ im) i j = IM.lookup i im >>= IM.lookup j
-
--- | Looks up an element in the matrix with a default (if the element is not found, zero is returned)
-
-lookupWD_SM, (@@) :: Num a => SpMatrix a -> (IxRow, IxCol) -> a
-lookupWD_SM sm (i,j) =
-  fromMaybe 0 (lookupSM sm i j)
-
-lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IxRow, IxCol) -> a
-lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
-
--- | Zero-default lookup, infix form
-(@@) = lookupWD_SM
-
-
-
-
--- FIXME : to throw an exception or just ignore the out-of-bound access ?
 
 
 
@@ -1203,6 +1242,13 @@ SVD of A :
 * compute SVD of B (implicit-shift QR step, Alg. 8.3.2)
 
 -}
+
+
+
+
+
+
+
 
 
 
