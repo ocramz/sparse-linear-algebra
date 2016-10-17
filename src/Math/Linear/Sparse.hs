@@ -39,12 +39,12 @@ import Data.Maybe
 
 -- * Additive ring 
 class Functor f => Additive f where
-  -- | zero element
+  -- | Ring zero element
   zero :: Num a => f a
   
-  -- | componentwise operations
+  -- | Ring +
   (^+^) :: Num a => f a -> f a -> f a
-  -- (^-^) :: Num a => f a -> f a -> f a
+
 
 
 
@@ -52,8 +52,8 @@ class Functor f => Additive f where
 negated :: (Num a, Functor f) => f a -> f a
 negated = fmap negate
 
-
-x ^-^ y = x ^+^ (negated y)
+(^-^) :: (Additive f, Num a) => f a -> f a -> f a
+x ^-^ y = x ^+^ negated y
 
 
 
@@ -226,8 +226,7 @@ instance Additive IM.IntMap where
   {-# INLINE zero #-}
   (^+^) = liftU2 (+)
   {-# INLINE (^+^) #-}
-  -- x ^-^ y = x ^+^ negated y
-  -- {-# INLINE (^-^) #-}
+
 
 instance VectorSpace IM.IntMap where
   n .* im = IM.map (* n) im
@@ -272,7 +271,7 @@ instance Foldable SpVector where
 instance Additive SpVector where
   zero = SV 0 IM.empty
   (^+^) = liftU2 (+)
-  -- (^-^) = liftU2 (-)
+
 
                       
 instance VectorSpace SpVector where
@@ -465,7 +464,7 @@ instance Set SpMatrix where
 instance Additive SpMatrix where
   zero = SM (0,0) IM.empty
   (^+^) = liftU2 (+)
-  -- (^-^) = liftU2 (-)
+
 
 instance FiniteDim SpMatrix where
   type FDSize SpMatrix = (Rows, Cols)
