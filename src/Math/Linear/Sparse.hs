@@ -9,15 +9,13 @@ import Math.Linear.Sparse.IntMap
 import Control.Monad.Primitive
 
 import Control.Monad (mapM_, forM_, replicateM)
-import Control.Monad.Loops
 
-import Control.Monad.Cont
 import Control.Monad.State.Strict
-import Control.Monad.Writer
-import Control.Monad.Trans
+-- import Control.Monad.Writer
+-- import Control.Monad.Trans
 
-import Control.Monad.Trans.State (runStateT)
-import Control.Monad.Trans.Writer (runWriterT)
+-- import Control.Monad.Trans.State (runStateT)
+-- import Control.Monad.Trans.Writer (runWriterT)
 
 import qualified Data.IntMap.Strict as IM
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
@@ -30,7 +28,7 @@ import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 
 
-import qualified Data.List as L
+-- import qualified Data.List as L
 import Data.Maybe
 
 
@@ -73,6 +71,7 @@ class VectorSpace f => Hilbert f where
   -- | inner product
   dot :: Num a => f a -> f a -> a
 
+-- * Normed vector space
 class Hilbert f => Normed f where
   norm :: (Floating a, Eq a) => a -> f a -> a
 
