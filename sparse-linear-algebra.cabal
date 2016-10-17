@@ -1,7 +1,7 @@
 name:                sparse-linear-algebra
-version:             0.1.0.1
-synopsis:            Sparse linear algebra datastructures and algorithms. Currently it provides iterative linear solvers, matrix decompositions, eigenvalue computations and related utilities.
-description:         Please see README.md
+version:             0.1.0.2
+synopsis:            Numerical computation in native Haskell 
+description:         Currently it provides iterative linear solvers, matrix decompositions, eigenvalue computations and related utilities. Please see README.md for details
 homepage:            https://github.com/ocramz/sparse-linear-algebra
 license:             GPL-3
 license-file:        LICENSE

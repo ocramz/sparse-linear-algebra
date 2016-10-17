@@ -213,7 +213,6 @@ class Functor f => Set f where
 
 
 
--- * IntMap implementation
 
 instance Set IM.IntMap where
   liftU2 = IM.unionWith
@@ -256,8 +255,6 @@ spySV s = fromIntegral (IM.size (dat s)) / fromIntegral (dim s)
 
 
 
-
--- ** instances for SpVector
 instance Functor SpVector where
   fmap f (SV n x) = SV n (fmap f x)
 
@@ -376,18 +373,16 @@ instance Show a => Show (SpVector a) where
   show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList x)
 
 
--- | lookup
+-- | lookup an index in a SpVector (returns 0 if lookup fails)
 
 lookupDenseSV :: Num a => IM.Key -> SpVector a -> a
 lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im 
 
-findWithDefault0IM :: Num a => IM.Key -> IM.IntMap a -> a
-findWithDefault0IM = IM.findWithDefault 0
 
 
 
 
--- | SV manipulation
+
 
 -- | Tail elements
 tailSV :: SpVector a -> SpVector a
@@ -400,9 +395,7 @@ headSV sv = fromMaybe 0 (IM.lookup 0 (dat sv))
 
 
 
--- | concatenate SpVector
-
-
+-- | concatenate two sparse vectors
 concatSV :: SpVector a -> SpVector a -> SpVector a
 concatSV (SV n1 s1) (SV n2 s2) = SV (n1+n2) (IM.union s1 s2') where
   s2' = IM.mapKeys (+ n1) s2
@@ -417,7 +410,6 @@ concatSV (SV n1 s1) (SV n2 s2) = SV (n1+n2) (IM.union s1 s2') where
 
 
 -- | promote a SV to SM
-
 svToSM :: SpVector a -> SpMatrix a
 svToSM (SV n d) = SM (n, 1) $ IM.singleton 0 d
 
@@ -449,8 +441,6 @@ data SpMatrix a = SM {smDim :: (Rows, Cols),
                       smData :: IM.IntMap (IM.IntMap a)} deriving Eq
 
 
-
--- ** Instances for SpMatrix
 instance Show a => Show (SpMatrix a) where
   show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList x)
 
@@ -504,7 +494,7 @@ normFrobenius m = sqrt $ foldlSM (+) 0 m' where
 
 
 
--- ** MATRIX METADATA
+-- ** Matrix metadata
 
 -- type synonyms
 type Rows = Int
@@ -513,7 +503,7 @@ type Cols = Int
 type IxRow = Int
 type IxCol = Int
 
--- *** predicates
+-- *** Predicates
 -- |Are the supplied indices within matrix bounds?
 validIxSM :: SpMatrix a -> (Int, Int) -> Bool
 validIxSM mm = inBounds02 (dim mm)
@@ -536,24 +526,29 @@ isDiagonalSM m = IM.size d == nrows m where
 
 
 
--- -- internal projection functions, do not export:
+-- | Internal data (do not export)
 immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
 immSM (SM _ imm) = imm
 
+-- | (Number of rows, Number of columns)
 dimSM :: SpMatrix t -> (Rows, Cols)
 dimSM (SM d _) = d
 
+-- | Number of rows times number of columns
 nelSM :: SpMatrix t -> Int
 nelSM (SM (nr,nc) _) = nr*nc
 
--- | nrows, ncols : size accessors
-nrows, ncols :: SpMatrix a -> Int
+-- | Number of rows
+nrows :: SpMatrix a -> Rows
 nrows = fst . dim
+
+-- | Number of columns
+ncols :: SpMatrix a -> Cols
 ncols = snd . dim
 
 
 
-
+-- *** SpMatrix information
 data SMInfo = SMInfo { smNz :: Int,
                        smSpy :: Double} deriving (Eq, Show)
 
@@ -569,17 +564,16 @@ spySM s = fromIntegral (nzSM s) / fromIntegral (nelSM s)
 
 -- *** Non-zero elements in a row
 
-nzRowU :: SpMatrix a -> IM.Key -> Int
-nzRowU s i = maybe 0 IM.size (IM.lookup i $ immSM s)
-
 nzRow :: SpMatrix a -> IM.Key -> Int
 nzRow s i | inBounds0 (nrows s) i = nzRowU s i
-          | otherwise = error "nzRow : index out of bounds"
+          | otherwise = error "nzRow : index out of bounds" where
+              nzRowU :: SpMatrix a -> IM.Key -> Int
+              nzRowU s i = maybe 0 IM.size (IM.lookup i $ immSM s)
 
 
 
 
--- *** bandwidth bounds (min, max)
+-- *** Mandwidth bounds (min, max)
 
 bwMinSM :: SpMatrix a -> Int
 bwMinSM = fst . bwBoundsSM
@@ -605,12 +599,13 @@ bwBoundsSM s = -- b
 
 
 
--- ** SPARSE MATRIX BUILDERS
+-- ** Sparse matrix builders
 
+-- | Zero SpMatrix of size (m, n)
 zeroSM :: Int -> Int -> SpMatrix a
 zeroSM m n = SM (m,n) IM.empty 
 
-
+-- | Insert an element in a preexisting Spmatrix at the specified indices
 insertSpMatrix :: IxRow -> IxCol -> a -> SpMatrix a -> SpMatrix a
 insertSpMatrix i j x s
   | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
@@ -636,9 +631,8 @@ fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
   
 
 
--- | to List
 
--- |Populate missing entries with 0
+-- |Convert SpMatrix to list and populate missing entries with 0
 toDenseListSM :: Num t => SpMatrix t -> [(IxRow, IxCol, t)]
 toDenseListSM m =
   [(i, j, m @@ (i, j)) | i <- [0 .. nrows m - 1], j <- [0 .. ncols m- 1]]
@@ -653,10 +647,8 @@ mkDiagonal n = mkSubDiagonal n 0
 
 -- *** Identity matrix
 eye :: Num a => Int -> SpMatrix a
-eye n = mkDiagonal n (ones n)
+eye n = mkDiagonal n (replicate n 1)
 
-ones :: Num a => Int -> [a]
-ones n = replicate n 1
 
 
   
@@ -683,13 +675,11 @@ mkSubDiagonal n o xx | abs o < n = if o >= 0
 
 
 
-encode :: (Int, Int) -> (Rows, Cols) -> Int
-encode (nr,_) (i,j) = i + (j * nr)
+-- encode :: (Int, Int) -> (Rows, Cols) -> Int
+-- encode (nr,_) (i,j) = i + (j * nr)
 
-decode :: (Int, Int) -> Int -> (Rows, Cols)
-decode (nr, _) ci = (r, c) where (c,r ) = quotRem ci nr
-
-
+-- decode :: (Int, Int) -> Int -> (Rows, Cols)
+-- decode (nr, _) ci = (r, c) where (c,r ) = quotRem ci nr
 
 
 
@@ -697,10 +687,12 @@ decode (nr, _) ci = (r, c) where (c,r ) = quotRem ci nr
 
 
 
--- ** SUB-MATRICES
 
 
-extractSubmatrixSM :: SpMatrix a -> (Int, Int) -> (Int, Int) -> SpMatrix a
+-- ** Sub-matrices
+
+-- | Extract a submatrix given the specified index bounds
+extractSubmatrixSM :: SpMatrix a -> (IxRow, IxCol) -> (IxRow, IxCol) -> SpMatrix a
 extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
   | q = SM (m', n') imm'
   | otherwise = error $ "extractSubmatrixSM : invalid indexing " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
@@ -727,21 +719,21 @@ toSV (SM (m,n) im) = SV d $ snd . head $ IM.toList im where
     | otherwise = error $ "toSV : incompatible dimensions " ++ show (m,n)
 
 
--- *** Extract jth column
-extractColSM :: SpMatrix a -> Int -> SpMatrix a
+-- *** Extract j'th column
+extractColSM :: SpMatrix a -> IxCol -> SpMatrix a
 extractColSM sm j = extractSubmatrixSM sm (0, nrows sm - 1) (j, j)
 
 -- |", and place into SpVector
-extractCol :: SpMatrix a -> Int -> SpVector a
+extractCol :: SpMatrix a -> IxCol -> SpVector a
 extractCol m j = toSV $ extractColSM m j
 
 
--- *** Extract ith row
-extractRowSM :: SpMatrix a -> Int -> SpMatrix a
+-- *** Extract i'th row
+extractRowSM :: SpMatrix a -> IxRow -> SpMatrix a
 extractRowSM sm i = extractSubmatrixSM sm (i, i) (0, ncols sm - 1)
 
 -- |", and place into SpVector
-extractRow :: SpMatrix a -> Int -> SpVector a
+extractRow :: SpMatrix a -> IxRow -> SpVector a
 extractRow m i = toSV $ extractRowSM m i
 
 
@@ -750,7 +742,7 @@ extractRow m i = toSV $ extractRowSM m i
 
 
 
--- ** MATRIX STACKING
+-- ** Matrix stacking
 
 -- | Vertical stacking
 vertStackSM, (-=-) :: SpMatrix a -> SpMatrix a -> SpMatrix a
@@ -778,18 +770,18 @@ horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
 
 
 
--- ** MATRIX ELEMENT LOOKUP
+-- ** Matrix element lookup
 
-lookupSM :: SpMatrix a -> IM.Key -> IM.Key -> Maybe a
+lookupSM :: SpMatrix a -> IxRow -> IxCol -> Maybe a
 lookupSM (SM _ im) i j = IM.lookup i im >>= IM.lookup j
 
 -- | Looks up an element in the matrix with a default (if the element is not found, zero is returned)
 
-lookupWD_SM, (@@) :: Num a => SpMatrix a -> (IM.Key, IM.Key) -> a
+lookupWD_SM, (@@) :: Num a => SpMatrix a -> (IxRow, IxCol) -> a
 lookupWD_SM sm (i,j) =
   fromMaybe 0 (lookupSM sm i j)
 
-lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IM.Key, IM.Key) -> a
+lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IxRow, IxCol) -> a
 lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 -- | Zero-default lookup, infix form
@@ -806,11 +798,13 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 
 
--- *** MISC SpMatrix OPERATIONS
+-- *** Misc. SpMatrix operations
 
+-- | Left fold over SpMatrix
 foldlSM :: (a -> b -> b) -> b -> SpMatrix a -> b
 foldlSM f n (SM _ m)= foldlIM2 f n m
 
+-- | Indexed left fold over SpMatrix
 ifoldlSM :: (IM.Key -> IM.Key -> a -> b -> b) -> b -> SpMatrix a -> b
 ifoldlSM f n (SM _ m) = ifoldlIM2' f n m
 
@@ -819,25 +813,16 @@ ifoldlSM f n (SM _ m) = ifoldlIM2' f n m
 
 
 
--- | mapping 
 
-
-
-
-
--- | folding
-
--- count sub-diagonal nonzeros
+-- |Count sub-diagonal nonzeros
 countSubdiagonalNZSM :: SpMatrix a -> Int
 countSubdiagonalNZSM (SM _ im) = countSubdiagonalNZ im
 
 
--- | filtering
-
 -- extractDiagonalSM :: (Num a, Eq a) => SpMatrix a -> SpVector a
 -- extractDiagonalSM (SM (m,n) im) = mkSpVectorD m $ extractDiagonalIM2 im
 
--- | extract with default 0
+-- | Extract the diagonal as a SpVector (with default 0)
 extractDiagonalDSM :: Num a => SpMatrix a -> SpVector a
 extractDiagonalDSM mm = fromListDenseSV n $ foldr ins [] ll  where
   ll = [0 .. n - 1]
@@ -850,8 +835,7 @@ extractDiagonalDSM mm = fromListDenseSV n $ foldr ins [] ll  where
 
   
 
---  filtering the index subset that lies below the diagonal
-
+-- |Filter the index subset that lies below the diagonal (used in the QR decomposition, for example)
 subdiagIndicesSM :: SpMatrix a -> [(IM.Key, IM.Key)]
 subdiagIndicesSM (SM _ im) = subdiagIndices im
 
@@ -859,8 +843,7 @@ subdiagIndicesSM (SM _ im) = subdiagIndices im
 
 
 
--- ** sparsify : remove 0s (!!!)
-
+-- ** sparsify : remove almost-0 elements (i.e. if |x| < eps)
 sparsifyIM2 :: IM.IntMap (IM.IntMap Double) -> IM.IntMap (IM.IntMap Double)
 sparsifyIM2 = ifilterIM2 (\_ _ x -> abs x >= eps)
 
@@ -869,8 +852,8 @@ sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 
 
--- ** ROUNDING operations (!!!)
-                              
+-- ** Rounding operations (!!!)
+-- | Round almost-0 and almost-1 to 0 and 1 respectively
 roundZeroOneSM :: SpMatrix Double -> SpMatrix Double
 roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 
@@ -884,12 +867,9 @@ roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 
 
 
--- * ALGEBRAIC PRIMITIVE OPERATIONS
+-- * Primitive algebra operations
 
-
--- ** Matrix transpose
-
-
+-- | transposeSM, (#^) : Matrix transpose
 transposeSM, (#^) :: SpMatrix a -> SpMatrix a
 transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
@@ -897,21 +877,13 @@ transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
 
 
--- | A^T B
-(#^#) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
-a #^# b = transposeSM a #~# b
-
-
--- | A B^T
-(##^) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
-a ##^ b = a #~# transposeSM b
 
 
 
 
 
 
--- ** matrix action on a vector
+-- ** Matrix action on a vector
 
 {- 
 FIXME : matVec is more general than SpVector's :
@@ -922,7 +894,7 @@ FIXME : matVec is more general than SpVector's :
 
 
 
--- |matrix on vector
+-- |Matrix-on-vector
 matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
 matVec (SM (nr, nc) mdata) (SV n sv)
   | nc == n = SV nr $ fmap (`dot` sv) mdata
@@ -930,7 +902,7 @@ matVec (SM (nr, nc) mdata) (SV n sv)
 
 (#>) = matVec
 
--- |vector on matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
+-- |Vector-on-matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
 vecMat, (<#) :: Num a => SpVector a -> SpMatrix a -> SpVector a  
 vecMat (SV n sv) (SM (nr, nc) mdata)
   | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
@@ -954,19 +926,16 @@ vecMat (SV n sv) (SM (nr, nc) mdata)
 
 -- ** Matrix-matrix product
 
--- unsafe matMat
-matMatU :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
-matMatU m1 m2 =
-  SM (nrows m1, ncols m2) im where
-    im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
-
-
 matMat, (##) :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
 matMat m1 m2
   | c1 == r2 = matMatU m1 m2
   | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
       d1@(r1, c1) = dim m1
       d2@(r2, c2) = dim m2
+      matMatU :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
+      matMatU m1 m2 =
+        SM (nrows m1, ncols m2) im where
+          im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
     
 
 (##) = matMat
@@ -982,11 +951,26 @@ matMat m1 m2
 
 
 
--- ** Matrix-matrix product, sparsified (prunes all elements `x` for which `abs x <= eps`)
+-- ** Matrix-matrix product, sparsified
+-- | Removes all elements `x` for which `| x | <= eps`)
 matMatSparsified, (#~#)  :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
 matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
 
 (#~#) = matMatSparsified
+
+
+
+
+-- ** Sparsified matrix products
+
+-- | A^T B
+(#^#) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+a #^# b = transposeSM a #~# b
+
+
+-- | A B^T
+(##^) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+a ##^ b = a #~# transposeSM b
 
 
 
@@ -1083,7 +1067,7 @@ QR.C1 ) To zero out entry A(i, j) we must find row k such that A(k, j) is
 non-zero but A has zeros in row k for all columns less than j.
 -}
 
-givens :: SpMatrix Double -> Int -> Int -> SpMatrix Double
+givens :: SpMatrix Double -> IxRow -> IxCol -> SpMatrix Double
 givens mm i j 
   | validIxSM mm (i,j) && isSquareSM mm =
        sparsifySM $ fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
@@ -1095,12 +1079,12 @@ givens mm i j
     b = mm @@ (i, j)   -- element to zero out
 
 -- |Is the `k`th the first nonzero column in the row?
-firstNonZeroColumn :: IM.IntMap a -> IM.Key -> Bool
+firstNonZeroColumn :: IM.IntMap a -> IxRow -> Bool
 firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
                           isNothing (IM.lookupLT k mm)
 
 -- |Returns a set of rows {k} that satisfy QR.C1
-candidateRows :: IM.IntMap (IM.IntMap a) -> IM.Key -> IM.Key -> Maybe [IM.Key]
+candidateRows :: IM.IntMap (IM.IntMap a) -> IxRow -> IxCol -> Maybe [IM.Key]
 candidateRows mm i j | IM.null u = Nothing
                      | otherwise = Just (IM.keys u) where
   u = IM.filterWithKey (\irow row -> irow /= i &&
@@ -1356,7 +1340,7 @@ instance Show BICGSTAB where
 
 data LinSolveMethod = CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
--- | linear solve with _random_ starting vector
+-- | Linear solve with _random_ starting vector
 linSolveM ::
   PrimMonad m =>
     LinSolveMethod -> SpMatrix Double -> SpVector Double -> m (SpVector Double)
@@ -1368,7 +1352,7 @@ linSolveM method aa b = do
     case method of CGS_ -> return $ _xBicgstab (bicgstab aa b x0 x0)
                    BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
 
--- | linear solve with _deterministic_ starting vector (every component at 0.1) 
+-- | Linear solve with _deterministic_ starting vector (every component at 0.1) 
 linSolve ::
   LinSolveMethod -> SpMatrix Double -> SpVector Double -> SpVector Double
 linSolve method aa b
@@ -1383,8 +1367,7 @@ linSolve method aa b
       (m, n) = dim aa
       nb     = dim b
 
--- <\> : sets default solver method 
-
+-- | <\> : linSolve using BiCGSTAB method and by default
 (<\>) :: SpMatrix Double -> SpVector Double -> SpVector Double      
 (<\>) = linSolve BICGSTAB_ 
   
@@ -1416,7 +1399,7 @@ linSolve method aa b
 
 
 
--- * PRETTY PRINTING
+-- ** Pretty printing of SpVector and SpMatrix
 
 
 sizeStr :: SpMatrix a -> String
@@ -1495,39 +1478,9 @@ instance (Show a, Num a) => PrintDense (SpMatrix a) where
 
 
 
-
-
-
-
--- | rounding to 0 or 1 within some predefined numerical precision
-
-
-almostZero, almostOne :: Double -> Bool
-almostZero x = abs x <= eps
-almostOne x = x >= (1-eps) && x < (1+eps)
-
-withDefault :: (t -> Bool) -> t -> t -> t
-withDefault q d x | q x = d
-                  | otherwise = x
-
-roundZero, roundOne :: Double -> Double
-roundZero = withDefault almostZero 0
-roundOne = withDefault almostOne 1
-
-with2Defaults :: (t -> Bool) -> (t -> Bool) -> t -> t -> t -> t
-with2Defaults q1 q2 d1 d2 x | q1 x = d1
-                            | q2 x = d2
-                            | otherwise = x
-
-roundZeroOne :: Double -> Double
-roundZeroOne = with2Defaults almostZero almostOne 0 1
-
-
-
-
+-- ** Control primitives for bounded iteration with convergence check
 
 -- | transform state until a condition is met
-
 modifyUntil :: MonadState s m => (s -> Bool) -> (s -> s) -> m s
 modifyUntil q f = do
   x <- get
@@ -1535,7 +1488,8 @@ modifyUntil q f = do
   put y
   if q y then return y
          else modifyUntil q f     
-  
+
+-- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached  
 loopUntilAcc :: Int -> ([t] -> Bool) -> (t -> t)  -> t -> t
 loopUntilAcc nitermax q f x = go 0 [] x where
   go i ll xx | length ll < 2 = go (i + 1) (y : ll) y 
@@ -1544,7 +1498,7 @@ loopUntilAcc nitermax q f x = go 0 [] x where
                            else go (i + 1) (take 2 $ y:ll) y
                 where y = f xx
 
--- | keep state `x` in a moving window of length 2 to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached
+-- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached (runs in State monad)
 modifyInspectN ::
   MonadState s m =>
     Int ->           -- iteration budget
@@ -1583,13 +1537,11 @@ diffSqL xx = (x1 - x2)**2 where [x1, x2] = [head xx, xx!!1]
 
 
 
-
-
-
+-- | iterate until convergence is verified or we run out of a fixed iteration budget
 untilConverged :: MonadState a m => (a -> SpVector Double) -> (a -> a) -> m a
 untilConverged fproj = modifyInspectN 100 (normDiffConverged fproj)
 
--- convergence check (FIXME)
+-- | convergence check (FIXME)
 normDiffConverged :: (Foldable t, Functor t) =>
      (a -> SpVector Double) -> t a -> Bool
 normDiffConverged fp xx = normSq (foldrMap fp (^-^) (zeroSV 0) xx) <= eps
@@ -1599,8 +1551,7 @@ normDiffConverged fp xx = normSq (foldrMap fp (^-^) (zeroSV 0) xx) <= eps
 
 
 
--- run `niter` iterations and append the state `x` to a list `xs`, stop when either the `xs` satisfies a predicate `q` or when the counter reaches 0
-
+-- | run `niter` iterations and append the state `x` to a list `xs`, stop when either the `xs` satisfies a predicate `q` or when the counter reaches 0
 runAppendN :: ([t] -> Bool) -> (t -> t) -> Int -> t -> [t]
 runAppendN qq ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
                           | otherwise = go qq ff niter x0 [] where
@@ -1609,7 +1560,7 @@ runAppendN qq ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
     if n <= 0 || q xs then xs
                       else go q f (n-1) x (x : xs)
 
--- ", NO convergence check 
+-- | ", NO convergence check 
 runAppendN' :: (t -> t) -> Int -> t -> [t]
 runAppendN' ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
                         | otherwise = go ff niter x0 [] where
@@ -1625,13 +1576,39 @@ runAppendN' ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
 
 
 
+-- ** Rounding operations
+
+-- | Rounding rule
+almostZero, almostOne :: Double -> Bool
+almostZero x = abs x <= eps
+almostOne x = x >= (1-eps) && x < (1+eps)
+
+withDefault :: (t -> Bool) -> t -> t -> t
+withDefault q d x | q x = d
+                  | otherwise = x
+
+roundZero, roundOne :: Double -> Double
+roundZero = withDefault almostZero 0
+roundOne = withDefault almostOne 1
+
+with2Defaults :: (t -> Bool) -> (t -> Bool) -> t -> t -> t -> t
+with2Defaults q1 q2 d1 d2 x | q1 x = d1
+                            | q2 x = d2
+                            | otherwise = x
+
+-- | Round to respectively 0 or 1 within some predefined numerical precision eps
+roundZeroOne :: Double -> Double
+roundZeroOne = with2Defaults almostZero almostOne 0 1
 
 
 
--- | random matrices and vectors
 
--- dense
 
+
+
+-- *** Random matrices and vectors
+
+-- |Dense SpMatrix
 randMat :: PrimMonad m => Int -> m (SpMatrix Double)
 randMat n = do
   g <- MWC.create
@@ -1639,7 +1616,8 @@ randMat n = do
   let ii_ = [0 .. n-1]
       (ix_,iy_) = unzip $ concatMap (zip ii_ . replicate n) ii_
   return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
-  
+
+-- | Dense SpVector  
 randVec :: PrimMonad m => Int -> m (SpVector Double)
 randVec n = do
   g <- MWC.create
@@ -1649,8 +1627,7 @@ randVec n = do
 
 
 
--- sparse
-
+-- | Sparse SpMatrix
 randSpMat :: Int -> Int -> IO (SpMatrix Double)
 randSpMat n nsp | nsp > n^2 = error "randSpMat : nsp must be < n^2 "
                 | otherwise = do
@@ -1660,7 +1637,7 @@ randSpMat n nsp | nsp > n^2 = error "randSpMat : nsp must be < n^2 "
   jj <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
   return $ fromListSM (n,n) $ zip3 ii jj aav
 
-
+-- | Sparse SpVector
 randSpVec :: Int -> Int -> IO (SpVector Double)
 randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
                 | otherwise = do
@@ -1674,15 +1651,13 @@ randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
 
 
 
--- | misc utils
-
-
+-- *** Misc. utilities
 
 -- | integer-indexed ziplist
 denseIxArray :: [b] -> [(Int, b)]
 denseIxArray xs = zip [0..length xs-1] xs 
 
--- ", 2d arrays
+-- | ", 2d arrays
 denseIxArray2 :: Int -> [c] -> [(Int, Int, c)]
 denseIxArray2 m xs = zip3 (concat $ replicate n ii_) jj_ xs where
   ii_ = [0 .. m-1]
@@ -1693,16 +1668,18 @@ denseIxArray2 m xs = zip3 (concat $ replicate n ii_) jj_ xs where
 
 -- folds
 
+-- | foldr over the results of a fmap
 foldrMap :: (Foldable t, Functor t) => (a -> b) -> (b -> c -> c) -> c -> t a -> c
 foldrMap ff gg x0 = foldr gg x0 . fmap ff
 
+-- | strict left fold
 foldlStrict :: (a -> b -> a) -> a -> [b] -> a
 foldlStrict f = go
   where
     go z []     = z
     go z (x:xs) = let z' = f z x in z' `seq` go z' xs
 
--- indexed fold?
+-- | indexed right fold
 ifoldr :: Num i =>
      (a -> b -> b) -> b -> (i -> c -> d -> a) -> c -> [d] -> b  
 ifoldr mjoin mneutral f  = go 0 where
@@ -1710,8 +1687,7 @@ ifoldr mjoin mneutral f  = go 0 where
   go _ _ [] = mneutral
 
 
--- bounds checking
-
+-- *** Bounds checking
 type LB = Int
 type UB = Int
 
@@ -1733,11 +1709,6 @@ inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 
 
 
-
-
-
-
---
 
 
 
