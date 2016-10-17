@@ -33,7 +33,7 @@ import Data.Maybe
 
 
 
--- * CLASSES and common operations
+{-|  CLASSES and common operations -}
 
 -- * Additive ring 
 class Functor f => Additive f where
@@ -50,6 +50,7 @@ class Functor f => Additive f where
 negated :: (Num a, Functor f) => f a -> f a
 negated = fmap negate
 
+-- | subtract two Additive objects
 (^-^) :: (Additive f, Num a) => f a -> f a -> f a
 x ^-^ y = x ^+^ negated y
 
