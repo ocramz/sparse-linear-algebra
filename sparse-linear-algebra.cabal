@@ -1,14 +1,14 @@
 name:                sparse-linear-algebra
 version:             0.1.0.1
-synopsis:            Sparse linear algebra datastructures and algorithms
+synopsis:            Sparse linear algebra datastructures and algorithms. Currently it provides iterative linear solvers, matrix decompositions, eigenvalue computations and related utilities.
 description:         Please see README.md
 homepage:            https://github.com/ocramz/sparse-linear-algebra
-license:             BSD3
+license:             GPL-3
 license-file:        LICENSE
 author:              Marco Zocca
 maintainer:          zocca.marco gmail
 copyright:           2016 Marco Zocca
-category:            Math
+category:            Numeric
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
