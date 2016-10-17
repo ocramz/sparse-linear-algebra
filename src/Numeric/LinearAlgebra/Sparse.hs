@@ -82,31 +82,31 @@ class Hilbert f => Normed f where
 
 -- ** Norms and related results
 
--- *** squared 2-norm
+-- | Squared 2-norm
 normSq :: (Hilbert f, Num a) => f a -> a
 normSq v = v `dot` v
 
 
--- *** L1 norm
+-- |L1 norm
 norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 norm1 v = sum (fmap abs v)
 
--- *** Euclidean norm
+-- |Euclidean norm
 norm2 :: (Hilbert f, Floating a) => f a -> a
 norm2 v = sqrt (normSq v)
 
--- *** Lp norm (p > 0)
+-- |Lp norm (p > 0)
 normP :: (Foldable t, Functor t, Floating a) => a -> t a -> a
 normP p v = sum u**(1/p) where
   u = fmap (**p) v
 
--- *** infinity-norm
+-- |Infinity-norm
 normInfty :: (Foldable t, Ord a) => t a -> a
 normInfty = maximum
 
 
 
--- *** normalize w.r.t. p-norm (p finite)
+-- |Normalize w.r.t. p-norm (p finite)
 normalize :: (Normed f, Floating a, Eq a) => a -> f a -> f a
 normalize p v = (1 / norm p v) .* v
 
@@ -116,19 +116,19 @@ normalize p v = (1 / norm p v) .* v
 
 
 
--- *** Lp inner product (p > 0)
+-- |Lp inner product (p > 0)
 dotLp :: (Set t, Foldable t, Floating a) => a -> t a -> t a ->  a
 dotLp p v1 v2 = sum u**(1/p) where
   f a b = (a*b)**p
   u = liftI2 f v1 v2
 
 
--- *** reciprocal
+-- |Reciprocal
 reciprocal :: (Functor f, Fractional b) => f b -> f b
 reciprocal = fmap recip
 
 
--- *** scale
+-- |Scale
 scale :: (Num b, Functor f) => b -> f b -> f b
 scale n = fmap (* n)
 
@@ -138,17 +138,11 @@ scale n = fmap (* n)
 
 
 
--- ** FiniteDim : finite-dimensional objects
+-- * FiniteDim : finite-dimensional objects
 
 class Additive f => FiniteDim f where
   type FDSize f :: *
   dim :: f a -> FDSize f
-
-
-
-
-
-
 
 
 -- | unary dimension-checking bracket
@@ -179,16 +173,14 @@ withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
 
 
 
--- ** HasData : accessing inner data (do not export)
+-- * HasData : accessing inner data (do not export)
 
 class Additive f => HasData f a where
   type HDData f a :: * 
   dat :: f a -> HDData f a
 
 
-
-
--- ** Sparse : sparse datastructures
+-- * Sparse : sparse datastructures
 
 class (FiniteDim f, HasData f a) => Sparse f a where
   spy :: Fractional b => f a -> b
@@ -196,16 +188,13 @@ class (FiniteDim f, HasData f a) => Sparse f a where
 
 
 
-
-
-
--- ** Set : things that behave as sets (e.g. of which we can take the union and the intersection)
+-- * Set : things that behave as sets
 
 class Functor f => Set f where
-  -- |union binary lift
+  -- |union binary lift : apply function on _union_ of two Sets
   liftU2 :: (a -> a -> a) -> f a -> f a -> f a
 
-  -- |intersection binary lift
+  -- |intersection binary lift : apply function on _intersection_ of two Sets
   liftI2 :: (a -> b -> c) -> f a -> f b -> f c  
 
 
@@ -306,7 +295,6 @@ instance Normed SpVector where
 
 
 -- | empty sparse vector (size n, no entries)
-
 zeroSV :: Int -> SpVector a
 zeroSV n = SV n IM.empty
 
@@ -314,7 +302,7 @@ zeroSV n = SV n IM.empty
 singletonSV :: a -> SpVector a
 singletonSV x = SV 1 (IM.singleton 0 x)
 
--- ** Create new sparse vector
+-- ** Creation
 
 -- | create a sparse vector from an association list while discarding all zero entries
 mkSpVector :: (Num a, Eq a) => Int -> IM.IntMap a -> SpVector a
@@ -352,10 +340,12 @@ insertSpVector i x (SV d xim)
   | otherwise = error "insertSpVector : index out of bounds"
 
 
+
+-- ** fromList
 fromListSV :: Int -> [(Int, a)] -> SpVector a
 fromListSV d iix = SV d (IM.fromList (filter (inBounds0 d . fst) iix ))
 
--- |toList
+-- ** toList
 toListSV :: SpVector a -> [(IM.Key, a)]
 toListSV sv = IM.toList (dat sv)
 
@@ -376,8 +366,9 @@ instance Show a => Show (SpVector a) where
   show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList x)
 
 
--- | lookup an index in a SpVector (returns 0 if lookup fails)
+-- ** Lookup
 
+-- |lookup an index in a SpVector (returns 0 if lookup fails)
 lookupDenseSV :: Num a => IM.Key -> SpVector a -> a
 lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im 
 
@@ -386,7 +377,7 @@ lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im
 
 
 
-
+-- ** Sub-vectors
 -- | Tail elements
 tailSV :: SpVector a -> SpVector a
 tailSV (SV n sv) = SV (n-1) ta where
@@ -420,7 +411,7 @@ svToSM (SV n d) = SM (n, 1) $ IM.singleton 0 d
 
     
 
--- *** Outer vector product
+-- ** Outer vector product
 
 outerProdSV, (><) :: Num a => SpVector a -> SpVector a -> SpMatrix a
 outerProdSV v1 v2 = fromListSM (m, n) ixy where
@@ -471,18 +462,19 @@ instance Sparse SpMatrix a where
   spy = spySM
   
 
--- | TODO : use semilattice properties instead
+-- | Componentwise tuple operations
+-- TODO : use semilattice properties instead
 maxTup, minTup :: Ord t => (t, t) -> (t, t) -> (t, t)
 maxTup (x1,y1) (x2,y2) = (max x1 x2, max y1 y2)
 minTup (x1,y1) (x2,y2) = (min x1 x2, min y1 y2)
 
--- | empty matrix of size d
+-- | Empty matrix of size d
 emptySpMatrix :: (Int, Int) -> SpMatrix a
 emptySpMatrix d = SM d IM.empty
 
 
 
--- *** multiply matrix by a scalar
+-- *** Multiply matrix by a scalar
 matScale :: Num a => a -> SpMatrix a -> SpMatrix a
 matScale a = fmap (*a)
 
@@ -496,8 +488,6 @@ normFrobenius m = sqrt $ foldlSM (+) 0 m' where
 
 
 
-
--- ** Matrix metadata
 
 -- type synonyms
 type Rows = Int
@@ -522,7 +512,10 @@ isDiagonalSM m = IM.size d == nrows m where
   ff irow row = IM.size row == 1 &&
                 IM.size (IM.filterWithKey (\j _ -> j == irow) row) == 1
 
-
+-- |is the matrix orthogonal? i.e. Q^t ## Q == I
+isOrthogonalSM :: SpMatrix Double -> Bool
+isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
+  rsm = roundZeroOneSM $ transposeSM sm ## sm
 
 
 
@@ -532,6 +525,12 @@ isDiagonalSM m = IM.size d == nrows m where
 -- | Internal data (do not export)
 immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
 immSM (SM _ imm) = imm
+
+
+
+
+
+-- *** Metadata
 
 -- | (Number of rows, Number of columns)
 dimSM :: SpMatrix t -> (Rows, Cols)
@@ -549,9 +548,6 @@ nrows = fst . dim
 ncols :: SpMatrix a -> Cols
 ncols = snd . dim
 
-
-
--- *** SpMatrix information
 data SMInfo = SMInfo { smNz :: Int,
                        smSpy :: Double} deriving (Eq, Show)
 
@@ -565,6 +561,7 @@ spySM :: Fractional b => SpMatrix a -> b
 spySM s = fromIntegral (nzSM s) / fromIntegral (nelSM s)
 
 
+
 -- *** Non-zero elements in a row
 
 nzRow :: SpMatrix a -> IM.Key -> Int
@@ -576,7 +573,7 @@ nzRow s i | inBounds0 (nrows s) i = nzRowU s i
 
 
 
--- *** Mandwidth bounds (min, max)
+-- *** Bandwidth bounds (min, max)
 
 bwMinSM :: SpMatrix a -> Int
 bwMinSM = fst . bwBoundsSM
@@ -602,20 +599,14 @@ bwBoundsSM s = -- b
 
 
 
--- ** Sparse matrix builders
+
+
+
+-- ** Creation
 
 -- | Zero SpMatrix of size (m, n)
 zeroSM :: Int -> Int -> SpMatrix a
-zeroSM m n = SM (m,n) IM.empty 
-
--- | Insert an element in a preexisting Spmatrix at the specified indices
-insertSpMatrix :: IxRow -> IxCol -> a -> SpMatrix a -> SpMatrix a
-insertSpMatrix i j x s
-  | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
-  | otherwise = error "insertSpMatrix : index out of bounds" where
-      smd = immSM s
-      d = dim s
-
+zeroSM m n = SM (m,n) IM.empty
 
 -- | Add to existing SpMatrix using data from list (row, col, value)
 fromListSM' :: Foldable t => t (IxRow, IxCol, a) -> SpMatrix a -> SpMatrix a
@@ -631,20 +622,9 @@ fromListSM (m,n) iix = fromListSM' iix (zeroSM m n)
 fromListDenseSM :: Int -> [a] -> SpMatrix a
 fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
   n = length ll `div` m
-  
 
 
-
--- |Convert SpMatrix to list and populate missing entries with 0
-toDenseListSM :: Num t => SpMatrix t -> [(IxRow, IxCol, t)]
-toDenseListSM m =
-  [(i, j, m @@ (i, j)) | i <- [0 .. nrows m - 1], j <- [0 .. ncols m- 1]]
-
-
-
-
-
--- ** Diagonal matrix
+-- *** Diagonal matrix
 mkDiagonal :: Int -> [a] -> SpMatrix a
 mkDiagonal n = mkSubDiagonal n 0
 
@@ -654,10 +634,7 @@ eye n = mkDiagonal n (replicate n 1)
 
 
 
-  
-
-
--- *** Create Super- or sub- diagonal matrix
+-- *** Super- or sub- diagonal matrix
 
 mkSubDiagonal :: Int -> Int -> [a] -> SpMatrix a
 mkSubDiagonal n o xx | abs o < n = if o >= 0
@@ -674,6 +651,35 @@ mkSubDiagonal n o xx | abs o < n = if o >= 0
 --   = foldlStrict ins empty xs
 --   where
 --     ins t (k,x)  = insert k x t
+
+
+
+
+-- ** Element insertion
+
+-- | Insert an element in a preexisting Spmatrix at the specified indices
+insertSpMatrix :: IxRow -> IxCol -> a -> SpMatrix a -> SpMatrix a
+insertSpMatrix i j x s
+  | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
+  | otherwise = error "insertSpMatrix : index out of bounds" where
+      smd = immSM s
+      d = dim s
+
+
+
+  
+
+-- |Convert SpMatrix to list and populate missing entries with 0
+toDenseListSM :: Num t => SpMatrix t -> [(IxRow, IxCol, t)]
+toDenseListSM m =
+  [(i, j, m @@ (i, j)) | i <- [0 .. nrows m - 1], j <- [0 .. ncols m- 1]]
+
+
+
+
+
+
+
 
 
 
@@ -801,7 +807,7 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 
 
--- *** Misc. SpMatrix operations
+-- ** Misc. SpMatrix operations
 
 -- | Left fold over SpMatrix
 foldlSM :: (a -> b -> b) -> b -> SpMatrix a -> b
@@ -855,7 +861,7 @@ sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 
 
--- ** Rounding operations (!!!)
+-- ** Value rounding
 -- | Round almost-0 and almost-1 to 0 and 1 respectively
 roundZeroOneSM :: SpMatrix Double -> SpMatrix Double
 roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
@@ -923,10 +929,6 @@ vecMat (SV n sv) (SM (nr, nc) mdata)
 
 
 
-
-
-
-
 -- ** Matrix-matrix product
 
 matMat, (##) :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
@@ -964,7 +966,7 @@ matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
 
 
 
--- ** Sparsified matrix products
+-- *** Sparsified matrix products of two matrices
 
 -- | A^T B
 (#^#) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
@@ -980,12 +982,6 @@ a ##^ b = a #~# transposeSM b
 
 
 
--- * Predicates
-
--- |is the matrix orthogonal? i.e. Q^t ## Q == I
-isOrthogonalSM :: SpMatrix Double -> Bool
-isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
-  rsm = roundZeroOneSM $ transposeSM sm ## sm
 
 
 
@@ -995,7 +991,7 @@ isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
 
 
 
--- ** Condition number
+-- * Matrix condition number
 
 -- |uses the R matrix from the QR factorization
 conditionNumberSM :: SpMatrix Double -> Double
@@ -1013,7 +1009,7 @@ conditionNumberSM m | isInfinite kappa = error "Infinite condition number : rank
 
 
 
--- ** Householder transformation
+-- * Householder transformation
 
 hhMat :: Num a => a -> SpVector a -> SpMatrix a
 hhMat beta x = eye n ^-^ scale beta (x >< x) where
@@ -1036,7 +1032,7 @@ hhRefl = hhMat 2.0
 
 
 
--- ** Givens rotation matrix
+-- * Givens rotation matrix
 
 
 hypot :: Floating a => a -> a -> a
@@ -1097,7 +1093,7 @@ candidateRows mm i j | IM.null u = Nothing
 
 
 
--- ** QR decomposition
+-- * QR decomposition
 
 
 -- | Applies Givens rotation iteratively to zero out sub-diagonal elements
@@ -1131,9 +1127,9 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 
 
--- ** Eigenvalue algorithms
+-- * Eigenvalue algorithms
 
--- *** All eigenvalues using QR algorithm
+-- ** All eigenvalues (QR algorithm)
 
 
 eigsQR :: Int -> SpMatrix Double -> SpVector Double
@@ -1149,7 +1145,7 @@ eigsQR nitermax m = extractDiagonalDSM $ execState (convergtest eigsStep) m wher
 
 
 
--- *** One eigenvalue and corresponding eigenvector, using Rayleigh iteration 
+-- ** One eigenvalue and eigenvector (Rayleigh iteration)
 
 -- | Cubic-order convergence, but it requires a mildly educated guess on the initial eigenpair
 rayleighStep ::
@@ -1174,7 +1170,7 @@ eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
 
 
 
--- ** Householder vector (G & VL Alg. 5.1.1, function `house`)
+-- * Householder vector (G & VL Alg. 5.1.1, function `house`)
 
 hhV :: SpVector Double -> (SpVector Double, Double)
 hhV x = (v, beta) where
@@ -1227,7 +1223,7 @@ SVD of A :
 
 
 
--- * LINEAR SOLVERS : solve A x = b
+-- * Iterative linear solvers
 
 -- | numerical tolerance for e.g. solution convergence
 eps :: Double
@@ -1339,7 +1335,7 @@ instance Show BICGSTAB where
 
 
 
--- * LINEAR SOLVERS INTERFACE
+-- * Linear solver interface
 
 data LinSolveMethod = CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
@@ -1402,76 +1398,6 @@ linSolve method aa b
 
 
 
--- ** Pretty printing of SpVector and SpMatrix
-
-
-sizeStr :: SpMatrix a -> String
-sizeStr sm =
-  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ ( sparsity",show sy,")"] where
-  (SMInfo nz sy) = infoSM sm 
-
-
-showNonZero :: (Show a, Num a, Eq a) => a -> String
-showNonZero x  = if x == 0 then " " else show x
-
-
-toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
-toDenseRow (SM (_,ncol) im) irow =
-  fmap (\icol -> im `lookupWD_IM` (irow,icol)) [0..ncol-1]
-
-toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
-toDenseRowClip sm irow ncomax
-  | ncols sm > ncomax = unwords (map show h) ++  " ... " ++ show t
-  | otherwise = show dr
-     where dr = toDenseRow sm irow
-           h = take (ncomax - 2) dr
-           t = last dr
-
-newline :: IO ()
-newline = putStrLn ""
-
-printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
-printDenseSM sm = do
-  newline
-  putStrLn $ sizeStr sm
-  newline
-  printDenseSM' sm 5 5
-  newline
-  where    
-    printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
-    printDenseSM' sm'@(SM (nr,_) _) nromax ncomax = mapM_ putStrLn rr_' where
-      rr_ = map (\i -> toDenseRowClip sm' i ncomax) [0..nr - 1]
-      rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
-           | otherwise = rr_
-
-
-toDenseListClip :: (Show a, Num a) => SpVector a -> Int -> String
-toDenseListClip sv ncomax
-  | dim sv > ncomax = unwords (map show h) ++  " ... " ++ show t
-  | otherwise = show dr
-     where dr = toDenseListSV sv
-           h = take (ncomax - 2) dr
-           t = last dr
-
-printDenseSV :: (Show t, Num t) => SpVector t -> IO ()
-printDenseSV sv = do
-  newline
-  printDenseSV' sv 5
-  newline where
-    printDenseSV' v nco = putStrLn rr_' where
-      rr_ = toDenseListClip v nco :: String
-      rr_' | dim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
-           | otherwise = rr_
-
--- ** Pretty printer typeclass
-class PrintDense a where
-  prd :: a -> IO ()
-
-instance (Show a, Num a) => PrintDense (SpVector a) where
-  prd = printDenseSV
-
-instance (Show a, Num a) => PrintDense (SpMatrix a) where
-  prd = printDenseSM
 
 
 
@@ -1481,7 +1407,8 @@ instance (Show a, Num a) => PrintDense (SpMatrix a) where
 
 
 
--- ** Control primitives for bounded iteration with convergence check
+
+-- * Control primitives for bounded iteration with convergence check
 
 -- | transform state until a condition is met
 modifyUntil :: MonadState s m => (s -> Bool) -> (s -> s) -> m s
@@ -1579,7 +1506,7 @@ runAppendN' ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
 
 
 
--- ** Rounding operations
+-- * Rounding operations
 
 -- | Rounding rule
 almostZero, almostOne :: Double -> Bool
@@ -1609,7 +1536,7 @@ roundZeroOne = with2Defaults almostZero almostOne 0 1
 
 
 
--- *** Random matrices and vectors
+-- * Random matrices and vectors
 
 -- |Dense SpMatrix
 randMat :: PrimMonad m => Int -> m (SpMatrix Double)
@@ -1653,8 +1580,86 @@ randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
 
 
 
+-- * Pretty printing
 
--- *** Misc. utilities
+
+sizeStr :: SpMatrix a -> String
+sizeStr sm =
+  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ ( sparsity",show sy,")"] where
+  (SMInfo nz sy) = infoSM sm 
+
+
+showNonZero :: (Show a, Num a, Eq a) => a -> String
+showNonZero x  = if x == 0 then " " else show x
+
+
+toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
+toDenseRow (SM (_,ncol) im) irow =
+  fmap (\icol -> im `lookupWD_IM` (irow,icol)) [0..ncol-1]
+
+toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
+toDenseRowClip sm irow ncomax
+  | ncols sm > ncomax = unwords (map show h) ++  " ... " ++ show t
+  | otherwise = show dr
+     where dr = toDenseRow sm irow
+           h = take (ncomax - 2) dr
+           t = last dr
+
+newline :: IO ()
+newline = putStrLn ""
+
+printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
+printDenseSM sm = do
+  newline
+  putStrLn $ sizeStr sm
+  newline
+  printDenseSM' sm 5 5
+  newline
+  where    
+    printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
+    printDenseSM' sm'@(SM (nr,_) _) nromax ncomax = mapM_ putStrLn rr_' where
+      rr_ = map (\i -> toDenseRowClip sm' i ncomax) [0..nr - 1]
+      rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
+           | otherwise = rr_
+
+
+toDenseListClip :: (Show a, Num a) => SpVector a -> Int -> String
+toDenseListClip sv ncomax
+  | dim sv > ncomax = unwords (map show h) ++  " ... " ++ show t
+  | otherwise = show dr
+     where dr = toDenseListSV sv
+           h = take (ncomax - 2) dr
+           t = last dr
+
+printDenseSV :: (Show t, Num t) => SpVector t -> IO ()
+printDenseSV sv = do
+  newline
+  printDenseSV' sv 5
+  newline where
+    printDenseSV' v nco = putStrLn rr_' where
+      rr_ = toDenseListClip v nco :: String
+      rr_' | dim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
+           | otherwise = rr_
+
+-- ** Pretty printer typeclass
+class PrintDense a where
+  prd :: a -> IO ()
+
+instance (Show a, Num a) => PrintDense (SpVector a) where
+  prd = printDenseSV
+
+instance (Show a, Num a) => PrintDense (SpMatrix a) where
+  prd = printDenseSM
+
+
+
+  
+
+
+
+
+
+-- * Misc. utilities
 
 -- | integer-indexed ziplist
 denseIxArray :: [b] -> [(Int, b)]
