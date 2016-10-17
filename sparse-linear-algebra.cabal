@@ -26,7 +26,6 @@ library
                      , containers
                      , hspec
                      , primitive >= 0.6.1.0
-                     , transformers >= 0.5.2.0
                      , mtl >= 2.2.1
                      , mwc-random
 
@@ -57,7 +56,6 @@ test-suite spec
                      , mwc-random
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra
-                     , transformers >= 0.5.2.0
                      , criterion
                      -- , QuickCheck
 
