@@ -1,6 +1,9 @@
 {-# language ScopedTypeVariables #-}
 module LibSpec where
 
+import Numeric.LinearAlgebra.Sparse
+
+
 import qualified Data.IntMap as IM
 
 import Control.Monad (replicateM)
@@ -12,8 +15,6 @@ import qualified System.Random.MWC.Distributions as MWC
 import Test.Hspec
 -- import Test.Hspec.QuickCheck
 
-import Lib
-import Math.Linear.Sparse
 
 
 
