@@ -1,5 +1,5 @@
 name:                sparse-linear-algebra
-version:             0.1.0.2
+version:             0.1.0.3
 synopsis:            Numerical computation in native Haskell 
 description:         Currently it provides iterative linear solvers, matrix decompositions, eigenvalue computations and related utilities. Please see README.md for details
 homepage:            https://github.com/ocramz/sparse-linear-algebra

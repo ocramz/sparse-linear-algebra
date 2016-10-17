@@ -1,6 +1,6 @@
 # sparse-linear-algebra
 
-Sparse linear algebra datastructures and algorithms in Haskell
+Numerical computation in native Haskell
 
 TravisCI : [![Build Status](https://travis-ci.org/ocramz/sparse-linear-algebra.png)](https://travis-ci.org/ocramz/sparse-linear-algebra)
 
