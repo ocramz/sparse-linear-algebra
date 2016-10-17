@@ -70,12 +70,12 @@ spec = do
 
 
 
--- run N iterations 
+-- -- run N iterations 
 
 -- runNBiC :: Int -> SpMatrix Double -> SpVector Double -> BICGSTAB
 runNBiC n aa b = map _xBicgstab $ runAppendN' (bicgstabStep aa x0) n bicgsInit where
    x0 = mkSpVectorD nd $ replicate nd 0.9
-   nd = dimSV r0
+   nd = dim r0
    r0 = b ^-^ (aa #> x0)    
    p0 = r0
    bicgsInit = BICGSTAB x0 r0 p0
@@ -83,7 +83,7 @@ runNBiC n aa b = map _xBicgstab $ runAppendN' (bicgstabStep aa x0) n bicgsInit w
 -- runNCGS :: Int -> SpMatrix Double -> SpVector Double -> CGS
 runNCGS n aa b = map _x $ runAppendN' (cgsStep aa x0) n cgsInit where
   x0 = mkSpVectorD nd $ replicate nd 0.1
-  nd = dimSV r0
+  nd = dim r0
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
   p0 = r0
   u0 = r0
@@ -271,3 +271,50 @@ aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
 aa3 = fromListDenseSM 3 [1,1,3,2,2,2,3,1,1] :: SpMatrix Double
 
 b3 = mkSpVectorD 3 [1,1,1] :: SpVector Double
+
+
+
+
+
+
+-- test data
+
+tm0, tm1, tm2, tm3, tm4 :: SpMatrix Double
+tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
+
+tv0, tv1 :: SpVector Double
+tv0 = mkSpVectorD 2 [5, 6]
+
+
+tv1 = SV 2 $ IM.singleton 0 1
+
+-- wikipedia test matrix for Givens rotation
+
+tm1 = sparsifySM $ fromListDenseSM 3 [6,5,0,5,1,4,0,4,3]
+
+tm1g1 = givens tm1 1 0
+tm1a2 = tm1g1 ## tm1
+
+tm1g2 = givens tm1a2 2 1
+tm1a3 = tm1g2 ## tm1a2
+
+tm1q = transposeSM (tm1g2 ## tm1g1)
+
+
+-- wp test matrix for QR decomposition via Givens rotation
+
+tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
+
+
+
+
+tm3 = transposeSM $ fromListDenseSM 3 [1 .. 9]
+
+tm3g1 = fromListDenseSM 3 [1, 0,0, 0,c,-s, 0, s, c]
+  where c= 0.4961
+        s = 0.8682
+
+
+--
+
+tm4 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
