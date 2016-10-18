@@ -337,7 +337,7 @@ zerosSV d = SV d $ IM.fromList $ denseIxArray $ replicate d 0
 
 
 
--- * Element insertion
+-- ** Element insertion
 
 -- |insert element `x` at index `i` in a preexisting SpVector
 insertSpVector :: Int -> a -> SpVector a -> SpVector a
@@ -517,7 +517,20 @@ mkSubDiagonal n o xx | abs o < n = if o >= 0
 
 
 
--- * fromList
+-- ** Element insertion
+
+-- | Insert an element in a preexisting Spmatrix at the specified indices
+insertSpMatrix :: IxRow -> IxCol -> a -> SpMatrix a -> SpMatrix a
+insertSpMatrix i j x s
+  | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
+  | otherwise = error "insertSpMatrix : index out of bounds" where
+      smd = immSM s
+      d = dim s
+
+
+
+
+-- ** fromList
 
 -- | Add to existing SpMatrix using data from list (row, col, value)
 fromListSM' :: Foldable t => t (IxRow, IxCol, a) -> SpMatrix a -> SpMatrix a
@@ -535,7 +548,7 @@ fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
   n = length ll `div` m
 
 
--- * toList
+-- ** toList
 
 -- |Populate list with SpMatrix contents and populate missing entries with 0
 toDenseListSM :: Num t => SpMatrix t -> [(IxRow, IxCol, t)]
@@ -546,15 +559,7 @@ toDenseListSM m =
 
 
 
--- ** Element insertion
 
--- | Insert an element in a preexisting Spmatrix at the specified indices
-insertSpMatrix :: IxRow -> IxCol -> a -> SpMatrix a -> SpMatrix a
-insertSpMatrix i j x s
-  | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
-  | otherwise = error "insertSpMatrix : index out of bounds" where
-      smd = immSM s
-      d = dim s
 
 
 
@@ -590,15 +595,7 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 
 
--- *** Multiply matrix by a scalar
-matScale :: Num a => a -> SpMatrix a -> SpMatrix a
-matScale a = fmap (*a)
 
--- *** Frobenius norm (sqrt of trace of M^T M)
-normFrobenius :: SpMatrix Double -> Double
-normFrobenius m = sqrt $ foldlSM (+) 0 m' where
-  m' | nrows m > ncols m = transposeSM m ## m
-     | otherwise = m ## transposeSM m 
   
 
 
@@ -612,7 +609,7 @@ type Cols = Int
 type IxRow = Int
 type IxCol = Int
 
--- *** Predicates
+-- ** Predicates
 -- |Are the supplied indices within matrix bounds?
 validIxSM :: SpMatrix a -> (Int, Int) -> Bool
 validIxSM mm = inBounds02 (dim mm)
@@ -644,7 +641,7 @@ isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
 
 
 
--- *** Matrix data and metadata
+-- ** Matrix data and metadata
 
 -- | Data in internal representation (do not export)
 immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
@@ -680,7 +677,7 @@ spySM s = fromIntegral (nzSM s) / fromIntegral (nelSM s)
 
 
 
--- *** Non-zero elements in a row
+-- ** Non-zero elements in a row
 
 nzRow :: SpMatrix a -> IM.Key -> Int
 nzRow s i | inBounds0 (nrows s) i = nzRowU s i
@@ -691,7 +688,7 @@ nzRow s i | inBounds0 (nrows s) i = nzRowU s i
 
 
 
--- *** Bandwidth bounds (min, max)
+-- ** Bandwidth bounds (min, max)
 
 bwMinSM :: SpMatrix a -> Int
 bwMinSM = fst . bwBoundsSM
@@ -891,7 +888,7 @@ subdiagIndicesSM (SM _ im) = subdiagIndices im
 
 
 
--- ** sparsify : remove almost-0 elements (i.e. if |x| < eps)
+-- ** Sparsify : remove almost-0 elements (i.e. if |x| < eps)
 sparsifyIM2 :: IM.IntMap (IM.IntMap Double) -> IM.IntMap (IM.IntMap Double)
 sparsifyIM2 = ifilterIM2 (\_ _ x -> abs x >= eps)
 
@@ -917,6 +914,7 @@ roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 
 -- * Primitive algebra operations
 
+-- * Matrix transpose
 -- | transposeSM, (#^) : Matrix transpose
 transposeSM, (#^) :: SpMatrix a -> SpMatrix a
 transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
@@ -924,6 +922,19 @@ transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 (#^) = transposeSM
 
 
+
+
+
+
+-- ** Multiply matrix by a scalar
+matScale :: Num a => a -> SpMatrix a -> SpMatrix a
+matScale a = fmap (*a)
+
+-- ** Frobenius norm
+normFrobenius :: SpMatrix Double -> Double
+normFrobenius m = sqrt $ foldlSM (+) 0 m' where
+  m' | nrows m > ncols m = transposeSM m ## m
+     | otherwise = m ## transposeSM m 
 
 
 
