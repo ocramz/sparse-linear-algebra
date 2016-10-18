@@ -911,11 +911,18 @@ roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 
 
 
+-- * Numerical tolerance for "near-0" tests
+-- | eps = 1e-8 
+eps :: Double
+eps = 1e-8
+
   
 
 
 
 -- * Primitive algebra operations
+
+
 
 -- ** Matrix transpose
 -- | transposeSM, (#^) : Matrix transpose
@@ -1219,8 +1226,9 @@ eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
 
 
 
--- * Householder vector (G & VL Alg. 5.1.1, function `house`)
+-- * Householder vector 
 
+-- (Golub & Van Loan, Alg. 5.1.1, function `house`)
 hhV :: SpVector Double -> (SpVector Double, Double)
 hhV x = (v, beta) where
   n = dim x
@@ -1281,16 +1289,14 @@ SVD of A :
 
 -- * Iterative linear solvers
 
--- | numerical tolerance for e.g. solution convergence
-eps :: Double
-eps = 1e-8
 
--- | residual of candidate solution x0
-residual :: Num a => SpMatrix a -> SpVector a -> SpVector a -> SpVector a
-residual aa b x0 = b ^-^ (aa #> x0)
 
-converged :: SpMatrix Double -> SpVector Double -> SpVector Double -> Bool
-converged aa b x0 = normSq (residual aa b x0) <= eps
+-- -- | residual of candidate solution x0 of a linear system
+-- residual :: Num a => SpMatrix a -> SpVector a -> SpVector a -> SpVector a
+-- residual aa b x0 = b ^-^ (aa #> x0)
+
+-- converged :: SpMatrix Double -> SpVector Double -> SpVector Double -> Bool
+-- converged aa b x0 = normSq (residual aa b x0) <= eps
 
 
 
@@ -1339,7 +1345,7 @@ instance Show CGS where
 
   
 
--- ** BiCSSTAB
+-- ** BiCGSTAB
 
 -- _aa :: SpMatrix Double,    -- matrix
 -- _b :: SpVector Double,     -- rhs
