@@ -1041,6 +1041,7 @@ a ##^ b = a #~# transposeSM b
 
 
 
+
 -- * Matrix condition number
 
 -- |uses the R matrix from the QR factorization
@@ -1386,6 +1387,12 @@ instance Show BICGSTAB where
 
 
 
+-- * Moore-Penrose pseudoinverse
+-- | Least-squares approximation of a rectangular system of equaitons. Uses <\\> for the linear solve
+pinv :: SpMatrix Double -> SpVector Double -> SpVector Double
+pinv aa b = aa #^# aa <\> atb where
+  atb = transposeSM aa #> b
+
 
 
 
@@ -1423,7 +1430,7 @@ linSolve method aa b
       (m, n) = dim aa
       nb     = dim b
 
--- | <\> : linSolve using BiCGSTAB method and by default
+-- | <\\> : linSolve using the BiCGSTAB method as default
 (<\>) :: SpMatrix Double -> SpVector Double -> SpVector Double      
 (<\>) = linSolve BICGSTAB_ 
   
