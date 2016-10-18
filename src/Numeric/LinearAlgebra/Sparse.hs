@@ -914,7 +914,7 @@ roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 
 -- * Primitive algebra operations
 
--- * Matrix transpose
+-- ** Matrix transpose
 -- | transposeSM, (#^) : Matrix transpose
 transposeSM, (#^) :: SpMatrix a -> SpMatrix a
 transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
