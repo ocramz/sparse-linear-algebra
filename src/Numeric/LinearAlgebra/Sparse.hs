@@ -1231,6 +1231,7 @@ candidateRows mm i j | IM.null u = Nothing
 
 
 
+
 -- * QR decomposition
 
 
@@ -1363,11 +1364,23 @@ SVD of A, Golub-Kahan method
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 
+-- lu aa | isSquareSM aa = undefined
+--       | otherwise = error "LU factorization not currently defined for rectangular matrices" where
+--           n = nrows aa
+--           l0 = eye n
+--           aa0 = 
+
+-- luStep aa i l u 
 
 
-
-
-
+-- Produces the permutation matrix necessary to have a nonzero in position (iref, jref). This is used in the LU factorization
+permutAA :: Num b => SpMatrix a -> IxRow -> IxCol -> Maybe (SpMatrix b)
+permutAA (SM (nro,_) mm) iref jref
+  | isJust (lookupIM2 iref jref mm) = Nothing -- eye nro
+  | otherwise = Just $ permutationSM nro [head u] where
+      u = IM.keys (ifilterIM2 ff mm)
+      ff i j _ = i /= iref &&
+                 j == jref
 
 
 
