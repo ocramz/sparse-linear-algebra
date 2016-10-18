@@ -340,6 +340,14 @@ fromListDenseSV :: Int -> [a] -> SpVector a
 fromListDenseSV d ll = SV d (IM.fromList $ denseIxArray (take d ll))
 
 
+-- | one-hot encoding : `oneHotSV n k` produces a SpVector of length n having 1 at the k-th position
+oneHotSVU :: Num a => Int -> IxRow -> SpVector a
+oneHotSVU n k = SV n (IM.singleton k 1)
+
+oneHotSV :: Num a => Int -> IxRow -> SpVector a
+oneHotSV n k |inBounds0 n k = oneHotSVU n k
+             |otherwise = error "`oneHotSV n k` must satisfy 0 <= k <= n"
+
 
 -- | DENSE vector of `1`s
 onesSV :: Num a => Int -> SpVector a
@@ -526,28 +534,9 @@ permutationSM n iis = permut (zip [0 .. n-1] iis) (eye n) where
   permut ((i1,i2):iis) m = permut iis (swapRows i1 i2 m)
   permut [] m = m
 
--- | swap two rows of a SpMatrix (bounds not checked)
-swapRows :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
-swapRows i1 i2 (SM d im) = SM d $ IM.insert i1 ro2 im' where
-  ro1 = im IM.! i1
-  ro2 = im IM.! i2
-  im' = IM.insert i2 ro1 im
 
--- | swap two rows of a SpMatrix (bounds checked)  
-swapRowsSafe :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
-swapRowsSafe i1 i2 m
-  | inBounds02 (nro, nro) (i1, i2) = swapRows i1 i2 m
-  | otherwise =
-     error $ "swapRowsSafe : index out of bounds " ++ show (i1, i2)
-      where nro = nrows m  
 
--- | one-hot encoding : `oneHotSV n k` produces a SpVector of length n having 1 at the k-th position
-oneHotSVU :: Num a => Int -> IxRow -> SpVector a
-oneHotSVU n k = SV n (IM.singleton k 1)
 
-oneHotSV :: Num a => Int -> IxRow -> SpVector a
-oneHotSV n k |inBounds0 n k = oneHotSVU n k
-             |otherwise = error "`oneHotSV n k` must satisfy 0 <= k <= n"
               
 
 -- permutationIx
@@ -973,6 +962,26 @@ eps = 1e-8
 
 
 -- * Primitive algebra operations
+
+
+-- ** Matrix row swap
+-- | swap two rows of a SpMatrix (bounds not checked)
+swapRows :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
+swapRows i1 i2 (SM d im) = SM d $ IM.insert i1 ro2 im' where
+  ro1 = im IM.! i1
+  ro2 = im IM.! i2
+  im' = IM.insert i2 ro1 im
+
+-- | swap two rows of a SpMatrix (bounds checked)  
+swapRowsSafe :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
+swapRowsSafe i1 i2 m
+  | inBounds02 (nro, nro) (i1, i2) = swapRows i1 i2 m
+  | otherwise =
+     error $ "swapRowsSafe : index out of bounds " ++ show (i1, i2)
+      where nro = nrows m  
+
+
+
 
 
 
