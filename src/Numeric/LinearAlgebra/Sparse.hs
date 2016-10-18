@@ -493,12 +493,13 @@ mkDiagonal :: Int -> [a] -> SpMatrix a
 mkDiagonal n = mkSubDiagonal n 0
 
 -- *** Identity matrix
+-- | `eye n` : identity matrix of rank `n`
 eye :: Num a => Int -> SpMatrix a
 eye n = mkDiagonal n (replicate n 1)
 
 
 -- *** Super- or sub- diagonal matrix
-
+-- | `mkSubDiagonal n o xx` creates a square SpMatrix of size `n` with `xx` on the `o`th subdiagonal
 mkSubDiagonal :: Int -> Int -> [a] -> SpMatrix a
 mkSubDiagonal n o xx | abs o < n = if o >= 0
                                    then fz ii jj xx
@@ -1182,7 +1183,7 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 -- ** All eigenvalues (QR algorithm)
 
-
+-- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm` 
 eigsQR :: Int -> SpMatrix Double -> SpVector Double
 eigsQR nitermax m = extractDiagonalDSM $ execState (convergtest eigsStep) m where
   eigsStep m = r #~# q where (q, r) = qr m
@@ -1198,17 +1199,8 @@ eigsQR nitermax m = extractDiagonalDSM $ execState (convergtest eigsStep) m wher
 
 -- ** One eigenvalue and eigenvector (Rayleigh iteration)
 
--- | Cubic-order convergence, but it requires a mildly educated guess on the initial eigenpair
-rayleighStep ::
-  SpMatrix Double ->
-  (SpVector Double, Double) -> 
-  (SpVector Double, Double)    -- updated estimate of (eigenvector, eigenvalue)
-rayleighStep aa (b, mu) = (b', mu') where
-  ii = eye (nrows aa)
-  nom = (aa ^-^ (mu `matScale` ii)) <\> b
-  b' = normalize 2 nom
-  mu' = b' `dot` (aa #> b') / (b' `dot` b')
 
+-- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm`. Cubic-order convergence, but it requires a mildly educated guess on the initial eigenpair
 eigRayleigh :: Int                -- max # iterations
      -> SpMatrix Double           -- matrix
      -> (SpVector Double, Double) -- initial guess of (eigenvector, eigenvalue)
@@ -1216,7 +1208,11 @@ eigRayleigh :: Int                -- max # iterations
 eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
   convergtest g = modifyInspectN nitermax f g where
     f [(b1, _), (b2, _)] = norm2 (b2 ^-^ b1) <= eps 
-
+  rayleighStep aa (b, mu) = (b', mu') where
+      ii = eye (nrows aa)
+      nom = (aa ^-^ (mu `matScale` ii)) <\> b
+      b' = normalize 2 nom
+      mu' = b' `dot` (aa #> b') / (b' `dot` b')
 
 
 
