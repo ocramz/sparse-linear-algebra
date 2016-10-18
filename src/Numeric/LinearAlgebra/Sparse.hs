@@ -437,6 +437,13 @@ outerProdSV v1 v2 = fromListSM (m, n) ixy where
 
 -- * Sparse Matrix
 
+-- type synonyms
+type Rows = Int
+type Cols = Int
+
+type IxRow = Int
+type IxCol = Int
+
 data SpMatrix a = SM {smDim :: (Rows, Cols),
                       smData :: IM.IntMap (IM.IntMap a)} deriving Eq
 
@@ -474,17 +481,15 @@ maxTup, minTup :: Ord t => (t, t) -> (t, t) -> (t, t)
 maxTup (x1,y1) (x2,y2) = (max x1 x2, max y1 y2)
 minTup (x1,y1) (x2,y2) = (min x1 x2, min y1 y2)
 
--- | Empty matrix of size d
-emptySpMatrix :: (Int, Int) -> SpMatrix a
-emptySpMatrix d = SM d IM.empty
+
 
 
 
 
 -- ** Creation
 
--- | Zero SpMatrix of size (m, n)
-zeroSM :: Int -> Int -> SpMatrix a
+-- | `zeroSM m n` : Empty SpMatrix of size (m, n)
+zeroSM :: Rows -> Cols -> SpMatrix a
 zeroSM m n = SM (m,n) IM.empty
 
 
@@ -651,12 +656,7 @@ extractRow m i = toSV $ extractRowSM m i
 
 
 
--- type synonyms
-type Rows = Int
-type Cols = Int
 
-type IxRow = Int
-type IxCol = Int
 
 -- ** Predicates
 -- |Are the supplied indices within matrix bounds?
@@ -884,17 +884,18 @@ extractDiagonalDSM mm = fromListDenseSV n $ foldr ins [] ll  where
   
 
 -- |Filter the index subset that lies below the diagonal (used in the QR decomposition, for example)
-subdiagIndicesSM :: SpMatrix a -> [(IM.Key, IM.Key)]
+subdiagIndicesSM :: SpMatrix a -> [(IxRow, IxCol)]
 subdiagIndicesSM (SM _ im) = subdiagIndices im
 
 
 
 
 
--- ** Sparsify : remove almost-0 elements (i.e. if |x| < eps)
+-- ** Sparsify : remove almost-0 elements (|x| < eps)
 sparsifyIM2 :: IM.IntMap (IM.IntMap Double) -> IM.IntMap (IM.IntMap Double)
 sparsifyIM2 = ifilterIM2 (\_ _ x -> abs x >= eps)
 
+-- | Sparsify an SpMatrix
 sparsifySM :: SpMatrix Double -> SpMatrix Double
 sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
@@ -1247,6 +1248,10 @@ hhV x = (v, beta) where
 
 
 
+-- * Householder bidiagonalization
+
+
+
 
 
 
@@ -1254,10 +1259,10 @@ hhV x = (v, beta) where
 
 {- Golub & Van Loan, sec 8.6.2 (p 452 segg.)
 
-SVD of A :
+SVD of A, Golub-Kahan method
 
-* reduce A to upper bidiagonal form B (Alg. 5.4.2)
-* compute SVD of B (implicit-shift QR step, Alg. 8.3.2)
+* reduce A to upper bidiagonal form B (Alg. 5.4.2, Householder bidiagonalization)
+* compute SVD of B (implicit-shift QR step applied to B^T B, Alg. 8.3.2)
 
 -}
 
@@ -1343,7 +1348,7 @@ instance Show CGS where
 
 
 
-  
+
 
 -- ** BiCGSTAB
 
