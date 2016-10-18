@@ -528,22 +528,34 @@ eye n = mkDiagonal n (replicate n 1)
 
 -- *** Permutation matrix
 
--- | permutation matrix from a (possibly incomplete) list of row swaps starting from row 0
+-- | Permutation matrix from a (possibly incomplete) list of row swaps starting from row 0
+-- e.g. `permutationSM 5 [1,3]` first swaps rows (0, 1) and then rows (1, 3) :
+-- 
+-- [0,1,0,0,0]
+-- [0,0,0,1,0]
+-- [0,0,1,0,0]
+-- [1,0,0,0,0]
+-- [0,0,0,0,1]
 permutationSM :: Num a => Int -> [IxRow] -> SpMatrix a
-permutationSM n iis = permut n (zip [0 .. n-1] iis)
+permutationSM n iis = permutPairsSM n (zip [0 .. n-1] iis)
 
--- | permutation matrix from a (possibly incomplete) list of row pair swaps
-permut :: Num a => Int -> [(IxRow, IxRow)] -> SpMatrix a
-permut n iix = go iix (eye n) where
+-- | Permutation matrix from a (possibly incomplete) list of row pair swaps
+-- e.g. `permutPairs 5 [(2,4)]` swaps rows (2, 4) :
+--
+-- [1,0,0,0,0]
+-- [0,1,0,0,0]
+-- [0,0,0,0,1]
+-- [0,0,0,1,0]
+-- [0,0,1,0,0]
+permutPairsSM :: Num a => Int -> [(IxRow, IxRow)] -> SpMatrix a
+permutPairsSM n iix = go iix (eye n) where
   go ((i1, i2):iis) m = go iis (swapRows i1 i2 m)
   go [] m = m
 
 
 
 
-              
 
--- permutationIx
 
 
 -- *** Super- or sub- diagonal matrix
