@@ -233,6 +233,8 @@ instance Normed IM.IntMap where
 
 
 
+
+
 -- * Sparse Vector
 
 data SpVector a = SV { svDim :: Int ,
@@ -443,12 +445,7 @@ sparsifySV (SV d im) = SV d $ IM.filter (\x -> abs x >= eps) im
 
 -- * Sparse Matrix
 
--- type synonyms
-type Rows = Int
-type Cols = Int
 
-type IxRow = Int
-type IxCol = Int
 
 data SpMatrix a = SM {smDim :: (Rows, Cols),
                       smData :: IM.IntMap (IM.IntMap a)} deriving Eq
@@ -1796,7 +1793,12 @@ inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 
 
 
+-- * Type synonyms for SpMatrix
+type Rows = Int
+type Cols = Int
 
+type IxRow = Int
+type IxCol = Int
 
 
 
