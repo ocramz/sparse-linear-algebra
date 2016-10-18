@@ -528,11 +528,15 @@ eye n = mkDiagonal n (replicate n 1)
 
 -- *** Permutation matrix
 
--- | permutation matrix from a (possibly incomplete) list of row swaps
+-- | permutation matrix from a (possibly incomplete) list of row swaps starting from row 0
 permutationSM :: Num a => Int -> [IxRow] -> SpMatrix a
-permutationSM n iis = permut (zip [0 .. n-1] iis) (eye n) where
-  permut ((i1,i2):iis) m = permut iis (swapRows i1 i2 m)
-  permut [] m = m
+permutationSM n iis = permut n (zip [0 .. n-1] iis)
+
+-- | permutation matrix from a (possibly incomplete) list of row pair swaps
+permut :: Num a => Int -> [(IxRow, IxRow)] -> SpMatrix a
+permut n iix = go iix (eye n) where
+  go ((i1, i2):iis) m = go iis (swapRows i1 i2 m)
+  go [] m = m
 
 
 
@@ -1344,7 +1348,7 @@ SVD of A, Golub-Kahan method
 
 -- * LU factorization
 
-
+{- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 
 
