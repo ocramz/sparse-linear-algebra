@@ -75,9 +75,21 @@ class VectorSpace f => Hilbert f where
   -- | inner product
   dot :: Num a => f a -> f a -> a
 
+
+-- ** Hilbert-space distance function
+-- |`hilbertDistSq x y = || x - y ||^2`
+hilbertDistSq :: (Hilbert f, Num a) => f a -> f a -> a
+hilbertDistSq x y = dot t t where
+  t = x ^-^ y
+
+  
+
+
 -- * Normed vector space
 class Hilbert f => Normed f where
   norm :: (Floating a, Eq a) => a -> f a -> a
+
+
 
 
 -- ** Norms and related results
@@ -504,6 +516,41 @@ mkDiagonal n = mkSubDiagonal n 0
 -- | `eye n` : identity matrix of rank `n`
 eye :: Num a => Int -> SpMatrix a
 eye n = mkDiagonal n (replicate n 1)
+
+
+-- *** Permutation matrix
+
+-- | permutation matrix from a (possibly incomplete) list of row swaps
+permutationSM :: Num a => Int -> [IxRow] -> SpMatrix a
+permutationSM n iis = permut (zip [0 .. n-1] iis) (eye n) where
+  permut ((i1,i2):iis) m = permut iis (swapRows i1 i2 m)
+  permut [] m = m
+
+-- | swap two rows of a SpMatrix (bounds not checked)
+swapRows :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
+swapRows i1 i2 (SM d im) = SM d $ IM.insert i1 ro2 im' where
+  ro1 = im IM.! i1
+  ro2 = im IM.! i2
+  im' = IM.insert i2 ro1 im
+
+-- | swap two rows of a SpMatrix (bounds checked)  
+swapRowsSafe :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
+swapRowsSafe i1 i2 m
+  | inBounds02 (nro, nro) (i1, i2) = swapRows i1 i2 m
+  | otherwise =
+     error $ "swapRowsSafe : index out of bounds " ++ show (i1, i2)
+      where nro = nrows m  
+
+-- | one-hot encoding : `oneHotSV n k` produces a SpVector of length n having 1 at the k-th position
+oneHotSVU :: Num a => Int -> IxRow -> SpVector a
+oneHotSVU n k = SV n (IM.singleton k 1)
+
+oneHotSV :: Num a => Int -> IxRow -> SpVector a
+oneHotSV n k |inBounds0 n k = oneHotSVU n k
+             |otherwise = error "`oneHotSV n k` must satisfy 0 <= k <= n"
+              
+
+-- permutationIx
 
 
 -- *** Super- or sub- diagonal matrix
@@ -1254,6 +1301,8 @@ hhV x = (v, beta) where
 
 -- * Householder bidiagonalization
 
+{- G & VL Alg. 5.4.2 -}
+
 
 
 
@@ -1281,6 +1330,10 @@ SVD of A, Golub-Kahan method
 
 
 
+
+
+
+-- * LU factorization
 
 
 
