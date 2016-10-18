@@ -429,6 +429,12 @@ outerProdSV v1 v2 = fromListSM (m, n) ixy where
 
 
 
+-- * Sparsify : remove almost-0 elements (|x| < eps)
+-- | Sparsify an SpVector
+sparsifySV :: SpVector Double -> SpVector Double
+sparsifySV (SV d im) = SV d $ IM.filter (\x -> abs x >= eps) im
+
+
 
 
 
@@ -898,6 +904,7 @@ sparsifyIM2 = ifilterIM2 (\_ _ x -> abs x >= eps)
 -- | Sparsify an SpMatrix
 sparsifySM :: SpMatrix Double -> SpMatrix Double
 sparsifySM (SM d im) = SM d $ sparsifyIM2 im
+
 
 
 
