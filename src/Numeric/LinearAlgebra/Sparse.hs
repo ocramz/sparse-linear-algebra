@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
 
 module Numeric.LinearAlgebra.Sparse where
@@ -434,6 +434,21 @@ concatSV (SV n1 s1) (SV n2 s2) = SV (n1+n2) (IM.union s1 s2') where
 -- | promote a SV to SM
 svToSM :: SpVector a -> SpMatrix a
 svToSM (SV n d) = SM (n, 1) $ IM.singleton 0 d
+
+
+
+
+
+-- * Orthogonal vector
+
+-- | Generate an arbitrary (not random) vector `u` such that `v dot u = 0`
+orthogonalSV :: Fractional a => SpVector a -> SpVector a
+orthogonalSV v = u where
+  (h, t) = (headSV v, tailSV v)
+  n = dim v
+  v2 = onesSV (n - 1)
+  yn = singletonSV $ - (v2 `dot` t)/h
+  u = concatSV yn v2
 
 
 
@@ -1409,8 +1424,8 @@ cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
   aap = aa #> p
   alphaj = (r `dot` rhat) / (aap `dot` rhat)
   q = u ^-^ (alphaj .* aap)
-  xj1 = x ^+^ (alphaj .* (u ^+^ q))  -- updated solution
-  rj1 = r ^-^ (alphaj .* (aa #> (u ^+^ q)))-- updated residual
+  xj1 = x ^+^ (alphaj .* (u ^+^ q))         -- updated solution
+  rj1 = r ^-^ (alphaj .* (aa #> (u ^+^ q))) -- updated residual
   betaj = (rj1 `dot` rhat) / (r `dot` rhat)
   uj1 = rj1 ^+^ (betaj .* q)
   pj1 = uj1 ^+^ (betaj .* (q ^+^ (betaj .* p)))
@@ -1460,7 +1475,7 @@ bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
   sj = r ^-^ (alphaj .* aap)
   aasj = aa #> sj
   omegaj = (aasj `dot` sj) / (aasj `dot` aasj)
-  xj1 = x ^+^ (alphaj .* p) ^+^ (omegaj .* sj)
+  xj1 = x ^+^ (alphaj .* p) ^+^ (omegaj .* sj)    -- updated solution
   rj1 = sj ^-^ (omegaj .* aasj)
   betaj = (rj1 `dot` r0hat)/(r `dot` r0hat) * alphaj / omegaj
   pj1 = rj1 ^+^ (betaj .* (p ^-^ (omegaj .* aap)))
@@ -1525,7 +1540,7 @@ linSolve ::
 linSolve method aa b
   | n /= nb = error "linSolve : operand dimensions mismatch"
   | otherwise = solve aa b where
-      solve aa' b' | isDiagonalSM aa = (reciprocal aa') #> b'
+      solve aa' b' | isDiagonalSM aa' = reciprocal aa' #> b' -- diagonal solve is easy
                    | otherwise = solveWith aa' b' 
       solveWith aa' b' = case method of
                                 CGS_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
@@ -1538,6 +1553,8 @@ linSolve method aa b
 (<\>) :: SpMatrix Double -> SpVector Double -> SpVector Double      
 (<\>) = linSolve BICGSTAB_ 
   
+
+
 
 
 
@@ -1596,7 +1613,7 @@ loopUntilAcc nitermax q f x = go 0 [] x where
                            else go (i + 1) (take 2 $ y:ll) y
                 where y = f xx
 
--- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached (runs in State monad)
+-- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached (i.e. same thing as `loopUntilAcc` but this one runs in the State monad)
 modifyInspectN ::
   MonadState s m =>
     Int ->           -- iteration budget
