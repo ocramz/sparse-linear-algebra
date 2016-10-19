@@ -10,6 +10,8 @@ Algorithms :
 
 * Iterative linear solvers
 
+    * BiConjugate Gradient (BCG)
+
     * Conjugate Gradient Squared (CGS)
 
     * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems)
