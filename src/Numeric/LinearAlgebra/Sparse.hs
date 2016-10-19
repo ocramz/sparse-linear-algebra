@@ -1415,6 +1415,34 @@ permutAA (SM (nro,_) mm) iref jref
 
 
 
+-- ** BCG
+
+-- | one step of BCG
+bcgStep :: SpMatrix Double -> BCG -> BCG
+bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
+  aap = aa #> p
+  alpha = (r `dot` rhat) / (aap `dot` phat)
+  x1 = x ^+^ (alpha .* p)
+  r1 = r ^-^ (alpha .* aap)
+  rhat1 = rhat ^-^ (alpha .* (transposeSM aa #> phat))
+  beta = (r1 `dot` rhat1) / (r `dot` rhat)
+  p1 = r1 ^+^ (beta .* p)
+  phat1 = rhat1 ^+^ (beta .* phat)
+
+data BCG =
+  BCG { _xBcg, _rBcg, _rHatBcg, _pBcg, _pHatBcg :: SpVector Double } deriving Eq
+
+bcg :: SpMatrix Double -> SpVector Double -> SpVector Double -> BCG
+bcg aa b x0 = execState (untilConverged _xBcg (bcgStep aa)) bcgInit where
+  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+  r0hat = r0
+  p0 = r0
+  p0hat = r0
+  bcgInit = BCG x0 r0 r0hat p0 p0hat
+
+
+
+
 -- ** CGS
 
 -- | one step of CGS
@@ -1430,10 +1458,7 @@ cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
   uj1 = rj1 ^+^ (betaj .* q)
   pj1 = uj1 ^+^ (betaj .* (q ^+^ (betaj .* p)))
 
-data CGS = CGS { _x :: SpVector Double,
-                 _r :: SpVector Double,
-                 _p :: SpVector Double,
-                 _u :: SpVector Double } deriving Eq
+data CGS = CGS { _x, _r, _p, _u :: SpVector Double} deriving Eq
 
 -- | iterate solver until convergence or until max # of iterations is reached
 cgs ::
@@ -1480,9 +1505,8 @@ bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
   betaj = (rj1 `dot` r0hat)/(r `dot` r0hat) * alphaj / omegaj
   pj1 = rj1 ^+^ (betaj .* (p ^-^ (omegaj .* aap)))
 
-data BICGSTAB = BICGSTAB { _xBicgstab :: SpVector Double,
-                           _rBicgstab :: SpVector Double,
-                           _pBicgstab :: SpVector Double} deriving Eq
+data BICGSTAB =
+  BICGSTAB { _xBicgstab, _rBicgstab, _pBicgstab :: SpVector Double} deriving Eq
 
 -- | iterate solver until convergence or until max # of iterations is reached
 bicgstab
@@ -1520,19 +1544,19 @@ pinv aa b = aa #^# aa <\> atb where
 
 -- * Linear solver interface
 
-data LinSolveMethod = CGS_ | BICGSTAB_ deriving (Eq, Show) 
+data LinSolveMethod = BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
--- | Linear solve with _random_ starting vector
-linSolveM ::
-  PrimMonad m =>
-    LinSolveMethod -> SpMatrix Double -> SpVector Double -> m (SpVector Double)
-linSolveM method aa b = do
-  let (m, n) = dim aa
-      nb     = dim b
-  if n /= nb then error "linSolve : operand dimensions mismatch" else do
-    x0 <- randVec nb
-    case method of CGS_ -> return $ _xBicgstab (bicgstab aa b x0 x0)
-                   BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
+-- -- | Linear solve with _random_ starting vector
+-- linSolveM ::
+--   PrimMonad m =>
+--     LinSolveMethod -> SpMatrix Double -> SpVector Double -> m (SpVector Double)
+-- linSolveM method aa b = do
+--   let (m, n) = dim aa
+--       nb     = dim b
+--   if n /= nb then error "linSolve : operand dimensions mismatch" else do
+--     x0 <- randVec nb
+--     case method of CGS_ -> return $ _xBicgstab (bicgstab aa b x0 x0)
+--                    BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
 
 -- | Linear solve with _deterministic_ starting vector (every component at 0.1) 
 linSolve ::
@@ -1543,6 +1567,7 @@ linSolve method aa b
       solve aa' b' | isDiagonalSM aa' = reciprocal aa' #> b' -- diagonal solve is easy
                    | otherwise = solveWith aa' b' 
       solveWith aa' b' = case method of
+                                BCG_ -> _xBcg (bcg aa' b' x0)
                                 CGS_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
                                 BICGSTAB_ -> _x (cgs aa' b' x0 x0)
       x0 = mkSpVectorD n $ replicate n 0.1 

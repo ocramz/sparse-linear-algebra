@@ -46,9 +46,10 @@ spec = do
       execState (modifyInspectN 2 ((< eps) . diffSqL) (/2)) 1 `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
       execState (modifyInspectN (2^16) ((< eps) . head) (/2)) 1 < eps `shouldBe` True 
-  describe "Math.Linear.Sparse : Linear solvers" $ do    
+  describe "Math.Linear.Sparse : Linear solvers" $ do
+    it "BCG (2 x 2 dense)" $
+      normSq (_xBcg (bcg aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "BiCGSTAB (2 x 2 dense)" $ 
-      -- normSq (_xBicgstab (bicgstab aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
       normSq (aa0 <\> b0 ^-^ x0true) <= eps `shouldBe` True
     it "CGS (2 x 2 dense)" $ 
       normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
