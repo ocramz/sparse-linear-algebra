@@ -1440,7 +1440,12 @@ bcg aa b x0 = execState (untilConverged _xBcg (bcgStep aa)) bcgInit where
   p0hat = r0
   bcgInit = BCG x0 r0 r0hat p0 p0hat
 
-
+instance Show BCG where
+  show (BCG x r rhat p phat) = "x = " ++ show x ++ "\n" ++
+                       "r = " ++ show r ++ "\n" ++
+                       "r_hat = " ++ show rhat ++ "\n" ++
+                       "p = " ++ show p ++ "\n" ++
+                       "p_hat = " ++ show phat ++ "\n"
 
 
 -- ** CGS
