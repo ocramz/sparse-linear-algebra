@@ -19,6 +19,7 @@ library
   ghc-options:         -Wall
   hs-source-dirs:      src
   exposed-modules:     Numeric.LinearAlgebra.Sparse
+                       Numeric.LinearAlgebra.Class
                        Numeric.LinearAlgebra.Sparse.IntMap
   build-depends:       QuickCheck
                      , base >= 4.7 && < 5
