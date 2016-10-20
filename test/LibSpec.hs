@@ -50,6 +50,8 @@ spec = do
     it "modifyInspectN : termination by value convergence" $
       execState (modifyInspectN (2^16) ((< eps) . head) (/2)) 1 < eps `shouldBe` True 
   describe "Math.Linear.Sparse : Linear solvers" $ do
+    -- it "TFQMR (2 x 2 dense)" $
+    --   normSq (_xTfq (tfqmr aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "BCG (2 x 2 dense)" $
       normSq (_xBcg (bcg aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "BiCGSTAB (2 x 2 dense)" $ 
@@ -202,7 +204,7 @@ solveRandomN ndim nsp niter = do
   let b = aa #> xtrue
       xhatB = head $ runNBiC niter aa b
       xhatC = head $ runNCGS niter aa b
-  printDenseSM aa    
+  -- printDenseSM aa    
   return (normSq (xhatB ^-^ xtrue), normSq (xhatC ^-^ xtrue))
 
 --

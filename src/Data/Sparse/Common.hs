@@ -2,7 +2,8 @@ module Data.Sparse.Common
        ( module X,
          svToSM, outerProdSV, (><), toSV, extractCol, extractRow,
          extractDiagonalDSM,
-         matVec, (#>), vecMat, (<#)) where
+         matVec, (#>), vecMat, (<#),
+         prd) where
 
 import Data.Sparse.Utils as X
 import Data.Sparse.SpMatrix as X

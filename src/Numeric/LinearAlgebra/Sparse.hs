@@ -306,12 +306,57 @@ permutAA (SM (nro,_) mm) iref jref
 
 
 
--- -- | residual of candidate solution x0 of a linear system
--- residual :: Num a => SpMatrix a -> SpVector a -> SpVector a -> SpVector a
--- residual aa b x0 = b ^-^ (aa #> x0)
 
--- converged :: SpMatrix Double -> SpVector Double -> SpVector Double -> Bool
--- converged aa b x0 = normSq (residual aa b x0) <= eps
+-- ** TFQMR
+
+-- | one step of TFQMR
+tfqmrStep :: SpMatrix Double -> SpVector Double -> TFQMR -> TFQMR
+tfqmrStep aa r0hat (TFQMR x w u v d m tau theta eta rho alpha) =
+  TFQMR x1 w1 u1 v1 d1 (m+1) tau1 theta1 eta1 rho1 alpha1
+  where
+  -- alpham = alpha
+  w1 = w ^-^ (alpha .* (aa #> u))
+  d1 = u ^+^ ((theta**2/alpha*eta) .* d)
+  theta1 = norm2 w1 / tau
+  c = recip $ sqrt (1 + theta1**2)
+  tau1 = tau * theta1 * c
+  eta1 = c**2 * alpha
+  x1 = x^+^ (eta1 .* d1)
+  (alpha1, u1, rho1, v1)
+    | even m = let
+                   alpha' = rho / (v `dot` r0hat)
+                   u' = u ^-^ (alpha' .* v)
+               in
+                   (alpha', u', rho, v)
+    | otherwise = let
+                   rho' = w1 `dot` r0hat
+                   beta = rho'/rho
+                   u' = w1 ^+^ (beta .* u)
+                   v' = (aa #> u') ^+^ (beta .* (aa #> u ^+^ (beta .* v)) )
+                   in (alpha, u', rho', v')
+
+tfqmr :: SpMatrix Double -> SpVector Double -> SpVector Double -> TFQMR  
+tfqmr aa b x0 = execState (untilConverged _xTfq (tfqmrStep aa r0)) tfqmrInit where
+  n = dim b
+  r0 = b ^-^ (aa #> x0)    -- ^ residual of initial guess solution
+  w0 = r0
+  u0 = r0
+  v0 = aa #> u0
+  d0 = zeroSV n
+  r0hat = r0
+  rho0 = r0hat `dot` r0
+  alpha0 = rho0 / (v0 `dot` r0hat)
+  m = 0
+  tau0 = norm2 r0
+  theta0 = 0
+  eta0 = 0
+  tfqmrInit = TFQMR x0 w0 u0 v0 d0 m tau0 theta0 eta0 rho0 alpha0
+
+data TFQMR =
+  TFQMR { _xTfq, _wTfq, _uTfq, _vTfq, _dTfq :: SpVector Double,
+          _mTfq :: Int,
+          _tauTfq, _thetaTfq, _etaTfq, _rhoTfq, _alphaTfq :: Double}
+  deriving Eq
 
 
 
@@ -334,7 +379,7 @@ data BCG =
 
 bcg :: SpMatrix Double -> SpVector Double -> SpVector Double -> BCG
 bcg aa b x0 = execState (untilConverged _xBcg (bcgStep aa)) bcgInit where
-  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+  r0 = b ^-^ (aa #> x0)    -- ^ residual of initial guess solution
   r0hat = r0
   p0 = r0
   p0hat = r0
@@ -449,7 +494,7 @@ pinv aa b = aa #^# aa <\> atb where
 
 -- * Linear solver interface
 
-data LinSolveMethod = BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
+data LinSolveMethod = TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
 -- -- | Linear solve with _random_ starting vector
 -- linSolveM ::
@@ -472,9 +517,10 @@ linSolve method aa b
       solve aa' b' | isDiagonalSM aa' = reciprocal aa' #> b' -- diagonal solve is easy
                    | otherwise = solveWith aa' b' 
       solveWith aa' b' = case method of
-                                BCG_ -> _xBcg (bcg aa' b' x0)
-                                CGS_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
-                                BICGSTAB_ -> _x (cgs aa' b' x0 x0)
+        TFQMR_ -> _xTfq (tfqmr aa' b' x0)
+        BCG_ -> _xBcg (bcg aa' b' x0)
+        CGS_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
+        BICGSTAB_ -> _x (cgs aa' b' x0 x0)
       x0 = mkSpVectorD n $ replicate n 0.1 
       (m, n) = dim aa
       nb     = dim b
@@ -584,7 +630,7 @@ diffSqL xx = (x1 - x2)**2 where [x1, x2] = [head xx, xx!!1]
 
 -- | iterate until convergence is verified or we run out of a fixed iteration budget
 untilConverged :: MonadState a m => (a -> SpVector Double) -> (a -> a) -> m a
-untilConverged fproj = modifyInspectN 100 (normDiffConverged fproj)
+untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
 
 -- | convergence check (FIXME)
 normDiffConverged :: (Foldable t, Functor t) =>
