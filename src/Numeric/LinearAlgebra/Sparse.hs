@@ -338,7 +338,7 @@ tfqmrStep aa r0hat (TFQMR x w u v d m tau theta eta rho alpha) =
 tfqmr :: SpMatrix Double -> SpVector Double -> SpVector Double -> TFQMR  
 tfqmr aa b x0 = execState (untilConverged _xTfq (tfqmrStep aa r0)) tfqmrInit where
   n = dim b
-  r0 = b ^-^ (aa #> x0)    -- ^ residual of initial guess solution
+  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
   w0 = r0
   u0 = r0
   v0 = aa #> u0
@@ -379,7 +379,7 @@ data BCG =
 
 bcg :: SpMatrix Double -> SpVector Double -> SpVector Double -> BCG
 bcg aa b x0 = execState (untilConverged _xBcg (bcgStep aa)) bcgInit where
-  r0 = b ^-^ (aa #> x0)    -- ^ residual of initial guess solution
+  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
   r0hat = r0
   p0 = r0
   p0hat = r0
