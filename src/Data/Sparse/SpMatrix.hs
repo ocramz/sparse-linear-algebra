@@ -2,12 +2,10 @@
 module Data.Sparse.SpMatrix where
 
 import Data.Sparse.Utils
-
-import Data.Sparse.Utils
+import Data.Sparse.Types
 
 import Numeric.Eps
 import Numeric.LinearAlgebra.Class
-import Numeric.LinearAlgebra.Data
 
 import Numeric.LinearAlgebra.Sparse.IntMap
 

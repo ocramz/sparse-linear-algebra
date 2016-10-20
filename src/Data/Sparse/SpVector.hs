@@ -2,9 +2,9 @@
 module Data.Sparse.SpVector where
 
 import Data.Sparse.Utils
+import Data.Sparse.Types
 
 import Numeric.LinearAlgebra.Class
-import Numeric.LinearAlgebra.Data
 import Numeric.LinearAlgebra.Sparse.IntMap
 
 import Data.Maybe

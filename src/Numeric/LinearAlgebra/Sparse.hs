@@ -276,18 +276,19 @@ SVD of A, Golub-Kahan method
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 
--- lu aa | isSquareSM aa = undefined
---       | otherwise = error "LU factorization not currently defined for rectangular matrices" where
---           n = nrows aa
---           l0 = eye n
---           aa0 = 
+lu aa | isSquareSM aa = undefined
+      | otherwise = error "LU factorization not currently defined for rectangular matrices" where
+          (n, _) = dim aa
+          l0 = eye n
+          u0 = zeroSM n n
+          -- aa0 = 
 
 -- luStep aa i l u 
 
 
 -- Produces the permutation matrix necessary to have a nonzero in position (iref, jref). This is used in the LU factorization
-permutAA :: Num b => SpMatrix a -> IxRow -> IxCol -> Maybe (SpMatrix b)
-permutAA (SM (nro,_) mm) iref jref
+permutAA :: Num b => IxRow -> IxCol -> SpMatrix a -> Maybe (SpMatrix b)
+permutAA iref jref (SM (nro,_) mm) 
   | isJust (lookupIM2 iref jref mm) = Nothing -- eye nro
   | otherwise = Just $ permutationSM nro [head u] where
       u = IM.keys (ifilterIM2 ff mm)
@@ -305,6 +306,26 @@ permutAA (SM (nro,_) mm) iref jref
 -- * Iterative linear solvers
 
 
+
+
+-- ** CGNE
+
+cgneStep :: SpMatrix Double -> CGNE -> CGNE
+cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
+  alphai = r `dot` r / (p `dot` p)
+  x1 = x ^+^ (alphai .* p)
+  r1 = r ^-^ (alphai .* (aa #> p))
+  beta = r1 `dot` r1 / (r `dot` r)
+  p1 = transposeSM aa #> r ^+^ (beta .* p)
+
+data CGNE =
+  CGNE {_xCgne , _rCgne, _pCgne :: SpVector Double} deriving Eq
+
+cgne :: SpMatrix Double -> SpVector Double -> SpVector Double -> CGNE
+cgne aa b x0 = execState (untilConverged _xCgne (cgneStep aa)) cgneInit where
+  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+  p0 = transposeSM aa #> r0
+  cgneInit = CGNE x0 r0 p0
 
 
 -- ** TFQMR
@@ -333,7 +354,7 @@ tfqmrStep aa r0hat (TFQMR x w u v d m tau theta eta rho alpha) =
                    beta = rho'/rho
                    u' = w1 ^+^ (beta .* u)
                    v' = (aa #> u') ^+^ (beta .* (aa #> u ^+^ (beta .* v)) )
-                   in (alpha, u', rho', v')
+                  in (alpha, u', rho', v')
 
 tfqmr :: SpMatrix Double -> SpVector Double -> SpVector Double -> TFQMR  
 tfqmr aa b x0 = execState (untilConverged _xTfq (tfqmrStep aa r0)) tfqmrInit where
@@ -494,7 +515,7 @@ pinv aa b = aa #^# aa <\> atb where
 
 -- * Linear solver interface
 
-data LinSolveMethod = TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
+data LinSolveMethod = CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
 -- -- | Linear solve with _random_ starting vector
 -- linSolveM ::
@@ -517,6 +538,7 @@ linSolve method aa b
       solve aa' b' | isDiagonalSM aa' = reciprocal aa' #> b' -- diagonal solve is easy
                    | otherwise = solveWith aa' b' 
       solveWith aa' b' = case method of
+        CGNE_ -> _xCgne (cgne aa' b' x0)
         TFQMR_ -> _xTfq (tfqmr aa' b' x0)
         BCG_ -> _xBcg (bcg aa' b' x0)
         CGS_ ->  _xBicgstab (bicgstab aa' b' x0 x0)

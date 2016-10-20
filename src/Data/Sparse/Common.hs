@@ -6,11 +6,11 @@ module Data.Sparse.Common
          prd) where
 
 import Data.Sparse.Utils as X
+import Data.Sparse.Types as X
 import Data.Sparse.SpMatrix as X
 import Data.Sparse.SpVector as X
 
 import Numeric.Eps as X
-import Numeric.LinearAlgebra.Data as X
 import Numeric.LinearAlgebra.Class as X
 
 import Numeric.LinearAlgebra.Sparse.IntMap as X
