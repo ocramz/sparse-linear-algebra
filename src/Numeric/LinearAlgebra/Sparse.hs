@@ -1,23 +1,16 @@
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
-
 module Numeric.LinearAlgebra.Sparse where
 
--- import Data.Sparse.SpVector
--- import Data.Sparse.SpMatrix
--- import Data.Sparse.Utils
 
 import Data.Sparse.Common
 
 
 import Control.Monad.Primitive
-
 import Control.Monad (mapM_, forM_, replicateM)
-
 import Control.Monad.State.Strict
 -- import Control.Monad.Writer
 -- import Control.Monad.Trans
-
 -- import Control.Monad.Trans.State (runStateT)
 -- import Control.Monad.Trans.Writer (runWriterT)
 
@@ -31,9 +24,10 @@ import Data.Monoid
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 
-
 -- import qualified Data.List as L
 import Data.Maybe
+
+
 
 
 
