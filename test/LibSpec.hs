@@ -2,7 +2,9 @@
 module LibSpec where
 
 import Numeric.LinearAlgebra.Sparse
-import Numeric.LinearAlgebra.Class
+-- import Numeric.LinearAlgebra.Class
+
+import Data.Sparse.Common
 
 
 import qualified Data.IntMap as IM

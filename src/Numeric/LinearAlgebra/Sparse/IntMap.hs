@@ -1,7 +1,37 @@
 module Numeric.LinearAlgebra.Sparse.IntMap where
 
+import Numeric.LinearAlgebra.Class
+
 import qualified Data.IntMap.Strict as IM
 
+
+
+
+
+instance Set IM.IntMap where
+  liftU2 = IM.unionWith
+  {-# INLINE liftU2 #-}
+  liftI2 = IM.intersectionWith
+  {-# INLINE liftI2 #-}
+
+instance Additive IM.IntMap where
+  zero = IM.empty
+  {-# INLINE zero #-}
+  (^+^) = liftU2 (+)
+  {-# INLINE (^+^) #-}
+
+
+instance VectorSpace IM.IntMap where
+  n .* im = IM.map (* n) im
+  
+instance Hilbert IM.IntMap where
+   a `dot` b = sum $ liftI2 (*) a b
+              
+
+instance Normed IM.IntMap where
+  norm p v | p==1 = norm1 v
+           | p==2 = norm2 v
+           | otherwise = normP p v
 
 
 
