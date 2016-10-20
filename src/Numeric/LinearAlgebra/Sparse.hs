@@ -200,7 +200,7 @@ class (FiniteDim f, HasData f a) => Sparse f a where
 
 
 
--- * Set : things that behave as sets
+-- * Set : types that behave as sets
 
 class Functor f => Set f where
   -- |union binary lift : apply function on _union_ of two Sets
@@ -214,6 +214,35 @@ class Functor f => Set f where
 -- class (Set f, Sparse f a) => SparseSet f a
 
 -- instance SparseSet SpVector a where
+
+
+
+-- * IxContainer : indexed container types
+
+class IxContainer (c :: * -> *) a where
+  type Ix c :: *
+  ixcLookup :: Ix c -> c a -> Maybe a
+  ixcLookupDefault :: a -> Ix c -> c a -> a
+  ixcFilter :: (a -> Bool) -> c a -> c a
+  ixcIfilter :: (Ix c -> a -> Bool) -> c a -> c a
+  ixcInsert :: Ix c -> a -> c a -> c a
+  ixcFromList :: [(Ix c, a)] -> c a
+  ixcToList :: c a -> [(Ix c, a)]
+
+-- newtype IM_ a = IM (IM.IntMap a)
+
+-- instance IxContainer IM_ a where
+--   type Ix IM_  = Int
+-- --   -- ixcLookupDefault = lookupDefaultSV
+-- --   -- ixcFilter = filterSV
+
+
+-- newtype IM2 a = IM2 { unIM2 :: IM.IntMap (IM.IntMap a)}
+
+-- instance IxContainer IM2 a where
+--   type Ix IM2 = (Int, Int)
+--   ixcIfilter f im2 = IM2 $ ifilterIM2 (curry f) (unIM2 im2)
+
 
 
 
@@ -396,9 +425,17 @@ instance Show a => Show (SpVector a) where
 
 -- ** Lookup
 
--- |lookup an index in a SpVector (returns 0 if lookup fails)
+-- | Lookup an index in a SpVector
+lookupSV :: IM.Key -> SpVector a -> Maybe a
+lookupSV i (SV _ im) = IM.lookup i im
+
+-- | Lookup an index, return a default value if lookup fails
+lookupDefaultSV :: a -> IM.Key -> SpVector a -> a
+lookupDefaultSV def i (SV _ im) = IM.findWithDefault def i im
+
+-- |Lookup an index in a SpVector, returns 0 if lookup fails
 lookupDenseSV :: Num a => IM.Key -> SpVector a -> a
-lookupDenseSV i (SV _ im) = IM.findWithDefault 0 i im 
+lookupDenseSV = lookupDefaultSV 0
 
 
 
@@ -417,14 +454,20 @@ headSV sv = fromMaybe 0 (IM.lookup 0 (dat sv))
 
 
 
--- | concatenate two sparse vectors
+-- | Concatenate two sparse vectors
 concatSV :: SpVector a -> SpVector a -> SpVector a
 concatSV (SV n1 s1) (SV n2 s2) = SV (n1+n2) (IM.union s1 s2') where
   s2' = IM.mapKeys (+ n1) s2
 
 
+-- | Filter
+filterSV :: (a -> Bool) -> SpVector a -> SpVector a
+filterSV q sv = SV (dim sv) (IM.filter q (dat sv)) 
 
 
+-- | Indexed filter
+ifilterSV :: (Int -> a -> Bool) -> SpVector a -> SpVector a
+ifilterSV q sv = SV (dim sv) (IM.filterWithKey q (dat sv))
 
 
 
@@ -1396,6 +1439,9 @@ permutAA (SM (nro,_) mm) iref jref
       u = IM.keys (ifilterIM2 ff mm)
       ff i j _ = i /= iref &&
                  j == jref
+
+
+
 
 
 
