@@ -16,7 +16,7 @@ Algorithms :
 
     * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems)
 
-    * Transpose-Free Quasi-Minimal Residual (TFQMR) (*)
+    * Transpose-Free Quasi-Minimal Residual (TFQMR)
 
 * Matrix decompositions
 
@@ -32,8 +32,6 @@ Algorithms :
 
 * Predicates : Matrix orthogonality test (A^T A ~= I)
 
-
-(*) Experimental implementation
 
 
 ----------
