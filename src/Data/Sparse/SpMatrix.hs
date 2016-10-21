@@ -228,15 +228,24 @@ extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
 
 
 -- *** Extract j'th column
+-- | Extract all column
 extractColSM :: SpMatrix a -> IxCol -> SpMatrix a
 extractColSM sm j = extractSubmatrixSM sm (0, nrows sm - 1) (j, j)
 
+-- | Extract column within a row range
+extractSubColSM :: SpMatrix a -> IxCol -> (IxRow, IxRow) -> SpMatrix a
+extractSubColSM sm j (i1, i2) = extractSubmatrixSM sm (i1, i2) (j, j)
 
 
 
 -- *** Extract i'th row
 extractRowSM :: SpMatrix a -> IxRow -> SpMatrix a
 extractRowSM sm i = extractSubmatrixSM sm (i, i) (0, ncols sm - 1)
+
+
+-- | Extract column within a row range
+extractSubRowSM :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpMatrix a
+extractSubRowSM sm i (j1, j2) = extractSubmatrixSM sm (i, i) (j1, j2)
 
 
 

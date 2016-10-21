@@ -49,7 +49,7 @@ conditionNumberSM m | isInfinite kappa = error "Infinite condition number : rank
                     | otherwise = kappa where
   kappa = lmax / lmin
   (_, r) = qr m
-  u = extractDiagonalDSM r  -- FIXME : need to extract with default element 0 
+  u = extractDiagDense r  -- FIXME : need to extract with default element 0 
   lmax = abs (maximum u)
   lmin = abs (minimum u)
 
@@ -184,11 +184,11 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm` 
 eigsQR :: Int -> SpMatrix Double -> SpVector Double
-eigsQR nitermax m = extractDiagonalDSM $ execState (convergtest eigsStep) m where
+eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
   eigsStep m = r #~# q where (q, r) = qr m
   convergtest g = modifyInspectN nitermax f g where
-    f [m1, m2] = let dm1 = extractDiagonalDSM m1
-                     dm2 = extractDiagonalDSM m2
+    f [m1, m2] = let dm1 = extractDiagDense m1
+                     dm2 = extractDiagDense m2
                  in norm2 (dm1 ^-^ dm2) <= eps
 
 

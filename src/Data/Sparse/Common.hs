@@ -1,7 +1,9 @@
 module Data.Sparse.Common
        ( module X,
-         svToSM, outerProdSV, (><), toSV, extractCol, extractRow,
-         extractDiagonalDSM,
+         svToSM, outerProdSV, (><), toSV,
+         extractCol, extractRow,
+         extractVectorDenseWith, extractRowDense, extractColDense,
+         extractDiagDense,
          matVec, (#>), vecMat, (<#),
          prd) where
 
@@ -47,7 +49,6 @@ toSV (SM (m,n) im) = SV d (ff im) where
 
 
 -- * Extract a SpVector from an SpMatrix
-
 -- ** Sparse extract
 
 -- |Extract ith row
