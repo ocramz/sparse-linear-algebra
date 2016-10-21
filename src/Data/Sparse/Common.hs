@@ -44,29 +44,45 @@ toSV (SM (m,n) im) = SV d (ff im) where
     | m==1 && n>1 = n 
     | n==1 && m>1 = m
     | otherwise = error $ "toSV : incompatible matrix dimension " ++ show (m,n)
-     
 
--- |Extract jth column, and place into SpVector
+
+-- * Extract a SpVector from an SpMatrix
+
+-- ** Sparse extract
+
+-- |Extract ith row
+extractRow :: SpMatrix a -> IxRow -> SpVector a
+extractRow m i = toSV $ extractRowSM m i
+
+-- |Extract jth column
 extractCol :: SpMatrix a -> IxCol -> SpVector a
 extractCol m j = toSV $ extractColSM m j      
 
 
--- |Extract ith row, and place into SpVector
-extractRow :: SpMatrix a -> IxRow -> SpVector a
-extractRow m i = toSV $ extractRowSM m i
 
-
-
-
-
-
-
--- | Extract the diagonal as a SpVector (with default 0)
-extractDiagonalDSM :: Num a => SpMatrix a -> SpVector a
-extractDiagonalDSM mm = fromListDenseSV n $ foldr ins [] ll  where
+-- ** Dense extract (default == 0)
+-- | Generic extraction function
+extractVectorDenseWith ::
+  Num a => (Int -> (IxRow, IxCol)) -> SpMatrix a -> SpVector a
+extractVectorDenseWith f mm = fromListDenseSV n $ foldr ins [] ll  where
   ll = [0 .. n - 1]
-  n = nrows mm
-  ins i acc = mm@@(i,i) : acc
+  (m, n) = dim mm
+  ins i acc = mm @@ f i : acc
+
+-- | Extract ith row (dense)
+extractRowDense :: Num a => SpMatrix a -> IxRow -> SpVector a
+extractRowDense mm iref = extractVectorDenseWith (\j -> (iref, j)) mm
+
+-- | Extract jth column
+extractColDense :: Num a => SpMatrix a -> IxCol -> SpVector a
+extractColDense mm jref = extractVectorDenseWith (\i -> (i, jref)) mm
+
+-- | Extract the diagonal
+extractDiagDense :: Num a => SpMatrix a -> SpVector a
+extractDiagDense = extractVectorDenseWith (\i -> (i, i))
+
+
+
 
 
 
