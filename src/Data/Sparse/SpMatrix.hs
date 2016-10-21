@@ -209,7 +209,7 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 extractSubmatrixSM :: SpMatrix a -> (IxRow, IxCol) -> (IxRow, IxCol) -> SpMatrix a
 extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
   | q = SM (m', n') imm'
-  | otherwise = error $ "extractSubmatrixSM : invalid indexing " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
+  | otherwise = error $ "extractSubmatrixSM : invalid index " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
   imm' = mapKeysIM2 (\i -> i - i1) (\j -> j - j1) $  -- rebalance keys
           IM.filter (not . IM.null) $                -- remove all-null rows
           ifilterIM2 ff im                           -- keep `submatrix`

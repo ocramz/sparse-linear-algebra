@@ -35,6 +35,14 @@ instance Normed IM.IntMap where
 
 
 
+-- * set-like brackets
+
+
+-- unionWithKeyIM2 f im1 im2 = undefined where
+
+
+
+
 
 -- * Insertion
 

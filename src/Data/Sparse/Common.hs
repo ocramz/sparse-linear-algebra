@@ -36,11 +36,15 @@ outerProdSV v1 v2 = fromListSM (m, n) ixy where
 
 -- |Demote (n x 1) or (1 x n) SpMatrix to SpVector
 toSV :: SpMatrix a -> SpVector a
-toSV (SM (m,n) im) = SV d $ snd . head $ IM.toList im where
+toSV (SM (m,n) im) = SV d (ff im) where
+  ff | m > n = IM.map g  -- column case
+     | otherwise = g
+  g = snd . head . IM.toList
   d | m==1 && n==1 = 1
     | m==1 && n>1 = n 
     | n==1 && m>1 = m
-    | otherwise = error $ "toSV : incompatible dimensions " ++ show (m,n)
+    | otherwise = error $ "toSV : incompatible matrix dimension " ++ show (m,n)
+     
 
 -- |Extract jth column, and place into SpVector
 extractCol :: SpMatrix a -> IxCol -> SpVector a

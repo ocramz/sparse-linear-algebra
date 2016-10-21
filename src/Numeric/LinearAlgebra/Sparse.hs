@@ -9,7 +9,7 @@ import Data.Sparse.Common
 import Control.Monad.Primitive
 import Control.Monad (mapM_, forM_, replicateM)
 import Control.Monad.State.Strict
--- import Control.Monad.Writer
+import Control.Monad.Writer
 -- import Control.Monad.Trans
 -- import Control.Monad.Trans.State (runStateT)
 -- import Control.Monad.Trans.Writer (runWriterT)
@@ -283,7 +283,10 @@ lu aa | isSquareSM aa = undefined
           u0 = zeroSM n n
           -- aa0 = 
 
--- luStep aa i l u 
+-- luStep aa i l u
+
+
+
 
 
 -- Produces the permutation matrix necessary to have a nonzero in position (iref, jref). This is used in the LU factorization
@@ -298,6 +301,13 @@ permutAA iref jref (SM (nro,_) mm)
 
 
 
+
+-- * Incomplete LU
+
+-- | used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
+ripHoles :: SpMatrix t -> SpMatrix a -> SpMatrix a
+ripHoles (SM d m) m2 = SM d $ ifilterIM2 f (dat m2) where
+  f i j _ = isJust (lookupSM m2 i j)
 
 
 
