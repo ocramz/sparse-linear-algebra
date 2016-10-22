@@ -310,7 +310,7 @@ lUpd aa (i, lmat, umat) = insertCol lmat (acolL ^-^ (recip uii .* daL)) i
    where
     n = nrows aa
     dei = (0, i - 1)     
-    acolL = extractSubCol aa i (i + 1, n - 1)
+    acolL = extractSubCol aa i (i, n - 1)
     lrowL i_ = extractSubRow lmat i_ dei
     ucolL = extractSubCol umat i dei
     iiL = [i + 1 .. n - 1]
@@ -325,12 +325,19 @@ lUpd aa (i, lmat, umat) = insertCol lmat (acolL ^-^ (recip uii .* daL)) i
 
 luInit aa = (1, l0, u0) where
   n = nrows aa
-  l0 = insertColWith (+1) (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
+  l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
   u0 = insertRow (zeroSM n n) (extractRow aa 0) 0               -- initial U
   u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
 
+luUpd1 aa = (i + 1, l', u') where
+  lu0@(i,l,u) = luInit aa
+  u' = uUpd aa lu0
+  l' = lUpd aa (i, l, u')
 
-tm0 = fromListDenseSM 2 [5,2,3,4] :: SpMatrix Double
+
+tm0 = fromListDenseSM 3 [2, -4, -4, -1, -6, -2, -2, 3, 8] :: SpMatrix Double
+
+
 
 
 
