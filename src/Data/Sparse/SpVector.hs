@@ -21,8 +21,13 @@ data SpVector a = SV { svDim :: Int ,
 spySV :: Fractional b => SpVector a -> b
 spySV s = fromIntegral (IM.size (dat s)) / fromIntegral (dim s)
 
+-- | Number of nonzeros
+nzSV :: SpVector a -> Int
+nzSV sv = IM.size (dat sv)
 
 
+sizeStrSV :: SpVector a -> String
+sizeStrSV sv = unwords ["(",show (dim sv),"elements ) , ",show (nzSV sv),"NZ ( sparsity", show (spy sv),")"]
 
 
 

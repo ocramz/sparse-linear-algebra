@@ -1,6 +1,6 @@
 module Data.Sparse.Common
        ( module X,
-         insertRow, insertCol,
+         insertRowWith, insertRow, insertColWith, insertCol,
          outerProdSV, (><), toSV, svToSM, 
          extractCol, extractRow,
          extractVectorDenseWith, extractRowDense, extractColDense,
@@ -25,26 +25,34 @@ import qualified Data.IntMap as IM
 
 -- * Insert row/column vector in matrix
 
--- | Insert row
-insertRow :: SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
-insertRow (SM (m,n) im) (SV d sv) i
+-- | Insert row , using the provided row index transformation function
+insertRowWith :: (IxCol -> IxCol) -> SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
+insertRowWith fj (SM (m,n) im) (SV d sv) i
   | not (inBounds0 m i) = error "insertRowSM : index out of bounds"
-  | n == d = SM (m,n) $ IM.insert i sv im
+  | n >= d = SM (m,n) $ IM.insert i (insertOrUnion i sv' im) im
   | otherwise = error $ "insertRowSM : incompatible dimensions " ++ show (n, d)
+    where sv' = IM.mapKeys fj sv
+          insertOrUnion i sv im = maybe sv (`IM.union` sv) (IM.lookup i im)
 
--- | Insert column    
-insertCol :: SpMatrix a -> SpVector a -> IxCol -> SpMatrix a
-insertCol smm sv j
+-- | Insert row          
+insertRow :: SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
+insertRow = insertRowWith id
+
+-- | Insert column, using the provided row index transformation function
+insertColWith :: (IxRow -> IxRow) -> SpMatrix a -> SpVector a -> IxCol -> SpMatrix a
+insertColWith fi smm sv j
   | not (inBounds0 n j) = error "insertColSM : index out of bounds"
-  | m == mv = insIM2 smm vl j
+  | m >= mv = insIM2 smm vl j
   | otherwise = error $ "insertColSM : incompatible dimensions " ++ show (m,mv) where
       (m, n) = dim smm
       mv = dim sv
       vl = toListSV sv
-      insIM2 im2 ((i,x):xs) j = insIM2 (insertSpMatrix i j x im2) xs j
+      insIM2 im2 ((i,x):xs) j = insIM2 (insertSpMatrix (fi i) j x im2) xs j
       insIM2 im2 [] _ = im2
 
-
+-- | Insert column
+insertCol :: SpMatrix a -> SpVector a -> IxCol -> SpMatrix a
+insertCol = insertColWith id
 
 
 
@@ -205,6 +213,8 @@ toDenseListClip sv ncomax
 
 printDenseSV :: (Show t, Num t) => SpVector t -> IO ()
 printDenseSV sv = do
+  newline
+  putStrLn $ sizeStrSV sv
   newline
   printDenseSV' sv 5
   newline where

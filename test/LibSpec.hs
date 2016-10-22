@@ -43,8 +43,20 @@ spec = do
       (m1 `matMat` m2) `shouldBe` m1m2
     it "eye : identity matrix" $
       infoSM (eye 10) `shouldBe` SMInfo 10 0.1
+    it "insertCol : insert a column in a SpMatrix" $
+      insertCol (eye 3) (fromListDenseSV 3 [2,2,2]) 0 `shouldBe` (fromListSM (3,3) [(0,0,2),(1,0,2),(1,1,1),(2,0,2),(2,2,1)])
+    it "insertRow : insert a row in a SpMatrix" $
+      insertRow (eye 3) (fromListDenseSV 3 [2,2,2]) 1 `shouldBe` (fromListSM (3,3) [(0,0,1), (1,0,2), (1,1,2), (1,2,2), (2,2,1)])
+    it "extractCol -> insertCol : identity" $
+      insertCol (eye 3) (extractCol (eye 3) 1) 1 `shouldBe` eye 3
+    it "extractRow -> insertRow : identity" $
+      insertRow (eye 3) (extractRow (eye 3) 1) 1 `shouldBe` eye 3      
     it "countSubdiagonalNZ : # of nonzero elements below the diagonal" $
       countSubdiagonalNZSM m3 `shouldBe` 1
+    it "permutPairsSM : permutation matrices are orthogonal" $ do
+      let pm0 = permutPairsSM 3 [(0,2), (1,2)]
+      pm0 ##^ pm0 `shouldBe` eye 3
+      pm0 #^# pm0 `shouldBe` eye 3         
     it "modifyInspectN : early termination by iteration count" $
       execState (modifyInspectN 2 ((< eps) . diffSqL) (/2)) 1 `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
@@ -62,18 +74,7 @@ spec = do
     it "QR (4 x 4 sparse)" $
       checkQr tm4 `shouldBe` True
     it "QR (3 x 3 dense)" $ 
-      checkQr tm2 `shouldBe` True
-    
-  -- let n = 10
-  --     nsp = 3
-  -- describe ("random sparse linear system of size " ++ show n ++ " and sparsity " ++ show (fromIntegral nsp/fromIntegral n)) $ it "<\\>" $ do
-  --   aa <- randSpMat n nsp
-  --   xtrue <- randSpVec n nsp
-  --   b <- randSpVec n nsp    
-  --   let b = aa #> xtrue
-  --   printDenseSM aa
-  --   normSq (aa <\> b ^-^ xtrue) <= eps `shouldBe` True
-  -- --     normSq (_xBicgstab (bicgstab aa b x0 x0) ^-^ x) <= eps `shouldBe` True
+      checkQr tm2 `shouldBe` True    
 
 
 
