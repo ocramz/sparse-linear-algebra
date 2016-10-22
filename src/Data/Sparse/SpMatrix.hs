@@ -205,31 +205,11 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 -- ** Sub-matrices
 
--- -- | Extract a submatrix given the specified index bounds
--- extractSubmatrixSM :: SpMatrix a -> (IxRow, IxCol) -> (IxRow, IxCol) -> SpMatrix a
--- extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
---   | q = SM (m', n') imm'
---   | otherwise = error $ "extractSubmatrixSM : invalid index " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
---   imm' = mapKeysIM2 (\i -> i - i1) (\j -> j - j1) $  -- rebalance keys
---           IM.filter (not . IM.null) $                -- remove all-null rows
---           ifilterIM2 ff im                           -- keep `submatrix`
---   ff i j _ = i1 <= i &&
---              i <= i2 &&
---              j1 <= j &&
---              j <= j2
---   (m', n') = (i2-i1 + 1, j2-j1 + 1)
---   q = inBounds0 r i1  &&
---       inBounds0 r i2 &&
---       inBounds0 c j1  &&
---       inBounds0 c j2 &&      
---       i2 >= i1
-
-
 
 -- | Extract a submatrix given the specified index bounds, rebalancing keys with the two supplied functions
 extractSubmatrixSM ::
-  (IM.Key -> IM.Key) ->   -- ^ row index function
-  (IM.Key -> IM.Key) ->   -- ^ column "  "
+  (IM.Key -> IM.Key) ->   -- row index function
+  (IM.Key -> IM.Key) ->   -- column "  "
   SpMatrix a ->
   (IxRow, IxRow) -> (IxCol, IxCol) ->
   SpMatrix a
