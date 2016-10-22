@@ -205,12 +205,38 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
 -- ** Sub-matrices
 
--- | Extract a submatrix given the specified index bounds
-extractSubmatrixSM :: SpMatrix a -> (IxRow, IxCol) -> (IxRow, IxCol) -> SpMatrix a
-extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
+-- -- | Extract a submatrix given the specified index bounds
+-- extractSubmatrixSM :: SpMatrix a -> (IxRow, IxCol) -> (IxRow, IxCol) -> SpMatrix a
+-- extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
+--   | q = SM (m', n') imm'
+--   | otherwise = error $ "extractSubmatrixSM : invalid index " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
+--   imm' = mapKeysIM2 (\i -> i - i1) (\j -> j - j1) $  -- rebalance keys
+--           IM.filter (not . IM.null) $                -- remove all-null rows
+--           ifilterIM2 ff im                           -- keep `submatrix`
+--   ff i j _ = i1 <= i &&
+--              i <= i2 &&
+--              j1 <= j &&
+--              j <= j2
+--   (m', n') = (i2-i1 + 1, j2-j1 + 1)
+--   q = inBounds0 r i1  &&
+--       inBounds0 r i2 &&
+--       inBounds0 c j1  &&
+--       inBounds0 c j2 &&      
+--       i2 >= i1
+
+
+
+-- | Extract a submatrix given the specified index bounds, rebalancing keys with the two supplied functions
+extractSubmatrixSM ::
+  (IM.Key -> IM.Key) ->   -- ^ row index function
+  (IM.Key -> IM.Key) ->   -- ^ column "  "
+  SpMatrix a ->
+  (IxRow, IxRow) -> (IxCol, IxCol) ->
+  SpMatrix a
+extractSubmatrixSM fi gi (SM (r, c) im) (i1, i2) (j1, j2)
   | q = SM (m', n') imm'
   | otherwise = error $ "extractSubmatrixSM : invalid index " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
-  imm' = mapKeysIM2 (\i -> i - i1) (\j -> j - j1) $  -- rebalance keys
+  imm' = mapKeysIM2 fi gi $                          -- rebalance keys
           IM.filter (not . IM.null) $                -- remove all-null rows
           ifilterIM2 ff im                           -- keep `submatrix`
   ff i j _ = i1 <= i &&
@@ -224,17 +250,29 @@ extractSubmatrixSM (SM (r, c) im) (i1, i2) (j1, j2)
       inBounds0 c j2 &&      
       i2 >= i1
 
+-- | Extract a submatrix given the specified index bounds
+-- NB : subtracts (i1, j1) to the indices
+extractSubmatrixRebalanceKeys ::
+  SpMatrix a -> (IxRow, IxRow) -> (IxCol, IxCol) -> SpMatrix a
+extractSubmatrixRebalanceKeys mm (i1,i2) (j1,j2) =
+  extractSubmatrixSM (\i -> i - i1) (\j -> j - j1) mm (i1,i2) (j1,j2)
+
+-- | Extract a submatrix given the specified index bounds
+-- NB : submatrix indices are _preserved_
+extractSubmatrix :: SpMatrix a -> (IxRow, IxRow) -> (IxCol, IxCol) -> SpMatrix a
+extractSubmatrix = extractSubmatrixSM id id
+
 
 
 
 -- *** Extract i'th row
 extractRowSM :: SpMatrix a -> IxRow -> SpMatrix a
-extractRowSM sm i = extractSubmatrixSM sm (i, i) (0, ncols sm - 1)
+extractRowSM sm i = extractSubmatrix sm (i, i) (0, ncols sm - 1)
 
 
 -- | Extract column within a row range
 extractSubRowSM :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpMatrix a
-extractSubRowSM sm i (j1, j2) = extractSubmatrixSM sm (i, i) (j1, j2)
+extractSubRowSM sm i (j1, j2) = extractSubmatrix sm (i, i) (j1, j2)
 
 
 
@@ -242,11 +280,11 @@ extractSubRowSM sm i (j1, j2) = extractSubmatrixSM sm (i, i) (j1, j2)
 -- *** Extract j'th column
 -- | Extract all column
 extractColSM :: SpMatrix a -> IxCol -> SpMatrix a
-extractColSM sm j = extractSubmatrixSM sm (0, nrows sm - 1) (j, j)
+extractColSM sm j = extractSubmatrix sm (0, nrows sm - 1) (j, j)
 
 -- | Extract column within a row range
 extractSubColSM :: SpMatrix a -> IxCol -> (IxRow, IxRow) -> SpMatrix a
-extractSubColSM sm j (i1, i2) = extractSubmatrixSM sm (i1, i2) (j, j)
+extractSubColSM sm j (i1, i2) = extractSubmatrix sm (i1, i2) (j, j)
 
 
 

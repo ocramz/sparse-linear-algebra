@@ -280,7 +280,7 @@ lu aa | isSquareSM aa = undefined
       | otherwise = error "LU factorization not currently defined for rectangular matrices" where
           (n, _) = dim aa
           l0 = eye n      -- initial L
-          u0 = zeroSM n n -- initial U
+          u0 = insertRow (zeroSM n n) (extractRow aa 0) 0 -- initial U
           -- aa0 = 
 
 -- luStep aa i l u

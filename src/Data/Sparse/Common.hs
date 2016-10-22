@@ -1,6 +1,6 @@
 module Data.Sparse.Common
        ( module X,
-         insertRowSM, insertColSM,
+         insertRow, insertCol,
          outerProdSV, (><), toSV, svToSM, 
          extractCol, extractRow,
          extractVectorDenseWith, extractRowDense, extractColDense,
@@ -26,15 +26,15 @@ import qualified Data.IntMap as IM
 -- * Insert row/column vector in matrix
 
 -- | Insert row
-insertRowSM :: SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
-insertRowSM (SM (m,n) im) (SV d sv) i
+insertRow :: SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
+insertRow (SM (m,n) im) (SV d sv) i
   | not (inBounds0 m i) = error "insertRowSM : index out of bounds"
   | n == d = SM (m,n) $ IM.insert i sv im
   | otherwise = error $ "insertRowSM : incompatible dimensions " ++ show (n, d)
 
 -- | Insert column    
-insertColSM :: SpMatrix a -> SpVector a -> IxCol -> SpMatrix a
-insertColSM smm sv j
+insertCol :: SpMatrix a -> SpVector a -> IxCol -> SpMatrix a
+insertCol smm sv j
   | not (inBounds0 n j) = error "insertColSM : index out of bounds"
   | m == mv = insIM2 smm vl j
   | otherwise = error $ "insertColSM : incompatible dimensions " ++ show (m,mv) where
