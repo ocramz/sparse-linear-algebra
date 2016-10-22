@@ -1,9 +1,11 @@
 module Data.Sparse.Common
        ( module X,
-         svToSM, outerProdSV, (><), toSV,
+         insertRowSM, insertColSM,
+         outerProdSV, (><), toSV, svToSM, 
          extractCol, extractRow,
          extractVectorDenseWith, extractRowDense, extractColDense,
          extractDiagDense,
+         extractSubRow, extractSubCol,
          matVec, (#>), vecMat, (<#),
          prd) where
 
@@ -19,12 +21,32 @@ import Numeric.LinearAlgebra.Sparse.IntMap as X
 
 import qualified Data.IntMap as IM
 
--- | promote a SV to SM
-svToSM :: SpVector a -> SpMatrix a
-svToSM (SV n d) = SM (n, 1) $ IM.singleton 0 d
 
 
--- ** Outer vector product
+-- * Insert row/column vector in matrix
+
+-- | Insert row
+insertRowSM :: SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
+insertRowSM (SM (m,n) im) (SV d sv) i
+  | n == d = SM (m,n) $ IM.insert i sv im
+  | otherwise = error $ "insertRowSM : incompatible dimensions " ++ show (n, d)
+
+-- | Insert column    
+insertColSM :: SpMatrix a -> SpVector a -> IxCol -> SpMatrix a
+insertColSM smm sv j
+  | m == mv = insIM2 smm vl j
+  | otherwise = error $ "insertColSM : incompatible dimensions " ++ show (m,mv) where
+      m = ncols smm
+      mv = dim sv
+      vl = toListSV sv
+      insIM2 im2 ((i,x):xs) j = insIM2 (insertSpMatrix i j x im2) xs j
+      insIM2 im2 [] _ = im2
+
+
+
+
+
+-- * Outer vector product
 
 outerProdSV, (><) :: Num a => SpVector a -> SpVector a -> SpMatrix a
 outerProdSV v1 v2 = fromListSM (m, n) ixy where
@@ -35,6 +57,12 @@ outerProdSV v1 v2 = fromListSM (m, n) ixy where
 (><) = outerProdSV
 
 
+
+-- * Matrix-vector conversions
+
+-- | promote a SV to SM
+svToSM :: SpVector a -> SpMatrix a
+svToSM (SV n d) = SM (n, 1) $ IM.singleton 0 d
 
 -- |Demote (n x 1) or (1 x n) SpMatrix to SpVector
 toSV :: SpMatrix a -> SpVector a
@@ -84,6 +112,14 @@ extractDiagDense = extractVectorDenseWith (\i -> (i, i))
 
 
 
+-- | extract row interval
+
+extractSubRow :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpVector a
+extractSubRow m i (j1, j2)  = toSV $ extractSubRowSM m i (j1, j2)
+
+
+extractSubCol :: SpMatrix a -> IxCol -> (IxRow, IxRow) -> SpVector a
+extractSubCol m j (i1, i2)  = toSV $ extractSubColSM m j (i1, i2)
 
 
 

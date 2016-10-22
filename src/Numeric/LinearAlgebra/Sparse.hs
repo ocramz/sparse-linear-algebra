@@ -279,8 +279,8 @@ SVD of A, Golub-Kahan method
 lu aa | isSquareSM aa = undefined
       | otherwise = error "LU factorization not currently defined for rectangular matrices" where
           (n, _) = dim aa
-          l0 = eye n
-          u0 = zeroSM n n
+          l0 = eye n      -- initial L
+          u0 = zeroSM n n -- initial U
           -- aa0 = 
 
 -- luStep aa i l u
