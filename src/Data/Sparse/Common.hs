@@ -32,7 +32,7 @@ insertRowWith fj (SM (m,n) im) (SV d sv) i
   | n >= d = SM (m,n) $ IM.insert i (insertOrUnion i sv' im) im
   | otherwise = error $ "insertRowSM : incompatible dimensions " ++ show (n, d)
     where sv' = IM.mapKeys fj sv
-          insertOrUnion i sv im = maybe sv (`IM.union` sv) (IM.lookup i im)
+          insertOrUnion i sv im = maybe sv (IM.union sv) (IM.lookup i im)
 
 -- | Insert row          
 insertRow :: SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a

@@ -302,21 +302,21 @@ uUpd aa (i, lmat, umat) = insertRow umat (acolU ^-^ daU) i
     acolU = extractSubCol aa i (i, n - 1)
     lrowU = extractSubRow lmat i dei
     ucolU j = extractSubCol umat j dei
-    iiU = [i .. n-1]
-    innersU = map (\j -> lrowU `dot` ucolU j) iiU
-    daU = fromListSV (n - i) (zip iiU innersU)
+    jjU = [i .. n-1]
+    innersU = map (\j -> lrowU `dot` ucolU j) jjU
+    daU = fromListSV (n - i) (zip jjU innersU)
 
-lUpd aa (i, lmat, umat) = insertCol lmat (acolL ^-^ (recip uii .* daL)) i
+lUpd aa (ix, lmat, umat) = insertCol lmat (acolL ^-^ (recip uii .* daL)) ix
    where
     n = nrows aa
-    dei = (0, i - 1)     
-    acolL = extractSubCol aa i (i, n - 1)
-    lrowL i_ = extractSubRow lmat i_ dei
-    ucolL = extractSubCol umat i dei
-    iiL = [i + 1 .. n - 1]
-    innersL = map (\il -> lrowL il `dot` ucolL) iiL
-    uii = umat @@ (i,i)
-    daL = fromListSV (n - i - 1) (zip iiL innersL)
+    dei = (0, ix - 1)     
+    acolL = extractSubCol aa ix (ix, n - 1)
+    lrowL i = extractSubRow lmat i dei
+    ucolL = extractSubCol umat ix dei
+    iiL = [ix + 1 .. n - 1]
+    innersL = map (\i -> lrowL i `dot` ucolL) iiL
+    uii = umat @@ (ix, ix)
+    daL = fromListSV (n - ix - 1) (zip iiL innersL)
   
 
 -- lu aa =
@@ -335,7 +335,7 @@ luUpd1 aa = (i + 1, l', u') where
   l' = lUpd aa (i, l, u')
 
 
-tm0 = fromListDenseSM 3 [2, -4, -4, -1, -6, -2, -2, 3, 8] :: SpMatrix Double
+tm0 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] :: SpMatrix Double
 
 
 
