@@ -276,15 +276,52 @@ SVD of A, Golub-Kahan method
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 
-lu aa | isSquareSM aa = undefined
-      | otherwise = error "LU factorization not currently defined for rectangular matrices" where
-          (n, _) = dim aa
-          l0 = eye n      -- initial L
-          u0 = insertRow (zeroSM n n) (extractRow aa 0) 0 -- initial U
-          -- aa0 = 
+-- lu aa | isSquareSM aa = undefined
+--       | otherwise = error "LU factorization not currently defined for rectangular matrices" where
+--           (n, _) = dim aa
+--           l0 = insertCol (eye n) (1/u00 .* extractSubCol aa 0 (1,n))  -- initial L
+--           u0 = insertRow (zeroSM n n) (extractRow aa 0) 0             -- initial U
+--           u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
+--           -- aa0 = 
 
--- luStep aa i l u
+luUpd :: Fractional a =>
+  SpMatrix a ->
+  (IxRow, SpMatrix a, SpMatrix a) ->
+  (IxRow, SpMatrix a, SpMatrix a)
+luUpd aa (i, l, u) = (i', l', u') where
+  n = nrows aa  
+  u' = uUpd l u  -- update U
+  l' = lUpd l u' -- update L
+  i' = i + 1     -- increment i
+  dei = (0, i - 1)  
+  uUpd lmat umat = insertRow umat (acolU ^-^ daU) i
+   where
+    acolU = extractSubCol aa i (i, n - 1)
+    lrowU = extractSubRow lmat i dei
+    ucolU j = extractSubCol umat j dei
+    iiU = [i .. n-1]
+    innersU = map (\j -> lrowU `dot` ucolU j) iiU
+    daU = fromListSV (n - i) (zip iiU innersU)
+  lUpd lmat umat = insertCol lmat (acolL ^-^ (recip uii .* daL)) i
+   where
+    acolL = extractSubCol aa i (i + 1, n - 1)
+    lrowL i_ = extractSubRow lmat i_ dei
+    ucolL = extractSubCol umat i dei
+    iiL = [i + 1 .. n - 1]
+    innersL = map (\il -> lrowL il `dot` ucolL) iiL
+    uii = umat @@ (i,i)
+    daL = fromListSV (n - i - 1) (zip iiL innersL)
+  
 
+-- lu aa =
+--   execState (modifyUntil q (luUpd aa)) lu0 where
+--     q (i, _, _) = i == (nrows aa - 1)
+
+lu0 aa = (0, l0, u0) where
+  n = nrows aa
+  l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
+  u0 = insertRow (zeroSM n n) (extractRow aa 0) 0               -- initial U
+  u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
 
 
 
