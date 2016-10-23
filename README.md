@@ -39,7 +39,9 @@ Algorithms :
 
 ## Examples
 
-The module `Numeric.LinearAlgebra.Sparse` contains the interface functions:
+The module `Numeric.LinearAlgebra.Sparse` contains the user interface.
+
+### Creation and pretty-printing
 
 To create a sparse matrix from an array of its entries we use `fromListSM` :
 
@@ -60,6 +62,7 @@ Both sparse vectors and matrices can be pretty-printed using `prd`:
     [4,3,2]
     [0,0,5]
 
+### Matrix operations
 
 Matrix factorizations are available as `lu` and `qr` respectively, and are straightforward to verify by using the matrix product `##`  :
 
@@ -70,6 +73,19 @@ Matrix factorizations are available as `lu` and `qr` respectively, and are strai
     [2.0,0.0,0.0]
     [4.0,3.0,2.0]
     [0.0,0.0,5.0]
+
+Notice that the result is _dense_, i.e. certain entries are numerically zero but have been inserted into the result nonetheles.
+To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, which filters out all the elements x for which `|x| <= eps`, where `eps` (defined) in `Numeric.Eps`, is fixed at 10^-8.
+
+    > prd $ l #~# u
+    ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )
+
+    [2.0,0.0,0.0]
+    [4.0,3.0,2.0]
+    [0.0,0.0,5.0]
+
+
+### Linear systems
 
 Linear systems can be solved with either `linSolve` (which also requires choosing a method) or with `<\>` (which uses BiCGSTAB as default) :
 
