@@ -318,7 +318,7 @@ tm3g1 = fromListDenseSM 3 [1, 0,0, 0,c,-s, 0, s, c]
 tm4 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
 
 
-
+tm5 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] :: SpMatrix Double
 
 
 

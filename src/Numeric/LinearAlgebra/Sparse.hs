@@ -1,22 +1,22 @@
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
 module Numeric.LinearAlgebra.Sparse
-       (
-         sparsifySV,
-         conditionNumberSM,
-         hhMat, hhRefl,
-         givens,
-         eigsQR, eigRayleigh,
-         cgne, tfqmr, bicgstab, cgs, bcg,
-         _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
-         cgsStep, bicgstabStep,
-         CGNE, TFQMR, BICGSTAB, CGS, BCG,
-         linSolve, LinSolveMethod, (<\>),
-         randMat, randVec, randSpMat, randSpVec,
-         modifyInspectN, runAppendN',
-         diffSqL,
-         qr, lu
-       )
+       -- (
+       --   sparsifySV,
+       --   conditionNumberSM,
+       --   hhMat, hhRefl,
+       --   givens,
+       --   eigsQR, eigRayleigh,
+       --   cgne, tfqmr, bicgstab, cgs, bcg,
+       --   _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
+       --   cgsStep, bicgstabStep,
+       --   CGNE, TFQMR, BICGSTAB, CGS, BCG,
+       --   linSolve, LinSolveMethod, (<\>),
+       --   randMat, randVec, randSpMat, randSpVec,
+       --   modifyInspectN, runAppendN',
+       --   diffSqL,
+       --   qr, lu
+       -- )
        where
 
 
@@ -390,19 +390,6 @@ lUpdSparse = lUpd' (filter (isNz . snd))
 
 
 
-
-
-
-
-
-
-
-
-
-
--- test data
-
-aa0 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] :: SpMatrix Double
 
 
 
