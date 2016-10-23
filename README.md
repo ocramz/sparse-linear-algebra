@@ -37,13 +37,57 @@ Algorithms :
 
 ---------
 
-## Usage
+## Examples
 
 The module `Numeric.LinearAlgebra.Sparse` contains the interface functions:
 
-To create a sparse matrix from an array of its entries
+To create a sparse matrix from an array of its entries we use `fromListSM` :
 
     fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
+
+e.g.
+
+    > amat = fromListSM (3,3) [(0,0,2),(1,0,4),(1,1,3),(1,2,2),(2,2,5)]
+
+And similarly for sparse vectors : `fromListSV :: Int -> [(Int, a)] -> SpVector a`.
+
+Both sparse vectors and matrices can be pretty-printed using `prd`:
+
+    > prd amat
+    ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )
+
+    [2,0,0]
+    [4,3,2]
+    [0,0,5]
+
+
+Matrix factorizations are available as `lu` and `qr` respectively, and are straightforward to verify by using the matrix product `##`  :
+
+    > (l, u) = lu amat
+    > prd $ l ## u
+    ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
+
+    [2.0,0.0,0.0]
+    [4.0,3.0,2.0]
+    [0.0,0.0,5.0]
+
+Linear systems can be solved with either `linSolve` (which also requires choosing a method) or with `<\>` (which uses BiCGSTAB as default) :
+
+    > b = fromListSV 3 [(0,3),(1,2),(2,5)]
+    > x = amat <\> b
+    > prd x
+    ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
+
+    [1.4999999999999998,-1.9999999999999998,0.9999999999999998]
+
+The result can be verified by computing the matrix-vector action `amat #> x`, which should (ideally) be very close to the right-hand side `b` :
+
+    > prd $ amat #> x
+    ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
+
+    [2.9999999999999996,1.9999999999999996,4.999999999999999]
+
+
 
 
 ----------
