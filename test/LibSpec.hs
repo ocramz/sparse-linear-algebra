@@ -248,6 +248,7 @@ aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
 
 {- LU -}
 
+checkLu :: SpMatrix Double -> Bool
 checkLu a = lup == a where
   (l, u) = lu a
   lup = l ## u
@@ -320,6 +321,8 @@ tm4 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
 
 tm5 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] :: SpMatrix Double
 
+
+tm6 = fromListDenseSM 4 [1,3,4,2,2,5,2,10,3,6,8,11,4,7,9,12] :: SpMatrix Double
 
 
 

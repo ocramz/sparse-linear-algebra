@@ -19,9 +19,9 @@ module Numeric.LinearAlgebra.Sparse
          _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
          cgsStep, bicgstabStep,
          CGNE, TFQMR, BICGSTAB, CGS, BCG,
-         -- * Random matrices
-         randMat, randVec,
-         -- ** Sparse
+         -- * Random matrices and vectors
+         randMat, randVec, 
+         -- ** Sparse "
          randSpMat, randSpVec,
          -- * Sparsify data
          sparsifySV,
@@ -365,11 +365,15 @@ solveForUij amat lmat umat i j = a - p where
 -- solve for element Lij
 solveForLij ::
   SpMatrix Double -> SpMatrix Double -> SpMatrix Double -> IxRow -> IxCol -> Double
-solveForLij amat lmat umat i j | isNz uii = (a - p)/uii
-                               | otherwise = error $ unwords ["solveForLij : U",show (i,i)," is close to 0. Permute rows in order to have a nonzero diagonal of U"]
+solveForLij amat lmat umat i j
+  | isNz ujj = (a - p)/ujj
+  | otherwise =
+     error $ unwords ["solveForLij : U",
+                      show (j ,j ),
+                      "is close to 0. Permute rows in order to have a nonzero diagonal of U"]
   where
    a = amat @@! (i, j)
-   uii = umat @@! (i-1, i-1) -- NB this must be /= 0
+   ujj = umat @@! (j , j)   -- NB this must be /= 0
    p = contractSub lmat umat i j (i - 1)
 
 
@@ -391,7 +395,6 @@ lUpd = lUpd' id
 lUpdSparse ::
   SpMatrix Double -> (Rows, SpMatrix Double, SpMatrix Double) -> SpMatrix Double
 lUpdSparse = lUpd' (filter (isNz . snd))
-
 
 
 
