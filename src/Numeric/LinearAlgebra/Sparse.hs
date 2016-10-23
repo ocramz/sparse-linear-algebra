@@ -1,22 +1,34 @@
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
 module Numeric.LinearAlgebra.Sparse
-       -- (
-       --   sparsifySV,
-       --   conditionNumberSM,
-       --   hhMat, hhRefl,
-       --   givens,
-       --   eigsQR, eigRayleigh,
-       --   cgne, tfqmr, bicgstab, cgs, bcg,
-       --   _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
-       --   cgsStep, bicgstabStep,
-       --   CGNE, TFQMR, BICGSTAB, CGS, BCG,
-       --   linSolve, LinSolveMethod, (<\>),
-       --   randMat, randVec, randSpMat, randSpVec,
-       --   modifyInspectN, runAppendN',
-       --   diffSqL,
-       --   qr, lu
-       -- )
+       (
+         -- * Matrix factorizations
+         qr, lu,
+         -- * Condition number
+         conditionNumberSM,
+         -- * Householder reflection
+         hhMat, hhRefl,
+         -- * Givens' rotation
+         givens,
+         -- * Eigensolvers
+         eigsQR, eigRayleigh,
+         -- * Linear solvers
+         linSolve, LinSolveMethod, (<\>),
+         -- ** Methods
+         cgne, tfqmr, bicgstab, cgs, bcg,
+         _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
+         cgsStep, bicgstabStep,
+         CGNE, TFQMR, BICGSTAB, CGS, BCG,
+         -- * Random matrices
+         randMat, randVec,
+         -- ** Sparse
+         randSpMat, randSpVec,
+         -- * Sparsify data
+         sparsifySV,
+         -- * Iteration combinators
+         modifyInspectN, runAppendN',
+         diffSqL
+       )
        where
 
 
