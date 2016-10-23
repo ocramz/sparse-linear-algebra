@@ -78,7 +78,8 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : LU decomposition" $ do
     it "LU (4 x 4 dense)" $
       checkLu tm6 `shouldBe` True
-
+    it "LU (10 x 10 sparse)" $
+      checkLu tm7 `shouldBe` True
 
 
 {-
@@ -251,7 +252,7 @@ aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
 checkLu :: SpMatrix Double -> Bool
 checkLu a = lup == a where
   (l, u) = lu a
-  lup = l ## u
+  lup = l #~# u
 
 
 
@@ -324,7 +325,12 @@ tm5 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] :: SpMatrix Double
 
 tm6 = fromListDenseSM 4 [1,3,4,2,2,5,2,10,3,6,8,11,4,7,9,12] :: SpMatrix Double
 
-
+tm7 :: SpMatrix Double
+tm7 = a ^+^ b ^+^ c where
+  n = 5
+  a = mkSubDiagonal n 1 $ replicate n 1
+  b = mkSubDiagonal n 0 $ replicate n (-2)
+  c = mkSubDiagonal n (-1) $ replicate n 1
 
 -- -- run N iterations 
 
