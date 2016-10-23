@@ -62,6 +62,8 @@ Both sparse vectors and matrices can be pretty-printed using `prd`:
     [4,3,2]
     [0,0,5]
 
+The zeros are just added at pretty printing time; sparse vectors and matrices should only contain non-zero entries.
+
 ### Matrix operations
 
 Matrix factorizations are available as `lu` and `qr` respectively, and are straightforward to verify by using the matrix product `##`  :
