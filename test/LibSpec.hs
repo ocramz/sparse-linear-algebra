@@ -76,8 +76,8 @@ spec = do
     it "QR (3 x 3 dense)" $ 
       checkQr tm2 `shouldBe` True
   describe "Numeric.LinearAlgebra.Sparse : LU decomposition" $ do
-    it "LU (3 x 3 dense)" $
-      checkLu tm2 `shouldBe` True
+    it "LU (4 x 4 dense)" $
+      checkLu tm6 `shouldBe` True
 
 
 
