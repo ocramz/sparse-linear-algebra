@@ -35,6 +35,16 @@ Algorithms :
 * Predicates : Matrix orthogonality test (A^T A ~= I)
 
 
+---------
+
+## Usage
+
+The module `Numeric.LinearAlgebra.Sparse` contains the interface functions:
+
+To create a sparse matrix from an array of its entries
+
+    fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
+
 
 ----------
 
