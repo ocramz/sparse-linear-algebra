@@ -182,15 +182,19 @@ lookupSM (SM _ im) i j = IM.lookup i im >>= IM.lookup j
 
 -- | Looks up an element in the matrix with a default (if the element is not found, zero is returned)
 
-lookupWD_SM, (@@) :: Num a => SpMatrix a -> (IxRow, IxCol) -> a
+lookupWD_SM, (@@!), (@@) :: Num a => SpMatrix a -> (IxRow, IxCol) -> a
 lookupWD_SM sm (i,j) =
   fromMaybe 0 (lookupSM sm i j)
 
 lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IxRow, IxCol) -> a
 lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 
--- | Zero-default lookup, infix form
-(@@) = lookupWD_SM
+-- | Zero-default lookup, infix form (no bound checking)
+(@@!) = lookupWD_SM
+
+-- | Zero-default lookup, infix form ("safe" : throws exception if lookup is outside matrix bounds)
+m @@ d | isValidIxSM m d = m @@! d
+       | otherwise = error $ "@@ : incompatible indices : matrix size is " ++ show (dim m) ++ ", but user looked up " ++ show d
 
 
 
@@ -231,7 +235,7 @@ extractSubmatrixSM fi gi (SM (r, c) im) (i1, i2) (j1, j2)
       i2 >= i1
 
 -- | Extract a submatrix given the specified index bounds
--- NB : subtracts (i1, j1) to the indices
+-- NB : subtracts (i1, j1) from the indices
 extractSubmatrixRebalanceKeys ::
   SpMatrix a -> (IxRow, IxRow) -> (IxCol, IxCol) -> SpMatrix a
 extractSubmatrixRebalanceKeys mm (i1,i2) (j1,j2) =
@@ -254,6 +258,10 @@ extractRowSM sm i = extractSubmatrix sm (i, i) (0, ncols sm - 1)
 extractSubRowSM :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpMatrix a
 extractSubRowSM sm i (j1, j2) = extractSubmatrix sm (i, i) (j1, j2)
 
+-- | Extract column within a row range, rebalance keys
+extractSubRowSM_RK :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpMatrix a
+extractSubRowSM_RK sm i =
+  extractSubmatrixRebalanceKeys sm (i, i) 
 
 
 
@@ -267,6 +275,10 @@ extractSubColSM :: SpMatrix a -> IxCol -> (IxRow, IxRow) -> SpMatrix a
 extractSubColSM sm j (i1, i2) = extractSubmatrix sm (i1, i2) (j, j)
 
 
+-- | Extract column within a row range, rebalance keys
+extractSubColSM_RK :: SpMatrix a -> IxCol -> (IxRow, IxRow) -> SpMatrix a
+extractSubColSM_RK sm j (i1, i2) =
+  extractSubmatrixRebalanceKeys sm (i1, i2) (j, j) 
 
 
 
@@ -284,8 +296,8 @@ extractSubColSM sm j (i1, i2) = extractSubmatrix sm (i1, i2) (j, j)
 
 -- ** Predicates
 -- |Are the supplied indices within matrix bounds?
-validIxSM :: SpMatrix a -> (Int, Int) -> Bool
-validIxSM mm = inBounds02 (dim mm)
+isValidIxSM :: SpMatrix a -> (Int, Int) -> Bool
+isValidIxSM mm = inBounds02 (dim mm)
 
 -- |Is the matrix square?
 isSquareSM :: SpMatrix a -> Bool
@@ -655,4 +667,12 @@ a ##^ b = a #~# transposeSM b
 
 
 
-
+-- *** Matrix contraction
+-- | Contract two matrices A and B up to an index `n`, i.e. summing over repeated indices: 
+-- Aij Bjk , for j in [0 .. n] 
+contractSub :: Num a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> Int -> a
+contractSub a b i j n
+  | ncols a == nrows b &&
+    isValidIxSM a (i,j) &&
+    n <= ncols a = sum $ map (\i' -> a@@!(i,i')*b@@!(i',j)) [0 .. n]
+  | otherwise = error "contractSub : n must be <= i"

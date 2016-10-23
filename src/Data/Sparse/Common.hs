@@ -6,6 +6,7 @@ module Data.Sparse.Common
          extractVectorDenseWith, extractRowDense, extractColDense,
          extractDiagDense,
          extractSubRow, extractSubCol,
+         extractSubRow_RK, extractSubCol_RK,
          matVec, (#>), vecMat, (<#),
          prd) where
 
@@ -123,13 +124,20 @@ extractDiagDense = extractVectorDenseWith (\i -> (i, i))
 
 
 -- | extract row interval
-
 extractSubRow :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpVector a
 extractSubRow m i (j1, j2)  = toSV $ extractSubRowSM m i (j1, j2)
 
+-- | extract row interval, rebalance keys by subtracting lowest one
+extractSubRow_RK :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpVector a
+extractSubRow_RK m i (j1, j2)  = toSV $ extractSubRowSM_RK m i (j1, j2)
 
+-- | extract column interval
 extractSubCol :: SpMatrix a -> IxCol -> (IxRow, IxRow) -> SpVector a
 extractSubCol m j (i1, i2)  = toSV $ extractSubColSM m j (i1, i2)
+
+-- | extract column interval, rebalance keys by subtracting lowest one
+extractSubCol_RK :: SpMatrix a -> IxCol -> (IxRow, IxRow) -> SpVector a
+extractSubCol_RK m j (i1, i2)  = toSV $ extractSubColSM_RK m j (i1, i2)
 
 
 

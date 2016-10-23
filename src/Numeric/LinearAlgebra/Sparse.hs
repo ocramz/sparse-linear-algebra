@@ -1,6 +1,23 @@
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
-module Numeric.LinearAlgebra.Sparse where
+module Numeric.LinearAlgebra.Sparse
+       (
+         sparsifySV,
+         conditionNumberSM,
+         hhMat, hhRefl,
+         givens,
+         eigsQR, eigRayleigh,
+         cgne, tfqmr, bicgstab, cgs, bcg,
+         _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
+         cgsStep, bicgstabStep,
+         CGNE, TFQMR, BICGSTAB, CGS, BCG,
+         linSolve, LinSolveMethod, (<\>),
+         randMat, randVec, randSpMat, randSpVec,
+         modifyInspectN, runAppendN',
+         diffSqL,
+         qr, lu
+       )
+       where
 
 
 import Data.Sparse.Common
@@ -118,7 +135,7 @@ non-zero but A has zeros in row k for all columns less than j.
 
 givens :: SpMatrix Double -> IxRow -> IxCol -> SpMatrix Double
 givens mm i j 
-  | validIxSM mm (i,j) && isSquareSM mm =
+  | isValidIxSM mm (i,j) && isSquareSM mm =
        sparsifySM $ fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
   | otherwise = error "givens : indices out of bounds"      
   where
@@ -180,9 +197,9 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 
 -- * Eigenvalue algorithms
 
--- ** All eigenvalues (QR algorithm)
+-- ** QR algorithm
 
--- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm` 
+-- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
 eigsQR :: Int -> SpMatrix Double -> SpVector Double
 eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
   eigsStep m = r #~# q where (q, r) = qr m
@@ -196,10 +213,9 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
 
 
 
--- ** One eigenvalue and eigenvector (Rayleigh iteration)
+-- ** Rayleigh iteration
 
-
--- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm`. Cubic-order convergence, but it requires a mildly educated guess on the initial eigenpair
+-- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair
 eigRayleigh :: Int                -- max # iterations
      -> SpMatrix Double           -- matrix
      -> (SpVector Double, Double) -- initial guess of (eigenvector, eigenvalue)
@@ -272,70 +288,122 @@ SVD of A, Golub-Kahan method
 
 
 -- * LU factorization
-
+-- ** Doolittle algorithm
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
+-- | LU factors
+lu :: SpMatrix Double -> (SpMatrix Double, SpMatrix Double)
+lu aa = (lfin, ufin) where
+  (ixf,lf,uf) = execState (modifyUntil q (luUpd aa)) (luInit aa)
+  lfin = lf
+  ufin = uUpd aa (ixf, lf, uf)
+  q (i, _, _) = i == (nrows aa - 1)
 
--- lu aa | isSquareSM aa = undefined
---       | otherwise = error "LU factorization not currently defined for rectangular matrices" where
---           (n, _) = dim aa
---           l0 = insertCol (eye n) (1/u00 .* extractSubCol aa 0 (1,n))  -- initial L
---           u0 = insertRow (zeroSM n n) (extractRow aa 0) 0             -- initial U
---           u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
---           -- aa0 = 
-
--- luUpd :: Fractional a =>
---   SpMatrix a ->
---   (IxRow, SpMatrix a, SpMatrix a) ->
---   (IxRow, SpMatrix a, SpMatrix a)
--- luUpd aa (i, l, u) = (i', l', u') where
---   n = nrows aa  
---   u' = uUpd l u  -- update U
---   l' = lUpd l u' -- update L
---   i' = i + 1     -- increment i
---   dei = (0, i - 1)  
-
-uUpd aa (i, lmat, umat) = insertRow umat (acolU ^-^ daU) i
-   where
-    n = nrows aa
-    dei = (0, i - 1)
-    acolU = extractSubCol aa i (i, n - 1)
-    lrowU = extractSubRow lmat i dei
-    ucolU j = extractSubCol umat j dei
-    jjU = [i .. n-1]
-    innersU = map (\j -> lrowU `dot` ucolU j) jjU
-    daU = fromListSV (n - i) (zip jjU innersU)
-
-lUpd aa (ix, lmat, umat) = insertCol lmat (acolL ^-^ (recip uii .* daL)) ix
-   where
-    n = nrows aa
-    dei = (0, ix - 1)     
-    acolL = extractSubCol aa ix (ix, n - 1)
-    lrowL i = extractSubRow lmat i dei
-    ucolL = extractSubCol umat ix dei
-    iiL = [ix + 1 .. n - 1]
-    innersL = map (\i -> lrowL i `dot` ucolL) iiL
-    uii = umat @@ (ix, ix)
-    daL = fromListSV (n - ix - 1) (zip iiL innersL)
-  
-
--- lu aa =
---   execState (modifyUntil q (luUpd aa)) (luInit aa) where
---     q (i, _, _) = i == (nrows aa - 1)
-
+-- | First iteration of LU
+luInit ::
+  (Num t, Fractional a) => SpMatrix a -> (t, SpMatrix a, SpMatrix a)
 luInit aa = (1, l0, u0) where
   n = nrows aa
   l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
   u0 = insertRow (zeroSM n n) (extractRow aa 0) 0               -- initial U
   u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
 
-luUpd1 aa = (i + 1, l', u') where
-  lu0@(i,l,u) = luInit aa
-  u' = uUpd aa lu0
-  l' = lUpd aa (i, l, u')
+-- | LU update step
+luUpd :: SpMatrix Double
+     -> (Int, SpMatrix Double, SpMatrix Double)
+     -> (Int, SpMatrix Double, SpMatrix Double)
+luUpd aa (i, l, u) = (i', l', u') where
+  n = nrows aa  
+  u' = uUpdSparse aa (i, l, u)  -- update U
+  l' = lUpdSparse aa (i, l, u') -- update L
+  i' = i + 1     -- increment i
 
 
-tm0 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] :: SpMatrix Double
+uUpd' ::
+  Num a =>
+  ([(Int, a)] -> [(Int, a)]) ->
+  SpMatrix a ->
+  (Rows, SpMatrix a, SpMatrix a) ->
+  SpMatrix a
+uUpd' ff amat (ix, lmat, umat) = insertRow umat uv ix where
+  n = nrows amat
+  colsix = [ix .. n - 1]
+  us = ff $ zip colsix $ map (solveForUij amat lmat umat ix) colsix
+  uv = fromListSV n us
+
+uUpd :: Num a => SpMatrix a -> (Rows, SpMatrix a, SpMatrix a) -> SpMatrix a
+uUpd = uUpd' id
+
+-- update U while sparsifying
+uUpdSparse ::
+  SpMatrix Double -> (Rows, SpMatrix Double, SpMatrix Double) -> SpMatrix Double
+uUpdSparse = uUpd' (filter (isNz . snd))
+
+
+
+
+-- solve for element Uij
+solveForUij ::
+  Num a => SpMatrix a -> SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> a
+solveForUij amat lmat umat i j = a - p where
+  a = amat @@! (i, j)
+  p = contractSub lmat umat i j (i - 1)
+
+
+-- solve for element Lij
+solveForLij ::
+  SpMatrix Double -> SpMatrix Double -> SpMatrix Double -> IxRow -> IxCol -> Double
+solveForLij amat lmat umat i j | isNz uii = (a - p)/uii
+                               | otherwise = error $ unwords ["solveForLij : U",show (i,i)," is close to 0. Permute rows in order to have a nonzero diagonal of U"]
+  where
+   a = amat @@! (i, j)
+   uii = umat @@! (i-1, i-1) -- NB this must be /= 0
+   p = contractSub lmat umat i j (i - 1)
+
+
+
+
+lUpd' :: ([(Rows, Double)] -> [(Int, Double)])
+     -> SpMatrix Double
+     -> (Rows, SpMatrix Double, SpMatrix Double)
+     -> SpMatrix Double
+lUpd' ff amat (ix, lmat, umat) = insertCol lmat lv ix where
+  n = nrows amat
+  rowsix = [ix + 1 .. n - 1]
+  ls = ff $ zip rowsix $ map (\i -> solveForLij amat lmat umat i ix) rowsix
+  lv = fromListSV n ls
+
+lUpd :: SpMatrix Double -> (Rows, SpMatrix Double, SpMatrix Double) -> SpMatrix Double
+lUpd = lUpd' id
+
+lUpdSparse ::
+  SpMatrix Double -> (Rows, SpMatrix Double, SpMatrix Double) -> SpMatrix Double
+lUpdSparse = lUpd' (filter (isNz . snd))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- test data
+
+aa0 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] :: SpMatrix Double
+
 
 
 
@@ -355,12 +423,27 @@ permutAA iref jref (SM (nro,_) mm)
 
 
 
+
+
+
+
+
+
 -- * Incomplete LU
 
 -- | used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
 ripHoles :: SpMatrix t -> SpMatrix a -> SpMatrix a
 ripHoles (SM d m) m2 = SM d $ ifilterIM2 f (dat m2) where
   f i j _ = isJust (lookupSM m2 i j)
+
+
+
+
+
+
+
+
+
 
 
 

@@ -22,6 +22,8 @@ Algorithms :
 
     * QR factorization
 
+    * LU factorization
+
 * Eigenvalue algorithms
 
     * QR algorithm

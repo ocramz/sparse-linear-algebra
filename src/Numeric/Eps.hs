@@ -15,6 +15,9 @@ almostZero, almostOne :: Double -> Bool
 almostZero x = abs x <= eps
 almostOne x = x >= (1-eps) && x < (1+eps)
 
+isNz :: Double -> Bool
+isNz = not . almostZero
+
 withDefault :: (t -> Bool) -> t -> t -> t
 withDefault q d x | q x = d
                   | otherwise = x

@@ -28,7 +28,7 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  describe "Math.Linear.Sparse : library" $ do
+  describe "Numeric.LinearAlgebra.Sparse : library" $ do
     -- prop "subtraction is cancellative" $ \(x :: SpVector Double) ->
     --   x ^-^ x `shouldBe` zero
     it "dot : inner product" $
@@ -61,7 +61,7 @@ spec = do
       execState (modifyInspectN 2 ((< eps) . diffSqL) (/2)) 1 `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
       execState (modifyInspectN (2^16) ((< eps) . head) (/2)) 1 < eps `shouldBe` True 
-  describe "Math.Linear.Sparse : Linear solvers" $ do
+  describe "Numeric.LinearAlgebra.Sparse : Linear solvers" $ do
     -- it "TFQMR (2 x 2 dense)" $
     --   normSq (_xTfq (tfqmr aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "BCG (2 x 2 dense)" $
@@ -70,32 +70,15 @@ spec = do
       normSq (aa0 <\> b0 ^-^ x0true) <= eps `shouldBe` True
     it "CGS (2 x 2 dense)" $ 
       normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
-  describe "Math.Linear.Sparse : QR decomposition" $ do    
+  describe "Numeric.LinearAlgebra.Sparse : QR decomposition" $ do    
     it "QR (4 x 4 sparse)" $
       checkQr tm4 `shouldBe` True
     it "QR (3 x 3 dense)" $ 
-      checkQr tm2 `shouldBe` True    
+      checkQr tm2 `shouldBe` True
+  describe "Numeric.LinearAlgebra.Sparse : LU decomposition" $ do
+    it "LU (3 x 3 dense)" $
+      checkLu tm2 `shouldBe` True
 
-
-
--- -- run N iterations 
-
--- runNBiC :: Int -> SpMatrix Double -> SpVector Double -> BICGSTAB
-runNBiC n aa b = map _xBicgstab $ runAppendN' (bicgstabStep aa x0) n bicgsInit where
-   x0 = mkSpVectorD nd $ replicate nd 0.9
-   nd = dim r0
-   r0 = b ^-^ (aa #> x0)    
-   p0 = r0
-   bicgsInit = BICGSTAB x0 r0 p0
-
--- runNCGS :: Int -> SpMatrix Double -> SpVector Double -> CGS
-runNCGS n aa b = map _x $ runAppendN' (cgsStep aa x0) n cgsInit where
-  x0 = mkSpVectorD nd $ replicate nd 0.1
-  nd = dim r0
-  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
-  p0 = r0
-  u0 = r0
-  cgsInit = CGS x0 r0 p0 u0  
 
 
 {-
@@ -196,17 +179,7 @@ solveSpRandom n nsp = do
 
 
 
--- `ndim` iterations
 
-solveRandomN ndim nsp niter = do
-  aa0 <- randSpMat ndim (nsp ^ 2)
-  let aa = aa0 ^+^ eye ndim
-  xtrue <- randSpVec ndim nsp
-  let b = aa #> xtrue
-      xhatB = head $ runNBiC niter aa b
-      xhatC = head $ runNCGS niter aa b
-  -- printDenseSM aa    
-  return (normSq (xhatB ^-^ xtrue), normSq (xhatC ^-^ xtrue))
 
 --
 
@@ -273,6 +246,14 @@ aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
 
 
 
+{- LU -}
+
+checkLu a = lup == a where
+  (l, u) = lu a
+  lup = l ## u
+
+
+
 {- eigenvalues -}
 
 
@@ -335,3 +316,40 @@ tm3g1 = fromListDenseSM 3 [1, 0,0, 0,c,-s, 0, s, c]
 --
 
 tm4 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
+
+
+
+
+
+
+
+-- -- run N iterations 
+
+-- -- runNBiC :: Int -> SpMatrix Double -> SpVector Double -> BICGSTAB
+-- runNBiC n aa b = map _xBicgstab $ runAppendN' (bicgstabStep aa x0) n bicgsInit where
+--    x0 = mkSpVectorD nd $ replicate nd 0.9
+--    nd = dim r0
+--    r0 = b ^-^ (aa #> x0)    
+--    p0 = r0
+--    bicgsInit = BICGSTAB x0 r0 p0
+
+-- -- runNCGS :: Int -> SpMatrix Double -> SpVector Double -> CGS
+-- runNCGS n aa b = map _x $ runAppendN' (cgsStep aa x0) n cgsInit where
+--   x0 = mkSpVectorD nd $ replicate nd 0.1
+--   nd = dim r0
+--   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+--   p0 = r0
+--   u0 = r0
+--   cgsInit = CGS x0 r0 p0 u0
+
+
+
+-- solveRandomN ndim nsp niter = do
+--   aa0 <- randSpMat ndim (nsp ^ 2)
+--   let aa = aa0 ^+^ eye ndim
+--   xtrue <- randSpVec ndim nsp
+--   let b = aa #> xtrue
+--       xhatB = head $ runNBiC niter aa b
+--       xhatC = head $ runNCGS niter aa b
+--   -- printDenseSM aa    
+--   return (normSq (xhatB ^-^ xtrue), normSq (xhatC ^-^ xtrue))
