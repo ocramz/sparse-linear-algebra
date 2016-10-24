@@ -5,7 +5,7 @@ import Data.Sparse.Utils
 import Data.Sparse.Types
 
 import Numeric.LinearAlgebra.Class
-import Numeric.LinearAlgebra.Sparse.IntMap
+import Data.Sparse.IntMap2.IntMap2
 
 import Data.Maybe
 

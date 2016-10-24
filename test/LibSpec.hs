@@ -4,6 +4,10 @@ module LibSpec where
 import Numeric.LinearAlgebra.Sparse
 -- import Numeric.LinearAlgebra.Class
 
+import Control.Monad (liftM, liftM2)
+import Control.Monad.Primitive
+import Data.Foldable (foldrM)
+
 import Data.Sparse.Common
 
 
@@ -155,28 +159,58 @@ example 1 : random linear system
 
 
 
--- dense
-solveRandom n = do
-  aa0 <- randMat n
-  let aa = aa0 ^+^ eye n
-  xtrue <- randVec n
-  -- x0 <- randVec n
-  let b = aa #> xtrue
-      dx = aa <\> b ^-^ xtrue
-  return $ normSq dx
-  -- let xhatB = _xBicgstab (bicgstab aa b x0 x0)
-  --     xhatC = _x (cgs aa b x0 x0)
-  -- return (aa, x, x0, b, xhatB, xhatC)
+-- -- dense
+-- solveRandom n = do
+--   aa0 <- randMat n
+--   let aa = aa0 ^+^ eye n
+--   xtrue <- randVec n
+--   -- x0 <- randVec n
+--   let b = aa #> xtrue
+--       dx = aa <\> b ^-^ xtrue
+--   return $ normSq dx
+--   -- let xhatB = _xBicgstab (bicgstab aa b x0 x0)
+--   --     xhatC = _x (cgs aa b x0 x0)
+--   -- return (aa, x, x0, b, xhatB, xhatC)
 
--- sparse
-solveSpRandom :: Int -> Int -> IO Double
-solveSpRandom n nsp = do
-  aa0 <- randSpMat n nsp
-  let aa = aa0 ^+^ eye n
-  xtrue <- randSpVec n nsp
-  let b = (aa ^+^ eye n) #> xtrue
-      dx = aa <\> b ^-^ xtrue
-  return $ normSq dx
+-- -- sparse
+-- solveSpRandom :: Int -> Int -> IO Double
+-- solveSpRandom n nsp = do
+--   aa0 <- randSpMat n nsp
+--   let aa = aa0 ^+^ eye n
+--   xtrue <- randSpVec n nsp
+--   let b = (aa ^+^ eye n) #> xtrue
+--       dx = aa <\> b ^-^ xtrue
+--   return $ normSq dx
+
+
+
+
+-- solveRandomBanded n bw mu sig = do
+--   let ndiags = 2*bw
+--   bands <- replicateM (ndiags + 1) (randArray n mu sig)
+--   xtrue <- randVec n
+--   b <- randVec n
+--   let
+--     diags = [-bw .. bw - 1]
+
+randDiagMat :: PrimMonad m =>
+     Rows -> Double -> Double -> Int -> m (SpMatrix Double)
+randDiagMat n mu sig i = do
+  x <- randArray n mu sig
+  return $ mkSubDiagonal n i x
+
+
+go (m:ms) mat =
+  m ^+^ go ms mat
+go [] mat = mat
+
+  
+plusM x y = return $ x ^+^ y
+
+
+
+
+
 
 
 
@@ -213,25 +247,8 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 {- mkSubDiagonal -}
 
-testLaplacian1 :: Int -> SpMatrix Double
-testLaplacian1 n = m where
-  m :: SpMatrix Double
-  m = mksd (-1) l1 ^+^
-       mksd 0 l2 ^+^
-       mksd 1 l3
-    where
-    mksd = mkSubDiagonal n
-    l1 = replicate n (-1)
-    l2 = replicate n 2
-    l3 = l1
-  -- x :: SpVector Double
-  -- x = mkSpVectorD n (replicate n 2)
-  -- b = m #> x
 
--- t3 n = normSq $ (aa <\> b) ^-^ xhat where
---   aa = testLaplacian1 n :: SpMatrix Double
---   xhat = mkSpVectorD n (concat $ replicate 20 [1,2,3,4,5]) :: SpVector Double
---   b = aa #> xhat
+
 
 {- QR-}
 

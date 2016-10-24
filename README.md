@@ -77,7 +77,7 @@ Matrix factorizations are available as `lu` and `qr` respectively, and are strai
     [0.0,0.0,5.0]
 
 Notice that the result is _dense_, i.e. certain entries are numerically zero but have been inserted into the result along with all the others (thus taking up memory!).
-To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, which filters out all the elements x for which `|x| <= eps`, where `eps` (defined) in `Numeric.Eps`, is fixed at 10^-8.
+To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, which filters out all the elements x for which `|x| <= eps`, where `eps` (defined in `Numeric.Eps`) is fixed at 10^-8.
 
     > prd $ l #~# u
     ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )

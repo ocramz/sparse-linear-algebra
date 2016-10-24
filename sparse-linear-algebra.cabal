@@ -20,7 +20,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Numeric.LinearAlgebra.Sparse
                        Numeric.LinearAlgebra.Class
-                       Numeric.LinearAlgebra.Sparse.IntMap
+                       Data.Sparse.IntMap2.IntMap2
                        Data.Sparse.SpVector
                        Data.Sparse.SpMatrix
                        Data.Sparse.Common

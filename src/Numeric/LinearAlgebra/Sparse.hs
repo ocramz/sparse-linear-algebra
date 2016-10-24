@@ -4,6 +4,8 @@ module Numeric.LinearAlgebra.Sparse
        (
          -- * Matrix factorizations
          qr, lu,
+         -- * Incomplete LU
+         ilu0,
          -- * Condition number
          conditionNumberSM,
          -- * Householder reflection
@@ -19,6 +21,8 @@ module Numeric.LinearAlgebra.Sparse
          _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
          cgsStep, bicgstabStep,
          CGNE, TFQMR, BICGSTAB, CGS, BCG,
+         -- * Random arrays
+         randArray,
          -- * Random matrices and vectors
          randMat, randVec, 
          -- ** Sparse "
@@ -434,9 +438,15 @@ permutAA iref jref (SM (nro,_) mm)
 -- * Incomplete LU
 
 -- | used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
-ripHoles :: SpMatrix t -> SpMatrix a -> SpMatrix a
-ripHoles (SM d m) m2 = SM d $ ifilterIM2 f (dat m2) where
-  f i j _ = isJust (lookupSM m2 i j)
+
+
+
+ilu0 aa = (lh, uh) where
+  (l, u) = lu aa
+  lh = sparsifyLU l aa
+  uh = sparsifyLU u aa
+  sparsifyLU m m2 = SM (dim m) $ ifilterIM2 f (dat m) where
+    f i j _ = isJust (lookupSM m2 i j)
 
 
 
@@ -446,6 +456,24 @@ ripHoles (SM d m) m2 = SM d $ ifilterIM2 f (dat m2) where
 
 
 
+
+-- * Preconditioning
+
+diagPartitions :: SpMatrix a -> (SpMatrix a, SpMatrix a, SpMatrix a)
+diagPartitions aa = (e,d,f) where
+  e = extractSubDiag aa
+  d = extractDiag aa
+  f = extractSuperDiag aa
+
+
+-- ** SSOR
+
+-- mSsor aa omega =
+  
+
+scaleRows sm mm
+  | dim sm /= dim mm = error "scaleRows : incompatible matrix sizes"
+  | otherwise = undefined where
 
 
 
@@ -843,6 +871,14 @@ runAppendN' ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
 
 
 
+-- * Random arrays
+
+randArray :: PrimMonad m => Int -> Double -> Double -> m [Double]
+randArray n mu sig = do
+  g <- MWC.create
+  replicateM n (MWC.normal mu sig g)
+  
+
 
 
 -- * Random matrices and vectors
@@ -884,4 +920,6 @@ randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
   aav <- replicateM nsp (MWC.normal 0 1 g)
   ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
   return $ fromListSV n $ zip ii aav
+
+
 

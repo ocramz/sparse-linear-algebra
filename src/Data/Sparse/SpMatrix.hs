@@ -7,7 +7,7 @@ import Data.Sparse.Types
 import Numeric.Eps
 import Numeric.LinearAlgebra.Class
 
-import Numeric.LinearAlgebra.Sparse.IntMap
+import Data.Sparse.IntMap2.IntMap2
 
 import qualified Data.IntMap as IM
 
@@ -208,6 +208,19 @@ m @@ d | isValidIxSM m d = m @@! d
 
 
 -- ** Sub-matrices
+
+-- | Indexed filtering function
+filterSM :: (IM.Key -> IM.Key -> a -> Bool) -> SpMatrix a -> SpMatrix a
+filterSM f sm = SM (dim sm) $ ifilterIM2 f (dat sm)
+
+-- | Diagonal, subdiagonal, superdiagonal partitions of a SpMatrix (useful for writing preconditioners)
+extractDiag, extractSuperDiag, extractSubDiag :: SpMatrix a -> SpMatrix a
+extractSubDiag = filterSM (\i j _ -> i > j)
+
+extractSuperDiag = filterSM (\i j _ -> i < j)
+
+extractDiag = filterSM (\i j _ -> i == j)
+
 
 
 -- | Extract a submatrix given the specified index bounds, rebalancing keys with the two supplied functions
