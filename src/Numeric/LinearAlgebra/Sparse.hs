@@ -21,6 +21,8 @@ module Numeric.LinearAlgebra.Sparse
          _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
          cgsStep, bicgstabStep,
          CGNE, TFQMR, BICGSTAB, CGS, BCG,
+         -- * Matrix partitioning
+         diagPartitions,
          -- * Random arrays
          randArray,
          -- * Random matrices and vectors
@@ -459,6 +461,7 @@ ilu0 aa = (lh, uh) where
 
 -- * Preconditioning
 
+-- | Partition a matrix into strictly subdiagonal, diagonal and strictly superdiagonal parts
 diagPartitions :: SpMatrix a -> (SpMatrix a, SpMatrix a, SpMatrix a)
 diagPartitions aa = (e,d,f) where
   e = extractSubDiag aa
@@ -468,12 +471,16 @@ diagPartitions aa = (e,d,f) where
 
 -- ** SSOR
 
--- mSsor aa omega =
-  
+-- | SSOR
+mSsor :: Fractional a => SpMatrix a -> a -> SpMatrix a
+mSsor aa omega = l ## r where
+  (e, d, f) = diagPartitions aa
+  n = nrows e
+  l = d ^-^ scale omega e
+  r = eye n ^-^ scale omega (reciprocal d ## f)
 
-scaleRows sm mm
-  | dim sm /= dim mm = error "scaleRows : incompatible matrix sizes"
-  | otherwise = undefined where
+
+
 
 
 

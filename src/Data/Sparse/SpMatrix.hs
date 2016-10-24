@@ -596,6 +596,12 @@ transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 matScale :: Num a => a -> SpMatrix a -> SpMatrix a
 matScale a = fmap (*a)
 
+
+
+
+
+
+
 -- ** Frobenius norm
 normFrobenius :: SpMatrix Double -> Double
 normFrobenius m = sqrt $ foldlSM (+) 0 m' where
