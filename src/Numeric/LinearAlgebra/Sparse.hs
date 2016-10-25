@@ -471,7 +471,7 @@ diagPartitions aa = (e,d,f) where
 
 -- ** SSOR
 
--- | SSOR
+-- | `mSsor aa omega` : if `omega = 1` it returns the diagonal of `aa`, 
 mSsor :: Fractional a => SpMatrix a -> a -> SpMatrix a
 mSsor aa omega = l ## r where
   (e, d, f) = diagPartitions aa
