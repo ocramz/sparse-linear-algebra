@@ -69,8 +69,8 @@ import Data.Maybe
   
 -- * Sparsify : remove almost-0 elements (|x| < eps)
 -- | Sparsify an SpVector
-sparsifySV :: SpVector Double -> SpVector Double
-sparsifySV (SV d im) = SV d $ IM.filter (\x -> abs x >= eps) im
+sparsifySV :: Real a => SpVector a -> SpVector a
+sparsifySV (SV d im) = SV d $ IM.filter isNz im
 
 
 
@@ -79,7 +79,7 @@ sparsifySV (SV d im) = SV d $ IM.filter (\x -> abs x >= eps) im
 -- * Matrix condition number
 
 -- |uses the R matrix from the QR factorization
-conditionNumberSM :: SpMatrix Double -> Double
+conditionNumberSM :: RealFloat a => SpMatrix a -> a
 conditionNumberSM m | isInfinite kappa = error "Infinite condition number : rank-deficient system"
                     | otherwise = kappa where
   kappa = lmax / lmin
@@ -104,8 +104,8 @@ hhMat beta x = eye n ^-^ scale beta (x >< x) where
 {-| a vector `x` uniquely defines an orthogonal plane; the Householder operator reflects any point `v` with respect to this plane:
  v' = (I - 2 x >< x) v
 -}
-hhRefl :: SpVector Double -> SpMatrix Double
-hhRefl = hhMat 2.0
+hhRefl :: Num a => SpVector a -> SpMatrix a
+hhRefl = hhMat (fromInteger 2)
 
 
 
@@ -151,7 +151,7 @@ QR.C1 ) To zero out entry A(i, j) we must find row k such that A(k, j) is
 non-zero but A has zeros in row k for all columns less than j.
 -}
 
-givens :: SpMatrix Double -> IxRow -> IxCol -> SpMatrix Double
+givens :: (Real a, Floating a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
 givens mm i j 
   | isValidIxSM mm (i,j) && isSquareSM mm =
        sparsifySM $ fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
@@ -183,14 +183,14 @@ candidateRows mm i j | IM.null u = Nothing
 
 
 -- | Applies Givens rotation iteratively to zero out sub-diagonal elements
-qr :: SpMatrix Double -> (SpMatrix Double, SpMatrix Double)
+qr :: (Real a, Floating a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 qr mm = (transposeSM qmatt, rmat)  where
   qmatt = F.foldl' (#~#) ee $ gmats mm -- Q^T = (G_n * G_n-1 ... * G_1)
   rmat = qmatt #~# mm                  -- R = Q^T A
   ee = eye (nrows mm)
       
 -- | Givens matrices in order [G1, G2, .. , G_N ]
-gmats :: SpMatrix Double -> [SpMatrix Double]
+gmats :: (Real a, Floating a) => SpMatrix a -> [SpMatrix a]
 gmats mm = gm mm (subdiagIndicesSM mm) where
  gm m ((i,j):is) = let g = givens m i j
                    in g : gm (g #~# m) is
@@ -218,7 +218,7 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
-eigsQR :: Int -> SpMatrix Double -> SpVector Double
+eigsQR :: (Real a, Floating a) => Int -> SpMatrix a -> SpVector a
 eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
   eigsStep m = r #~# q where (q, r) = qr m
   convergtest g = modifyInspectN nitermax f g where
@@ -234,10 +234,10 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
 -- ** Rayleigh iteration
 
 -- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair
-eigRayleigh :: Int                -- max # iterations
-     -> SpMatrix Double           -- matrix
-     -> (SpVector Double, Double) -- initial guess of (eigenvector, eigenvalue)
-     -> (SpVector Double, Double) -- final estimate of (eigenvector, eigenvalue)
+-- eigRayleigh :: Int                -- max # iterations
+--      -> SpMatrix Double           -- matrix
+--      -> (SpVector Double, Double) -- initial guess of (eigenvector, eigenvalue)
+--      -> (SpVector Double, Double) -- final estimate of (eigenvector, eigenvalue)
 eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
   convergtest g = modifyInspectN nitermax f g where
     f [(b1, _), (b2, _)] = norm2 (b2 ^-^ b1) <= eps 
@@ -253,13 +253,13 @@ eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
 -- * Householder vector 
 
 -- (Golub & Van Loan, Alg. 5.1.1, function `house`)
-hhV :: SpVector Double -> (SpVector Double, Double)
+hhV :: (Real a, Floating a) => SpVector a -> (SpVector a, a)
 hhV x = (v, beta) where
   n = dim x
   tx = tailSV x
   sigma = tx `dot` tx
   vtemp = singletonSV 1 `concatSV` tx
-  (v, beta) | sigma <= eps = (vtemp, 0)
+  (v, beta) | almostZero sigma = (vtemp, 0)
             | otherwise = let mu = sqrt (headSV x**2 + sigma)
                               xh = headSV x
                               vh | xh <= 1 = xh - mu
@@ -310,16 +310,16 @@ SVD of A, Golub-Kahan method
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 -- | LU factors
-lu :: SpMatrix Double -> (SpMatrix Double, SpMatrix Double)
+lu :: (Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 lu aa = (lfin, ufin) where
   (ixf,lf,uf) = execState (modifyUntil q (luUpd aa)) (luInit aa)
   lfin = lf
-  ufin = uUpd aa (ixf, lf, uf)
+  ufin = uUpdSparse aa (ixf, lf, uf)
   q (i, _, _) = i == (nrows aa - 1)
 
 -- | First iteration of LU
 luInit ::
-  (Num t, Fractional a) => SpMatrix a -> (t, SpMatrix a, SpMatrix a)
+  Fractional a => SpMatrix a -> (Int, SpMatrix a, SpMatrix a)
 luInit aa = (1, l0, u0) where
   n = nrows aa
   l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
@@ -327,38 +327,25 @@ luInit aa = (1, l0, u0) where
   u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
 
 -- | LU update step
-luUpd :: SpMatrix Double
-     -> (Int, SpMatrix Double, SpMatrix Double)
-     -> (Int, SpMatrix Double, SpMatrix Double)
+luUpd :: (Real a, Fractional a) => SpMatrix a
+     -> (Int, SpMatrix a, SpMatrix a)
+     -> (Int, SpMatrix a, SpMatrix a)
 luUpd aa (i, l, u) = (i', l', u') where
   n = nrows aa  
   u' = uUpdSparse aa (i, l, u)  -- update U
   l' = lUpdSparse aa (i, l, u') -- update L
   i' = i + 1     -- increment i
 
-
-uUpd' ::
-  Num a =>
-  ([(Int, a)] -> [(Int, a)]) ->
+-- | U update
+uUpdSparse :: Real a =>
   SpMatrix a ->
   (Rows, SpMatrix a, SpMatrix a) ->
   SpMatrix a
-uUpd' ff amat (ix, lmat, umat) = insertRow umat uv ix where
+uUpdSparse amat (ix, lmat, umat) = insertRow umat uv ix where
   n = nrows amat
   colsix = [ix .. n - 1]
-  us = ff $ zip colsix $ map (solveForUij amat lmat umat ix) colsix
+  us = zip colsix $ filter isNz $ map (solveForUij amat lmat umat ix) colsix
   uv = fromListSV n us
-
-uUpd :: Num a => SpMatrix a -> (Rows, SpMatrix a, SpMatrix a) -> SpMatrix a
-uUpd = uUpd' id
-
--- update U while sparsifying
-uUpdSparse ::
-  SpMatrix Double -> (Rows, SpMatrix Double, SpMatrix Double) -> SpMatrix Double
-uUpdSparse = uUpd' (filter (isNz . snd))
-
-
-
 
 -- solve for element Uij
 solveForUij ::
@@ -367,10 +354,19 @@ solveForUij amat lmat umat i j = a - p where
   a = amat @@! (i, j)
   p = contractSub lmat umat i j (i - 1)
 
+-- | L update
+lUpdSparse :: (Real a, Fractional a) => SpMatrix a
+     -> (Rows, SpMatrix a, SpMatrix a)
+     -> SpMatrix a
+lUpdSparse amat (ix, lmat, umat) = insertCol lmat lv ix where
+  n = nrows amat
+  rowsix = [ix + 1 .. n - 1]
+  ls = zip rowsix $ filter isNz $ map (\i -> solveForLij amat lmat umat i ix) rowsix
+  lv = fromListSV n ls
 
 -- solve for element Lij
-solveForLij ::
-  SpMatrix Double -> SpMatrix Double -> SpMatrix Double -> IxRow -> IxCol -> Double
+solveForLij :: (Real a, Fractional a) =>
+  SpMatrix a -> SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> a
 solveForLij amat lmat umat i j
   | isNz ujj = (a - p)/ujj
   | otherwise =
@@ -385,22 +381,10 @@ solveForLij amat lmat umat i j
 
 
 
-lUpd' :: ([(Rows, Double)] -> [(Int, Double)])
-     -> SpMatrix Double
-     -> (Rows, SpMatrix Double, SpMatrix Double)
-     -> SpMatrix Double
-lUpd' ff amat (ix, lmat, umat) = insertCol lmat lv ix where
-  n = nrows amat
-  rowsix = [ix + 1 .. n - 1]
-  ls = ff $ zip rowsix $ map (\i -> solveForLij amat lmat umat i ix) rowsix
-  lv = fromListSV n ls
 
-lUpd :: SpMatrix Double -> (Rows, SpMatrix Double, SpMatrix Double) -> SpMatrix Double
-lUpd = lUpd' id
 
-lUpdSparse ::
-  SpMatrix Double -> (Rows, SpMatrix Double, SpMatrix Double) -> SpMatrix Double
-lUpdSparse = lUpd' (filter (isNz . snd))
+
+
 
 
 
@@ -442,7 +426,7 @@ permutAA iref jref (SM (nro,_) mm)
 -- | used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
 
 
-
+ilu0 :: (Real a, Fractional a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 ilu0 aa = (lh, uh) where
   (l, u) = lu aa
   lh = sparsifyLU l aa

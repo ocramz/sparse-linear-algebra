@@ -10,6 +10,10 @@ class Functor f => Additive f where
   (^+^) :: Num a => f a -> f a -> f a
 
 
+  one :: Num a => f a
+
+  (^*^) :: Num a => f a -> f a -> f a
+
 
 
 -- | negate the values in a functor

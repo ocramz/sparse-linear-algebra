@@ -324,7 +324,7 @@ isDiagonalSM m = IM.size d == nrows m where
                 IM.size (IM.filterWithKey (\j _ -> j == irow) row) == 1
 
 -- |is the matrix orthogonal? i.e. Q^t ## Q == I
-isOrthogonalSM :: SpMatrix Double -> Bool
+isOrthogonalSM :: Real a => SpMatrix a -> Bool
 isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
   rsm = roundZeroOneSM $ transposeSM sm ## sm
 
@@ -536,11 +536,12 @@ subdiagIndicesSM (SM _ im) = subdiagIndices im
 
 
 -- ** Sparsify : remove almost-0 elements (|x| < eps)
-sparsifyIM2 :: IM.IntMap (IM.IntMap Double) -> IM.IntMap (IM.IntMap Double)
-sparsifyIM2 = ifilterIM2 (\_ _ x -> abs x >= eps)
+sparsifyIM2 ::
+  Real a => IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+sparsifyIM2 = ifilterIM2 (\_ _ x -> isNz x)
 
 -- | Sparsify an SpMatrix
-sparsifySM :: SpMatrix Double -> SpMatrix Double
+sparsifySM :: Real a => SpMatrix a -> SpMatrix a
 sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 
@@ -548,7 +549,7 @@ sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 -- ** Value rounding
 -- | Round almost-0 and almost-1 to 0 and 1 respectively
-roundZeroOneSM :: SpMatrix Double -> SpMatrix Double
+roundZeroOneSM :: Real a => SpMatrix a -> SpMatrix a
 roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im  
 
 
@@ -603,7 +604,7 @@ matScale a = fmap (*a)
 
 
 -- ** Frobenius norm
-normFrobenius :: SpMatrix Double -> Double
+normFrobenius :: Floating a => SpMatrix a -> a
 normFrobenius m = sqrt $ foldlSM (+) 0 m' where
   m' | nrows m > ncols m = transposeSM m ## m
      | otherwise = m ## transposeSM m 
@@ -655,7 +656,7 @@ matMat m1 m2
 
 -- ** Matrix-matrix product, sparsified
 -- | Removes all elements `x` for which `| x | <= eps`)
-matMatSparsified, (#~#)  :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+matMatSparsified, (#~#) :: Real a => SpMatrix a -> SpMatrix a -> SpMatrix a
 matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
 
 (#~#) = matMatSparsified
@@ -666,12 +667,12 @@ matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
 -- *** Sparsified matrix products of two matrices
 
 -- | A^T B
-(#^#) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+(#^#) :: Real a => SpMatrix a -> SpMatrix a -> SpMatrix a
 a #^# b = transposeSM a #~# b
 
 
 -- | A B^T
-(##^) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+(##^) :: Real a => SpMatrix a -> SpMatrix a -> SpMatrix a
 a ##^ b = a #~# transposeSM b
 
 
