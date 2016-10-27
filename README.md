@@ -18,11 +18,13 @@ Algorithms :
 
     * Transpose-Free Quasi-Minimal Residual (TFQMR)
 
-* Matrix decompositions
+* Matrix factorizations
 
-    * QR factorization
+    * QR
 
-    * LU factorization
+    * LU
+
+    * Cholesky
 
 * Eigenvalue algorithms
 
