@@ -84,6 +84,9 @@ spec = do
       checkLu tm6 `shouldBe` True
     it "LU (10 x 10 sparse)" $
       checkLu tm7 `shouldBe` True
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (PSD matrices only)" $ do
+    it "chol (5 x 5 sparse)" $
+      checkChol tm7 `shouldBe` True
 
 
 {-
@@ -252,7 +255,8 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 {- QR-}
 
-checkQr :: SpMatrix Double -> Bool
+
+checkQr :: (Real a, Floating a) => SpMatrix a -> Bool
 checkQr a = c1 && c2 where
   (q, r) = qr a
   c1 = normFrobenius ((q #~# r) ^-^ a) <= eps
@@ -266,10 +270,21 @@ aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
 
 {- LU -}
 
-checkLu :: SpMatrix Double -> Bool
+checkLu :: (Real a, Floating a) => SpMatrix a -> Bool
 checkLu a = lup == a where
   (l, u) = lu a
   lup = l #~# u
+
+
+
+{- Cholesky -}
+
+checkChol :: (Real a, Floating a) => SpMatrix a -> Bool
+checkChol a = normFrobenius ((l ##^ l) ^-^ a) <= eps where
+  l = chol a
+
+
+
 
 
 
@@ -345,9 +360,9 @@ tm6 = fromListDenseSM 4 [1,3,4,2,2,5,2,10,3,6,8,11,4,7,9,12] :: SpMatrix Double
 tm7 :: SpMatrix Double
 tm7 = a ^+^ b ^+^ c where
   n = 5
-  a = mkSubDiagonal n 1 $ replicate n 1
-  b = mkSubDiagonal n 0 $ replicate n (-2)
-  c = mkSubDiagonal n (-1) $ replicate n 1
+  a = mkSubDiagonal n 1 $ replicate n (-1)
+  b = mkSubDiagonal n 0 $ replicate n 2
+  c = mkSubDiagonal n (-1) $ replicate n (-1)
 
 -- -- run N iterations 
 
