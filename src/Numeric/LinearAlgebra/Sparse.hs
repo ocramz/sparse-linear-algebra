@@ -4,6 +4,7 @@ module Numeric.LinearAlgebra.Sparse
        (
          -- * Matrix factorizations
          qr, lu,
+         cholUpd, chol1, chol2,
          -- * Incomplete LU
          ilu0,
          -- * Condition number
@@ -21,6 +22,8 @@ module Numeric.LinearAlgebra.Sparse
          _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
          cgsStep, bicgstabStep,
          CGNE, TFQMR, BICGSTAB, CGS, BCG,
+         -- * Preconditioners
+         ilu0, mSsor,
          -- * Matrix partitioning
          diagPartitions,
          -- * Random arrays
@@ -298,6 +301,43 @@ SVD of A, Golub-Kahan method
 
 
 
+-- * Cholesky factorization (A = L L^T)
+
+-- | Diagonal element of L
+cholDiag :: Floating a => SpMatrix a -> SpMatrix a -> Int -> a
+cholDiag aa ll i
+  | i == 0 = sqrt aai
+  | i > 0 = sqrt $ aai - sum (fmap (**2) lrow)
+  | otherwise = error "cholDiag : index must be nonnegative"
+    where
+      aai = aa@@(i,i)
+      lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
+
+cholSubDiag aa ll i j = 1/ljj*(aij - inn) where
+  ljj = ll@@(j, j)
+  aij = aa@@(i, j)
+  inn = contractSub ll ll i j (j - 1)
+
+cholRowUpd aa i ll | i == 0 = insertRow ll lrlast i
+                   | i > 0 = insertRow ll lrow i
+                   | otherwise = error "cholRowUpd : row index must be nonnegative" where
+  js = [0 .. i-1]  -- col indices
+  lrs = fromListSV (i + 1) $ filter (isNz . snd) $ denseIxArray $ map (cholSubDiag aa ll i) js
+  lrlast = singletonSV (cholDiag aa ll i)
+  lrow = concatSV lrs lrlast
+      
+
+cholUpd aa (i, ll) = (i + i, ll') where
+  ll' = cholRowUpd aa i ll
+
+
+chol1 aa = cholUpd aa (0, ll0) where
+  n = nrows aa
+  ll0 = zeroSM n n
+
+chol2 aa = cholUpd aa (chol1 aa)
+
+
 
 
 
@@ -463,6 +503,16 @@ mSsor aa omega = l ## r where
   l = d ^-^ scale omega e
   r = eye n ^-^ scale omega (reciprocal d ## f)
 
+
+
+
+
+
+
+
+-- * Linear solver, LU-based
+
+-- fbLU
 
 
 

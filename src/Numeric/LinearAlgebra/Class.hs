@@ -189,15 +189,14 @@ class Functor f => Set f where
 
 -- * IxContainer : indexed container types
 
-class IxContainer (c :: * -> *) a where
-  type Ix c :: *
-  ixcLookup :: Ix c -> c a -> Maybe a
-  ixcLookupDefault :: a -> Ix c -> c a -> a
-  ixcFilter :: (a -> Bool) -> c a -> c a
-  ixcIfilter :: (Ix c -> a -> Bool) -> c a -> c a
-  ixcInsert :: Ix c -> a -> c a -> c a
-  ixcFromList :: [(Ix c, a)] -> c a
-  ixcToList :: c a -> [(Ix c, a)]
+-- class IxContainer (c :: * -> *) a where
+--   type Ix c :: *
+--   type IxSz c :: *
+--   ixcLookup :: c a -> Ix c -> Maybe a
+--   ixcIfilter :: (Ix c -> a -> Bool) -> c a -> c a
+--   ixcInsert :: Ix c -> a -> c a -> c a
+--   ixcFromList :: Foldable t => IxSz c -> t (Ix c, a) -> c a
+--   ixcToList :: c a -> [(Ix c, a)]
 
 -- newtype IM_ a = IM (IM.IntMap a)
 
@@ -212,3 +211,23 @@ class IxContainer (c :: * -> *) a where
 -- instance IxContainer IM2 a where
 --   type Ix IM2 = (Int, Int)
 --   ixcIfilter f im2 = IM2 $ ifilterIM2 (curry f) (unIM2 im2)
+
+
+
+-- class Rank2 (c :: * -> *) a where
+--   type R2IxRow c :: *
+--   type R2IxCol c :: *
+--   type R2V c :: * -> *
+--   rank2Act :: c a -> R2V c a -> R2V c a
+--   extractRow :: c a -> R2IxRow c -> Maybe (R2V c a)
+--   extractCol :: c a -> R2IxCol c -> Maybe (R2V c a)
+--   -- extractRows :: c a -> [R2IxRow c] -> [R2V c]
+--   -- extractCols :: c a -> [R2IxCol c] -> [R2V c]
+  
+
+
+
+
+-- * SMatrix : sparse matrix types
+
+-- class (IxContainer c a, Sparse c a, Additive c) => SMatrix c a where

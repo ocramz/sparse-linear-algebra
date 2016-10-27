@@ -15,6 +15,20 @@ import Data.Maybe
 
 
 
+-- *
+
+-- instance IxContainer SpMatrix a where
+--   type Ix SpMatrix = (Int, Int)
+--   type IxSz SpMatrix = (Int, Int)
+--   ixcLookup m (i,j) = lookupSM m i j
+--   ixcIfilter g = ifilterSM g' where g' i j = g (i, j)
+--   ixcInsert (i, j) = insertSpMatrix i j
+--   -- ixcFromList = fromListSM
+
+-- instance SMatrix SpMatrix a where
+
+
+
 -- * Sparse Matrix
 
 data SpMatrix a = SM {smDim :: (Rows, Cols),
@@ -496,6 +510,11 @@ horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
 
 
 -- ** Misc. SpMatrix operations
+
+ifilterSM :: (IM.Key -> IM.Key -> a -> Bool) -> SpMatrix a -> SpMatrix a
+ifilterSM f (SM d im) = SM d $ ifilterIM2 f im
+
+ 
 
 -- | Left fold over SpMatrix
 foldlSM :: (a -> b -> b) -> b -> SpMatrix a -> b
