@@ -303,22 +303,16 @@ SVD of A, Golub-Kahan method
 
 -- * Cholesky factorization (A = L L^T)
 
--- | Diagonal element of L
-cholDiag :: Floating a => SpMatrix a -> SpMatrix a -> IxRow -> a
-cholDiag aa ll i
-  | i == 0 = sqrt aai
-  | i > 0 = sqrt $ aai - sum (fmap (**2) lrow)
-  | otherwise = error "cholDiag : index must be nonnegative"
-    where
-      aai = aa@@(i,i)
-      lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
+-- ** Cholesky–Banachiewicz algorithm
 
-cholSubDiag :: Floating a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> a
-cholSubDiag aa ll i j = 1/ljj*(aij - inn) where
-  ljj = ll@@(j, j)
-  aij = aa@@(i, j)
-  inn = contractSub ll ll i j (j - 1)
+chol :: (Real a, Floating a) => SpMatrix a -> SpMatrix a
+chol aa = lfin where
+  (_, lfin) = execState (modifyUntil q (cholUpd aa)) cholInit
+  q (i, _) = i == nrows aa
+  cholInit = cholUpd aa (0, zeroSM n n)
+  n = nrows aa
 
+-- | Update one row of L
 cholUpd ::
   (Real a, Floating a) => SpMatrix a -> (Int, SpMatrix a) -> (Int, SpMatrix a)
 cholUpd aa (i, ll) = (i + 1, ll') where
@@ -329,15 +323,25 @@ cholUpd aa (i, ll) = (i + 1, ll') where
   cholDiagUpd ll = insertSpMatrix i i x ll where
      x = cholDiag aa ll i
 
+-- | Subdiagonal element of L
+cholSubDiag :: Floating a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> a
+cholSubDiag aa ll i j = 1/ljj*(aij - inn) where
+  ljj = ll@@(j, j)
+  aij = aa@@(i, j)
+  inn = contractSub ll ll i j (j - 1)
 
 
-cholInit aa = cholUpd aa (0, ll0) where
-  n = nrows aa
-  ll0 = zeroSM n n
+-- | Diagonal element of L
+cholDiag :: Floating a => SpMatrix a -> SpMatrix a -> IxRow -> a
+cholDiag aa ll i = llii
+    where
+      llii | i == 0 = sqrt aai
+           | i > 0 = sqrt $ aai - sum (fmap (**2) lrow)
+           | otherwise = error "cholDiag : index must be nonnegative"
+      aai = aa@@(i,i)
+      lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
 
-chol aa = lfin where
-  (_, lfin) = execState (modifyUntil q (cholUpd aa)) (cholInit aa)
-  q (i, _) = i == nrows aa
+
 
 
 
