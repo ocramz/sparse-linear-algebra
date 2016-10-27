@@ -364,29 +364,23 @@ cholDiag aa ll i = llii
 -- | LU factors
 lu :: (Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 lu aa = (lfin, ufin) where
-  (ixf,lf,uf) = execState (modifyUntil q (luUpd aa)) (luInit aa)
+  (ixf,lf,uf) = execState (modifyUntil q (luUpd aa)) luInit
   lfin = lf
   ufin = uUpdSparse aa (ixf, lf, uf)
   q (i, _, _) = i == (nrows aa - 1)
-
--- | First iteration of LU
-luInit ::
-  Fractional a => SpMatrix a -> (Int, SpMatrix a, SpMatrix a)
-luInit aa = (1, l0, u0) where
   n = nrows aa
-  l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
-  u0 = insertRow (zeroSM n n) (extractRow aa 0) 0               -- initial U
-  u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
+  luInit = (1, l0, u0) where
+   l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
+   u0 = insertRow (zeroSM n n) (extractRow aa 0) 0               -- initial U
+   u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
 
 -- | LU update step
 luUpd :: (Real a, Fractional a) => SpMatrix a
      -> (Int, SpMatrix a, SpMatrix a)
      -> (Int, SpMatrix a, SpMatrix a)
-luUpd aa (i, l, u) = (i', l', u') where
-  n = nrows aa  
+luUpd aa (i, l, u) = (i + 1, l', u') where
   u' = uUpdSparse aa (i, l, u)  -- update U
   l' = lUpdSparse aa (i, l, u') -- update L
-  i' = i + 1     -- increment i
 
 -- | U update
 uUpdSparse :: Real a =>
