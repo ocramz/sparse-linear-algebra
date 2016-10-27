@@ -307,39 +307,28 @@ SVD of A, Golub-Kahan method
 
 chol :: (Real a, Floating a) => SpMatrix a -> SpMatrix a
 chol aa = lfin where
-  (_, lfin) = execState (modifyUntil q (cholUpd aa)) cholInit
-  q (i, _) = i == nrows aa
-  cholInit = cholUpd aa (0, zeroSM n n)
+  (_, lfin) = execState (modifyUntil q cholUpd) cholInit
+  q (i, _) = i == nrows aa   -- stopping criterion
+  cholInit = cholUpd (0, zeroSM n n)  -- initialization
   n = nrows aa
-
--- | Update one row of L
-cholUpd ::
-  (Real a, Floating a) => SpMatrix a -> (Int, SpMatrix a) -> (Int, SpMatrix a)
-cholUpd aa (i, ll) = (i + 1, ll') where
-  ll' = cholDiagUpd (cholSDRowUpd ll)
-  cholSDRowUpd ll = insertRow ll lrs i where
-     js = [0 .. i-1]  -- col indices
-     lrs = fromListSV (i + 1) $ filter (isNz . snd) $ denseIxArray $ map (cholSubDiag aa ll i) js
-  cholDiagUpd ll = insertSpMatrix i i x ll where
-     x = cholDiag aa ll i
-
--- | Subdiagonal element of L
-cholSubDiag :: Floating a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> a
-cholSubDiag aa ll i j = 1/ljj*(aij - inn) where
-  ljj = ll@@(j, j)
-  aij = aa@@(i, j)
-  inn = contractSub ll ll i j (j - 1)
-
-
--- | Diagonal element of L
-cholDiag :: Floating a => SpMatrix a -> SpMatrix a -> IxRow -> a
-cholDiag aa ll i = llii
-    where
-      llii | i == 0 = sqrt aai
-           | i > 0 = sqrt $ aai - sum (fmap (**2) lrow)
-           | otherwise = error "cholDiag : index must be nonnegative"
-      aai = aa@@(i,i)
-      lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
+  cholUpd (i, ll) = (i + 1, ll') where
+    ll' = cholDiagUpd (cholSDRowUpd ll)
+    cholSDRowUpd ll_ = insertRow ll_ lrs i where
+       js = [0 .. i-1]  -- col indices
+       lrs = fromListSV (i + 1) $ filter (isNz . snd) $ denseIxArray $ map (cholSubDiag ll i) js
+    cholDiagUpd ll_ = insertSpMatrix i i x ll_ where
+       x = cholDiag ll_ i
+  cholSubDiag ll i j = 1/ljj*(aij - inn) where
+    ljj = ll@@(j, j)
+    aij = aa@@(i, j)
+    inn = contractSub ll ll i j (j - 1)
+  cholDiag ll i = llii
+      where
+        llii | i == 0 = sqrt aai
+             | i > 0 = sqrt $ aai - sum (fmap (**2) lrow)
+             | otherwise = error "cholDiag : index must be nonnegative"
+        aai = aa@@(i,i)
+        lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
 
 
 
@@ -363,66 +352,37 @@ cholDiag aa ll i = llii
 
 -- | LU factors
 lu :: (Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
-lu aa = (lfin, ufin) where
-  (ixf,lf,uf) = execState (modifyUntil q (luUpd aa)) luInit
-  lfin = lf
-  ufin = uUpdSparse aa (ixf, lf, uf)
+lu aa = (lf, ufin) where
+  (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
+  ufin = uUpdSparse (ixf, lf, uf) -- final U update
   q (i, _, _) = i == (nrows aa - 1)
   n = nrows aa
   luInit = (1, l0, u0) where
-   l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
-   u0 = insertRow (zeroSM n n) (extractRow aa 0) 0               -- initial U
-   u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
-
--- | LU update step
-luUpd :: (Real a, Fractional a) => SpMatrix a
-     -> (Int, SpMatrix a, SpMatrix a)
-     -> (Int, SpMatrix a, SpMatrix a)
-luUpd aa (i, l, u) = (i + 1, l', u') where
-  u' = uUpdSparse aa (i, l, u)  -- update U
-  l' = lUpdSparse aa (i, l, u') -- update L
-
--- | U update
-uUpdSparse :: Real a =>
-  SpMatrix a ->
-  (Rows, SpMatrix a, SpMatrix a) ->
-  SpMatrix a
-uUpdSparse amat (ix, lmat, umat) = insertRow umat uv ix where
-  n = nrows amat
-  colsix = [ix .. n - 1]
-  us = zip colsix $ filter isNz $ map (solveForUij amat lmat umat ix) colsix
-  uv = fromListSV n us
-
--- solve for element Uij
-solveForUij ::
-  Num a => SpMatrix a -> SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> a
-solveForUij amat lmat umat i j = a - p where
-  a = amat @@! (i, j)
-  p = contractSub lmat umat i j (i - 1)
-
--- | L update
-lUpdSparse :: (Real a, Fractional a) => SpMatrix a
-     -> (Rows, SpMatrix a, SpMatrix a)
-     -> SpMatrix a
-lUpdSparse amat (ix, lmat, umat) = insertCol lmat lv ix where
-  n = nrows amat
-  rowsix = [ix + 1 .. n - 1]
-  ls = zip rowsix $ filter isNz $ map (\i -> solveForLij amat lmat umat i ix) rowsix
-  lv = fromListSV n ls
-
--- solve for element Lij
-solveForLij :: (Real a, Fractional a) =>
-  SpMatrix a -> SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> a
-solveForLij amat lmat umat i j
-  | isNz ujj = (a - p)/ujj
-  | otherwise =
-     error $ unwords ["solveForLij : U",
-                      show (j ,j ),
-                      "is close to 0. Permute rows in order to have a nonzero diagonal of U"]
-  where
-   a = amat @@! (i, j)
-   ujj = umat @@! (j , j)   -- NB this must be /= 0
-   p = contractSub lmat umat i j (i - 1)
+    l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
+    u0 = insertRow (zeroSM n n) (extractRow aa 0) 0               -- initial U
+    u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
+  luUpd (i, l, u) = (i + 1, l', u') where
+    u' = uUpdSparse (i, l, u)  -- update U
+    l' = lUpdSparse (i, l, u') -- update L
+  uUpdSparse (ix, lmat, umat) = insertRow umat (fromListSV n us) ix where
+    colsix = [ix .. n - 1]
+    us = zip colsix $ filter isNz $ map (solveForUij ix) colsix
+    solveForUij i j = a - p where
+      a = aa @@! (i, j)
+      p = contractSub lmat umat i j (i - 1)
+  lUpdSparse (ix, lmat, umat) = insertCol lmat (fromListSV n ls) ix where
+    rowsix = [ix + 1 .. n - 1]
+    ls = zip rowsix $ filter isNz $ map (`solveForLij` ix) rowsix
+    solveForLij i j
+     | isNz ujj = (a - p)/ujj
+     | otherwise =
+        error $ unwords ["solveForLij : U",
+                       show (j ,j ),
+                       "is close to 0. Permute rows in order to have a nonzero diagonal of U"]
+      where
+       a = aa @@! (i, j)
+       ujj = umat @@! (j , j)   -- NB this must be /= 0
+       p = contractSub lmat umat i j (i - 1)
 
 
 
