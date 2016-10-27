@@ -185,7 +185,7 @@ candidateRows mm i j | IM.null u = Nothing
 -- * QR decomposition
 
 
--- | Applies Givens rotation iteratively to zero out sub-diagonal elements
+-- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements
 qr :: (Real a, Floating a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 qr mm = (transposeSM qmatt, rmat)  where
   qmatt = F.foldl' (#~#) ee $ gmats mm -- Q^T = (G_n * G_n-1 ... * G_1)
@@ -301,10 +301,11 @@ SVD of A, Golub-Kahan method
 
 
 
--- * Cholesky factorization (A = L L^T)
+-- * Cholesky factorization
 
 -- ** Cholesky–Banachiewicz algorithm
 
+-- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A
 chol :: (Real a, Floating a) => SpMatrix a -> SpMatrix a
 chol aa = lfin where
   (_, lfin) = execState (modifyUntil q cholUpd) cholInit
@@ -349,7 +350,7 @@ chol aa = lfin where
 -- ** Doolittle algorithm
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
--- | LU factors
+-- | Given a matrix A, returns a pair of matrices (L, U) such that L U = A
 lu :: (Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 lu aa = (lf, ufin) where
   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
@@ -365,13 +366,13 @@ lu aa = (lf, ufin) where
     l' = lUpdSparse (i, l, u') -- update L
   uUpdSparse (ix, lmat, umat) = insertRow umat (fromListSV n us) ix where
     colsix = [ix .. n - 1]
-    us = zip colsix $ filter isNz $ map (solveForUij ix) colsix
+    us = filter (isNz . snd) $ zip colsix $ map (solveForUij ix) colsix
     solveForUij i j = a - p where
       a = aa @@! (i, j)
       p = contractSub lmat umat i j (i - 1)
   lUpdSparse (ix, lmat, umat) = insertCol lmat (fromListSV n ls) ix where
     rowsix = [ix + 1 .. n - 1]
-    ls = zip rowsix $ filter isNz $ map (`solveForLij` ix) rowsix
+    ls = filter (isNz . snd) $ zip rowsix $ map (`solveForLij` ix) rowsix
     solveForLij i j
      | isNz ujj = (a - p)/ujj
      | otherwise =
