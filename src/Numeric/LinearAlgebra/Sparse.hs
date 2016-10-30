@@ -309,24 +309,21 @@ SVD of A, Golub-Kahan method
 chol :: (Real a, Floating a) => SpMatrix a -> SpMatrix a
 chol aa = lfin where
   (_, lfin) = execState (modifyUntil q cholUpd) cholInit
-  q (i, _) = i == nrows aa   -- stopping criterion
-  cholInit = cholUpd (0, zeroSM n n)  -- initialization
+  q (i, _) = i == nrows aa              -- stopping criterion
+  cholInit = cholUpd (0, zeroSM n n)    -- initialization
   n = nrows aa
   cholUpd (i, ll) = (i + 1, ll') where
     ll' = cholDiagUpd (cholSDRowUpd ll) -- first upd subdiagonal entries in the row
     cholSDRowUpd ll_ = insertRow ll_ lrs i where
-       js = [0 .. i-1]  -- col indices
-       lrs = fromListSV (i + 1) $ filter (isNz . snd) $ denseIxArray $ map (cholSubDiag ll i) js
+       lrs = fromListSV (i + 1) $ onRangeSparse (cholSubDiag ll i) [0 .. i-1]
     cholDiagUpd ll_ = insertSpMatrix i i (cholDiag ll_ i) ll_ 
   cholSubDiag ll i j = 1/ljj*(aij - inn) where
     ljj = ll@@(j, j)
     aij = aa@@(i, j)
     inn = contractSub ll ll i j (j - 1)
-  cholDiag ll i = llii
-      where
-        llii | i == 0 = sqrt aai
-             | i > 0 = sqrt $ aai - sum (fmap (**2) lrow)
-             | otherwise = error "cholDiag : index must be nonnegative"
+  cholDiag ll i | i == 0 = sqrt aai
+                | i > 0 = sqrt $ aai - sum (fmap (**2) lrow)
+                | otherwise = error "cholDiag : index must be nonnegative" where
         aai = aa@@(i,i)
         lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
 
@@ -359,20 +356,18 @@ lu aa = (lf, ufin) where
   n = nrows aa
   luInit = (1, l0, u0) where
     l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
-    u0 = insertRow (zeroSM n n) (extractRow aa 0) 0               -- initial U
+    u0 = insertRow (zeroSM n n) (extractRow aa 0) 0                     -- initial U
     u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
   luUpd (i, l, u) = (i + 1, l', u') where
     u' = uUpdSparse (i, l, u)  -- update U
     l' = lUpdSparse (i, l, u') -- update L
   uUpdSparse (ix, lmat, umat) = insertRow umat (fromListSV n us) ix where
-    colsix = [ix .. n - 1]
-    us = filter (isNz . snd) $ zip colsix $ map (solveForUij ix) colsix
+    us = onRangeSparse (solveForUij ix) [ix .. n - 1]
     solveForUij i j = a - p where
       a = aa @@! (i, j)
       p = contractSub lmat umat i j (i - 1)
   lUpdSparse (ix, lmat, umat) = insertCol lmat (fromListSV n ls) ix where
-    rowsix = [ix + 1 .. n - 1]
-    ls = filter (isNz . snd) $ zip rowsix $ map (`solveForLij` ix) rowsix
+    ls = onRangeSparse (`solveForLij` ix) [ix + 1 .. n - 1]
     solveForLij i j
      | isNz ujj = (a - p)/ujj
      | otherwise =
@@ -386,8 +381,9 @@ lu aa = (lf, ufin) where
 
 
 
-
-
+-- | Apply a function over a range of integer indices, zip the result with it and filter out the almost-zero entries
+onRangeSparse :: Real b => (Int -> b) -> [Int] -> [(Int, b)]
+onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 
 
 
@@ -461,13 +457,13 @@ diagPartitions aa = (e,d,f) where
 
 -- ** SSOR
 
--- | `mSsor aa omega` : if `omega = 1` it returns the diagonal of `aa`, 
-mSsor :: Fractional a => SpMatrix a -> a -> SpMatrix a
-mSsor aa omega = l ## r where
+-- | `mSsor aa omega` : if `omega = 1` it returns the symmetric Gauss-Seidel preconditioner
+mSsor :: Fractional a => SpMatrix a -> a -> (SpMatrix a, SpMatrix a)
+mSsor aa omega = (l, r) where
   (e, d, f) = diagPartitions aa
   n = nrows e
-  l = d ^-^ scale omega e
-  r = eye n ^-^ scale omega (reciprocal d ## f)
+  l = (eye n ^-^ scale omega e) ## reciprocal d
+  r = d ^-^ scale omega f 
 
 
 
@@ -476,9 +472,9 @@ mSsor aa omega = l ## r where
 
 
 
--- * Linear solver, LU-based
+-- Linear solver, LU-based
 
--- fbLU
+
 
 
 
@@ -487,6 +483,12 @@ mSsor aa omega = l ## r where
 
 
 -- * Iterative linear solvers
+
+
+-- ** GMRES
+
+-- *** Left-preconditioning
+
 
 
 

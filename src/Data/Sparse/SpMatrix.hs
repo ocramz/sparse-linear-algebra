@@ -102,7 +102,7 @@ permutationSM :: Num a => Int -> [IxRow] -> SpMatrix a
 permutationSM n iis = permutPairsSM n (zip [0 .. n-1] iis)
 
 -- | Permutation matrix from a (possibly incomplete) list of row pair swaps
--- e.g. `permutPairs 5 [(2,4)]` swaps rows (2, 4) :
+-- e.g. `permutPairs 5 [(2,4)]` swaps rows 2 and 4 :
 --
 -- [1,0,0,0,0]
 -- [0,1,0,0,0]
@@ -173,7 +173,7 @@ fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
 
 -- ** toList
 
--- |Populate list with SpMatrix contents and populate missing entries with 0
+-- | Populate list with SpMatrix contents and populate missing entries with 0
 toDenseListSM :: Num t => SpMatrix t -> [(IxRow, IxCol, t)]
 toDenseListSM m =
   [(i, j, m @@ (i, j)) | i <- [0 .. nrows m - 1], j <- [0 .. ncols m- 1]]
@@ -277,6 +277,7 @@ extractSubmatrix = extractSubmatrixSM id id
 
 
 -- *** Extract i'th row
+-- | Extract whole row
 extractRowSM :: SpMatrix a -> IxRow -> SpMatrix a
 extractRowSM sm i = extractSubmatrix sm (i, i) (0, ncols sm - 1)
 
@@ -293,7 +294,7 @@ extractSubRowSM_RK sm i =
 
 
 -- *** Extract j'th column
--- | Extract all column
+-- | Extract whole column
 extractColSM :: SpMatrix a -> IxCol -> SpMatrix a
 extractColSM sm j = extractSubmatrix sm (0, nrows sm - 1) (j, j)
 
@@ -337,7 +338,7 @@ isDiagonalSM m = IM.size d == nrows m where
   ff irow row = IM.size row == 1 &&
                 IM.size (IM.filterWithKey (\j _ -> j == irow) row) == 1
 
--- |is the matrix orthogonal? i.e. Q^t ## Q == I
+-- |Is the matrix orthogonal? i.e. Q^t ## Q == I
 isOrthogonalSM :: Real a => SpMatrix a -> Bool
 isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
   rsm = roundZeroOneSM $ transposeSM sm ## sm
@@ -580,14 +581,14 @@ roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 
 
 -- ** Matrix row swap
--- | swap two rows of a SpMatrix (bounds not checked)
+-- | Swap two rows of a SpMatrix (bounds not checked)
 swapRows :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
 swapRows i1 i2 (SM d im) = SM d $ IM.insert i1 ro2 im' where
   ro1 = im IM.! i1
   ro2 = im IM.! i2
   im' = IM.insert i2 ro1 im
 
--- | swap two rows of a SpMatrix (bounds checked)  
+-- | Swap two rows of a SpMatrix (bounds checked)  
 swapRowsSafe :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
 swapRowsSafe i1 i2 m
   | inBounds02 (nro, nro) (i1, i2) = swapRows i1 i2 m
@@ -601,11 +602,10 @@ swapRowsSafe i1 i2 m
 
 
 -- ** Matrix transpose
--- | transposeSM, (#^) : Matrix transpose
-transposeSM, (#^) :: SpMatrix a -> SpMatrix a
+-- | transposeSM : Matrix transpose
+transposeSM :: SpMatrix a -> SpMatrix a
 transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
-(#^) = transposeSM
 
 
 
@@ -706,8 +706,8 @@ a ##^ b = a #~# transposeSM b
 
 
 
--- *** Matrix contraction
--- | Contract two matrices A and B up to an index `n`, i.e. summing over repeated indices: 
+-- ** Partial inner product
+-- | Contract row `i` of A with column `j` of B up to an index `n`, i.e. summing over repeated indices: 
 -- Aij Bjk , for j in [0 .. n] 
 contractSub :: Num a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> Int -> a
 contractSub a b i j n

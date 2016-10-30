@@ -3,9 +3,11 @@ module Data.Sparse.SpVector where
 
 import Data.Sparse.Utils
 import Data.Sparse.Types
-
-import Numeric.LinearAlgebra.Class
 import Data.Sparse.IntMap2.IntMap2
+
+import Numeric.Eps
+import Numeric.LinearAlgebra.Class
+
 
 import Data.Maybe
 
@@ -94,11 +96,11 @@ singletonSV x = SV 1 (IM.singleton 0 x)
 
 
 -- | create a sparse vector from an association list while discarding all zero entries
-mkSpVector :: (Num a, Eq a) => Int -> IM.IntMap a -> SpVector a
-mkSpVector d im = SV d $ IM.filterWithKey (\k v -> v /= 0 && inBounds0 d k) im
+mkSpVector :: Real a => Int -> IM.IntMap a -> SpVector a
+mkSpVector d im = SV d $ IM.filterWithKey (\k v -> isNz v && inBounds0 d k) im
 
 -- | ", from logically dense array (consecutive indices)
-mkSpVectorD :: (Num a, Eq a) => Int -> [a] -> SpVector a
+mkSpVectorD :: Real a => Int -> [a] -> SpVector a
 mkSpVectorD d ll = mkSpVector d (IM.fromList $ denseIxArray (take d ll))
 
 -- ", don't filter zero elements
@@ -108,6 +110,15 @@ mkSpVector1 d ll = SV d $ IM.filterWithKey (\ k _ -> inBounds0 d k) ll
 -- | Create new sparse vector, assumin 0-based, contiguous indexing
 fromListDenseSV :: Int -> [a] -> SpVector a
 fromListDenseSV d ll = SV d (IM.fromList $ denseIxArray (take d ll))
+
+
+
+spVectorDenseIx f n ix =
+  fromListSV n $ filter q $ zip ix $ map f ix where
+    q (i, v) = inBounds0 n i && isNz v
+
+spVectorDenseLoHi f n lo hi = spVectorDenseIx f n [lo .. hi]    
+
 
 
 -- | one-hot encoding : `oneHotSV n k` produces a SpVector of length n having 1 at the k-th position

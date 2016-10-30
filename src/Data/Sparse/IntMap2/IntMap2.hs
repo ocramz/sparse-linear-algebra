@@ -35,10 +35,9 @@ instance Normed IM.IntMap where
 
 
 
--- * set-like brackets
+-- set-like brackets
 
 
--- unionWithKeyIM2 f im1 im2 = undefined where
 
 
 
@@ -110,7 +109,7 @@ transposeIM2 = ifoldlIM2 (flip insertIM2)
 
 
 
--- * filtering
+-- * Filtering
 
 -- |Map over outer IM and filter all inner IM's
 ifilterIM2 ::
