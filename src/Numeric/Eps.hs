@@ -1,31 +1,68 @@
-module Numeric.Eps where
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (C) 2016 Marco Zocca, 2012-2015 Edward Kmett
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Edward Kmett <ekmett@gmail.com>
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- Testing for values "near" zero
+-----------------------------------------------------------------------------
+module Numeric.Eps
+  ( Epsilon(..), nearZero, isNz, roundZero, roundOne, roundZeroOne
+  ) where
+import Foreign.C.Types (CFloat, CDouble)
 
--- * Numerical tolerance for "near-0" tests
--- | eps = 1e-8 
--- eps :: Double
--- eps = fromRational $ toRational 1e-8
+-- | Provides a test to see if a quantity is near zero.
+--
+-- >>> nearZero (1e-11 :: Double)
+-- False
+--
+-- >>> nearZero (1e-17 :: Double)
+-- True
+--
+-- >>> nearZero (1e-5 :: Float)
+-- False
+--
+-- >>> nearZero (1e-7 :: Float)
+-- True
+class Num a => Epsilon a where
+  -- | Determine if a quantity is near zero.
+  nearZero :: a -> Bool
 
-eps :: Fractional a => a       
-eps = 0.00000001
+-- | @'abs' a '<=' 1e-6@
+instance Epsilon Float where
+  nearZero a = abs a <= 1e-6
+
+-- | @'abs' a '<=' 1e-12@
+instance Epsilon Double where
+  nearZero a = abs a <= 1e-12
+
+-- | @'abs' a '<=' 1e-6@
+instance Epsilon CFloat where
+  nearZero a = abs a <= 1e-6
+
+-- | @'abs' a '<=' 1e-12@
+instance Epsilon CDouble where
+  nearZero a = abs a <= 1e-12
 
 
--- almostZ x = abs (x - eps) == 0
 
 
 -- * Rounding operations
 
 
 -- | Rounding rule
-almostZero, almostOne, isNz :: Real a => a -> Bool
-almostZero x = abs (toRational x) <= eps
-almostOne x = x' >= (1-eps) && x' < (1+eps) where x' = toRational x
-isNz = not . almostZero
+almostZero, almostOne, isNz :: Epsilon a => a -> Bool
+almostZero x = nearZero x -- abs (toRational x) <= eps
+almostOne x = nearZero (1 - x)-- x' >= (1-eps) && x' < (1+eps) where x' = toRational x
+isNz x = not (almostZero x)
 
 withDefault :: (t -> Bool) -> t -> t -> t
 withDefault q d x | q x = d
                   | otherwise = x
 
-roundZero, roundOne, roundZeroOne :: Real a => a -> a
+roundZero, roundOne, roundZeroOne :: Epsilon a => a -> a
 roundZero = withDefault almostZero (fromIntegral 0)
 roundOne = withDefault almostOne (fromIntegral 1)
 

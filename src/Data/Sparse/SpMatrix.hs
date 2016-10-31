@@ -339,7 +339,7 @@ isDiagonalSM m = IM.size d == nrows m where
                 IM.size (IM.filterWithKey (\j _ -> j == irow) row) == 1
 
 -- |Is the matrix orthogonal? i.e. Q^t ## Q == I
-isOrthogonalSM :: Real a => SpMatrix a -> Bool
+isOrthogonalSM :: (Eq a, Epsilon a) => SpMatrix a -> Bool
 isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
   rsm = roundZeroOneSM $ transposeSM sm ## sm
 
@@ -557,11 +557,11 @@ subdiagIndicesSM (SM _ im) = subdiagIndices im
 
 -- ** Sparsify : remove almost-0 elements (|x| < eps)
 sparsifyIM2 ::
-  Real a => IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+  Epsilon a => IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 sparsifyIM2 = ifilterIM2 (\_ _ x -> isNz x)
 
 -- | Sparsify an SpMatrix
-sparsifySM :: Real a => SpMatrix a -> SpMatrix a
+sparsifySM :: Epsilon a => SpMatrix a -> SpMatrix a
 sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 
@@ -569,7 +569,7 @@ sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 -- ** Value rounding
 -- | Round almost-0 and almost-1 to 0 and 1 respectively
-roundZeroOneSM :: Real a => SpMatrix a -> SpMatrix a
+roundZeroOneSM :: Epsilon a => SpMatrix a -> SpMatrix a
 roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im  
 
 
@@ -675,7 +675,7 @@ matMat m1 m2
 
 -- ** Matrix-matrix product, sparsified
 -- | Removes all elements `x` for which `| x | <= eps`)
-matMatSparsified, (#~#) :: Real a => SpMatrix a -> SpMatrix a -> SpMatrix a
+matMatSparsified, (#~#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
 matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
 
 (#~#) = matMatSparsified
@@ -686,12 +686,12 @@ matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
 -- *** Sparsified matrix products of two matrices
 
 -- | A^T B
-(#^#) :: Real a => SpMatrix a -> SpMatrix a -> SpMatrix a
+(#^#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
 a #^# b = transposeSM a #~# b
 
 
 -- | A B^T
-(##^) :: Real a => SpMatrix a -> SpMatrix a -> SpMatrix a
+(##^) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
 a ##^ b = a #~# transposeSM b
 
 

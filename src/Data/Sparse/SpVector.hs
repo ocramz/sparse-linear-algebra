@@ -96,11 +96,11 @@ singletonSV x = SV 1 (IM.singleton 0 x)
 
 
 -- | create a sparse vector from an association list while discarding all zero entries
-mkSpVector :: Real a => Int -> IM.IntMap a -> SpVector a
+mkSpVector :: Epsilon a => Int -> IM.IntMap a -> SpVector a
 mkSpVector d im = SV d $ IM.filterWithKey (\k v -> isNz v && inBounds0 d k) im
 
 -- | ", from logically dense array (consecutive indices)
-mkSpVectorD :: Real a => Int -> [a] -> SpVector a
+mkSpVectorD :: Epsilon a => Int -> [a] -> SpVector a
 mkSpVectorD d ll = mkSpVector d (IM.fromList $ denseIxArray (take d ll))
 
 -- ", don't filter zero elements

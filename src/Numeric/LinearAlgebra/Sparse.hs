@@ -72,7 +72,7 @@ import Data.Maybe
   
 -- * Sparsify : remove almost-0 elements (|x| < eps)
 -- | Sparsify an SpVector
-sparsifySV :: Real a => SpVector a -> SpVector a
+sparsifySV :: Epsilon a => SpVector a -> SpVector a
 sparsifySV (SV d im) = SV d $ IM.filter isNz im
 
 
@@ -82,7 +82,7 @@ sparsifySV (SV d im) = SV d $ IM.filter isNz im
 -- * Matrix condition number
 
 -- |uses the R matrix from the QR factorization
-conditionNumberSM :: RealFloat a => SpMatrix a -> a
+conditionNumberSM :: (Epsilon a, RealFloat a) => SpMatrix a -> a
 conditionNumberSM m | isInfinite kappa = error "Infinite condition number : rank-deficient system"
                     | otherwise = kappa where
   kappa = lmax / lmin
@@ -154,7 +154,7 @@ QR.C1 ) To zero out entry A(i, j) we must find row k such that A(k, j) is
 non-zero but A has zeros in row k for all columns less than j.
 -}
 
-givens :: (Real a, Floating a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
+givens :: (Floating a, Epsilon a, Ord a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
 givens mm i j 
   | isValidIxSM mm (i,j) && isSquareSM mm =
        sparsifySM $ fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
@@ -186,14 +186,14 @@ candidateRows mm i j | IM.null u = Nothing
 
 
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements
-qr :: (Real a, Floating a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+qr :: (Epsilon a, Floating a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 qr mm = (transposeSM qmatt, rmat)  where
   qmatt = F.foldl' (#~#) ee $ gmats mm -- Q^T = (G_n * G_n-1 ... * G_1)
   rmat = qmatt #~# mm                  -- R = Q^T A
   ee = eye (nrows mm)
       
 -- | Givens matrices in order [G1, G2, .. , G_N ]
-gmats :: (Real a, Floating a) => SpMatrix a -> [SpMatrix a]
+gmats :: (Epsilon a, Real a, Floating a) => SpMatrix a -> [SpMatrix a]
 gmats mm = gm mm (subdiagIndicesSM mm) where
  gm m ((i,j):is) = let g = givens m i j
                    in g : gm (g #~# m) is
@@ -221,13 +221,13 @@ gmats mm = gm mm (subdiagIndicesSM mm) where
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
-eigsQR :: (Real a, Floating a) => Int -> SpMatrix a -> SpVector a
+eigsQR :: (Epsilon a, Real a, Floating a) => Int -> SpMatrix a -> SpVector a
 eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
   eigsStep m = r #~# q where (q, r) = qr m
   convergtest g = modifyInspectN nitermax f g where
     f [m1, m2] = let dm1 = extractDiagDense m1
                      dm2 = extractDiagDense m2
-                 in norm2 (dm1 ^-^ dm2) <= eps
+                 in nearZero $ norm2 (dm1 ^-^ dm2)
 
 
 
@@ -243,7 +243,7 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
 --      -> (SpVector Double, Double) -- final estimate of (eigenvector, eigenvalue)
 eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
   convergtest g = modifyInspectN nitermax f g where
-    f [(b1, _), (b2, _)] = norm2 (b2 ^-^ b1) <= eps 
+    f [(b1, _), (b2, _)] = nearZero $ norm2 (b2 ^-^ b1)
   rayleighStep aa (b, mu) = (b', mu') where
       ii = eye (nrows aa)
       nom = (aa ^-^ (mu `matScale` ii)) <\> b
@@ -256,13 +256,13 @@ eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
 -- * Householder vector 
 
 -- (Golub & Van Loan, Alg. 5.1.1, function `house`)
-hhV :: (Real a, Floating a) => SpVector a -> (SpVector a, a)
+hhV :: (Epsilon a, Real a, Floating a) => SpVector a -> (SpVector a, a)
 hhV x = (v, beta) where
   n = dim x
   tx = tailSV x
   sigma = tx `dot` tx
   vtemp = singletonSV 1 `concatSV` tx
-  (v, beta) | almostZero sigma = (vtemp, 0)
+  (v, beta) | nearZero sigma = (vtemp, 0)
             | otherwise = let mu = sqrt (headSV x**2 + sigma)
                               xh = headSV x
                               vh | xh <= 1 = xh - mu
@@ -306,7 +306,7 @@ SVD of A, Golub-Kahan method
 -- ** Cholesky–Banachiewicz algorithm
 
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A
-chol :: (Real a, Floating a) => SpMatrix a -> SpMatrix a
+chol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> SpMatrix a
 chol aa = lfin where
   (_, lfin) = execState (modifyUntil q cholUpd) cholInit
   q (i, _) = i == nrows aa              -- stopping criterion
@@ -348,7 +348,7 @@ chol aa = lfin where
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 -- | Given a matrix A, returns a pair of matrices (L, U) such that L U = A
-lu :: (Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+lu :: (Epsilon a, Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 lu aa = (lf, ufin) where
   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
   ufin = uUpdSparse (ixf, lf, uf) -- final U update
@@ -382,7 +382,7 @@ lu aa = (lf, ufin) where
 
 
 -- | Apply a function over a range of integer indices, zip the result with it and filter out the almost-zero entries
-onRangeSparse :: Real b => (Int -> b) -> [Int] -> [(Int, b)]
+onRangeSparse :: (Epsilon b, Real b) => (Int -> b) -> [Int] -> [(Int, b)]
 onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 
 
@@ -428,7 +428,7 @@ permutAA iref jref (SM (nro,_) mm)
 -- | used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
 
 
-ilu0 :: (Real a, Fractional a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+ilu0 :: (Epsilon a, Real a, Fractional a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 ilu0 aa = (lh, uh) where
   (l, u) = lu aa
   lh = sparsifyLU l aa
@@ -842,7 +842,7 @@ untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
 -- | convergence check (FIXME)
 normDiffConverged :: (Foldable t, Functor t) =>
      (a -> SpVector Double) -> t a -> Bool
-normDiffConverged fp xx = normSq (foldrMap fp (^-^) (zeroSV 0) xx) <= eps
+normDiffConverged fp xx = nearZero $ normSq (foldrMap fp (^-^) (zeroSV 0) xx)
 
 
   

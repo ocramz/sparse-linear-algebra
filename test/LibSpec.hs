@@ -40,9 +40,9 @@ spec = do
     it "transposeSM : sparse matrix transpose" $
       transposeSM m1 `shouldBe` m1t
     it "matVec : matrix-vector product" $
-      normSq ((aa0 #> x0true) ^-^ b0 ) <= eps `shouldBe` True
+      nearZero ( normSq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
     it "vecMat : vector-matrix product" $
-      normSq ((x0true <# aa0) ^-^ aa0tx0 ) <= eps `shouldBe` True  
+      nearZero ( normSq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True  
     it "matMat : matrix-matrix product" $
       (m1 `matMat` m2) `shouldBe` m1m2
     it "eye : identity matrix" $
@@ -58,22 +58,22 @@ spec = do
     it "countSubdiagonalNZ : # of nonzero elements below the diagonal" $
       countSubdiagonalNZSM m3 `shouldBe` 1
     it "permutPairsSM : permutation matrices are orthogonal" $ do
-      let pm0 = permutPairsSM 3 [(0,2), (1,2)]
+      let pm0 = permutPairsSM 3 [(0,2), (1,2)] :: SpMatrix Double
       pm0 ##^ pm0 `shouldBe` eye 3
       pm0 #^# pm0 `shouldBe` eye 3         
     it "modifyInspectN : early termination by iteration count" $
-      execState (modifyInspectN 2 ((< eps) . diffSqL) (/2)) 1 `shouldBe` 1/8
+      execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
-      execState (modifyInspectN (2^16) ((< eps) . head) (/2)) 1 < eps `shouldBe` True 
+      nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True 
   describe "Numeric.LinearAlgebra.Sparse : Linear solvers" $ do
     -- it "TFQMR (2 x 2 dense)" $
     --   normSq (_xTfq (tfqmr aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "BCG (2 x 2 dense)" $
-      normSq (_xBcg (bcg aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
+      nearZero (normSq (_xBcg (bcg aa0 b0 x0) ^-^ x0true)) `shouldBe` True
     it "BiCGSTAB (2 x 2 dense)" $ 
-      normSq (aa0 <\> b0 ^-^ x0true) <= eps `shouldBe` True
+      nearZero (normSq (aa0 <\> b0 ^-^ x0true)) `shouldBe` True
     it "CGS (2 x 2 dense)" $ 
-      normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true) <= eps `shouldBe` True
+      nearZero (normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true)) `shouldBe` True
   describe "Numeric.LinearAlgebra.Sparse : QR decomposition" $ do    
     it "QR (4 x 4 sparse)" $
       checkQr tm4 `shouldBe` True
@@ -256,10 +256,10 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 {- QR-}
 
 
-checkQr :: (Real a, Floating a) => SpMatrix a -> Bool
+checkQr :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
 checkQr a = c1 && c2 where
   (q, r) = qr a
-  c1 = normFrobenius ((q #~# r) ^-^ a) <= eps
+  c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
   c2 = isOrthogonalSM q
 
 
@@ -270,7 +270,7 @@ aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
 
 {- LU -}
 
-checkLu :: (Real a, Floating a) => SpMatrix a -> Bool
+checkLu :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
 checkLu a = lup == a where
   (l, u) = lu a
   lup = l #~# u
@@ -279,8 +279,8 @@ checkLu a = lup == a where
 
 {- Cholesky -}
 
-checkChol :: (Real a, Floating a) => SpMatrix a -> Bool
-checkChol a = normFrobenius ((l ##^ l) ^-^ a) <= eps where
+checkChol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
+checkChol a = nearZero $ normFrobenius ((l ##^ l) ^-^ a) where
   l = chol a
 
 
