@@ -1,4 +1,13 @@
 {-# language TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (C) 2016 Marco Zocca
+-- License     :  GPL-3 (see LICENSE)
+-- Maintainer  :  zocca.marco gmail
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-----------------------------------------------------------------------------
 module Data.Sparse.SpVector where
 
 import Data.Sparse.Utils
@@ -112,11 +121,14 @@ fromListDenseSV :: Int -> [a] -> SpVector a
 fromListDenseSV d ll = SV d (IM.fromList $ denseIxArray (take d ll))
 
 
-
+-- | Map a function over a range of indices and filter the result (indices and values) to fit in a `n`-long SpVector
+spVectorDenseIx :: Epsilon a => (Int -> a) -> UB -> [Int] -> SpVector a
 spVectorDenseIx f n ix =
   fromListSV n $ filter q $ zip ix $ map f ix where
     q (i, v) = inBounds0 n i && isNz v
 
+-- | ", using just the integer bounds of the interval
+spVectorDenseLoHi :: Epsilon a => (Int -> a) -> UB -> Int -> Int -> SpVector a
 spVectorDenseLoHi f n lo hi = spVectorDenseIx f n [lo .. hi]    
 
 
@@ -163,6 +175,11 @@ toDenseListSV :: Num b => SpVector b -> [b]
 toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
 
 
+
+
+-- | Indexed fold over SpVector
+ifoldSV :: (IM.Key -> a -> b -> b) -> b -> SpVector a -> b
+ifoldSV f e (SV d im) = IM.foldWithKey f e im
 
 
 

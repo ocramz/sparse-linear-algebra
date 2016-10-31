@@ -1,4 +1,13 @@
 {-# language FlexibleInstances, MultiParamTypeClasses, TypeFamilies #-}
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (C) 2016 Marco Zocca
+-- License     :  GPL-3 (see LICENSE)
+-- Maintainer  :  zocca.marco gmail
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-----------------------------------------------------------------------------
 module Data.Sparse.SpMatrix where
 
 import Data.Sparse.Utils

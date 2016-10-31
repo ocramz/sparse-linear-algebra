@@ -1,8 +1,8 @@
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca, 2012-2015 Edward Kmett
--- License     :  BSD-style (see the file LICENSE)
--- Maintainer  :  Edward Kmett <ekmett@gmail.com>
+-- License     :  GPL-3 (see LICENSE)
+-- Maintainer  :  zocca.marco gmail
 -- Stability   :  provisional
 -- Portability :  portable
 --
@@ -54,8 +54,8 @@ instance Epsilon CDouble where
 
 -- | Rounding rule
 almostZero, almostOne, isNz :: Epsilon a => a -> Bool
-almostZero x = nearZero x -- abs (toRational x) <= eps
-almostOne x = nearZero (1 - x)-- x' >= (1-eps) && x' < (1+eps) where x' = toRational x
+almostZero = nearZero
+almostOne x = nearZero (1 - x)
 isNz x = not (almostZero x)
 
 withDefault :: (t -> Bool) -> t -> t -> t

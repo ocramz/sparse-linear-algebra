@@ -1,6 +1,16 @@
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (C) 2016 Marco Zocca
+-- License     :  GPL-3 (see LICENSE)
+-- Maintainer  :  zocca.marco gmail
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-----------------------------------------------------------------------------
 module Data.Sparse.Common
        ( module X,
          insertRowWith, insertRow, insertColWith, insertCol,
+         diagonalSM,
          outerProdSV, (><), toSV, svToSM, 
          extractCol, extractRow,
          extractVectorDenseWith, extractRowDense, extractColDense,
@@ -58,6 +68,7 @@ insertCol = insertColWith id
 
 -- * Outer vector product
 
+-- | Outer product (all-with-all matrix)
 outerProdSV, (><) :: Num a => SpVector a -> SpVector a -> SpMatrix a
 outerProdSV v1 v2 = fromListSM (m, n) ixy where
   m = dim v1
@@ -65,6 +76,16 @@ outerProdSV v1 v2 = fromListSM (m, n) ixy where
   ixy = [(i,j, x * y) | (i,x) <- toListSV v1 , (j, y) <- toListSV v2]
 
 (><) = outerProdSV
+
+
+
+-- * Diagonal matrix
+
+-- | Fill the diagonal of a SpMatrix with the components of a SpVector
+diagonalSM :: SpVector a -> SpMatrix a
+diagonalSM sv = ifoldSV iins (zeroSM n n) sv where
+  n = dim sv
+  iins i = insertSpMatrix i i
 
 
 

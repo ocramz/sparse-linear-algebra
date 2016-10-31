@@ -1,4 +1,13 @@
 {-# language ScopedTypeVariables #-}
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (C) 2016 Marco Zocca
+-- License     :  GPL-3 (see LICENSE)
+-- Maintainer  :  zocca.marco gmail
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-----------------------------------------------------------------------------
 module LibSpec where
 
 import Numeric.LinearAlgebra.Sparse
