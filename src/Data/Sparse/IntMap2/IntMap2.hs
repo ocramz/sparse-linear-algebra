@@ -3,8 +3,9 @@ module Data.Sparse.IntMap2.IntMap2 where
 import Numeric.LinearAlgebra.Class
 
 import qualified Data.IntMap.Strict as IM
+import Data.Sparse.Types
 
-
+import Data.Maybe
 
 
 
@@ -60,7 +61,14 @@ lookupIM2 ::
 lookupIM2 i j imm = IM.lookup i imm >>= IM.lookup j
 {-# inline lookupIM2 #-}  
 
--- |Ppopulate an IM2 from a list of (row index, column index, value)  
+-- | Lookup with default 0
+lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IxRow, IxCol) -> a
+lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
+
+
+
+
+-- |Populate an IM2 from a list of (row index, column index, value)  
 fromListIM2 ::
   Foldable t =>
      t (IM.Key, IM.Key, a) -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)

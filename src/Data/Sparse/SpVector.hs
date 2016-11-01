@@ -74,6 +74,16 @@ instance Sparse SpVector a where
   spy = spySV
 
 
+
+instance Num a => SpContainer SpVector a where
+  type ScIx SpVector = Int
+  scInsert = insertSpVector
+  scLookup v i = lookupSV i v
+  v @@ i = lookupDenseSV i v
+
+
+
+
 instance Hilbert SpVector where
   a `dot` b | dim a == dim b = dot (dat a) (dat b)
             | otherwise =

@@ -75,7 +75,12 @@ instance HasData SpMatrix a where
 instance Sparse SpMatrix a where
   spy = spySM
 
-
+instance Num a => SpContainer SpMatrix a where
+  type ScIx SpMatrix = (Rows, Cols)
+  scInsert (i,j) = insertSpMatrix i j
+  scLookup m (i, j) = lookupSM m i j
+  m @@ d | isValidIxSM m d = m @@! d
+         | otherwise = error $ "@@ : incompatible indices : matrix size is " ++ show (dim m) ++ ", but user looked up " ++ show d
 
 
 
@@ -205,19 +210,18 @@ lookupSM (SM _ im) i j = IM.lookup i im >>= IM.lookup j
 
 -- | Looks up an element in the matrix with a default (if the element is not found, zero is returned)
 
-lookupWD_SM, (@@!), (@@) :: Num a => SpMatrix a -> (IxRow, IxCol) -> a
+lookupWD_SM, (@@!):: Num a => SpMatrix a -> (IxRow, IxCol) -> a
 lookupWD_SM sm (i,j) =
   fromMaybe 0 (lookupSM sm i j)
 
-lookupWD_IM :: Num a => IM.IntMap (IM.IntMap a) -> (IxRow, IxCol) -> a
-lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
+
 
 -- | Zero-default lookup, infix form (no bound checking)
 (@@!) = lookupWD_SM
 
--- | Zero-default lookup, infix form ("safe" : throws exception if lookup is outside matrix bounds)
-m @@ d | isValidIxSM m d = m @@! d
-       | otherwise = error $ "@@ : incompatible indices : matrix size is " ++ show (dim m) ++ ", but user looked up " ++ show d
+-- -- | Zero-default lookup, infix form ("safe" : throws exception if lookup is outside matrix bounds)
+-- m @@ d | isValidIxSM m d = m @@! d
+--        | otherwise = error $ "@@ : incompatible indices : matrix size is " ++ show (dim m) ++ ", but user looked up " ++ show d
 
 
 

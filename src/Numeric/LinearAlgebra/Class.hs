@@ -184,9 +184,10 @@ class Functor f => Set f where
 
 
 class Sparse c a => SpContainer c a where
-  type Ix c :: *
-  scInsert :: Ix c -> a -> c a -> c a
-  scLookup :: c a -> Ix c -> Maybe a
+  type ScIx c :: *
+  scInsert :: ScIx c -> a -> c a -> c a
+  scLookup :: c a -> ScIx c -> Maybe a
+  (@@) :: c a -> ScIx c -> a
 
 
 

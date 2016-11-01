@@ -5,8 +5,6 @@ module Numeric.LinearAlgebra.Sparse
          -- * Matrix factorizations
          qr, lu,
          chol,
-         -- * Incomplete LU
-         ilu0,
          -- * Condition number
          conditionNumberSM,
          -- * Householder reflection
@@ -17,7 +15,9 @@ module Numeric.LinearAlgebra.Sparse
          eigsQR, eigRayleigh,
          -- * Linear solvers
          linSolve, LinSolveMethod, (<\>),
-         -- ** Methods
+         -- ** Direct methods
+         luSolve,
+         -- ** Iterative methods
          cgne, tfqmr, bicgstab, cgs, bcg,
          _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
          cgsStep, bicgstabStep,
@@ -478,9 +478,40 @@ mSsor aa omega = (l, r) where
 
 -- Linear solver, LU-based
 
+luSolve ::
+  (Fractional a, Eq a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
+luSolve ll uu b
+  | isLowerTriSM ll && isUpperTriSM uu = x
+  | otherwise = error "luSolve : factors must be triangular matrices" where
+      (x', _) = luFwd ll b
+      (x, _) = luBwd uu x'
 
 
+luFwdStep ll b dir (ww, i) = (ww', dir i) where
+  bi = b @@ i
+  li = ll @@ (i,i)
+  w = bi / li - co/li
+  ww' = insertSpVector i w ww
+  co = matVecSub ll ww' i (i-1)
 
+luInit ll b dir i0 = luFwdStep ll b dir (ww0', dir i0) where
+  ww0 = zeroSV (svDim b)
+  bi = b @@ i0
+  li = ll @@ (i0, i0)
+  w = bi / li
+  ww0' = insertSpVector i0 w ww0
+
+luFwd ll b = execState (modifyUntil q (luFwdStep ll b dir)) (luInit ll b dir 0) where
+  dir = (+ 1)
+  q (_, i) = i == dim b
+
+luBwd ll b = execState (modifyUntil q (luFwdStep ll b dir)) (luInit ll b dir 0) where
+  dir = subtract 1
+  q (_, i) = i == 0
+
+
+matVecSub :: Num a => SpMatrix a -> SpVector a -> IxRow -> Int -> a
+matVecSub a b i k = sum $ map (\j -> a@@(i,j)*b@@j) [0.. k-1]  
 
 
 
