@@ -20,8 +20,6 @@ import Data.Foldable (foldrM)
 import Data.Sparse.Common
 
 
-import qualified Data.IntMap as IM
-
 import Control.Monad (replicateM)
 import Control.Monad.State.Strict (execState)
 
@@ -113,12 +111,7 @@ example 0 : 2x2 linear system
 -}
 
 aa0 :: SpMatrix Double
-aa0 = SM (2,2) im where
-  im = IM.fromList [(0, aa0r0), (1, aa0r1)]
-
-aa0r0, aa0r1 :: IM.IntMap Double
-aa0r0 = IM.fromList [(0,1),(1,2)]
-aa0r1 = IM.fromList [(0,3),(1,4)]
+aa0 = fromListDenseSM 2 [1,3,2,4]
 
 
 -- b0, x0 : r.h.s and initial solution resp.
@@ -326,8 +319,7 @@ tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
 tv0, tv1 :: SpVector Double
 tv0 = mkSpVectorD 2 [5, 6]
 
-
-tv1 = SV 2 $ IM.singleton 0 1
+tv1 = fromListSV 2 [(0,1)] 
 
 -- wikipedia test matrix for Givens rotation
 
