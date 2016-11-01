@@ -152,8 +152,12 @@ Givens method, row version: choose other row index i' s.t. i' is :
 
 QR.C1 ) To zero out entry A(i, j) we must find row k such that A(k, j) is
 non-zero but A has zeros in row k for all columns less than j.
--}
 
+NB: the current version is quite inefficient in that:
+1. the Givens' matrix `G_i` is different from Identity only in 4 entries
+2. at each iteration `i` we multiply `G_i` by the previous partial result `M`. Since this corresponds to a rotation, and the `givensCoef` function already computes the value of the resulting non-zero component (output `r`), `G_i ## M` can be simplified by just changing two entries of `M` (i.e. zeroing one out and changing the other into `r`).
+-}
+{-# inline givens #-}
 givens :: (Floating a, Epsilon a, Ord a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
 givens mm i j 
   | isValidIxSM mm (i,j) && isSquareSM mm =
@@ -165,11 +169,6 @@ givens mm i j
     a = mm @@ (i', j)
     b = mm @@ (i, j)   -- element to zero out
 
--- |Is the `k`th the first nonzero column in the row?
-firstNonZeroColumn :: IM.IntMap a -> IxRow -> Bool
-firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
-                          isNothing (IM.lookupLT k mm)
-
 -- |Returns a set of rows {k} that satisfy QR.C1
 candidateRows :: IM.IntMap (IM.IntMap a) -> IxRow -> IxCol -> Maybe [IM.Key]
 candidateRows mm i j | IM.null u = Nothing
@@ -177,6 +176,11 @@ candidateRows mm i j | IM.null u = Nothing
   u = IM.filterWithKey (\irow row -> irow /= i &&
                                      firstNonZeroColumn row j) mm
 
+-- |Is the `k`th the first nonzero column in the row?
+{-# inline firstNonZeroColumn #-}
+firstNonZeroColumn :: IM.IntMap a -> IxRow -> Bool
+firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
+                          isNothing (IM.lookupLT k mm)
 
 
 
