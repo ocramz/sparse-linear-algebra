@@ -22,7 +22,7 @@ module Data.Sparse.Common
 
 import Data.Sparse.Utils as X
 import Data.Sparse.Types as X
-import Data.Sparse.IntMap2.IntMap2 as X
+import Data.Sparse.IntMap2.IntMap2 -- as X
 import Data.Sparse.SpMatrix as X
 import Data.Sparse.SpVector as X
 

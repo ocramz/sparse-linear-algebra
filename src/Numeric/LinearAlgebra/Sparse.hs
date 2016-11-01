@@ -35,7 +35,7 @@ module Numeric.LinearAlgebra.Sparse
          -- * Sparsify data
          sparsifySV,
          -- * Iteration combinators
-         modifyInspectN, runAppendN',
+         modifyInspectN, runAppendN', untilConverged,
          diffSqL
        )
        where
@@ -73,7 +73,7 @@ import Data.Maybe
 -- * Sparsify : remove almost-0 elements (|x| < eps)
 -- | Sparsify an SpVector
 sparsifySV :: Epsilon a => SpVector a -> SpVector a
-sparsifySV (SV d im) = SV d $ IM.filter isNz im
+sparsifySV = filterSV isNz
 
 
 
@@ -404,14 +404,14 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 
 
 
--- Produces the permutation matrix necessary to have a nonzero in position (iref, jref). This is used in the LU factorization
-permutAA :: Num b => IxRow -> IxCol -> SpMatrix a -> Maybe (SpMatrix b)
-permutAA iref jref (SM (nro,_) mm) 
-  | isJust (lookupIM2 iref jref mm) = Nothing -- eye nro
-  | otherwise = Just $ permutationSM nro [head u] where
-      u = IM.keys (ifilterIM2 ff mm)
-      ff i j _ = i /= iref &&
-                 j == jref
+-- -- Produces the permutation matrix necessary to have a nonzero in position (iref, jref). This is used in the LU factorization
+-- permutAA :: Num b => IxRow -> IxCol -> SpMatrix a -> Maybe (SpMatrix b)
+-- permutAA iref jref (SM (nro,_) mm) 
+--   | isJust (lookupIM2 iref jref mm) = Nothing -- eye nro
+--   | otherwise = Just $ permutationSM nro [head u] where
+--       u = IM.keys (ifilterIM2 ff mm)
+--       ff i j _ = i /= iref &&
+--                  j == jref
 
 
 
@@ -433,7 +433,7 @@ ilu0 aa = (lh, uh) where
   (l, u) = lu aa
   lh = sparsifyLU l aa
   uh = sparsifyLU u aa
-  sparsifyLU m m2 = SM (dim m) $ ifilterIM2 f (dat m) where
+  sparsifyLU m m2 = ifilterSM f m where
     f i j _ = isJust (lookupSM m2 i j)
 
 

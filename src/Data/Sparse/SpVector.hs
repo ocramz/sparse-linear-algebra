@@ -221,6 +221,13 @@ tailSV (SV n sv) = SV (n-1) ta where
 headSV :: Num a => SpVector a -> a
 headSV sv = fromMaybe 0 (IM.lookup 0 (dat sv))
 
+-- | Keep the first n components of the SpVector (like `take` for lists)
+takeSV, dropSV :: Int -> SpVector a -> SpVector a
+takeSV n (SV _ sv) = SV n $ IM.filterWithKey (\i _ -> i < n) sv
+-- | Discard the first n components of the SpVector and rebalance the keys (like `drop` for lists)
+dropSV n (SV n0 sv) = SV (n0 - n) $ IM.mapKeys (subtract n) $ IM.filterWithKey (\i _ -> i >= n) sv
+
+
 
 
 -- | Concatenate two sparse vectors

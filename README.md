@@ -18,7 +18,7 @@ Algorithms :
 
     * Transpose-Free Quasi-Minimal Residual (TFQMR)
 
-* Matrix factorization algorithms
+* Matrix factorizations
 
     * QR
 
@@ -28,7 +28,7 @@ Algorithms :
 
 * Eigenvalue algorithms
 
-    * QR algorithm
+    * QR
 
     * Rayleigh quotient iteration
 

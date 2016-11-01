@@ -181,9 +181,14 @@ class Functor f => Set f where
 
 
 
--- class (Set f, Sparse f a) => SparseSet f a
 
--- instance SparseSet SpVector a where
+
+class Sparse c a => SpContainer c a where
+  type Ix c :: *
+  scInsert :: Ix c -> a -> c a -> c a
+  scLookup :: c a -> Ix c -> Maybe a
+
+
 
 
 
