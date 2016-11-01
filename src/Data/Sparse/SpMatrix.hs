@@ -347,6 +347,14 @@ isDiagonalSM m = IM.size d == nrows m where
   ff irow row = IM.size row == 1 &&
                 IM.size (IM.filterWithKey (\j _ -> j == irow) row) == 1
 
+-- | Is the matrix lower/upper triangular?
+isLowerTriSM, isUpperTriSM :: Eq a => SpMatrix a -> Bool
+isLowerTriSM m = m == lm where
+  lm = ifilterSM (\i j _ -> i >= j) m
+
+isUpperTriSM m = m == lm where
+  lm = ifilterSM (\i j _ -> i <= j) m
+
 -- |Is the matrix orthogonal? i.e. Q^t ## Q == I
 isOrthogonalSM :: (Eq a, Epsilon a) => SpMatrix a -> Bool
 isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where

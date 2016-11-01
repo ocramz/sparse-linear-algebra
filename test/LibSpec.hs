@@ -67,7 +67,9 @@ spec = do
     it "permutPairsSM : permutation matrices are orthogonal" $ do
       let pm0 = permutPairsSM 3 [(0,2), (1,2)] :: SpMatrix Double
       pm0 ##^ pm0 `shouldBe` eye 3
-      pm0 #^# pm0 `shouldBe` eye 3         
+      pm0 #^# pm0 `shouldBe` eye 3
+    it "isLowerTriSM : checks whether matrix is lower triangular" $
+      isLowerTriSM tm8' && isUpperTriSM tm8 `shouldBe` True
     it "modifyInspectN : early termination by iteration count" $
       execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
@@ -395,3 +397,10 @@ tm7 = a ^+^ b ^+^ c where
 --       xhatC = head $ runNCGS niter aa b
 --   -- printDenseSM aa    
 --   return (normSq (xhatB ^-^ xtrue), normSq (xhatC ^-^ xtrue))
+
+
+tm8 :: SpMatrix Double
+tm8 = fromListSM (2,2) [(0,0,1), (0,1,1), (1,1,1)]
+
+tm8' :: SpMatrix Double
+tm8' = fromListSM (2,2) [(0,0,1), (1,0,1), (1,1,1)]
