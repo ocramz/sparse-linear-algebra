@@ -478,10 +478,7 @@ mSsor aa omega = (l, r) where
 
 -- * Linear solver, LU-based
 
-
-
-
-
+-- | Direct solver based on a triangular factorization of the system matrix.
 luSolve ::
   (Fractional a, Eq a, Epsilon a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
 luSolve ll uu b
@@ -519,8 +516,7 @@ lubwSolve uu w = sparsifySV x where
     u00 = uu @@ (i, i)
     w0 = w @@ i
     x0 = w0 / u00
-    xx0 = insertSpVector i x0 $ zeroSV (dim w)  
-
+    xx0 = insertSpVector i x0 $ zeroSV (dim w)
 
 
 
