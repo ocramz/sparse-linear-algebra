@@ -10,27 +10,31 @@ Contents :
 
 * Iterative linear solvers
 
-    * BiConjugate Gradient (BCG)
+    * BiConjugate Gradient (`bcg`)
 
-    * Conjugate Gradient Squared (CGS)
+    * Conjugate Gradient Squared (`cgs`)
 
-    * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems)
+    * BiConjugate Gradient Stabilized (`bicgstab`) (non-Hermitian systems)
 
-    * Transpose-Free Quasi-Minimal Residual (TFQMR)
+    * Transpose-Free Quasi-Minimal Residual (`tfqmr`)
+
+* Direct linear solvers
+
+    * LU-based (`luSolve`)
 
 * Matrix factorization algorithms
 
-    * QR
+    * QR (`qr`)
 
-    * LU
+    * LU (`lu`)
 
-    * Cholesky
+    * Cholesky (`chol`)
 
 * Eigenvalue algorithms
 
-    * QR
+    * QR (`eigsQR`)
 
-    * Rayleigh quotient iteration
+    * Rayleigh quotient iteration (`eigRayleigh`)
 
 * Utilities : Vector and matrix norms, matrix condition number, Givens rotation, Householder reflection
 
@@ -43,9 +47,9 @@ Contents :
 
 The module `Numeric.LinearAlgebra.Sparse` contains the user interface.
 
-### Creation and pretty-printing
+### Creation of sparse data
 
-To create a sparse matrix from an array of its entries we use `fromListSM` :
+The `fromListSM` function creates a sparse matrix from an array of its entries we use :
 
     fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
 
@@ -53,7 +57,13 @@ e.g.
 
     > amat = fromListSM (3,3) [(0,0,2),(1,0,4),(1,1,3),(1,2,2),(2,2,5)]
 
-And similarly for sparse vectors : `fromListSV :: Int -> [(Int, a)] -> SpVector a`.
+and similarly
+
+    fromListSV :: Int -> [(Int, a)] -> SpVector a
+
+can be used to create sparse vectors.
+
+### Pretty-printing
 
 Both sparse vectors and matrices can be pretty-printed using `prd`:
 

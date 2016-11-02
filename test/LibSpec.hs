@@ -102,19 +102,6 @@ spec = do
       checkChol tm7 `shouldBe` True
 
 
-{-
-
-example 0 : 2x2 linear system
-
-[1 2] [2] = [8]
-[3 4] [3]   [18]
-
-
-[1 3] [2] = [11]
-[2 4] [3]   [16]
-
-
--}
 
 
 {- QR-}
@@ -125,10 +112,6 @@ checkQr a = c1 && c2 where
   (q, r) = qr a
   c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
   c2 = isOrthogonalSM q
-
-
-
-
 
 
 
@@ -158,6 +141,22 @@ checkLuSolve amat rhs = nearZero (normSq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
       
   
 
+
+
+
+{-
+
+example 0 : 2x2 linear system
+
+[1 2] [2] = [8]
+[3 4] [3]   [18]
+
+
+[1 3] [2] = [11]
+[2 4] [3]   [16]
+
+
+-}
 
 
 aa0 :: SpMatrix Double
