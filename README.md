@@ -117,7 +117,7 @@ The result can be verified by computing the matrix-vector action `amat #> x`, wh
 
     [2.9999999999999996,1.9999999999999996,4.999999999999999]
 
-The library also provides a forward-backward substitution solver based on a triangular factorization of the system matrix (usually LU). This should be the preferred for solving smaller, dense systems :
+The library also provides a forward-backward substitution solver (`luSolve`) based on a triangular factorization of the system matrix (usually LU). This should be the preferred for solving smaller, dense systems. Using the data defined above:
 
     > xlu = luSolve l u b
     > prd xlu
@@ -125,6 +125,8 @@ The library also provides a forward-backward substitution solver based on a tria
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
     [1.5,-2.0,1.0]
+
+
 
 
 
