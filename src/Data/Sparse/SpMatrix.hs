@@ -205,6 +205,9 @@ toDenseListSM m =
 
 -- ** Lookup
 
+
+
+
 lookupSM :: SpMatrix a -> IxRow -> IxCol -> Maybe a
 lookupSM (SM _ im) i j = IM.lookup i im >>= IM.lookup j
 
@@ -219,9 +222,8 @@ lookupWD_SM sm (i,j) =
 -- | Zero-default lookup, infix form (no bound checking)
 (@@!) = lookupWD_SM
 
--- -- | Zero-default lookup, infix form ("safe" : throws exception if lookup is outside matrix bounds)
--- m @@ d | isValidIxSM m d = m @@! d
---        | otherwise = error $ "@@ : incompatible indices : matrix size is " ++ show (dim m) ++ ", but user looked up " ++ show d
+
+
 
 
 
@@ -291,6 +293,10 @@ extractSubmatrix = extractSubmatrixSM id id
 
 -- *** Extract i'th row
 -- | Extract whole row
+
+-- extractRowSM (SM (m,n) imm) i = SM (1,n) $ fromMaybe IM.empty (IM.lookup i imm)
+
+
 extractRowSM :: SpMatrix a -> IxRow -> SpMatrix a
 extractRowSM sm i = extractSubmatrix sm (i, i) (0, ncols sm - 1)
 

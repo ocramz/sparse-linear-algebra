@@ -187,6 +187,7 @@ class Sparse c a => SpContainer c a where
   type ScIx c :: *
   scInsert :: ScIx c -> a -> c a -> c a
   scLookup :: c a -> ScIx c -> Maybe a
+  -- -- | Lookup with default, infix form ("safe" : should throw an exception if lookup is outside matrix bounds)
   (@@) :: c a -> ScIx c -> a
 
 

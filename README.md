@@ -6,7 +6,7 @@ TravisCI : [![Build Status](https://travis-ci.org/ocramz/sparse-linear-algebra.p
 
 This library provides common numerical analysis functionality, without requiring any external bindings. It is not optimized for performance (yet), but it serves as an experimental platform for scientific computation in a purely functional setting.
 
-Algorithms :
+Contents :
 
 * Iterative linear solvers
 
@@ -18,7 +18,7 @@ Algorithms :
 
     * Transpose-Free Quasi-Minimal Residual (TFQMR)
 
-* Matrix factorizations
+* Matrix factorization algorithms
 
     * QR
 
@@ -64,7 +64,7 @@ Both sparse vectors and matrices can be pretty-printed using `prd`:
     [4,3,2]
     [0,0,5]
 
-The zeros are just added at pretty printing time; sparse vectors and matrices should only contain non-zero entries.
+The zeros are just added at printing time; sparse vectors and matrices should only contain non-zero entries.
 
 ### Matrix operations
 
@@ -79,7 +79,7 @@ Matrix factorizations are available as `lu` and `qr` respectively, and are strai
     [0.0,0.0,5.0]
 
 Notice that the result is _dense_, i.e. certain entries are numerically zero but have been inserted into the result along with all the others (thus taking up memory!).
-To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, which filters out all the elements x for which `|x| <= eps`, where `eps` (defined in `Numeric.Eps`) is fixed at 10^-8.
+To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, which filters out all the elements x for which `|x| <= eps`, where `eps` (defined in `Numeric.Eps`) depends on the numerical type used.
 
     > prd $ l #~# u
     ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )

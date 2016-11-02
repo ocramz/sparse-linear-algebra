@@ -11,7 +11,8 @@ module Data.Sparse.Common
        ( module X,
          insertRowWith, insertRow, insertColWith, insertCol,
          diagonalSM,
-         outerProdSV, (><), toSV, svToSM, 
+         outerProdSV, (><), toSV, svToSM,
+         lookupRowSM, 
          extractCol, extractRow,
          extractVectorDenseWith, extractRowDense, extractColDense,
          extractDiagDense,
@@ -31,6 +32,16 @@ import Numeric.LinearAlgebra.Class as X
 
 import qualified Data.IntMap as IM
 
+import Data.Maybe (fromMaybe, maybe)
+
+
+-- withBoundsSM m ij e f
+--   | isValidIxSM m ij = f m ij
+--   | otherwise = error e
+
+-- | modify the size of a SpVector. Do not use directly
+resizeSV :: Int -> SpVector a -> SpVector a
+resizeSV d2 (SV _ sv) = SV d2 sv
 
 
 -- * Insert row/column vector in matrix
@@ -107,12 +118,20 @@ toSV (SM (m,n) im) = SV d (ff im) where
     | otherwise = error $ "toSV : incompatible matrix dimension " ++ show (m,n)
 
 
+
+-- | Lookup a row in a SpMatrix; returns an SpVector with the row, if this is non-empty
+lookupRowSM :: SpMatrix a -> IxRow -> Maybe (SpVector a)
+lookupRowSM sm i = SV (ncols sm) <$> IM.lookup i (dat sm) 
+
+
 -- * Extract a SpVector from an SpMatrix
 -- ** Sparse extract
 
 -- |Extract ith row
 extractRow :: SpMatrix a -> IxRow -> SpVector a
-extractRow m i = toSV $ extractRowSM m i
+extractRow m i
+  | inBounds0 (nrows m) i = fromMaybe (zeroSV (ncols m)) (lookupRowSM m i)
+  | otherwise = error $ unwords ["extractRow : index",show i,"out of bounds"]
 
 -- |Extract jth column
 extractCol :: SpMatrix a -> IxCol -> SpVector a
@@ -143,13 +162,28 @@ extractDiagDense = extractVectorDenseWith (\i -> (i, i))
 
 
 
--- | extract row interval
-extractSubRow :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpVector a
-extractSubRow m i (j1, j2)  = toSV $ extractSubRowSM m i (j1, j2)
+-- | extract row interval (all entries between columns j1 and j2, INCLUDED, are returned)
+-- extractSubRow :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpVector a
+-- extractSubRow m i (j1, j2) = case lookupRowSM m i of
+--   Nothing -> zeroSV (ncols m)
+--   Just rv -> ifilterSV (\j _ -> j >= j1 && j <= j2) rv
+
+-- |", returning in Maybe
+-- extractSubRow :: SpMatrix a -> IxRow -> (Int, Int) -> Maybe (SpVector a)
+-- extractSubRow m i (j1, j2) =
+--   resizeSV (j2 - j1) . ifilterSV (\j _ -> j >= j1 && j <= j2) <$> lookupRowSM m i
+
+-- | Extract an interval of SpVector components, changing accordingly the resulting SpVector size. Keys are _not_ rebalanced, i.e. components are still labeled according with respect to the source matrix.
+extractSubRow :: SpMatrix a -> IxRow -> (Int, Int) -> SpVector a
+extractSubRow m i (j1, j2) = fromMaybe (zeroSV deltaj) vfilt where
+  deltaj = j2 - j1 + 1
+  vfilt = resizeSV deltaj . ifilterSV (\j _ -> j >= j1 && j <= j2) <$> lookupRowSM m i
 
 -- | extract row interval, rebalance keys by subtracting lowest one
 extractSubRow_RK :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpVector a
 extractSubRow_RK m i (j1, j2)  = toSV $ extractSubRowSM_RK m i (j1, j2)
+
+
 
 -- | extract column interval
 extractSubCol :: SpMatrix a -> IxCol -> (IxRow, IxRow) -> SpVector a
