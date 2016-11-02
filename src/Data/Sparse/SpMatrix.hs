@@ -293,22 +293,8 @@ extractSubmatrix = extractSubmatrixSM id id
 
 -- *** Extract i'th row
 -- | Extract whole row
+-- -- moved to Data.Sparse.Common
 
--- extractRowSM (SM (m,n) imm) i = SM (1,n) $ fromMaybe IM.empty (IM.lookup i imm)
-
-
-extractRowSM :: SpMatrix a -> IxRow -> SpMatrix a
-extractRowSM sm i = extractSubmatrix sm (i, i) (0, ncols sm - 1)
-
-
--- | Extract column within a row range
-extractSubRowSM :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpMatrix a
-extractSubRowSM sm i (j1, j2) = extractSubmatrix sm (i, i) (j1, j2)
-
--- | Extract column within a row range, rebalance keys
-extractSubRowSM_RK :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpMatrix a
-extractSubRowSM_RK sm i =
-  extractSubmatrixRebalanceKeys sm (i, i) 
 
 
 

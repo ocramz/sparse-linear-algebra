@@ -74,7 +74,7 @@ spec = do
       execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
       nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True 
-  describe "Numeric.LinearAlgebra.Sparse : Linear solvers" $ do
+  describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers" $ do
     -- it "TFQMR (2 x 2 dense)" $
     --   normSq (_xTfq (tfqmr aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "BCG (2 x 2 dense)" $
@@ -83,6 +83,9 @@ spec = do
       nearZero (normSq (aa0 <\> b0 ^-^ x0true)) `shouldBe` True
     it "CGS (2 x 2 dense)" $ 
       nearZero (normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true)) `shouldBe` True
+  describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ do
+    it "LU (unoptimized) (4 x 4 sparse)" $ 
+      checkLuSolve aa1 b1 `shouldBe` True         
   describe "Numeric.LinearAlgebra.Sparse : QR decomposition" $ do    
     it "QR (4 x 4 sparse)" $
       checkQr tm4 `shouldBe` True
@@ -93,6 +96,7 @@ spec = do
       checkLu tm6 `shouldBe` True
     it "LU (10 x 10 sparse)" $
       checkLu tm7 `shouldBe` True
+ 
   describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (PSD matrices only)" $ do
     it "chol (5 x 5 sparse)" $
       checkChol tm7 `shouldBe` True
@@ -111,6 +115,50 @@ example 0 : 2x2 linear system
 
 
 -}
+
+
+{- QR-}
+
+
+checkQr :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
+checkQr a = c1 && c2 where
+  (q, r) = qr a
+  c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
+  c2 = isOrthogonalSM q
+
+
+
+
+
+
+
+{- LU -}
+
+checkLu :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
+checkLu a = lup == a where
+  (l, u) = lu a
+  lup = l #~# u
+
+
+
+{- Cholesky -}
+
+checkChol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
+checkChol a = nearZero $ normFrobenius ((l ##^ l) ^-^ a) where
+  l = chol a
+
+
+{- direct linear solver -}
+
+checkLuSolve :: (Epsilon a, Real a, Floating a) => SpMatrix a -> SpVector a -> Bool
+checkLuSolve amat rhs = nearZero (normSq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
+  where
+     (lmat, umat) = lu amat
+     xlu = luSolve lmat umat rhs
+      
+  
+
+
 
 aa0 :: SpMatrix Double
 aa0 = fromListDenseSM 2 [1,3,2,4]
@@ -155,6 +203,8 @@ x2 = mkSpVectorD 3 [3,2,3]
 
 b2 = mkSpVectorD 3 [4,-2,4]
 
+
+aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
 
 
 -- --
@@ -257,35 +307,7 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 
 
-{- QR-}
 
-
-checkQr :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
-checkQr a = c1 && c2 where
-  (q, r) = qr a
-  c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
-  c2 = isOrthogonalSM q
-
-
-aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
-
-
-
-
-{- LU -}
-
-checkLu :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
-checkLu a = lup == a where
-  (l, u) = lu a
-  lup = l #~# u
-
-
-
-{- Cholesky -}
-
-checkChol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
-checkChol a = nearZero $ normFrobenius ((l ##^ l) ^-^ a) where
-  l = chol a
 
 
 

@@ -16,7 +16,7 @@ module Numeric.LinearAlgebra.Sparse
          -- * Linear solvers
          linSolve, LinSolveMethod, (<\>),
          -- ** Direct methods
-         -- luSolve,
+         luSolve,
          -- ** Iterative methods
          cgne, tfqmr, bicgstab, cgs, bcg,
          _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
@@ -476,27 +476,10 @@ mSsor aa omega = (l, r) where
 
 
 
--- Linear solver, LU-based
+-- * Linear solver, LU-based
 
 
-{- 3x3 system -}
-aa :: SpMatrix Double
-aa = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
-x, b :: SpVector Double
-x = mkSpVectorD 3 [3,2,3]
 
-b = mkSpVectorD 3 [4,-2,4]
-
-xhat = aa <\> b
-
-(ll, uu) = lu aa -- LU factors
-
--- (x', _) = luFwd ll b  -- solution of fwd solve
--- (w', i') = lInit ll b
--- (w'', i'') = lStep ll b (w', i')
--- (w''', i''') = lStep ll b (w'', i'')
-
--- (x'', _) = bwInit uu x' (subtract 1) 2 -- first step of bwd solve
 
 
 luSolve ::
@@ -504,64 +487,45 @@ luSolve ::
 luSolve ll uu b
   | isLowerTriSM ll && isUpperTriSM uu = x
   | otherwise = error "luSolve : factors must be triangular matrices" where
-      x' = fwSolve ll b
-      x = bwSolve uu x'
+      x' = lufwSolve ll b
+      x = lubwSolve uu x'
 
-lInit ll b = (ww0, 1)
-  where
-    l00 = ll @@ (0, 0)
-    b0 = b @@ 0
-    w0 = b0 / l00
-    ww0 = insertSpVector 0 w0 $ zeroSV (dim b)
-
-lStep ll b (ww, i) = (wwi, i + 1)
-  where
+lufwSolve ll b = sparsifySV v where
+  (v, _) = execState (modifyUntil q lStep) lInit where
+  q (_, i) = i == dim b
+  lStep (ww, i) = (wwi, i + 1) where
     lii = ll @@ (i, i)
     bi = b @@ i
     wi = (bi - r)/lii where
       r = extractSubRow ll i (0, i-1) `dot` takeSV i ww
     wwi = insertSpVector i wi ww
+  lInit = (ww0, 1) where
+    l00 = ll @@ (0, 0)
+    b0 = b @@ 0
+    w0 = b0 / l00
+    ww0 = insertSpVector 0 w0 $ zeroSV (dim b)  
 
-
-fwSolve ll b = sparsifySV v where
-  (v, _) = execState (modifyUntil q (lStep ll b)) (lInit ll b) where
-  q (_, i) = i == dim b
-
-
-
-
-uInit uu w = (xx0, i - 1) where
-  i = dim w - 1
-  u00 = uu @@ (i, i)
-  w0 = w @@ i
-  x0 = w0 / u00
-  xx0 = insertSpVector i x0 $ zeroSV (dim w)
-
-uStep uu w (xx, i) = (xxi, i - 1)
-  where
+lubwSolve uu w = sparsifySV x where
+  (x, _) = execState (modifyUntil q uStep) uInit
+  q (_, i) = i == (- 1)
+  uStep (xx, i) = (xxi, i - 1) where
     uii = uu @@ (i, i)
     wi = w @@ i
     xi = (wi - r) / uii where
-      r = extractSubRow uu i (i + 1, dim w - 1) `dot` dropSV (i + 1) xx
+        r = extractSubRow_RK uu i (i + 1, dim w - 1) `dot` dropSV (i + 1) xx
     xxi = insertSpVector i xi xx
-
-bwSolve uu w = sparsifySV x where
-  (x, _) = execState (modifyUntil q (uStep uu w)) (uInit uu w) where
-    q (_, i) = i == (- 1)
-
-
-
-w' = fwSolve ll b
-x' = bwSolve uu w'
+  uInit = (xx0, i - 1) where
+    i = dim w - 1
+    u00 = uu @@ (i, i)
+    w0 = w @@ i
+    x0 = w0 / u00
+    xx0 = insertSpVector i x0 $ zeroSV (dim w)  
 
 
 
-checkLUSolve aa b = (c1, c2) where
-  (ll, uu) = lu aa
-  x' = fwSolve ll b
-  x'' = bwSolve uu x'
-  c1 = nearZero $ normSq (ll #> x' ^-^ b)
-  c2 = nearZero $ normSq (uu #> x'' ^-^ b)
+
+
+
 
 -- * Iterative linear solvers
 

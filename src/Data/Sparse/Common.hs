@@ -44,6 +44,8 @@ resizeSV :: Int -> SpVector a -> SpVector a
 resizeSV d2 (SV _ sv) = SV d2 sv
 
 
+mapKeysSV fk (SV d sv) = SV d $ IM.mapKeys fk sv
+
 -- * Insert row/column vector in matrix
 
 -- | Insert row , using the provided row index transformation function
@@ -177,11 +179,14 @@ extractDiagDense = extractVectorDenseWith (\i -> (i, i))
 extractSubRow :: SpMatrix a -> IxRow -> (Int, Int) -> SpVector a
 extractSubRow m i (j1, j2) = fromMaybe (zeroSV deltaj) vfilt where
   deltaj = j2 - j1 + 1
-  vfilt = resizeSV deltaj . ifilterSV (\j _ -> j >= j1 && j <= j2) <$> lookupRowSM m i
+  vfilt = resizeSV deltaj .
+          ifilterSV (\j _ -> j >= j1 && j <= j2) <$> lookupRowSM m i
 
 -- | extract row interval, rebalance keys by subtracting lowest one
 extractSubRow_RK :: SpMatrix a -> IxRow -> (IxCol, IxCol) -> SpVector a
-extractSubRow_RK m i (j1, j2)  = toSV $ extractSubRowSM_RK m i (j1, j2)
+extractSubRow_RK m i (j1, j2) = mapKeysSV (subtract j1) $ extractSubRow m i (j1, j2)
+
+  -- toSV $ extractSubRowSM_RK m i (j1, j2)
 
 
 
