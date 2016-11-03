@@ -11,6 +11,8 @@ module Numeric.LinearAlgebra.Sparse
          hhMat, hhRefl,
          -- * Givens' rotation
          givens,
+         -- * Arnoldi iteration
+         arnoldi,
          -- * Eigensolvers
          eigsQR, eigRayleigh,
          -- * Linear solvers
@@ -386,7 +388,7 @@ lu aa = (lf, ufin) where
 
 
 -- | Apply a function over a range of integer indices, zip the result with it and filter out the almost-zero entries
-onRangeSparse :: (Epsilon b, Real b) => (Int -> b) -> [Int] -> [(Int, b)]
+onRangeSparse :: Epsilon b => (Int -> b) -> [Int] -> [(Int, b)]
 onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 
 
@@ -447,12 +449,50 @@ ilu0 aa = (lh, uh) where
 
 -- * Arnoldi iteration
 
+-- | Arnoldi iteration
+arnoldi ::
+  (Floating a, Eq a) => SpMatrix a -> Int -> (V.Vector (SpVector a), SpMatrix a)
+arnoldi aa kn = (qfin, hhfin) where
+  (qfin, hhfin, _) = execState (modifyUntil tf arnStep) arnInit
+  tf (_, _, k) = k == kn    -- stop at kn iterations
+  arnInit = (qv0, hh0, 1) where
+      (m, n) = dim aa
+      q0 = normalize 2 $ onesSV n -- starting vector
+      hh0 = zeroSM m n            -- starting Hessenberg matrix
+      qv0 = V.cons q0 V.empty     -- vector storing the Krylov basis
+  arnStep (qv, hh, k) = (qvfin, hhfin, k + 1) where
+      qkprev = qv V.! (k-1)          -- q_{k-1}
+      qk = aa #> qkprev    
+      (qk', hhtemp, _) = execState (modifyUntil termf (jStep qv k)) (qk, hh, 0)
+      termf (_, _, j_) = j_ == k    -- stop after k iterations
+      hhfin = insertSpMatrix k (k-1) (norm 2 qk') hhtemp -- update H matrix
+      qvfin = V.cons (normalize 2 qk') qv  -- update Krylov basis with q_k
+      jStep qv k (qk, hh, j) = (qk', hh', j + 1) where
+        qj = qv V.! j                         -- q_{j}
+        hjkm = qj `dot` qk                    
+        qk' = qk ^-^ (hjkm .* qj)
+        hh' = insertSpMatrix j (k-1) hjkm hh
 
--- arnoldi aa = undefined where
---   (m, n) = dim aa
---   q0 = normalize 2 $ onesSV n -- starting vector
---   hh = zeroSM m n             -- starting Hessenberg matrix
---   jloop k q hh = undefined
+fromCols :: V.Vector (SpVector a) -> SpMatrix a
+fromCols qv = V.ifoldl' ins (zeroSM m n) qv where
+  n = V.length qv
+  m = dim $ V.head qv
+  ins mm i c = insertCol mm c i
+
+
+harness q f v | q v = Nothing
+              | otherwise = Just $ f v
+
+head' = harness V.null V.head
+
+tail' = harness V.null V.tail
+
+
+-- test data
+aa2 :: SpMatrix Double
+aa2 = sparsifySM $ fromListDenseSM 3 [1, -1, -3, -2, 6, -1, 0, -1, 2]
+
+
 
 
 
