@@ -65,7 +65,7 @@ import qualified Data.Traversable as T
 -- import qualified Data.List as L
 import Data.Maybe
 
-
+import qualified Data.Vector as V
 
 
 
@@ -445,6 +445,16 @@ ilu0 aa = (lh, uh) where
 
 
 
+-- * Arnoldi iteration
+
+
+-- arnoldi aa = undefined where
+--   (m, n) = dim aa
+--   q0 = normalize 2 $ onesSV n -- starting vector
+--   hh = zeroSM m n             -- starting Hessenberg matrix
+--   jloop k q hh = undefined
+
+
 
 
 
@@ -482,10 +492,8 @@ mSsor aa omega = (l, r) where
 luSolve ::
   (Fractional a, Eq a, Epsilon a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
 luSolve ll uu b
-  | isLowerTriSM ll && isUpperTriSM uu = x
-  | otherwise = error "luSolve : factors must be triangular matrices" where
-      x' = lufwSolve ll b
-      x = lubwSolve uu x'
+  | isLowerTriSM ll && isUpperTriSM uu = lubwSolve uu (lufwSolve ll b)
+  | otherwise = error "luSolve : factors must be triangular matrices" 
 
 lufwSolve ll b = sparsifySV v where
   (v, _) = execState (modifyUntil q lStep) lInit where
@@ -502,6 +510,7 @@ lufwSolve ll b = sparsifySV v where
     w0 = b0 / l00
     ww0 = insertSpVector 0 w0 $ zeroSV (dim b)  
 
+-- | NB in the computation of `xi` we must rebalance the subrow indices because `dropSV` does that too, in order to take the inner product with consistent index pairs
 lubwSolve uu w = sparsifySV x where
   (x, _) = execState (modifyUntil q uStep) uInit
   q (_, i) = i == (- 1)
