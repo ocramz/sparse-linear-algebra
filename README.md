@@ -8,15 +8,15 @@ This library provides common numerical analysis functionality, without requiring
 
 Contents :
 
-* Iterative linear solvers
+* Iterative linear solvers (`linSolve`)
 
-    * BiConjugate Gradient (`bcg`)
+    * BiConjugate Gradient (BCG)
 
-    * Conjugate Gradient Squared (`cgs`)
+    * Conjugate Gradient Squared (CGS)
 
-    * BiConjugate Gradient Stabilized (`bicgstab`) (non-Hermitian systems)
+    * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems)
 
-    * Transpose-Free Quasi-Minimal Residual (`tfqmr`)
+    * Transpose-Free Quasi-Minimal Residual (TFQMR)
 
 * Direct linear solvers
 
