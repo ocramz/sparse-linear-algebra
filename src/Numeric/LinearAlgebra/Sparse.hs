@@ -449,7 +449,7 @@ ilu0 aa = (lh, uh) where
 
 -- * Arnoldi iteration
 
--- | Given a matrix A and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (written Q in matrix notation), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
+-- | Given a matrix A and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (as the columns of matrix Q), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 arnoldi ::
   (Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
@@ -480,10 +480,6 @@ arnoldi aa kn = (fromCols qvfin, hhfin) where
     qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
 
 
-checkArnoldi aa kn = nearZero $ normFrobenius $ (aa #~# qvprev) ^-^ (qv #~# hh) where
-  (qv, hh) = arnoldi aa kn
-  (m, n) = dim qv
-  qvprev = extractSubmatrix qv (0, m - 1) (0, n - 2)
   
 
 
