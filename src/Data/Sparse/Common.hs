@@ -19,6 +19,7 @@ module Data.Sparse.Common
          extractSubRow, extractSubCol,
          extractSubRow_RK, extractSubCol_RK,
          matVec, (#>), vecMat, (<#),
+         fromCols,
          prd) where
 
 import Data.Sparse.Utils as X
@@ -33,7 +34,7 @@ import Numeric.LinearAlgebra.Class as X
 import qualified Data.IntMap as IM
 
 import Data.Maybe (fromMaybe, maybe)
-
+import qualified Data.Vector as V
 
 -- withBoundsSM m ij e f
 --   | isValidIxSM m ij = f m ij
@@ -229,6 +230,16 @@ vecMat (SV n sv) (SM (nr, nc) mdata)
 (<#) = vecMat  
 
 
+
+
+
+
+-- | Pack a V.Vector of SpVectors as columns of an SpMatrix
+fromCols :: V.Vector (SpVector a) -> SpMatrix a
+fromCols qv = V.ifoldl' ins (zeroSM m n) qv where
+  n = V.length qv
+  m = dim $ V.head qv
+  ins mm i c = insertCol mm c i
 
 
 

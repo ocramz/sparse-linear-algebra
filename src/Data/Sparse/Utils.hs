@@ -1,6 +1,14 @@
 module Data.Sparse.Utils where
 
+import qualified Data.Vector as V
+
 -- * Misc. utilities
+
+
+-- | Wrap a function with a null check, returning in Maybe
+harness :: (t -> Bool) -> (t -> a) -> t -> Maybe a
+harness q f v | q v = Nothing
+              | otherwise = Just $ f v
 
 
 -- | Componentwise tuple operations
@@ -46,7 +54,7 @@ ifoldr mjoin mneutral f  = go 0 where
   go _ _ [] = mneutral
 
 
--- *** Bounds checking
+-- ** Bounds checking
 type LB = Int
 type UB = Int
 
@@ -63,3 +71,16 @@ inBounds0 = inBounds 0
 
 inBounds02 :: (UB, UB) -> (Int, Int) -> Bool
 inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
+
+
+
+
+-- ** Safe indexing
+
+
+
+head' :: V.Vector a -> Maybe a
+head' = harness V.null V.head
+
+tail' :: V.Vector a -> Maybe (V.Vector a)
+tail' = harness V.null V.tail

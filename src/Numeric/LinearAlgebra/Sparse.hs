@@ -449,43 +449,40 @@ ilu0 aa = (lh, uh) where
 
 -- * Arnoldi iteration
 
--- | Arnoldi iteration
+-- | Given a matrix A and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (written Q in matrix notation), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
+-- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 arnoldi ::
-  (Floating a, Eq a) => SpMatrix a -> Int -> (V.Vector (SpVector a), SpMatrix a)
-arnoldi aa kn = (qfin, hhfin) where
-  (qfin, hhfin, _) = execState (modifyUntil tf arnStep) arnInit
-  tf (_, _, k) = k == kn    -- stop at kn iterations
-  arnInit = (qv0, hh0, 1) where
-      (m, n) = dim aa
-      q0 = normalize 2 $ onesSV n -- starting vector
-      hh0 = zeroSM m n            -- starting Hessenberg matrix
-      qv0 = V.cons q0 V.empty     -- vector storing the Krylov basis
-  arnStep (qv, hh, k) = (qvfin, hhfin, k + 1) where
-      qkprev = qv V.! (k-1)          -- q_{k-1}
-      qk = aa #> qkprev    
-      (qk', hhtemp, _) = execState (modifyUntil termf (jStep qv k)) (qk, hh, 0)
-      termf (_, _, j_) = j_ == k    -- stop after k iterations
-      hhfin = insertSpMatrix k (k-1) (norm 2 qk') hhtemp -- update H matrix
-      qvfin = V.cons (normalize 2 qk') qv  -- update Krylov basis with q_k
-      jStep qv k (qk, hh, j) = (qk', hh', j + 1) where
-        qj = qv V.! j                         -- q_{j}
-        hjkm = qj `dot` qk                    
-        qk' = qk ^-^ (hjkm .* qj)
-        hh' = insertSpMatrix j (k-1) hjkm hh
+  (Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
+arnoldi aa kn = (fromCols qvfin, hhfin) where
+  (qvfin, hhfin, _) = execState (modifyUntil tf arnoldiStep) arnInit 
+  tf (_, _, ii) = ii == kn -- termination criterion
+  (m, n) = dim aa
+  arnInit = (qv1, hh1, 1) where      
+      q0 = normalize 2 $ onesSV n -- starting basis vector
+      aq0 = aa #> q0
+      h11 = q0 `dot` aq0
+      q1nn = (aq0 ^-^ (h11 .* q0))
+      hh1 = fromListSM (m + 1, n) [(0, 0, h11), (1, 0, h21)] where        
+        h21 = norm 2 q1nn
+      q1 = normalize 2 q1nn
+      qv1 = V.fromList [q1, q0]
+  arnoldiStep (qv, hh, i) = (qv', hh', i + 1)
+   where
+    qi = V.head qv
+    aqi = aa #> qi
+    hhcoli = fmap (`dot` aqi) qv -- H_{i, i}, H_{i-1, i}, H_{i-2, i} ..
+    zv = zeroSV m
+    qipnn =
+      aqi ^-^ (V.foldl' (^+^) zv (V.zipWith (.*) hhcoli qv)) -- unnormalized q_{i+1}
+    qipnorm = singletonSV $ norm 2 qipnn      -- normalization factor H_{i+1, i}
+    qip = normalize 2 qipnn              -- q_{i + 1}
+    hh' = insertCol hh (concatSV (fromVector hhcoli) qipnorm) i -- update H
+    qv' = V.cons qip qv   -- append q_{i+1} to Krylov basis Q_i
 
-fromCols :: V.Vector (SpVector a) -> SpMatrix a
-fromCols qv = V.ifoldl' ins (zeroSM m n) qv where
-  n = V.length qv
-  m = dim $ V.head qv
-  ins mm i c = insertCol mm c i
 
-
-harness q f v | q v = Nothing
-              | otherwise = Just $ f v
-
-head' = harness V.null V.head
-
-tail' = harness V.null V.tail
+checkArnoldi aa kn = qv ## (hh ##^ qv) where
+  (qv, hh) = arnoldi aa kn
+  
 
 
 -- test data

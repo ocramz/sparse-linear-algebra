@@ -22,6 +22,7 @@ import Data.Maybe
 
 import qualified Data.IntMap as IM
 import qualified Data.Foldable as F
+import qualified Data.Vector as V
 
 -- * Sparse Vector
 
@@ -143,6 +144,10 @@ spVectorDenseLoHi f n lo hi = spVectorDenseIx f n [lo .. hi]
 
 
 
+
+  
+
+
 -- | one-hot encoding : `oneHotSV n k` produces a SpVector of length n having 1 at the k-th position
 oneHotSVU :: Num a => Int -> IxRow -> SpVector a
 oneHotSVU n k = SV n (IM.singleton k 1)
@@ -159,6 +164,28 @@ onesSV d = SV d $ IM.fromList $ denseIxArray $ replicate d 1
 -- | DENSE vector of `0`s
 zerosSV :: Num a => Int -> SpVector a
 zerosSV d = SV d $ IM.fromList $ denseIxArray $ replicate d 0
+
+
+
+
+
+-- *** Vector-related
+
+-- | Populate a SpVector with the contents of a Vector. 
+fromVector :: V.Vector a -> SpVector a
+fromVector qv = V.ifoldl' ins (zeroSV n) qv where
+  n = V.length qv
+  ins vv i x = insertSpVector i x vv
+
+-- | Populate a Vector with the entries of a SpVector, discarding the indices (NB: loses sparsity information).
+toVector :: SpVector a -> V.Vector a
+toVector = V.fromList . snd . unzip . toListSV
+
+-- | -- | Populate a Vector with the entries of a SpVector, replacing the missing entries with 0
+toVectorDense :: Num a => SpVector a -> V.Vector a
+toVectorDense = V.fromList . toDenseListSV
+
+
 
 
 
