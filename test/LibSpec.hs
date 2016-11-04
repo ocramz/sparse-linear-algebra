@@ -96,11 +96,14 @@ spec = do
       checkLu tm6 `shouldBe` True
     it "LU (10 x 10 sparse)" $
       checkLu tm7 `shouldBe` True
- 
-  describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (PSD matrices only)" $ do
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (PSD matrices only)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 `shouldBe` True
-
+  describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration" $ do
+    it "Arnoldi iteration (3 x 3 dense)" $
+      checkArnoldi aa2 3 `shouldBe` True
+    it "Arnoldi iteration (5 x 5 sparse)" $
+      checkArnoldi tm7 5 `shouldBe` True    
 
 
 
@@ -140,6 +143,12 @@ checkLuSolve amat rhs = nearZero (normSq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
      xlu = luSolve lmat umat rhs
       
   
+{- Arnoldi iteration -}
+checkArnoldi :: (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> Bool
+checkArnoldi aa kn = nearZero $ normFrobenius $ (aa #~# qvprev) ^-^ (qv #~# hh) where
+  (qv, hh) = arnoldi aa kn
+  (m, n) = dim qv
+  qvprev = extractSubmatrix qv (0, m - 1) (0, n - 2)
 
 
 

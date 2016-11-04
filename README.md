@@ -32,6 +32,8 @@ Contents :
 
 * Eigenvalue algorithms
 
+    * Arnoldi iteration (`arnoldi`)
+
     * QR (`eigsQR`)
 
     * Rayleigh quotient iteration (`eigRayleigh`)

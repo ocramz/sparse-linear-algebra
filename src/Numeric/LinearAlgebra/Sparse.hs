@@ -465,29 +465,28 @@ arnoldi aa kn = (fromCols qvfin, hhfin) where
       hh1 = fromListSM (m + 1, n) [(0, 0, h11), (1, 0, h21)] where        
         h21 = norm 2 q1nn
       q1 = normalize 2 q1nn
-      qv1 = V.fromList [q1, q0]
+      qv1 = V.fromList [q0, q1]
   arnoldiStep (qv, hh, i) = (qv', hh', i + 1)
    where
-    qi = V.head qv
+    qi = V.last qv
     aqi = aa #> qi
-    hhcoli = fmap (`dot` aqi) qv -- H_{i, i}, H_{i-1, i}, H_{i-2, i} ..
+    hhcoli = fmap (`dot` aqi) qv -- H_{1, i}, H_{2, i}, .. , H_{m + 1, i}
     zv = zeroSV m
     qipnn =
       aqi ^-^ (V.foldl' (^+^) zv (V.zipWith (.*) hhcoli qv)) -- unnormalized q_{i+1}
     qipnorm = singletonSV $ norm 2 qipnn      -- normalization factor H_{i+1, i}
     qip = normalize 2 qipnn              -- q_{i + 1}
     hh' = insertCol hh (concatSV (fromVector hhcoli) qipnorm) i -- update H
-    qv' = V.cons qip qv   -- append q_{i+1} to Krylov basis Q_i
+    qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
 
 
-checkArnoldi aa kn = qv ## (hh ##^ qv) where
+checkArnoldi aa kn = nearZero $ normFrobenius $ (aa #~# qvprev) ^-^ (qv #~# hh) where
   (qv, hh) = arnoldi aa kn
+  (m, n) = dim qv
+  qvprev = extractSubmatrix qv (0, m - 1) (0, n - 2)
   
 
 
--- test data
-aa2 :: SpMatrix Double
-aa2 = sparsifySM $ fromListDenseSM 3 [1, -1, -3, -2, 6, -1, 0, -1, 2]
 
 
 
