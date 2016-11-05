@@ -453,7 +453,8 @@ ilu0 aa = (lh, uh) where
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 arnoldi ::
   (Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
-arnoldi aa kn = (fromCols qvfin, hhfin) where
+arnoldi aa kn = (fromCols qvfin, hhfin)
+  where
   (qvfin, hhfin, _) = execState (modifyUntil tf arnoldiStep) arnInit 
   tf (_, _, ii) = ii == kn -- termination criterion
   (m, n) = dim aa
@@ -480,10 +481,17 @@ arnoldi aa kn = (fromCols qvfin, hhfin) where
     qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
 
 
-  
+
+-- test data
+(qv, hh) = arnoldi aa2 3
+
+-- columns of qv should be orthonormal
+q1 = extractCol qv 1
+q2 = extractCol qv 2
 
 
-
+aa2 :: SpMatrix Double
+aa2 = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
 
 
 
