@@ -55,9 +55,9 @@ spec = do
     it "eye : identity matrix" $
       infoSM (eye 10) `shouldBe` SMInfo 10 0.1
     it "insertCol : insert a column in a SpMatrix" $
-      insertCol (eye 3) (fromListDenseSV 3 [2,2,2]) 0 `shouldBe` (fromListSM (3,3) [(0,0,2),(1,0,2),(1,1,1),(2,0,2),(2,2,1)])
+      insertCol (eye 3) (fromListDenseSV 3 [2,2,2]) 0 `shouldBe` fromListSM (3,3) [(0,0,2),(1,0,2),(1,1,1),(2,0,2),(2,2,1)]
     it "insertRow : insert a row in a SpMatrix" $
-      insertRow (eye 3) (fromListDenseSV 3 [2,2,2]) 1 `shouldBe` (fromListSM (3,3) [(0,0,1), (1,0,2), (1,1,2), (1,2,2), (2,2,1)])
+      insertRow (eye 3) (fromListDenseSV 3 [2,2,2]) 1 `shouldBe` fromListSM (3,3) [(0,0,1), (1,0,2), (1,1,2), (1,2,2), (2,2,1)]
     it "extractCol -> insertCol : identity" $
       insertCol (eye 3) (extractCol (eye 3) 1) 1 `shouldBe` eye 3
     it "extractRow -> insertRow : identity" $
@@ -78,11 +78,17 @@ spec = do
     -- it "TFQMR (2 x 2 dense)" $
     --   normSq (_xTfq (tfqmr aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "BCG (2 x 2 dense)" $
-      nearZero (normSq (_xBcg (bcg aa0 b0 x0) ^-^ x0true)) `shouldBe` True
+      nearZero (normSq (linSolve BCG_ aa0 b0 ^-^ x0true)) `shouldBe` True
+    it "BCG (3 x 3 sparse, s.p.d.)" $
+      nearZero (normSq (linSolve BCG_ aa2 b2 ^-^ x2)) `shouldBe` True      
     it "BiCGSTAB (2 x 2 dense)" $ 
-      nearZero (normSq (aa0 <\> b0 ^-^ x0true)) `shouldBe` True
+      nearZero (normSq (linSolve BICGSTAB_ aa0 b0 ^-^ x0true)) `shouldBe` True
+    it "BiCGSTAB (3 x 3 sparse, s.p.d.)" $ 
+      nearZero (normSq (linSolve BICGSTAB_ aa2 b2 ^-^ x2)) `shouldBe` True      
     it "CGS (2 x 2 dense)" $ 
-      nearZero (normSq (_x (cgs aa0 b0 x0 x0) ^-^ x0true)) `shouldBe` True
+      nearZero (normSq (linSolve CGS_ aa0 b0 ^-^ x0true)) `shouldBe` True
+    it "CGS (3 x 3 sparse, s.p.d.)" $ 
+      nearZero (normSq (linSolve CGS_ aa2 b2 ^-^ x2)) `shouldBe` True      
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ do
     it "LU (unoptimized) (4 x 4 sparse)" $ 
       checkLuSolve aa1 b1 `shouldBe` True         

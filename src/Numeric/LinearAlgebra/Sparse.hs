@@ -16,14 +16,11 @@ module Numeric.LinearAlgebra.Sparse
          -- * Eigensolvers
          eigsQR, eigRayleigh,
          -- * Linear solvers
-         linSolve, LinSolveMethod, (<\>),
+         -- ** Iterative methods
+         linSolve, LinSolveMethod(..), (<\>),
+         pinv,
          -- ** Direct methods
          luSolve,
-         -- ** Iterative methods
-         cgne, tfqmr, bicgstab, cgs, bcg,
-         _xCgne, _xTfq, _xBicgstab, _x, _xBcg,
-         cgsStep, bicgstabStep,
-         CGNE, TFQMR, BICGSTAB, CGS, BCG,
          -- * Preconditioners
          ilu0, mSsor,
          -- * Matrix partitioning
@@ -460,12 +457,12 @@ arnoldi aa kn = (fromCols qvfin, hhfin)
   (m, n) = dim aa
   arnInit = (qv1, hh1, 1) where      
       q0 = normalize 2 $ onesSV n -- starting basis vector
-      aq0 = aa #> q0
-      h11 = q0 `dot` aq0
+      aq0 = aa #> q0              -- A q0
+      h11 = q0 `dot` aq0          
       q1nn = (aq0 ^-^ (h11 .* q0))
       hh1 = fromListSM (m + 1, n) [(0, 0, h11), (1, 0, h21)] where        
         h21 = norm 2 q1nn
-      q1 = normalize 2 q1nn
+      q1 = normalize 2 q1nn       -- q1 `dot` q0 ~ 0
       qv1 = V.fromList [q0, q1]
   arnoldiStep (qv, hh, i) = (qv', hh', i + 1)
    where
@@ -481,21 +478,38 @@ arnoldi aa kn = (fromCols qvfin, hhfin)
     qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
 
 
+-- why does q2 lose orthogonality ?
+n = 3
+q0 = normalize 2 $ onesSV n
+
+aq0 = aa #> q0
+h00 = q0 `dot` aq0
+q1nn = aq0 ^-^ (h00 .* q0)
+q1 = normalize 2 q1nn
+
+aq1 = aa #> q1
+h01 = q0 `dot` aq1
+h11 = q1 `dot` aq1
+q2nn = aq1 ^-^ ((h01 .* q0) ^+^ (h11 .* q1))
+q2 = normalize 2 q2nn
+
 
 -- test data
-(qv, hh) = arnoldi aa2 3
+(qv, hh) = arnoldi aa 3
 
 -- columns of qv should be orthonormal
-q1 = extractCol qv 1
-q2 = extractCol qv 2
+-- q1 = extractCol qv 1
+-- q2 = extractCol qv 2
 
 
-aa2 :: SpMatrix Double
-aa2 = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
+aa :: SpMatrix Double
+aa = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
 
+x2, b2, x2i :: SpVector Double
+x2 = mkSpVectorD 3 [3,2,3]
+b2 = mkSpVectorD 3 [4,-2,4]
 
-
-
+x2i = mkSpVectorD 3 [1,1,1]
 
 
 
@@ -595,6 +609,10 @@ cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
 
 data CGNE =
   CGNE {_xCgne , _rCgne, _pCgne :: SpVector Double} deriving Eq
+instance Show CGNE where
+    show (CGNE x r p) = "x = " ++ show x ++ "\n" ++
+                       "r = " ++ show r ++ "\n" ++
+                       "p = " ++ show p ++ "\n"
 
 cgne :: SpMatrix Double -> SpVector Double -> SpVector Double -> CGNE
 cgne aa b x0 = execState (untilConverged _xCgne (cgneStep aa)) cgneInit where
@@ -653,7 +671,8 @@ data TFQMR =
           _mTfq :: Int,
           _tauTfq, _thetaTfq, _etaTfq, _rhoTfq, _alphaTfq :: Double}
   deriving Eq
-
+instance Show TFQMR where
+    show (TFQMR x _ _ _ _ _ _ _ _ _ _) = "x = " ++ show x ++ "\n"
 
 
 -- ** BCG
@@ -816,8 +835,8 @@ linSolve method aa b
         CGNE_ -> _xCgne (cgne aa' b' x0)
         TFQMR_ -> _xTfq (tfqmr aa' b' x0)
         BCG_ -> _xBcg (bcg aa' b' x0)
-        CGS_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
-        BICGSTAB_ -> _x (cgs aa' b' x0 x0)
+        BICGSTAB_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
+        CGS_ -> _x (cgs aa' b' x0 x0)
       x0 = mkSpVectorD n $ replicate n 0.1 
       (m, n) = dim aa
       nb     = dim b
