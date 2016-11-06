@@ -12,7 +12,7 @@ module Data.Sparse.SpVector where
 
 import Data.Sparse.Utils
 import Data.Sparse.Types
-import Data.Sparse.IntMap2.IntMap2
+import Data.Sparse.Internal.IntMap2
 
 import Numeric.Eps
 import Numeric.LinearAlgebra.Class

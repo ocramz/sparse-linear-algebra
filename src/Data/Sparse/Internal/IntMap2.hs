@@ -1,4 +1,4 @@
-module Data.Sparse.IntMap2.IntMap2 where
+module Data.Sparse.Internal.IntMap2 where
 
 import Numeric.LinearAlgebra.Class
 

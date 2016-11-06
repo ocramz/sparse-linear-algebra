@@ -16,7 +16,7 @@ import Data.Sparse.Types
 import Numeric.Eps
 import Numeric.LinearAlgebra.Class
 
-import Data.Sparse.IntMap2.IntMap2
+import Data.Sparse.Internal.IntMap2
 
 import qualified Data.IntMap as IM
 

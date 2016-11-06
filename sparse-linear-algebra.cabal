@@ -33,7 +33,8 @@ library
                        Data.Sparse.SpVector
                        Data.Sparse.SpMatrix
                        Data.Sparse.Common
-  other-modules:       Data.Sparse.IntMap2.IntMap2
+  other-modules:       Data.Sparse.Internal.IntMap2
+                       Data.Sparse.Internal.CSR
                        Data.Sparse.Utils
                        Data.Sparse.Types
                        Numeric.Eps
