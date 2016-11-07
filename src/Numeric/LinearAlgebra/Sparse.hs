@@ -12,7 +12,7 @@ module Numeric.LinearAlgebra.Sparse
          -- * Givens' rotation
          givens,
          -- * Arnoldi iteration
-         arnoldi,
+         arnoldi, arnoldi',
          -- * Eigensolvers
          eigsQR, eigRayleigh,
          -- * Linear solvers
@@ -448,6 +448,7 @@ ilu0 aa = (lh, uh) where
 
 -- | Given a matrix A and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (as the columns of matrix Q), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
+
 arnoldi ::
   (Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
 arnoldi aa kn = (fromCols qvfin, hhfin)
@@ -477,6 +478,43 @@ arnoldi aa kn = (fromCols qvfin, hhfin)
     qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
 
 
+-- arnoldi' :: (Epsilon a, Floating a, Eq a) =>
+--      SpMatrix a -> Int -> (V.Vector (SpVector a), V.Vector (Int, Int, a))
+-- arnoldi' ::
+--   (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
+arnoldi' aa kn =
+  (qvfin, hhfin, nmax)
+  -- (fromCols qvfin, fromListSM (m, nmax) hhfin)
+  where
+  (qvfin, hhfin, nmax, _) = execState (modifyUntil tf arnoldiStep) arnInit 
+  tf (_, _, ii, fbreak) = ii == kn || fbreak -- termination criterion
+  (m, n) = dim aa
+  arnInit = (qv1, hh1, 1, False) where
+      q0 = normalize 2 $ onesSV n -- starting basis vector
+      aq0 = aa #> q0              -- A q0
+      h11 = q0 `dot` aq0          
+      q1nn = (aq0 ^-^ (h11 .* q0))
+      hh1 = V.fromList [(0, 0, h11), (1, 0, h21)] where        
+        h21 = norm 2 q1nn
+      q1 = normalize 2 q1nn       -- q1 `dot` q0 ~ 0
+      qv1 = V.fromList [q0, q1]
+  arnoldiStep (qv, hh, i, _) = (qv', hh', i + 1, fb') where
+    qi = V.last qv
+    aqi = aa #> qi
+    hhcoli = fmap (`dot` aqi) qv -- H_{1, i}, H_{2, i}, .. , H_{m + 1, i}
+    zv = zeroSV m
+    qipnn =
+      aqi ^-^ (V.foldl' (^+^) zv (V.zipWith (.*) hhcoli qv)) -- unnormalized q_{i+1}
+    qipnorm = norm 2 qipnn      -- normalization factor H_{i+1, i}
+    qip = normalize 2 qipnn              -- q_{i + 1}
+    hh' = (V.++) hh (indexed2 $ V.snoc hhcoli qipnorm) where -- update H
+      indexed2 v = V.zip3 ii jj v
+      ii = V.fromList [0 .. n + 1] -- nth col of upper Hessenberg has `n+2` nz
+      jj = V.replicate (n + 1) (n - 1)   -- `n+2` replicas of `n-1`
+    qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
+    fb' | nearZero qipnorm = True  -- breakdown condition
+        | otherwise = False
+
 -- -- -- why does q2 lose orthogonality ? because the unnormalized q vectors have decreasing norm and the Arnoldi iteration breaks down when this norm is ~ 0
 -- n = 3
 -- q0 = normalize 2 $ onesSV n
@@ -504,8 +542,8 @@ arnoldi aa kn = (fromCols qvfin, hhfin)
 -- -- q2 = extractCol qv 2
 
 
--- aa :: SpMatrix Double
--- aa = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
+aa :: SpMatrix Double
+aa = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
 
 -- x2, b2, x2i :: SpVector Double
 -- x2 = mkSpVectorD 3 [3,2,3]
