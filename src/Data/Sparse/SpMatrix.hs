@@ -58,12 +58,13 @@ instance Functor SpMatrix where
 instance Set SpMatrix where
   liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
   liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) ((liftI2.liftI2) f2 x1 x2)
-  
+
+-- | 'SpMatrix'es form a ring, in that they can be added and possess a zero element  
 instance Additive SpMatrix where
   zero = SM (0,0) IM.empty
   (^+^) = liftU2 (+)
 
-
+-- | 'SpMatrix'es are maps between finite-dimensional spaces
 instance FiniteDim SpMatrix where
   type FDSize SpMatrix = (Rows, Cols)
   dim = smDim
@@ -75,6 +76,7 @@ instance HasData SpMatrix a where
 instance Sparse SpMatrix a where
   spy = spySM
 
+-- | 'SpMatrix'es are sparse containers too, i.e. any specific component may be missing (so it is assumed to be 0)
 instance Num a => SpContainer SpMatrix a where
   type ScIx SpMatrix = (Rows, Cols)
   scInsert (i,j) = insertSpMatrix i j

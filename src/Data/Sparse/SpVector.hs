@@ -58,11 +58,11 @@ instance Additive SpVector where
   (^+^) = liftU2 (+)
 
 
-                      
+-- | 'SpVector's form a vector space because they can be multiplied by a scalar
 instance VectorSpace SpVector where
   n .* v = scale n v
 
-
+-- | 'SpVector's are finite-dimensional vectors
 instance FiniteDim SpVector where
   type FDSize SpVector = Int
   dim = svDim  
@@ -75,7 +75,7 @@ instance Sparse SpVector a where
   spy = spySV
 
 
-
+-- | 'SpVector's are sparse containers too, i.e. any specific component may be missing (so it is assumed to be 0)
 instance Num a => SpContainer SpVector a where
   type ScIx SpVector = Int
   scInsert = insertSpVector
@@ -84,14 +84,14 @@ instance Num a => SpContainer SpVector a where
 
 
 
-
+-- | 'SpVector's form a Hilbert space, in that we can define an inner product over them
 instance Hilbert SpVector where
   a `dot` b | dim a == dim b = dot (dat a) (dat b)
             | otherwise =
                      error $ "dot : sizes must coincide, instead we got " ++
                            show (dim a, dim b)
 
-
+-- | Since 'SpVector's form a Hilbert space, we can define a norm for them 
 instance Normed SpVector where
   norm p (SV _ v) = norm p v
 

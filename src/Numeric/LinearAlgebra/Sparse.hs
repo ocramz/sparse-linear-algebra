@@ -188,7 +188,7 @@ firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
 -- * QR decomposition
 
 
--- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements
+-- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
 qr :: (Epsilon a, Floating a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 qr mm = (transposeSM qmatt, rmat)  where
   qmatt = F.foldl' (#~#) ee $ gmats mm -- Q^T = (G_n * G_n-1 ... * G_1)
@@ -350,7 +350,7 @@ chol aa = lfin where
 -- ** Doolittle algorithm
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
--- | Given a matrix A, returns a pair of matrices (L, U) such that L U = A
+-- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
 lu :: (Epsilon a, Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 lu aa = (lf, ufin) where
   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
@@ -464,8 +464,7 @@ arnoldi aa kn = (fromCols qvfin, hhfin)
         h21 = norm 2 q1nn
       q1 = normalize 2 q1nn       -- q1 `dot` q0 ~ 0
       qv1 = V.fromList [q0, q1]
-  arnoldiStep (qv, hh, i) = (qv', hh', i + 1)
-   where
+  arnoldiStep (qv, hh, i) = (qv', hh', i + 1) where
     qi = V.last qv
     aqi = aa #> qi
     hhcoli = fmap (`dot` aqi) qv -- H_{1, i}, H_{2, i}, .. , H_{m + 1, i}
@@ -478,38 +477,41 @@ arnoldi aa kn = (fromCols qvfin, hhfin)
     qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
 
 
--- why does q2 lose orthogonality ?
-n = 3
-q0 = normalize 2 $ onesSV n
+-- -- -- why does q2 lose orthogonality ? because the unnormalized q vectors have decreasing norm and the Arnoldi iteration breaks down when this norm is ~ 0
+-- n = 3
+-- q0 = normalize 2 $ onesSV n
 
-aq0 = aa #> q0
-h00 = q0 `dot` aq0
-q1nn = aq0 ^-^ (h00 .* q0)
-q1 = normalize 2 q1nn
+-- aq0 = aa #> q0
+-- h00 = q0 `dot` aq0
+-- q1nn = aq0 ^-^ (h00 .* q0)
+-- q1 = normalize 2 q1nn
 
-aq1 = aa #> q1
-h01 = q0 `dot` aq1
-h11 = q1 `dot` aq1
-q2nn = aq1 ^-^ ((h01 .* q0) ^+^ (h11 .* q1))
-q2 = normalize 2 q2nn
+-- aq1 = aa #> q1
+-- h01 = q0 `dot` aq1
+-- h11 = q1 `dot` aq1
+-- q2nn = aq1 ^-^ ((h01 .* q0) ^+^ (h11 .* q1))
+-- q2 = normalize 2 q2nn
 
-
--- test data
-(qv, hh) = arnoldi aa 3
-
--- columns of qv should be orthonormal
--- q1 = extractCol qv 1
--- q2 = extractCol qv 2
+-- -- --
 
 
-aa :: SpMatrix Double
-aa = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
 
-x2, b2, x2i :: SpVector Double
-x2 = mkSpVectorD 3 [3,2,3]
-b2 = mkSpVectorD 3 [4,-2,4]
+-- -- -- test data
+-- (qv, hh) = arnoldi aa 3
 
-x2i = mkSpVectorD 3 [1,1,1]
+-- -- -- columns of qv should be orthonormal
+-- -- q1 = extractCol qv 1
+-- -- q2 = extractCol qv 2
+
+
+-- aa :: SpMatrix Double
+-- aa = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
+
+-- x2, b2, x2i :: SpVector Double
+-- x2 = mkSpVectorD 3 [3,2,3]
+-- b2 = mkSpVectorD 3 [4,-2,4]
+
+-- x2i = mkSpVectorD 3 [1,1,1]
 
 
 
