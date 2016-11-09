@@ -480,11 +480,9 @@ arnoldi aa kn = (fromCols qvfin, hhfin)
 
 -- arnoldi' :: (Epsilon a, Floating a, Eq a) =>
 --      SpMatrix a -> Int -> (V.Vector (SpVector a), V.Vector (Int, Int, a))
--- arnoldi' ::
---   (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
-arnoldi' aa kn =
-  (qvfin, hhfin, nmax)
-  -- (fromCols qvfin, fromListSM (m, nmax) hhfin)
+arnoldi' ::
+  (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
+arnoldi' aa kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
   where
   (qvfin, hhfin, nmax, _) = execState (modifyUntil tf arnoldiStep) arnInit 
   tf (_, _, ii, fbreak) = ii == kn || fbreak -- termination criterion
@@ -509,11 +507,13 @@ arnoldi' aa kn =
     qip = normalize 2 qipnn              -- q_{i + 1}
     hh' = (V.++) hh (indexed2 $ V.snoc hhcoli qipnorm) where -- update H
       indexed2 v = V.zip3 ii jj v
-      ii = V.fromList [0 .. n + 1] -- nth col of upper Hessenberg has `n+2` nz
-      jj = V.replicate (n + 1) (n - 1)   -- `n+2` replicas of `n-1`
+      ii = V.fromList [0 .. n]    -- nth col of upper Hessenberg has `n+1` nz
+      jj = V.replicate (n + 1) i  -- `n+1` replicas of `i`
     qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
     fb' | nearZero qipnorm = True  -- breakdown condition
         | otherwise = False
+
+
 
 -- -- -- why does q2 lose orthogonality ? because the unnormalized q vectors have decreasing norm and the Arnoldi iteration breaks down when this norm is ~ 0
 -- n = 3

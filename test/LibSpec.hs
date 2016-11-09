@@ -89,7 +89,7 @@ spec = do
       nearZero (normSq (linSolve CGS_ aa0 b0 ^-^ x0true)) `shouldBe` True
     it "CGS (3 x 3 sparse, s.p.d.)" $ 
       nearZero (normSq (linSolve CGS_ aa2 b2 ^-^ x2)) `shouldBe` True      
-  describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ do
+  describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ 
     it "LU (unoptimized) (4 x 4 sparse)" $ 
       checkLuSolve aa1 b1 `shouldBe` True         
   describe "Numeric.LinearAlgebra.Sparse : QR decomposition" $ do    
@@ -110,7 +110,10 @@ spec = do
       checkArnoldi tm6 4 `shouldBe` True
     it "Arnoldi iteration (5 x 5 sparse)" $
       checkArnoldi tm7 5 `shouldBe` True    
-
+    it "Arnoldi iteration (4 x 4 dense), early breakdown" $
+      checkArnoldi' tm6 4 `shouldBe` True
+    it "Arnoldi iteration (5 x 5 sparse), early breakdown" $
+      checkArnoldi' tm7 5 `shouldBe` True    
 
 
 {- QR-}
@@ -156,7 +159,13 @@ checkArnoldi aa kn = nearZero $ normFrobenius $ (aa #~# qvprev) ^-^ (qv #~# hh) 
   (m, n) = dim qv
   qvprev = extractSubmatrix qv (0, m - 1) (0, n - 2)
 
-
+checkArnoldi' :: (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> Bool
+checkArnoldi' aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
+  (q, h) = arnoldi' aa kn
+  (m, n) = dim q
+  q' = extractSubmatrix q (0, m - 1) (0, n - 2) -- q' = all but one column of q
+  rhs = q #~# h
+  lhs = aa #~# q'
 
 
 {-
@@ -271,9 +280,9 @@ randDiagMat n mu sig i = do
   return $ mkSubDiagonal n i x
 
 
-go (m:ms) mat =
-  m ^+^ go ms mat
-go [] mat = mat
+-- go (m:ms) mat =
+--   m ^+^ go ms mat
+-- go [] mat = mat
 
   
 plusM x y = return $ x ^+^ y
