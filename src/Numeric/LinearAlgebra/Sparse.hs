@@ -159,8 +159,8 @@ NB: the current version is quite inefficient in that:
 {-# inline givens #-}
 givens :: (Floating a, Epsilon a, Ord a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
 givens mm i j 
-  | isValidIxSM mm (i,j) && isSquareSM mm =
-       sparsifySM $ fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
+  | isValidIxSM mm (i,j) && nrows mm >= ncols mm =
+       fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
   | otherwise = error "givens : indices out of bounds"      
   where
     (c, s, _) = givensCoef a b
@@ -184,6 +184,8 @@ firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
 
 
 
+tm6 = fromListDenseSM 4 [1,3,4,2,2,5,2,10,3,6,8,11,4,7,9,12] :: SpMatrix Double
+
 
 -- * QR decomposition
 
@@ -196,7 +198,9 @@ qr mm = (transposeSM qmatt, rmat)  where
   ee = eye (nrows mm)
       
 -- | Givens matrices in order [G1, G2, .. , G_N ]
-gmats :: (Epsilon a, Real a, Floating a) => SpMatrix a -> [SpMatrix a]
+-- gmats :: (Epsilon a, Real a, Floating a) => SpMatrix a -> [SpMatrix a]
+
+-- FIXME : `m` must be recomputed at every recursion (G1 = givens A, G2 = givens (G1 ## A), G3 = givens (G2 ## G1 ## A) ...)
 gmats mm = gm mm (subdiagIndicesSM mm) where
  gm m ((i,j):is) = let g = givens m i j
                    in g : gm (g #~# m) is

@@ -13,14 +13,13 @@ module LibSpec where
 import Numeric.LinearAlgebra.Sparse
 -- import Numeric.LinearAlgebra.Class
 
-import Control.Monad (liftM, liftM2)
+import Control.Applicative (liftA2)
+-- import Control.Monad (liftM, liftM2, replicateM)
 import Control.Monad.Primitive
 import Data.Foldable (foldrM)
 
 import Data.Sparse.Common
 
-
-import Control.Monad (replicateM)
 import Control.Monad.State.Strict (execState)
 
 import qualified System.Random.MWC as MWC
@@ -90,29 +89,30 @@ spec = do
     it "CGS (3 x 3 sparse, s.p.d.)" $ 
       nearZero (normSq (linSolve CGS_ aa2 b2 ^-^ x2)) `shouldBe` True      
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ 
-    it "LU (unoptimized) (4 x 4 sparse)" $ 
+    it "lu (4 x 4 sparse)" $ 
       checkLuSolve aa1 b1 `shouldBe` True         
   describe "Numeric.LinearAlgebra.Sparse : QR decomposition" $ do    
-    it "QR (4 x 4 sparse)" $
+    it "qr (4 x 4 sparse)" $
       checkQr tm4 `shouldBe` True
-    it "QR (3 x 3 dense)" $ 
+    it "qr (3 x 3 dense)" $ 
       checkQr tm2 `shouldBe` True
   describe "Numeric.LinearAlgebra.Sparse : LU decomposition" $ do
-    it "LU (4 x 4 dense)" $
+    it "lu (4 x 4 dense)" $
       checkLu tm6 `shouldBe` True
-    it "LU (10 x 10 sparse)" $
+    it "lu (10 x 10 sparse)" $
       checkLu tm7 `shouldBe` True
-  describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (PSD matrices only)" $ 
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (PSD matrices)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 `shouldBe` True
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration" $ do
-    it "Arnoldi iteration (4 x 4 dense)" $
+    it "arnoldi (4 x 4 dense)" $
       checkArnoldi tm6 4 `shouldBe` True
-    it "Arnoldi iteration (5 x 5 sparse)" $
-      checkArnoldi tm7 5 `shouldBe` True    
-    it "Arnoldi iteration (4 x 4 dense), early breakdown" $
+    it "arnoldi (5 x 5 sparse)" $
+      checkArnoldi tm7 5 `shouldBe` True
+  describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration, early breakdown detection" $ do      
+    it "arnoldi' (4 x 4 dense)" $
       checkArnoldi' tm6 4 `shouldBe` True
-    it "Arnoldi iteration (5 x 5 sparse), early breakdown" $
+    it "arnoldi' (5 x 5 sparse)" $
       checkArnoldi' tm7 5 `shouldBe` True    
 
 
@@ -273,19 +273,20 @@ example 1 : random linear system
 --   let
 --     diags = [-bw .. bw - 1]
 
-randDiagMat :: PrimMonad m =>
-     Rows -> Double -> Double -> Int -> m (SpMatrix Double)
-randDiagMat n mu sig i = do
-  x <- randArray n mu sig
-  return $ mkSubDiagonal n i x
+-- randDiagMat :: PrimMonad m =>
+--      Rows -> Double -> Double -> Int -> m (SpMatrix Double)
+-- randDiagMat n mu sig i = do
+--   x <- randArray n mu sig
+--   return $ mkSubDiagonal n i x
 
 
 -- go (m:ms) mat =
 --   m ^+^ go ms mat
 -- go [] mat = mat
 
-  
-plusM x y = return $ x ^+^ y
+-- plusM ::
+--   (Additive f1, Applicative f, Num a) => f (f1 a) -> f (f1 a) -> f (f1 a)  
+-- plusM = liftA2 (^+^)
 
 
 
@@ -412,6 +413,11 @@ tm7 = a ^+^ b ^+^ c where
   b = mkSubDiagonal n 0 $ replicate n 2
   c = mkSubDiagonal n (-1) $ replicate n (-1)
 
+
+
+
+
+
 -- -- run N iterations 
 
 -- -- runNBiC :: Int -> SpMatrix Double -> SpVector Double -> BICGSTAB
@@ -449,3 +455,8 @@ tm8 = fromListSM (2,2) [(0,0,1), (0,1,1), (1,1,1)]
 
 tm8' :: SpMatrix Double
 tm8' = fromListSM (2,2) [(0,0,1), (1,0,1), (1,1,1)]
+
+
+
+tm9 :: SpMatrix Double
+tm9 = fromListSM (4, 3) [(0,0,pi), (1,1, 3), (2,2,4), (3,2, 1), (3,1, 5)]
