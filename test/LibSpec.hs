@@ -89,7 +89,7 @@ spec = do
     it "CGS (3 x 3 sparse, s.p.d.)" $ 
       nearZero (normSq (linSolve CGS_ aa2 b2 ^-^ x2)) `shouldBe` True      
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ 
-    it "lu (4 x 4 sparse)" $ 
+    it "luSolve (4 x 4 sparse)" $ 
       checkLuSolve aa1 b1 `shouldBe` True         
   describe "Numeric.LinearAlgebra.Sparse : QR decomposition" $ do    
     it "qr (4 x 4 sparse)" $
@@ -104,16 +104,11 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (PSD matrices)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 `shouldBe` True
-  describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration" $ do
-    it "arnoldi (4 x 4 dense)" $
-      checkArnoldi tm6 4 `shouldBe` True
-    it "arnoldi (5 x 5 sparse)" $
-      checkArnoldi tm7 5 `shouldBe` True
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration, early breakdown detection" $ do      
     it "arnoldi' (4 x 4 dense)" $
-      checkArnoldi' tm6 4 `shouldBe` True
+      checkArnoldi tm6 4 `shouldBe` True
     it "arnoldi' (5 x 5 sparse)" $
-      checkArnoldi' tm7 5 `shouldBe` True    
+      checkArnoldi tm7 5 `shouldBe` True    
 
 
 {- QR-}
@@ -155,14 +150,8 @@ checkLuSolve amat rhs = nearZero (normSq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
   
 {- Arnoldi iteration -}
 checkArnoldi :: (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> Bool
-checkArnoldi aa kn = nearZero $ normFrobenius $ (aa #~# qvprev) ^-^ (qv #~# hh) where
-  (qv, hh) = arnoldi aa kn
-  (m, n) = dim qv
-  qvprev = extractSubmatrix qv (0, m - 1) (0, n - 2)
-
-checkArnoldi' :: (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> Bool
-checkArnoldi' aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
-  (q, h) = arnoldi' aa kn
+checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
+  (q, h) = arnoldi aa kn
   (m, n) = dim q
   q' = extractSubmatrix q (0, m - 1) (0, n - 2) -- q' = all but one column of q
   rhs = q #~# h

@@ -13,7 +13,7 @@ module Numeric.LinearAlgebra.Sparse
          -- * Givens' rotation
          givens,
          -- * Arnoldi iteration
-         arnoldi, arnoldi',
+         arnoldi, 
          -- * Eigensolvers
          eigsQR, eigRayleigh,
          -- * Linear solvers
@@ -420,19 +420,6 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 
 
 
--- * Incomplete LU
-
--- | used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
-
-
-ilu0 :: (Epsilon a, Real a, Fractional a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
-ilu0 aa = (lh, uh) where
-  (l, u) = lu aa
-  lh = sparsifyLU l aa
-  uh = sparsifyLU u aa
-  sparsifyLU m m2 = ifilterSM f m where
-    f i j _ = isJust (lookupSM m2 i j)
-
 
 
 
@@ -444,39 +431,8 @@ ilu0 aa = (lh, uh) where
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 
 arnoldi ::
-  (Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
-arnoldi aa kn = (fromCols qvfin, hhfin)
-  where
-  (qvfin, hhfin, _) = execState (modifyUntil tf arnoldiStep) arnInit 
-  tf (_, _, ii) = ii == kn -- termination criterion
-  (m, n) = dim aa
-  arnInit = (qv1, hh1, 1) where      
-      q0 = normalize 2 $ onesSV n -- starting basis vector
-      aq0 = aa #> q0              -- A q0
-      h11 = q0 `dot` aq0          
-      q1nn = (aq0 ^-^ (h11 .* q0))
-      hh1 = fromListSM (m + 1, n) [(0, 0, h11), (1, 0, h21)] where        
-        h21 = norm 2 q1nn
-      q1 = normalize 2 q1nn       -- q1 `dot` q0 ~ 0
-      qv1 = V.fromList [q0, q1]
-  arnoldiStep (qv, hh, i) = (qv', hh', i + 1) where
-    qi = V.last qv
-    aqi = aa #> qi
-    hhcoli = fmap (`dot` aqi) qv -- H_{1, i}, H_{2, i}, .. , H_{m + 1, i}
-    zv = zeroSV m
-    qipnn =
-      aqi ^-^ (V.foldl' (^+^) zv (V.zipWith (.*) hhcoli qv)) -- unnormalized q_{i+1}
-    qipnorm = singletonSV $ norm 2 qipnn      -- normalization factor H_{i+1, i}
-    qip = normalize 2 qipnn              -- q_{i + 1}
-    hh' = insertCol hh (concatSV (fromVector hhcoli) qipnorm) i -- update H
-    qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
-
-
--- arnoldi' :: (Epsilon a, Floating a, Eq a) =>
---      SpMatrix a -> Int -> (V.Vector (SpVector a), V.Vector (Int, Int, a))
-arnoldi' ::
   (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
-arnoldi' aa kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
+arnoldi aa kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
   where
   (qvfin, hhfin, nmax, _) = execState (modifyUntil tf arnoldiStep) arnInit 
   tf (_, _, ii, fbreak) = ii == kn || fbreak -- termination criterion
@@ -509,41 +465,7 @@ arnoldi' aa kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
 
 
 
--- -- -- why does q2 lose orthogonality ? because the unnormalized q vectors have decreasing norm and the Arnoldi iteration breaks down when this norm is ~ 0
--- n = 3
--- q0 = normalize 2 $ onesSV n
 
--- aq0 = aa #> q0
--- h00 = q0 `dot` aq0
--- q1nn = aq0 ^-^ (h00 .* q0)
--- q1 = normalize 2 q1nn
-
--- aq1 = aa #> q1
--- h01 = q0 `dot` aq1
--- h11 = q1 `dot` aq1
--- q2nn = aq1 ^-^ ((h01 .* q0) ^+^ (h11 .* q1))
--- q2 = normalize 2 q2nn
-
--- -- --
-
-
-
--- -- -- test data
--- (qv, hh) = arnoldi aa 3
-
--- -- -- columns of qv should be orthonormal
--- -- q1 = extractCol qv 1
--- -- q2 = extractCol qv 2
-
-
-aa :: SpMatrix Double
-aa = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
-
--- x2, b2, x2i :: SpVector Double
--- x2 = mkSpVectorD 3 [3,2,3]
--- b2 = mkSpVectorD 3 [4,-2,4]
-
--- x2i = mkSpVectorD 3 [1,1,1]
 
 
 
@@ -555,6 +477,25 @@ diagPartitions aa = (e,d,f) where
   e = extractSubDiag aa
   d = extractDiag aa
   f = extractSuperDiag aa
+
+
+-- -- ** Jacobi preconditioner
+
+-- -- | Returns the reciprocal of the diagonal 
+-- jacobiPreconditioner :: SpMatrix Double -> SpMatrix Double
+-- jacobiPreconditioner = reciprocal . extractDiag
+
+
+-- ** Incomplete LU
+
+-- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
+ilu0 :: (Epsilon a, Real a, Fractional a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+ilu0 aa = (lh, uh) where
+  (l, u) = lu aa
+  lh = sparsifyLU l aa
+  uh = sparsifyLU u aa
+  sparsifyLU m m2 = ifilterSM f m where
+    f i j _ = isJust (lookupSM m2 i j)
 
 
 -- ** SSOR
@@ -580,18 +521,19 @@ mSsor aa omega = (l, r) where
 luSolve ::
   (Fractional a, Eq a, Epsilon a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
 luSolve ll uu b
-  | isLowerTriSM ll && isUpperTriSM uu = lubwSolve uu (lufwSolve ll b)
+  | isLowerTriSM ll && isUpperTriSM uu = triUpperSolve uu (triLowerSolve ll b)
   | otherwise = error "luSolve : factors must be triangular matrices" 
 
-lufwSolve ll b = sparsifySV v where
+triLowerSolve :: (Epsilon a, Fractional a) => SpMatrix a -> SpVector a -> SpVector a
+triLowerSolve ll b = sparsifySV v where
   (v, _) = execState (modifyUntil q lStep) lInit where
   q (_, i) = i == dim b
-  lStep (ww, i) = (wwi, i + 1) where
+  lStep (ww, i) = (ww', i + 1) where
     lii = ll @@ (i, i)
     bi = b @@ i
     wi = (bi - r)/lii where
       r = extractSubRow ll i (0, i-1) `dot` takeSV i ww
-    wwi = insertSpVector i wi ww
+    ww' = insertSpVector i wi ww
   lInit = (ww0, 1) where
     l00 = ll @@ (0, 0)
     b0 = b @@ 0
@@ -599,15 +541,16 @@ lufwSolve ll b = sparsifySV v where
     ww0 = insertSpVector 0 w0 $ zeroSV (dim b)  
 
 -- | NB in the computation of `xi` we must rebalance the subrow indices because `dropSV` does that too, in order to take the inner product with consistent index pairs
-lubwSolve uu w = sparsifySV x where
+triUpperSolve :: (Epsilon a, Fractional a) => SpMatrix a -> SpVector a -> SpVector a
+triUpperSolve uu w = sparsifySV x where
   (x, _) = execState (modifyUntil q uStep) uInit
   q (_, i) = i == (- 1)
-  uStep (xx, i) = (xxi, i - 1) where
+  uStep (xx, i) = (xx', i - 1) where
     uii = uu @@ (i, i)
     wi = w @@ i
     xi = (wi - r) / uii where
         r = extractSubRow_RK uu i (i + 1, dim w - 1) `dot` dropSV (i + 1) xx
-    xxi = insertSpVector i xi xx
+    xx' = insertSpVector i xi xx
   uInit = (xx0, i - 1) where
     i = dim w - 1
     u00 = uu @@ (i, i)
@@ -626,6 +569,8 @@ lubwSolve uu w = sparsifySV x where
 -- ** GMRES
 
 -- *** Left-preconditioning
+
+
 
 
 
