@@ -120,10 +120,11 @@ spec = do
 
 
 checkQr :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
-checkQr a = c1 && c2 where
+checkQr a = c1 && c2 && c3 where
   (q, r) = qr a
   c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
   c2 = isOrthogonalSM q
+  c3 = isUpperTriSM r
 
 
 

@@ -3,7 +3,8 @@
 module Numeric.LinearAlgebra.Sparse
        (
          -- * Matrix factorizations
-         qr, lu,
+         qr,
+         lu,
          chol,
          -- * Condition number
          conditionNumberSM,
@@ -184,39 +185,28 @@ firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
 
 
 
-tm6 = fromListDenseSM 4 [1,3,4,2,2,5,2,10,3,6,8,11,4,7,9,12] :: SpMatrix Double
+
 
 
 -- * QR decomposition
 
 
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
-qr :: (Epsilon a, Floating a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
-qr mm = (transposeSM qmatt, rmat)  where
-  qmatt = F.foldl' (#~#) ee $ gmats mm -- Q^T = (G_n * G_n-1 ... * G_1)
-  rmat = qmatt #~# mm                  -- R = Q^T A
-  ee = eye (nrows mm)
-      
--- | Givens matrices in order [G1, G2, .. , G_N ]
--- gmats :: (Epsilon a, Real a, Floating a) => SpMatrix a -> [SpMatrix a]
+qr :: (Epsilon a, Ord a, Floating a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+qr mm = (transposeSM qt, r) where
+  (qt, r, _) = execState (modifyUntil qf stepf) gminit
+  qf (_, _, iis) = null iis
+  stepf (qmatt, m, iis) = (qmatt', m', tail iis) where
+    (i, j) = head iis
+    g = givens m i j
+    qmatt' = g #~# qmatt  -- update Q'
+    m' = g #~# m          -- update R
+  gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
 
--- FIXME : `m` must be recomputed at every recursion (G1 = givens A, G2 = givens (G1 ## A), G3 = givens (G2 ## G1 ## A) ...)
-gmats mm = gm mm (subdiagIndicesSM mm) where
- gm m ((i,j):is) = let g = givens m i j
-                   in g : gm (g #~# m) is
- gm _ [] = []
-
+    
+  
 
 
-
-
--- -- | QR algorithm, state transformer version
--- gmatST0 (m, (i,j):is) = (m', is) where    -- WRONG, possible access to []
---   g = givens m i j                        
---   m' = g #~# m
--- gmatST0 (m, []) = (eye (nrows m), [])
-
--- gmatST m = gmatST0 (m, subdiagIndicesSM m)
 
 
 
