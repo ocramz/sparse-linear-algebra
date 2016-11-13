@@ -154,7 +154,8 @@ checkLuSolve amat rhs = nearZero (normSq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
 {- Arnoldi iteration -}
 checkArnoldi :: (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> Bool
 checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
-  (q, h) = arnoldi aa kn
+  b = onesSV (nrows aa)
+  (q, h) = arnoldi aa b kn
   (m, n) = dim q
   q' = extractSubmatrix q (0, m - 1) (0, n - 2) -- q' = all but one column of q
   rhs = q #~# h

@@ -427,19 +427,19 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 
 -- * Arnoldi iteration
 
--- | Given a matrix A and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (as the columns of matrix Q), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
+-- | Given a matrix A, a vector b and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (as the columns of matrix Q), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 
 arnoldi ::
-  (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> (SpMatrix a, SpMatrix a)
-arnoldi aa kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
+  (Epsilon a, Floating a, Eq a) => SpMatrix a -> SpVector a -> Int -> (SpMatrix a, SpMatrix a)
+arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
   where
   (qvfin, hhfin, nmax, _) = execState (modifyUntil tf arnoldiStep) arnInit 
   tf (_, _, ii, fbreak) = ii == kn || fbreak -- termination criterion
   (m, n) = dim aa
   arnInit = (qv1, hh1, 1, False) where
-      q0 = normalize 2 $ onesSV n -- starting basis vector
-      aq0 = aa #> q0              -- A q0
+      q0 = normalize 2 b   -- starting basis vector
+      aq0 = aa #> q0       -- A q0
       h11 = q0 `dot` aq0          
       q1nn = (aq0 ^-^ (h11 .* q0))
       hh1 = V.fromList [(0, 0, h11), (1, 0, h21)] where        
