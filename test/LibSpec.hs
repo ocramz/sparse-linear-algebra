@@ -126,17 +126,20 @@ checkQr a = c1 && c2 && c3 where
 {- LU -}
 
 checkLu :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
-checkLu a = lup == a where
+checkLu a = c1 && c2 where
   (l, u) = lu a
-  lup = l #~# u
+  c1 = nearZero (normFrobenius ((l #~# u) ^-^ a))
+  c2 = isUpperTriSM u && isLowerTriSM l
 
 
 
 {- Cholesky -}
 
 checkChol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
-checkChol a = nearZero $ normFrobenius ((l ##^ l) ^-^ a) where
+checkChol a = c1 && c2 where
   l = chol a
+  c1 = nearZero $ normFrobenius ((l ##^ l) ^-^ a)
+  c2 = isLowerTriSM l
 
 
 {- direct linear solver -}

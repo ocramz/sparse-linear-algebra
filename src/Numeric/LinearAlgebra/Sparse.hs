@@ -47,7 +47,7 @@ import Data.Sparse.Common
 import Control.Monad.Primitive
 import Control.Monad (mapM_, forM_, replicateM)
 import Control.Monad.State.Strict
-import Control.Monad.Writer
+-- import Control.Monad.Writer
 -- import Control.Monad.Trans
 -- import Control.Monad.Trans.State (runStateT)
 -- import Control.Monad.Trans.Writer (runWriterT)
@@ -83,7 +83,7 @@ sparsifySV = filterSV isNz
 
 -- |uses the R matrix from the QR factorization
 conditionNumberSM :: (Epsilon a, RealFloat a) => SpMatrix a -> a
-conditionNumberSM m | isInfinite kappa = error "Infinite condition number : rank-deficient system"
+conditionNumberSM m | nearZero lmin = error "Infinite condition number : rank-deficient system"
                     | otherwise = kappa where
   kappa = lmax / lmin
   (_, r) = qr m
