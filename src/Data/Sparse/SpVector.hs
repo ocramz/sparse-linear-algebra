@@ -203,6 +203,10 @@ insertSpVector i x (SV d xim)
 fromListSV :: Int -> [(Int, a)] -> SpVector a
 fromListSV d iix = SV d (IM.fromList (filter (inBounds0 d . fst) iix ))
 
+-- fromListSV' d iix = SV d (F.foldl' insf IM.empty iix') where
+--   insf im (i, x) = IM.insert i x im
+--   iix' = filter (inBounds0 d . fst) iix   -- filtering forces list as only instance
+ 
 -- ** toList
 toListSV :: SpVector a -> [(IM.Key, a)]
 toListSV sv = IM.toList (dat sv)

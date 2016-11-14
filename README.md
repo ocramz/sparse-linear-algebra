@@ -140,7 +140,7 @@ This is also an experiment in principled scientific programming :
 
 * define appropriate data structures, and how they relate to those properties (sparse vectors and matrices, defined internally via `Data.IntMap`, are made instances of the VectorSpace and Additive classes respectively). This allows to decouple the algorithms from the actual implementation of the backend,
 
-* implement the algorithms, following 1:1 the textbook [1] 
+* implement the algorithms, following 1:1 the textbook [1, 2] 
 
 
 ## License
@@ -157,3 +157,5 @@ Inspired by
 ## References
 
 [1] : Y. Saad, Iterative Methods for Sparse Linear Systems, 2nd ed., 2000
+
+[2] : L. N. Trefethen, D. Bau, Numerical Linear Algebra, SIAM, 1997

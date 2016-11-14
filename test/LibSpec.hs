@@ -105,9 +105,9 @@ spec = do
     it "chol (5 x 5 sparse)" $
       checkChol tm7 `shouldBe` True
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration, early breakdown detection" $ do      
-    it "arnoldi' (4 x 4 dense)" $
+    it "arnoldi (4 x 4 dense)" $
       checkArnoldi tm6 4 `shouldBe` True
-    it "arnoldi' (5 x 5 sparse)" $
+    it "arnoldi (5 x 5 sparse)" $
       checkArnoldi tm7 5 `shouldBe` True    
 
 
