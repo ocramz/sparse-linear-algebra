@@ -76,6 +76,12 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers" $ do
     -- it "TFQMR (2 x 2 dense)" $
     --   normSq (_xTfq (tfqmr aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
+    it "GMRES (2 x 2 dense)" $
+      nearZero (normSq (linSolve GMRES_ aa0 b0 ^-^ x0true)) `shouldBe` True
+    it "GMRES (3 x 3 sparse, s.p.d.)" $
+      nearZero (normSq (linSolve GMRES_ aa2 b2 ^-^ x2)) `shouldBe` True
+    it "GMRES (4 x 4 sparse)" $
+      nearZero (normSq (linSolve GMRES_ aa1 b1 ^-^ x1)) `shouldBe` True      
     it "BCG (2 x 2 dense)" $
       nearZero (normSq (linSolve BCG_ aa0 b0 ^-^ x0true)) `shouldBe` True
     it "BCG (3 x 3 sparse, s.p.d.)" $

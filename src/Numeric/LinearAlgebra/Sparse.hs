@@ -568,30 +568,32 @@ triUpperSolve uu w = sparsifySV x where
 
 -- ** GMRES
 
+-- | Given a linear system `A x = b` where `A` is an (m x m) real-valued matrix, the GMRES method finds an approximate solution `xhat` such that the Euclidean norm of the residual `A xhat - b` is minimized. `xhat` is spanned by the order-`n` Krylov subspace of (A, b).
+-- In this implementation:
+-- 1) the Arnoldi iteration is carried out until numerical breakdown (therefore yielding _at_most_ `m` Krylov basis vectors)
+-- 2) the resulting Hessenberg matrix is factorized in QR form
+-- 3) the Krylov-subspace solution `yhat` is found by backsubstitution
+-- 4) the approximate solution in the original space `xhat` is computed using the Krylov basis, `xhat = Q_n yhat`
+--
+-- Many optimizations are possible, for example interleaving the QR factorization with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
+
 gmres :: (Epsilon a, Ord a, Floating a) => SpMatrix a -> SpVector a -> SpVector a
 gmres aa b = qa' #> yhat where
   m = ncols aa
-  (qa, ha) = arnoldi aa b m  -- at most m steps of Arnoldi (aa, b)
+  (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
   -- b' = (transposeSe qa) #> b
   b' = norm2 b .* (ei mp1 1)  -- b rotated back to canonical basis by Q^T
-     where mp1 = nrows ha          -- 1 + # Arnoldi iterations
-  (qh, rh) = qr ha           -- QR fact.of H
+     where mp1 = nrows ha     -- 1 + # Arnoldi iterations
+  (qh, rh) = qr ha            -- QR fact.of H
   yhat = triUpperSolve rh' rhs' where
-    rhs' = takeSV m (transposeSM qh #> b')
-    rh' = takeRows m rh
+    rhs' = takeSV (dim b' - 1) (transposeSM qh #> b')
+    rh' = takeRows (nrows rh - 1) rh
   qa' = takeCols (ncols qa - 1) qa
 
 
 
 
 
-aa :: SpMatrix Double
-aa = fromListDenseSM 2 [1,3,2,4]
--- b0, x0 : r.h.s and initial solution resp.
-b, x0true :: SpVector Double
-b = mkSpVectorD 2 [8,18]
--- x0true : true solution
-x0true = mkSpVectorD 2 [2,3]
 
 
 -- *** Left-preconditioning
