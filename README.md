@@ -126,7 +126,7 @@ Sometimes we need to compute matrix-matrix transpose products, which is why the 
     [12.0,9.0,10.8]
     [8.0,10.8,29.0]
 
-In the above example we also showed the Cholesky decomposition (M = L L^T where L is a lower-triangular matrix), which is only possible for symmetric positive-definite matrices.
+In the above example we have also shown the Cholesky decomposition (M = L L^T where L is a lower-triangular matrix), which is only possible for symmetric positive-definite matrices.
 
 ### Linear systems
 
