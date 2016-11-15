@@ -570,12 +570,12 @@ triUpperSolve uu w = sparsifySV x where
 
 -- | Given a linear system `A x = b` where `A` is an (m x m) real-valued matrix, the GMRES method finds an approximate solution `xhat` such that the Euclidean norm of the residual `A xhat - b` is minimized. `xhat` is spanned by the order-`n` Krylov subspace of (A, b).
 -- In this implementation:
--- 1) the Arnoldi iteration is carried out until numerical breakdown (therefore yielding _at_most_ `m` Krylov basis vectors)
--- 2) the resulting Hessenberg matrix is factorized in QR form
--- 3) the Krylov-subspace solution `yhat` is found by backsubstitution
+-- 1) the Arnoldi iteration is carried out until numerical breakdown (therefore yielding _at_most_ `m+1` Krylov basis vectors)
+-- 2) the resulting Hessenberg matrix H is factorized in QR form (H = Q R)
+-- 3) the Krylov-subspace solution `yhat` is found by backsubstitution (since R is upper-triangular)
 -- 4) the approximate solution in the original space `xhat` is computed using the Krylov basis, `xhat = Q_n yhat`
 --
--- Many optimizations are possible, for example interleaving the QR factorization with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
+-- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
 gmres :: (Epsilon a, Ord a, Floating a) => SpMatrix a -> SpVector a -> SpVector a
 gmres aa b = qa' #> yhat where
@@ -849,7 +849,7 @@ linSolve method aa b
       (m, n) = dim aa
       nb     = dim b
 
--- | <\\> : linSolve using the BiCGSTAB method as default
+-- | linSolve using the GMRES method as default
 (<\>) :: SpMatrix Double -> SpVector Double -> SpVector Double      
 (<\>) = linSolve GMRES_ 
   
