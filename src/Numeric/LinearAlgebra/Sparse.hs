@@ -568,6 +568,32 @@ triUpperSolve uu w = sparsifySV x where
 
 -- ** GMRES
 
+gmres :: (Epsilon a, Ord a, Floating a) => SpMatrix a -> SpVector a -> SpVector a
+gmres aa b = qa' #> yhat where
+  m = ncols aa
+  (qa, ha) = arnoldi aa b m  -- at most m steps of Arnoldi (aa, b)
+  -- b' = (transposeSe qa) #> b
+  b' = norm2 b .* (ei mp1 1)  -- b rotated back to canonical basis by Q^T
+     where mp1 = nrows ha          -- 1 + # Arnoldi iterations
+  (qh, rh) = qr ha           -- QR fact.of H
+  yhat = triUpperSolve rh' rhs' where
+    rhs' = takeSV m (transposeSM qh #> b')
+    rh' = takeRows m rh
+  qa' = takeCols (ncols qa - 1) qa
+
+
+
+
+
+aa :: SpMatrix Double
+aa = fromListDenseSM 2 [1,3,2,4]
+-- b0, x0 : r.h.s and initial solution resp.
+b, x0true :: SpVector Double
+b = mkSpVectorD 2 [8,18]
+-- x0true : true solution
+x0true = mkSpVectorD 2 [2,3]
+
+
 -- *** Left-preconditioning
 
 
@@ -788,7 +814,7 @@ pinv aa b = aa #^# aa <\> atb where
 
 -- * Linear solver interface
 
-data LinSolveMethod = CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
+data LinSolveMethod = GMRES_ | CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
 -- -- | Linear solve with _random_ starting vector
 -- linSolveM ::
@@ -811,6 +837,7 @@ linSolve method aa b
       solve aa' b' | isDiagonalSM aa' = reciprocal aa' #> b' -- diagonal solve is easy
                    | otherwise = solveWith aa' b' 
       solveWith aa' b' = case method of
+        GMRES_ -> gmres aa' b'
         CGNE_ -> _xCgne (cgne aa' b' x0)
         TFQMR_ -> _xTfq (tfqmr aa' b' x0)
         BCG_ -> _xBcg (bcg aa' b' x0)

@@ -291,6 +291,12 @@ extractSubmatrix :: SpMatrix a -> (IxRow, IxRow) -> (IxCol, IxCol) -> SpMatrix a
 extractSubmatrix = extractSubmatrixSM id id
 
 
+takeRows :: IxRow -> SpMatrix a -> SpMatrix a
+takeRows n mm = extractSubmatrix mm (0, n-1) (0, ncols mm - 1)
+
+takeCols :: IxCol -> SpMatrix a -> SpMatrix a
+takeCols n mm = extractSubmatrix mm (0, nrows mm - 1) (0, n - 1)
+
 
 
 -- *** Extract i'th row

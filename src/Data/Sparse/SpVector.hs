@@ -104,14 +104,19 @@ instance Normed SpVector where
 
 -- ** Creation
 
--- | empty sparse vector (length n, no entries)
+-- | Empty sparse vector (length n, no entries)
 zeroSV :: Int -> SpVector a
 zeroSV n = SV n IM.empty
 
 
--- | singleton sparse vector (length 1)
+-- | Singleton sparse vector (length 1)
 singletonSV :: a -> SpVector a
 singletonSV x = SV 1 (IM.singleton 0 x)
+
+
+-- | Canonical basis vector in R^n
+ei :: Num a => Int -> IM.Key -> SpVector a
+ei n i = SV n (IM.insert (i - 1) 1 IM.empty)
 
 
 
