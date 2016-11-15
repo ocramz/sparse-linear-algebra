@@ -583,12 +583,12 @@ gmres aa b = qa' #> yhat where
   (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
   -- b' = (transposeSe qa) #> b
   b' = norm2 b .* (ei mp1 1)  -- b rotated back to canonical basis by Q^T
-     where mp1 = nrows ha     -- 1 + # Arnoldi iterations
-  (qh, rh) = qr ha            -- QR fact.of H
+     where mp1 = nrows ha     -- = 1 + (# Arnoldi iterations)
+  (qh, rh) = qr ha            -- QR factors of H
   yhat = triUpperSolve rh' rhs' where
     rhs' = takeSV (dim b' - 1) (transposeSM qh #> b')
-    rh' = takeRows (nrows rh - 1) rh
-  qa' = takeCols (ncols qa - 1) qa
+    rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
+  qa' = takeCols (ncols qa - 1) qa   -- we don't use last column of Krylov basis
 
 
 

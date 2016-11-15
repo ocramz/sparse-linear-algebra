@@ -1,3 +1,4 @@
+{-# language FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca, 2012-2015 Edward Kmett
@@ -11,6 +12,7 @@
 module Numeric.Eps
   ( Epsilon(..), nearZero, isNz, roundZero, roundOne, roundZeroOne
   ) where
+import Data.Complex
 import Foreign.C.Types (CFloat, CDouble)
 
 -- | Provides a test to see if a quantity is near zero.
@@ -46,6 +48,20 @@ instance Epsilon CFloat where
 instance Epsilon CDouble where
   nearZero a = abs a <= 1e-12
 
+
+-- | Complex types
+
+instance Epsilon (Complex Float) where
+  nearZero a = magnitude a <= 1e-6
+
+instance Epsilon (Complex Double) where
+  nearZero a = magnitude a <= 1e-12
+
+instance Epsilon (Complex CFloat) where
+  nearZero a = magnitude a <= 1e-6
+
+instance Epsilon (Complex CDouble) where
+  nearZero a = magnitude a <= 1e-12
 
 
 
