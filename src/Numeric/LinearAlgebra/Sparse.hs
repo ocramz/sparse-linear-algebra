@@ -851,7 +851,7 @@ linSolve method aa b
 
 -- | <\\> : linSolve using the BiCGSTAB method as default
 (<\>) :: SpMatrix Double -> SpVector Double -> SpVector Double      
-(<\>) = linSolve BICGSTAB_ 
+(<\>) = linSolve GMRES_ 
   
 
 
