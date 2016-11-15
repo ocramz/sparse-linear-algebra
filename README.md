@@ -10,6 +10,8 @@ Contents :
 
 * Iterative linear solvers (`linSolve`)
 
+    * Generalized Minimal Residual (GMRES) (non-Hermitian systems) 
+
     * BiConjugate Gradient (BCG)
 
     * Conjugate Gradient Squared (CGS)
