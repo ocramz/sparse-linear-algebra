@@ -82,7 +82,7 @@ The zeros are just added at printing time; sparse vectors and matrices should on
 
 ### Matrix operations
 
-Matrix factorizations are available as `lu` and `qr` respectively, and are straightforward to verify by using the matrix product `##`  :
+There are a few common matrix factorizations available; in the following example we compute the LU factorization of a matrix and verify it with the matrix-matrix product `##`  :
 
     > (l, u) = lu amat
     > prd $ l ## u
@@ -102,10 +102,31 @@ To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, whic
     [4.0,3.0,2.0]
     [0.0,0.0,5.0]
 
+A matrix is transposed using `transposeSM`.
+
+Sometimes we need to compute matrix-matrix transpose products, which is why the library offers the infix operators `#^#` (M^T N) and `##^` (M N^T):
+
+    > amat' = amat #^# amat
+    > prd amat'
+    ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
+
+    [20.0,12.0,8.0]
+    [12.0,9.0,6.0]
+    [8.0,6.0,29.0]
+
+    > l = chol amat'
+    > prd $ l ##^ l
+    ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
+
+    [20.000000000000004,12.0,8.0]
+    [12.0,9.0,10.8]
+    [8.0,10.8,29.0]
+
+In the above example we also showed the Cholesky decomposition (M = L L^T where L is a lower-triangular matrix), which is only possible for symmetric positive-definite matrices.
 
 ### Linear systems
 
-Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `linSolve` function, or alternatively `<\>` (which uses BiCGSTAB as default) :
+Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `linSolve` function, or alternatively `<\>` (which uses GMRES as default solver method) :
 
     > b = fromListSV 3 [(0,3),(1,2),(2,5)]
     > x = amat <\> b
