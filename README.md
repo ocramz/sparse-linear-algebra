@@ -66,6 +66,10 @@ and similarly
     fromListSV :: Int -> [(Int, a)] -> SpVector a
 
 can be used to create sparse vectors.
+Alternatively, the user can copy the contents of a list to a (dense) SpVector using
+
+    fromListDenseSV :: Int -> [a] -> SpVector a
+
 
 ### Displaying sparse data
 
@@ -128,7 +132,7 @@ In the above example we also showed the Cholesky decomposition (M = L L^T where 
 
 Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `linSolve` function, or alternatively `<\>` (which uses GMRES as default solver method) :
 
-    > b = fromListSV 3 [(0,3),(1,2),(2,5)]
+    > b = fromListDenseSV 3 [3,2,5]
     > x = amat <\> b
     > prd x
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
