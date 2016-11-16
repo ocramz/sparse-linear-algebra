@@ -53,7 +53,7 @@ The module `Numeric.LinearAlgebra.Sparse` contains the user interface.
 
 ### Creation of sparse data
 
-The `fromListSM` function creates a sparse matrix from an array of its entries we use :
+The `fromListSM` function creates a sparse matrix from a collection of its entries in (row, column, value) format:
 
     fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
 
@@ -61,7 +61,7 @@ e.g.
 
     > amat = fromListSM (3,3) [(0,0,2),(1,0,4),(1,1,3),(1,2,2),(2,2,5)]
 
-and similarly
+and, similarly,
 
     fromListSV :: Int -> [(Int, a)] -> SpVector a
 

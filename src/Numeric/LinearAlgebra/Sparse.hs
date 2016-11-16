@@ -500,7 +500,7 @@ ilu0 aa = (lh, uh) where
 
 -- ** SSOR
 
--- | `mSsor aa omega` : if `omega = 1` it returns the symmetric Gauss-Seidel preconditioner
+-- | `mSsor aa omega` : if `omega = 1` it returns the symmetric Gauss-Seidel preconditioner. When ω = 1, the SOR reduces to Gauss-Seidel; when ω > 1 and ω < 1, it corresponds to over-relaxation and under-relaxation, respectively.
 mSsor :: Fractional a => SpMatrix a -> a -> (SpMatrix a, SpMatrix a)
 mSsor aa omega = (l, r) where
   (e, d, f) = diagPartitions aa
