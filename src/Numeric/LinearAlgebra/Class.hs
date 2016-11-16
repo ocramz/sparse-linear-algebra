@@ -1,18 +1,30 @@
 {-# LANGUAGE TypeFamilies, MultiParamTypeClasses, KindSignatures #-}
 module Numeric.LinearAlgebra.Class where
 
--- * Additive ring 
-class Functor f => Additive f where
-  -- | Ring zero element
-  zero :: Num a => f a
+import Data.Complex
+
+-- * Matrix and vector elements (possibly Complex)
+class (Eq e , Fractional e) => Elt e where
+  conj :: e -> e
+  conj = id
   
-  -- | Ring +
-  (^+^) :: Num a => f a -> f a -> f a
+instance Elt Double
+instance Elt Float
+instance RealFloat e => Elt (Complex e) where
+  conj = conjugate
+  
 
 
-  one :: Num a => f a
+-- * Additive monoid
+class (Elt e, Functor f) => Additive f e where
+  -- | Monoid neutral element
+  zero :: f e
+  
+  -- | Monoid +
+  (^+^) :: f e -> f e -> f e
 
-  (^*^) :: Num a => f a -> f a -> f a
+  -- one :: Num a => f a
+  -- (^*^) :: Num a => f a -> f a -> f a
 
 
 
@@ -21,7 +33,7 @@ negated :: (Num a, Functor f) => f a -> f a
 negated = fmap negate
 
 -- | subtract two Additive objects
-(^-^) :: (Additive f, Num a) => f a -> f a -> f a
+(^-^) :: Additive f e => f e -> f e -> f e
 x ^-^ y = x ^+^ negated y
 
 
@@ -30,34 +42,45 @@ x ^-^ y = x ^+^ negated y
 
 
 -- * Vector space
-class Additive f => VectorSpace f where
+class Additive f e => VectorSpace f e where
   -- | multiplication by a scalar
-  (.*) :: Num a => a -> f a -> f a
+  (.*) :: e -> f e -> f e
   
 
 -- |linear interpolation
-lerp :: (VectorSpace f, Num a) => a -> f a -> f a -> f a
+lerp :: VectorSpace f e => e -> f e -> f e -> f e
 lerp a u v = a .* u ^+^ ((1-a) .* v)
 
 
+
+
+
+
+
+
+
 -- * Hilbert space (inner product)
-class VectorSpace f => Hilbert f where
+class VectorSpace f e => Hilbert f e where
   -- | inner product
-  dot :: Num a => f a -> f a -> a
+  dot :: Floating a => f e -> f e -> a
 
 
 -- ** Hilbert-space distance function
 -- |`hilbertDistSq x y = || x - y ||^2`
-hilbertDistSq :: (Hilbert f, Num a) => f a -> f a -> a
+hilbertDistSq :: (Hilbert f e, Floating a) => f e -> f e -> a
 hilbertDistSq x y = dot t t where
   t = x ^-^ y
 
-  
+
+
+
+
+
 
 
 -- * Normed vector space
-class Hilbert f => Normed f where
-  norm :: (Floating a, Eq a) => a -> f a -> a
+class Hilbert f e => Normed f e where
+  norm :: (Floating a, Eq a) => a -> f e -> e
 
 
 
@@ -65,7 +88,7 @@ class Hilbert f => Normed f where
 -- ** Norms and related results
 
 -- | Squared 2-norm
-normSq :: (Hilbert f, Num a) => f a -> a
+normSq :: (Hilbert f e, Floating a) => f e -> a
 normSq v = v `dot` v
 
 
@@ -74,7 +97,7 @@ norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 norm1 v = sum (fmap abs v)
 
 -- |Euclidean norm
-norm2 :: (Hilbert f, Floating a) => f a -> a
+norm2 :: (Hilbert f e, Floating a) => f e -> a
 norm2 v = sqrt (normSq v)
 
 -- |Lp norm (p > 0)
@@ -89,7 +112,7 @@ normInfty = maximum
 
 
 -- |Normalize w.r.t. p-norm (p finite)
-normalize :: (Normed f, Floating a, Eq a) => a -> f a -> f a
+normalize :: (Normed f e, Floating a, Eq a) => a -> f e -> f e
 normalize p v = (1 / norm p v) .* v
 
 
@@ -122,30 +145,30 @@ scale n = fmap (* n)
 
 -- * FiniteDim : finite-dimensional objects
 
-class Additive f => FiniteDim f where
+class Additive f e => FiniteDim f e where
   type FDSize f :: *
-  dim :: f a -> FDSize f
+  dim :: f e -> FDSize f
 
 
 -- | unary dimension-checking bracket
-withDim :: (FiniteDim f, Show e) =>
-     f a
-     -> (FDSize f -> f a -> Bool)
-     -> (f a -> c)
+withDim :: (FiniteDim f e, Show s) =>
+     f e
+     -> (FDSize f -> f e -> Bool)
+     -> (f e -> c)
      -> String
-     -> (f a -> e)
+     -> (f e -> s)
      -> c
 withDim x p f e ef | p (dim x) x = f x
                    | otherwise = error e' where e' = e ++ show (ef x)
 
 -- | binary dimension-checking bracket
-withDim2 :: (FiniteDim f, FiniteDim g, Show e) =>
-     f a
-     -> g b
-     -> (FDSize f -> FDSize g -> f a -> g b -> Bool)
-     -> (f a -> g b -> c)
+withDim2 :: (FiniteDim f e, FiniteDim g e, Show s) =>
+     f e
+     -> g e
+     -> (FDSize f -> FDSize g -> f e -> g e -> Bool)
+     -> (f e -> g e -> c)
      -> String
-     -> (f a -> g b -> e)
+     -> (f e -> g e -> s)
      -> c
 withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
                       | otherwise = error e' where e' = e ++ show (ef x y)
@@ -157,15 +180,15 @@ withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
 
 -- * HasData : accessing inner data (do not export)
 
-class Additive f => HasData f a where
-  type HDData f a :: * 
-  dat :: f a -> HDData f a
+class Additive f e => HasData f e where
+  type HDData f e :: * 
+  dat :: f e -> HDData f e
 
 
 -- * Sparse : sparse datastructures
 
-class (FiniteDim f, HasData f a) => Sparse f a where
-  spy :: Fractional b => f a -> b
+class (FiniteDim f e, HasData f e) => Sparse f e where
+  spy :: Fractional b => f e -> b
 
 
 
@@ -187,6 +210,7 @@ class Sparse c a => SpContainer c a where
   type ScIx c :: *
   scInsert :: ScIx c -> a -> c a -> c a
   scLookup :: c a -> ScIx c -> Maybe a
+  scToList :: c a -> [a]
   -- -- | Lookup with default, infix form ("safe" : should throw an exception if lookup is outside matrix bounds)
   (@@) :: c a -> ScIx c -> a
 
@@ -194,47 +218,50 @@ class Sparse c a => SpContainer c a where
 
 
 
--- * IxContainer : indexed container types
-
--- class IxContainer (c :: * -> *) a where
---   type Ix c :: *
---   type IxSz c :: *
---   ixcLookup :: c a -> Ix c -> Maybe a
---   ixcIfilter :: (Ix c -> a -> Bool) -> c a -> c a
---   ixcInsert :: Ix c -> a -> c a -> c a
---   ixcFromList :: Foldable t => IxSz c -> t (Ix c, a) -> c a
---   ixcToList :: c a -> [(Ix c, a)]
-
--- newtype IM_ a = IM (IM.IntMap a)
-
--- instance IxContainer IM_ a where
---   type Ix IM_  = Int
--- --   -- ixcLookupDefault = lookupDefaultSV
--- --   -- ixcFilter = filterSV
-
-
--- newtype IM2 a = IM2 { unIM2 :: IM.IntMap (IM.IntMap a)}
-
--- instance IxContainer IM2 a where
---   type Ix IM2 = (Int, Int)
---   ixcIfilter f im2 = IM2 $ ifilterIM2 (curry f) (unIM2 im2)
-
-
-
--- class Rank2 (c :: * -> *) a where
---   type R2IxRow c :: *
---   type R2IxCol c :: *
---   type R2V c :: * -> *
---   rank2Act :: c a -> R2V c a -> R2V c a
---   extractRow :: c a -> R2IxRow c -> Maybe (R2V c a)
---   extractCol :: c a -> R2IxCol c -> Maybe (R2V c a)
---   -- extractRows :: c a -> [R2IxRow c] -> [R2V c]
---   -- extractCols :: c a -> [R2IxCol c] -> [R2V c]
-  
 
 
 
 
--- * SMatrix : sparse matrix types
+-- * SparseVector
 
--- class (IxContainer c a, Sparse c a, Additive c) => SMatrix c a where
+class (SpContainer v e, Hilbert v e) => SparseVector v e where
+  type SpvIx v :: *
+  svFromList :: Int -> [(SpvIx v, e)] -> v e
+  svFromListDense :: Int -> [e] -> v e
+  svConcat :: Foldable t => t (v e) -> v e
+  -- svZipWith :: (e -> e -> e) -> v e -> v e -> v e
+
+-- * SparseMatrix
+
+class (SpContainer m e, Additive m e) => SparseMatrix m e where
+  type SpmIxRow m :: *
+  type SpmIxCol m :: *  
+  smFromFoldable :: Foldable t => (Int, Int) -> t (SpmIxRow m, SpmIxCol m, e) -> m e
+  smFromFoldableDense :: Foldable t => t e -> m e  
+  smTranspose :: m e -> m e
+  smExtractSubmatrix ::
+    m e -> (SpmIxRow m, SpmIxRow m) -> (SpmIxCol m, SpmIxCol m) -> m e
+
+
+class (SparseMatrix m e, SparseVector v e) => LinearSpace m v e where
+  lsInsertRow :: m e -> v e -> SpmIxRow m -> m e
+  lsInsertCol :: m e -> v e -> SpmIxCol m -> m e
+  lsExtractRow :: m e -> SpmIxRow m -> v e
+  lsExtractCol :: m e -> SpmIxCol m -> v e  
+
+
+
+
+
+
+-- class (Elt e, SparseVector v e) => DOT s v e where
+--   dot' :: StratCxt s -> v e -> v e -> ResS s e
+
+class (Elt e, SparseVector v e) => VectorSpace' v e where
+  vscale :: e -> v e -> v e
+
+class (VectorSpace' v e) => Hilbert' v e where
+  vdot :: v e -> v e -> e
+
+class Hilbert' v e => Normed' v e where
+  vnorm :: Floating a => Int -> v e -> a

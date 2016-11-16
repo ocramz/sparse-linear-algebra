@@ -21,7 +21,7 @@ module Numeric.LinearAlgebra.Sparse
          linSolve, LinSolveMethod(..), (<\>),
          pinv,
          -- ** Direct methods
-         luSolve,
+         luSolve, triLowerSolve, triUpperSolve,
          -- * Preconditioners
          ilu0, mSsor,
          -- * Matrix partitioning
@@ -83,7 +83,7 @@ sparsifySV = filterSV isNz
 -- * Matrix condition number
 
 -- |uses the R matrix from the QR factorization
--- conditionNumberSM :: (Epsilon a, RealFloat a) => SpMatrix a -> a
+conditionNumberSM :: (Epsilon a, RealFloat a) => SpMatrix a -> a
 conditionNumberSM m | nearZero lmin = error "Infinite condition number : rank-deficient system"
                     | otherwise = kappa where
   kappa = lmax / lmin
@@ -223,9 +223,9 @@ qr mm = (transposeSM qt, r) where
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
--- eigsQR :: (Epsilon a, Real a, Ord a, Floating a) => Int -> SpMatrix a -> SpVector a
+eigsQR :: (Epsilon a, RealFloat a) => Int -> SpMatrix a -> SpVector a
 eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
-  eigsStep m = r #~# q where (q, r) = qr m
+  eigsStep mm = r #~# q where (q, r) = qr mm
   convergtest g = modifyInspectN nitermax f g where
     f [m1, m2] = let dm1 = extractDiagDense m1
                      dm2 = extractDiagDense m2
@@ -239,10 +239,10 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
 -- ** Rayleigh iteration
 
 -- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair
--- eigRayleigh :: (Fractional a, Ord a, Eq a, Epsilon a, Num a) => Int -- max # iterations
---      -> SpMatrix a           -- matrix
---      -> (SpVector a, a) -- initial guess of (eigenvector, eigenvalue)
---      -> (SpVector a, a) -- final estimate of (eigenvector, eigenvalue)
+eigRayleigh :: (Epsilon a, RealFloat a) => Int -- max # iterations
+     -> SpMatrix a           -- matrix
+     -> (SpVector a, a) -- initial guess of (eigenvector, eigenvalue)
+     -> (SpVector a, a) -- final estimate of (eigenvector, eigenvalue)
 eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
   convergtest g = modifyInspectN nitermax f g where
     f [(b1, _), (b2, _)] = nearZero $ norm2 (b2 ^-^ b1)
@@ -305,9 +305,7 @@ SVD of A, Golub-Kahan method
 
 -- * Cholesky factorization
 
--- ** Cholesky–Banachiewicz algorithm
-
--- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A
+-- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
 chol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> SpMatrix a
 chol aa = lfin where
   (_, lfin) = execState (modifyUntil q cholUpd) cholInit
@@ -583,7 +581,7 @@ triUpperSolve uu w = sparsifySV x where
 --
 -- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
--- gmres :: (Epsilon a, Floating a) => SpMatrix a -> SpVector a -> SpVector a
+gmres :: (Epsilon a, RealFloat a) => SpMatrix a -> SpVector a -> SpVector a
 gmres aa b = qa' #> yhat where
   m = ncols aa
   (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
@@ -795,8 +793,8 @@ bicgstab aa b x0 r0hat =
 
 instance Show a => Show (BICGSTAB a) where
   show (BICGSTAB x r p) = "x = " ++ show x ++ "\n" ++
-                                "r = " ++ show r ++ "\n" ++
-                                "p = " ++ show p ++ "\n"
+                          "r = " ++ show r ++ "\n" ++
+                          "p = " ++ show p ++ "\n"
 
 
 
@@ -804,7 +802,7 @@ instance Show a => Show (BICGSTAB a) where
 
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equaitons. Uses <\\> for the linear solve
--- pinv :: SpMatrix Double -> SpVector Double -> SpVector Double
+pinv :: (Epsilon a, RealFloat a) => SpMatrix a -> SpVector a -> SpVector a
 pinv aa b = aa #^# aa <\> atb where
   atb = transposeSM aa #> b
 

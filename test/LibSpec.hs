@@ -84,15 +84,15 @@ spec = do
       nearZero (normSq (linSolve GMRES_ aa1 b1 ^-^ x1)) `shouldBe` True      
     it "BCG (2 x 2 dense)" $
       nearZero (normSq (linSolve BCG_ aa0 b0 ^-^ x0true)) `shouldBe` True
-    it "BCG (3 x 3 sparse, s.p.d.)" $
+    it "BCG (3 x 3 sparse, SPD)" $
       nearZero (normSq (linSolve BCG_ aa2 b2 ^-^ x2)) `shouldBe` True      
     -- it "BiCGSTAB (2 x 2 dense)" $ 
     --   nearZero (normSq (linSolve BICGSTAB_ aa0 b0 ^-^ x0true)) `shouldBe` True
-    it "BiCGSTAB (3 x 3 sparse, s.p.d.)" $ 
+    it "BiCGSTAB (3 x 3 sparse, SPD)" $ 
       nearZero (normSq (linSolve BICGSTAB_ aa2 b2 ^-^ x2)) `shouldBe` True      
     it "CGS (2 x 2 dense)" $ 
       nearZero (normSq (linSolve CGS_ aa0 b0 ^-^ x0true)) `shouldBe` True
-    it "CGS (3 x 3 sparse, s.p.d.)" $ 
+    it "CGS (3 x 3 sparse, SPD)" $ 
       nearZero (normSq (linSolve CGS_ aa2 b2 ^-^ x2)) `shouldBe` True      
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ 
     it "luSolve (4 x 4 sparse)" $ 
@@ -102,12 +102,14 @@ spec = do
       checkQr tm4 `shouldBe` True
     it "qr (3 x 3 dense)" $ 
       checkQr tm2 `shouldBe` True
+    it "qr (10 x 10 sparse)" $
+      checkQr tm7 `shouldBe` True  
   describe "Numeric.LinearAlgebra.Sparse : LU decomposition" $ do
     it "lu (4 x 4 dense)" $
       checkLu tm6 `shouldBe` True
     it "lu (10 x 10 sparse)" $
       checkLu tm7 `shouldBe` True
-  describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (PSD matrices)" $ 
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (SPD matrices)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 `shouldBe` True
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration, early breakdown detection" $ do      

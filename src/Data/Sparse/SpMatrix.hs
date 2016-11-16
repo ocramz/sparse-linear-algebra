@@ -40,8 +40,9 @@ import Data.Maybe
 
 -- * Sparse Matrix
 
-data SpMatrix a = SM {smDim :: (Rows, Cols),
-                      smData :: IM.IntMap (IM.IntMap a)} deriving Eq
+data SpMatrix a = SM {smDim :: {-# UNPACK #-} !(Rows, Cols),
+                      smData :: {-# UNPACK #-} !(IM.IntMap (IM.IntMap a))}
+                deriving Eq
 
 
 sizeStr :: SpMatrix a -> String

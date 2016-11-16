@@ -1,3 +1,4 @@
+{-# language MultiParamTypeClasses, FlexibleInstances #-}
 module Data.Sparse.Internal.IntMap2 where
 
 import Numeric.LinearAlgebra.Class
@@ -15,21 +16,21 @@ instance Set IM.IntMap where
   liftI2 = IM.intersectionWith
   {-# INLINE liftI2 #-}
 
-instance Additive IM.IntMap where
+instance Elt e => Additive IM.IntMap e where
   zero = IM.empty
   {-# INLINE zero #-}
   (^+^) = liftU2 (+)
   {-# INLINE (^+^) #-}
 
 
-instance VectorSpace IM.IntMap where
+instance Elt e => VectorSpace IM.IntMap e where
   n .* im = IM.map (* n) im
   
-instance Hilbert IM.IntMap where
+instance (Floating a, Elt a) => Hilbert IM.IntMap a where
    a `dot` b = sum $ liftI2 (*) a b
               
 
-instance Normed IM.IntMap where
+instance (Floating a, Elt a) => Normed IM.IntMap a where
   norm p v | p==1 = norm1 v
            | p==2 = norm2 v
            | otherwise = normP p v

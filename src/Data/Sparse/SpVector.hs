@@ -17,7 +17,7 @@ import Data.Sparse.Internal.IntMap2
 import Numeric.Eps
 import Numeric.LinearAlgebra.Class
 
-
+import Data.Complex
 import Data.Maybe
 
 import qualified Data.IntMap as IM
@@ -26,8 +26,8 @@ import qualified Data.Vector as V
 
 -- * Sparse Vector
 
-data SpVector a = SV { svDim :: Int ,
-                       svData :: IM.IntMap a} deriving Eq
+data SpVector a = SV { svDim :: {-# UNPACK #-} !Int ,
+                       svData :: {-# UNPACK #-} !(IM.IntMap a)} deriving Eq
 
 -- | SpVector sparsity
 spySV :: Fractional b => SpVector a -> b
@@ -82,6 +82,12 @@ instance Num a => SpContainer SpVector a where
   scLookup v i = lookupSV i v
   v @@ i = lookupDenseSV i v
 
+
+instance Num a => SparseVector SpVector a where
+  type SpvIx SpVector = Int
+  svFromList = fromListSV
+  svFromListDense = fromListDenseSV
+  svConcat = foldr concatSV zero
 
 
 -- | 'SpVector's form a Hilbert space, in that we can define an inner product over them
