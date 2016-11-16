@@ -120,7 +120,7 @@ spec = do
 {- QR-}
 
 
-checkQr :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
+checkQr :: (Epsilon a, RealFloat a) => SpMatrix a -> Bool
 checkQr a = c1 && c2 && c3 where
   (q, r) = qr a
   c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)

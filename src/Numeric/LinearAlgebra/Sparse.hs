@@ -127,14 +127,8 @@ hhRefl = hhMat (fromInteger 2)
 hypot :: Floating a => a -> a -> a
 hypot x y = abs x * (sqrt (1 + y/x)**2)
 
--- sign :: (Ord a, Num a) => a -> a
--- sign x
---   | x > 0 = 1
---   | x == 0 = 0
---   | otherwise = -1 
-
 -- | Givens coefficients (using stable algorithm shown in  Anderson, Edward (4 December 2000). "Discontinuous Plane Rotations and the Symmetric Eigenvalue Problem". LAPACK Working Note)
-givensCoef :: (Floating a, Eq a, Ord a) => a -> a -> (a, a, a)
+givensCoef :: (RealFloat a) => a -> a -> (a, a, a)
 givensCoef a b  -- returns (c, s, r) where r = norm (a, b)
   | b==0 = (signum a, 0, abs a)
   | a==0 = (0, signum b, abs b)
@@ -159,7 +153,7 @@ NB: the current version is quite inefficient in that:
 2. at each iteration `i` we multiply `G_i` by the previous partial result `M`. Since this corresponds to a rotation, and the `givensCoef` function already computes the value of the resulting non-zero component (output `r`), `G_i ## M` can be simplified by just changing two entries of `M` (i.e. zeroing one out and changing the other into `r`).
 -}
 {-# inline givens #-}
-givens :: (Floating a, Epsilon a, Ord a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
+givens :: (RealFloat a, Epsilon a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
 givens mm i j 
   | isValidIxSM mm (i,j) && nrows mm >= ncols mm =
        fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
@@ -193,7 +187,7 @@ firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
 
 
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
-qr :: (Epsilon a, Ord a, Floating a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+qr :: (Epsilon a, RealFloat a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 qr mm = (transposeSM qt, r) where
   (qt, r, _) = execState (modifyUntil qf stepf) gminit
   qf (_, _, iis) = null iis
@@ -219,7 +213,7 @@ qr mm = (transposeSM qt, r) where
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
-eigsQR :: (Epsilon a, Real a, Ord a, Floating a) => Int -> SpMatrix a -> SpVector a
+-- eigsQR :: (Epsilon a, Real a, Ord a, Floating a) => Int -> SpMatrix a -> SpVector a
 eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
   eigsStep m = r #~# q where (q, r) = qr m
   convergtest g = modifyInspectN nitermax f g where
@@ -827,7 +821,7 @@ data LinSolveMethod = GMRES_ | CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving
 --                    BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
 
 -- | Linear solve with _deterministic_ starting vector (every component at 0.1) 
-linSolve :: (Epsilon a, Ord a, Floating a) =>
+linSolve :: (Epsilon a, RealFloat a) =>
   LinSolveMethod -> SpMatrix a -> SpVector a -> SpVector a
 linSolve method aa b
   | n /= nb = error "linSolve : operand dimensions mismatch"
@@ -846,7 +840,7 @@ linSolve method aa b
       nb     = dim b
 
 -- | linSolve using the GMRES method as default
-(<\>) :: (Epsilon a, Ord a, Floating a) => SpMatrix a -> SpVector a -> SpVector a
+(<\>) :: (Epsilon a, RealFloat a) => SpMatrix a -> SpVector a -> SpVector a
 (<\>) = linSolve GMRES_ 
   
 
