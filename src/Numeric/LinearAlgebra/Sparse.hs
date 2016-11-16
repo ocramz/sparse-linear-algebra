@@ -123,21 +123,31 @@ hhRefl = hhMat (fromInteger 2)
 
 -- * Givens rotation matrix
 
-
+-- | Stable hypotenuse calculation
 hypot :: Floating a => a -> a -> a
 hypot x y = abs x * (sqrt (1 + y/x)**2)
 
 -- | Givens coefficients (using stable algorithm shown in  Anderson, Edward (4 December 2000). "Discontinuous Plane Rotations and the Symmetric Eigenvalue Problem". LAPACK Working Note)
-givensCoef :: (RealFloat a) => a -> a -> (a, a, a)
-givensCoef a b  -- returns (c, s, r) where r = norm (a, b)
+givensCoef0 :: (Ord b, Floating a, Eq a) => (a -> b) -> a -> a -> (a, a, a)
+givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
   | b==0 = (signum a, 0, abs a)
   | a==0 = (0, signum b, abs b)
-  | abs a > abs b = let t = b/a
-                        u = signum a * abs ( sqrt (1 + t**2))
-                    in (1/u, - t/u, a*u)
+  | ff a > ff b = let t = b/a
+                      u = signum a * abs ( sqrt (1 + t**2))
+                  in (1/u, - t/u, a*u)
   | otherwise = let t = a/b
                     u = signum b * abs ( sqrt (1 + t**2))
                 in (t/u, - 1/u, b*u)
+                   
+-- | Givens coefficients, real-valued
+givensCoef :: (Floating a, Ord a) => a -> a -> (a, a, a)
+givensCoef = givensCoef0 abs
+
+-- | Givens coefficients, complex-valued
+givensCoefC :: RealFloat a =>
+   Complex a -> Complex a -> (Complex a, Complex a, Complex a)
+givensCoefC = givensCoef0 magnitude
+
 
 
 {- |
