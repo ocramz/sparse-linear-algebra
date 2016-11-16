@@ -53,37 +53,37 @@ instance Set SpVector where
 instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
 
-instance Additive SpVector where
+instance Elt e => Additive SpVector e where
   zero = SV 0 IM.empty
   (^+^) = liftU2 (+)
 
 
 -- | 'SpVector's form a vector space because they can be multiplied by a scalar
-instance VectorSpace SpVector where
+instance Elt e => VectorSpace SpVector e where
   n .* v = scale n v
 
 -- | 'SpVector's are finite-dimensional vectors
-instance FiniteDim SpVector where
+instance Elt e => FiniteDim SpVector e where
   type FDSize SpVector = Int
   dim = svDim  
 
-instance HasData SpVector a where
+instance Elt a => HasData SpVector a where
   type HDData SpVector a = IM.IntMap a
   dat = svData
 
-instance Sparse SpVector a where
+instance Elt a => Sparse SpVector a where
   spy = spySV
 
 
 -- | 'SpVector's are sparse containers too, i.e. any specific component may be missing (so it is assumed to be 0)
-instance Num a => SpContainer SpVector a where
+instance Elt a => SpContainer SpVector a where
   type ScIx SpVector = Int
   scInsert = insertSpVector
   scLookup v i = lookupSV i v
   v @@ i = lookupDenseSV i v
 
 
-instance Num a => SparseVector SpVector a where
+instance Elt a => SparseVector SpVector a where
   type SpvIx SpVector = Int
   svFromList = fromListSV
   svFromListDense = fromListDenseSV
@@ -91,14 +91,14 @@ instance Num a => SparseVector SpVector a where
 
 
 -- | 'SpVector's form a Hilbert space, in that we can define an inner product over them
-instance Hilbert SpVector where
+instance Elt e => Hilbert SpVector e where
   a `dot` b | dim a == dim b = dot (dat a) (dat b)
             | otherwise =
                      error $ "dot : sizes must coincide, instead we got " ++
                            show (dim a, dim b)
 
 -- | Since 'SpVector's form a Hilbert space, we can define a norm for them 
-instance Normed SpVector where
+instance Elt e => Normed SpVector e where
   norm p (SV _ v) = norm p v
 
 

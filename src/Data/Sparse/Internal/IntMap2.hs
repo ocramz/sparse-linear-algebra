@@ -6,6 +6,7 @@ import Numeric.LinearAlgebra.Class
 import qualified Data.IntMap.Strict as IM
 import Data.Sparse.Types
 
+import Data.Complex
 import Data.Maybe
 
 
@@ -26,14 +27,19 @@ instance Elt e => Additive IM.IntMap e where
 instance Elt e => VectorSpace IM.IntMap e where
   n .* im = IM.map (* n) im
   
-instance (Floating a, Elt a) => Hilbert IM.IntMap a where
+instance Hilbert IM.IntMap Double where
    a `dot` b = sum $ liftI2 (*) a b
               
+instance Hilbert IM.IntMap (Complex Double) where
+  a `dot` b = realPart $ sum $ liftI2 (*) (fmap conj a) b
 
-instance (Floating a, Elt a) => Normed IM.IntMap a where
+-- instance Elt e => Hilbert IM.IntMap e 
+
+
+instance Normed IM.IntMap Double where
   norm p v | p==1 = norm1 v
            | p==2 = norm2 v
-           | otherwise = normP p v
+           -- | otherwise = normP p v
 
 
 

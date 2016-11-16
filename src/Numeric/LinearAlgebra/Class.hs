@@ -62,12 +62,12 @@ lerp a u v = a .* u ^+^ ((1-a) .* v)
 -- * Hilbert space (inner product)
 class VectorSpace f e => Hilbert f e where
   -- | inner product
-  dot :: Floating a => f e -> f e -> a
+  dot :: f e -> f e -> Double
 
 
 -- ** Hilbert-space distance function
 -- |`hilbertDistSq x y = || x - y ||^2`
-hilbertDistSq :: (Hilbert f e, Floating a) => f e -> f e -> a
+hilbertDistSq :: Hilbert f e => f e -> f e -> Double
 hilbertDistSq x y = dot t t where
   t = x ^-^ y
 
@@ -88,7 +88,7 @@ class Hilbert f e => Normed f e where
 -- ** Norms and related results
 
 -- | Squared 2-norm
-normSq :: (Hilbert f e, Floating a) => f e -> a
+normSq :: Hilbert f e => f e -> Double
 normSq v = v `dot` v
 
 
@@ -97,7 +97,7 @@ norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 norm1 v = sum (fmap abs v)
 
 -- |Euclidean norm
-norm2 :: (Hilbert f e, Floating a) => f e -> a
+norm2 :: Hilbert f e => f e -> Double
 norm2 v = sqrt (normSq v)
 
 -- |Lp norm (p > 0)
