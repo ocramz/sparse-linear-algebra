@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, MultiParamTypeClasses, KindSignatures #-}
+{-# LANGUAGE TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances #-}
 module Numeric.LinearAlgebra.Class where
 
 import Data.Complex
@@ -16,12 +16,12 @@ instance RealFloat e => Elt (Complex e) where
 
 
 -- * Additive monoid
-class (Elt e, Functor f) => Additive f e where
+class Functor f => Additive f where
   -- | Monoid neutral element
-  zero :: f e
+  zero :: Num e => f e
   
   -- | Monoid +
-  (^+^) :: f e -> f e -> f e
+  (^+^) :: Num e => f e -> f e -> f e
 
   -- one :: Num a => f a
   -- (^*^) :: Num a => f a -> f a -> f a
@@ -33,7 +33,7 @@ negated :: (Num a, Functor f) => f a -> f a
 negated = fmap negate
 
 -- | subtract two Additive objects
-(^-^) :: Additive f e => f e -> f e -> f e
+(^-^) :: (Num e , Additive f) => f e -> f e -> f e
 x ^-^ y = x ^+^ negated y
 
 
@@ -42,7 +42,7 @@ x ^-^ y = x ^+^ negated y
 
 
 -- * Vector space
-class Additive f e => VectorSpace f e where
+class (Elt e , Additive f) => VectorSpace f e where
   -- | multiplication by a scalar
   (.*) :: e -> f e -> f e
   
@@ -61,13 +61,16 @@ lerp a u v = a .* u ^+^ ((1-a) .* v)
 
 -- * Hilbert space (inner product)
 class VectorSpace f e => Hilbert f e where
+  type HT e :: *
+  type instance HT e = Double
   -- | inner product
-  dot :: f e -> f e -> Double
+  dot :: f e -> f e -> HT e
+
 
 
 -- ** Hilbert-space distance function
 -- |`hilbertDistSq x y = || x - y ||^2`
-hilbertDistSq :: Hilbert f e => f e -> f e -> Double
+hilbertDistSq :: Hilbert f e => f e -> f e -> HT e
 hilbertDistSq x y = dot t t where
   t = x ^-^ y
 
@@ -80,7 +83,10 @@ hilbertDistSq x y = dot t t where
 
 -- * Normed vector space
 class Hilbert f e => Normed f e where
-  norm :: (Floating a, Eq a) => a -> f e -> e
+  -- |p-norm (p finite)
+  norm :: RealFloat a => a -> f e -> HT e
+  -- |Normalize w.r.t. p-norm
+  normalize :: RealFloat a => a -> f e -> f e
 
 
 
@@ -88,7 +94,7 @@ class Hilbert f e => Normed f e where
 -- ** Norms and related results
 
 -- | Squared 2-norm
-normSq :: Hilbert f e => f e -> Double
+normSq :: Hilbert f e => f e -> HT e
 normSq v = v `dot` v
 
 
@@ -97,13 +103,13 @@ norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 norm1 v = sum (fmap abs v)
 
 -- |Euclidean norm
-norm2 :: Hilbert f e => f e -> Double
+norm2 :: (Hilbert f e, Floating (HT e)) => f e -> HT e
 norm2 v = sqrt (normSq v)
 
 -- |Lp norm (p > 0)
-normP :: (Foldable t, Functor t, Floating a) => a -> t a -> a
-normP p v = sum u**(1/p) where
-  u = fmap (**p) v
+-- normP :: (Hilbert f e, Floating a) => a -> f e -> HT e
+-- normP p v = sum u**(1/p) where
+--   u = fmap (**p) v
 
 -- |Infinity-norm
 normInfty :: (Foldable t, Ord a) => t a -> a
@@ -111,9 +117,6 @@ normInfty = maximum
 
 
 
--- |Normalize w.r.t. p-norm (p finite)
-normalize :: (Normed f e, Floating a, Eq a) => a -> f e -> f e
-normalize p v = (1 / norm p v) .* v
 
 
 
@@ -145,13 +148,13 @@ scale n = fmap (* n)
 
 -- * FiniteDim : finite-dimensional objects
 
-class Additive f e => FiniteDim f e where
+class Additive f => FiniteDim f where
   type FDSize f :: *
   dim :: f e -> FDSize f
 
 
 -- | unary dimension-checking bracket
-withDim :: (FiniteDim f e, Show s) =>
+withDim :: (FiniteDim f, Show s) =>
      f e
      -> (FDSize f -> f e -> Bool)
      -> (f e -> c)
@@ -162,7 +165,7 @@ withDim x p f e ef | p (dim x) x = f x
                    | otherwise = error e' where e' = e ++ show (ef x)
 
 -- | binary dimension-checking bracket
-withDim2 :: (FiniteDim f e, FiniteDim g e, Show s) =>
+withDim2 :: (FiniteDim f, FiniteDim g, Show s) =>
      f e
      -> g e
      -> (FDSize f -> FDSize g -> f e -> g e -> Bool)
@@ -180,15 +183,15 @@ withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
 
 -- * HasData : accessing inner data (do not export)
 
-class Additive f e => HasData f e where
-  type HDData f e :: * 
-  dat :: f e -> HDData f e
+class Additive f => HasData f a where
+  type HDData f a :: * 
+  dat :: f a -> HDData f a
 
 
 -- * Sparse : sparse datastructures
 
-class (FiniteDim f e, HasData f e) => Sparse f e where
-  spy :: Fractional b => f e -> b
+class (FiniteDim f, HasData f a) => Sparse f a where
+  spy :: Fractional b => f a -> b
 
 
 
@@ -233,7 +236,7 @@ class (SpContainer v e, Hilbert v e) => SparseVector v e where
 
 -- * SparseMatrix
 
-class (SpContainer m e, Additive m e) => SparseMatrix m e where
+class (SpContainer m e, Additive m) => SparseMatrix m e where
   type SpmIxRow m :: *
   type SpmIxCol m :: *  
   smFromFoldable :: Foldable t => (Int, Int) -> t (SpmIxRow m, SpmIxCol m, e) -> m e

@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# language MultiParamTypeClasses, FlexibleInstances #-}
 module Data.Sparse.Internal.IntMap2 where
 
@@ -17,7 +18,7 @@ instance Set IM.IntMap where
   liftI2 = IM.intersectionWith
   {-# INLINE liftI2 #-}
 
-instance Elt e => Additive IM.IntMap e where
+instance Additive IM.IntMap where
   zero = IM.empty
   {-# INLINE zero #-}
   (^+^) = liftU2 (+)
@@ -26,11 +27,14 @@ instance Elt e => Additive IM.IntMap e where
 
 instance Elt e => VectorSpace IM.IntMap e where
   n .* im = IM.map (* n) im
+
   
 instance Hilbert IM.IntMap Double where
-   a `dot` b = sum $ liftI2 (*) a b
+  type HT Double = Double
+  a `dot` b = sum $ liftI2 (*) a b
               
 instance Hilbert IM.IntMap (Complex Double) where
+  type HT (Complex Double) = Double
   a `dot` b = realPart $ sum $ liftI2 (*) (fmap conj a) b
 
 -- instance Elt e => Hilbert IM.IntMap e 
@@ -39,7 +43,8 @@ instance Hilbert IM.IntMap (Complex Double) where
 instance Normed IM.IntMap Double where
   norm p v | p==1 = norm1 v
            | p==2 = norm2 v
-           -- | otherwise = normP p v
+           | otherwise = normP p v
+
 
 
 

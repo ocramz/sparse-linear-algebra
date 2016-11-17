@@ -53,7 +53,7 @@ instance Set SpVector where
 instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
 
-instance Elt e => Additive SpVector e where
+instance Additive SpVector where
   zero = SV 0 IM.empty
   (^+^) = liftU2 (+)
 
@@ -63,15 +63,15 @@ instance Elt e => VectorSpace SpVector e where
   n .* v = scale n v
 
 -- | 'SpVector's are finite-dimensional vectors
-instance Elt e => FiniteDim SpVector e where
+instance FiniteDim SpVector where
   type FDSize SpVector = Int
   dim = svDim  
 
-instance Elt a => HasData SpVector a where
+instance HasData SpVector a where
   type HDData SpVector a = IM.IntMap a
   dat = svData
 
-instance Elt a => Sparse SpVector a where
+instance Sparse SpVector a where
   spy = spySV
 
 
