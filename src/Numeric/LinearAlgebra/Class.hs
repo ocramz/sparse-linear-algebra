@@ -39,36 +39,27 @@ instance (RealFloat v, AdditiveGroup v) => AdditiveGroup (Complex v) where
   (^+^)   = (+)
   negated = negate
 
-
--- Standard instance for an applicative functor applied to a vector space.
+-- | Standard instance for an applicative functor applied to a vector space.
 instance AdditiveGroup v => AdditiveGroup (a -> v) where
   zero   = pure   zero
   (^+^)   = liftA2 (^+^)
   negated = fmap   negated
 
 
+
 -- * Vector space
--- class (Elt e , Additive f) => VectorSpace f e where
---   -- | multiplication by a scalar
---   (.*) :: e -> f e -> f e
-
--- class Additive f => VectorSpace f where
---   -- | multiplication by a scalar
---   (.*) :: Elt e => e -> f e -> f e
-
--- or
-
--- class Elt e => VectorSpace e where
---   (.*) :: Additive f => e -> f e -> f e
 class AdditiveGroup v => VectorSpace v where
   type Scalar v :: *
   -- | Scale a vector
   (.*) :: Scalar v -> v -> v  
 
--- |linear interpolation
--- lerp :: VectorSpace f e => e -> f e -> f e -> f e
+-- |Linear interpolation
+lerp :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
 lerp a u v = a .* u ^+^ ((1-a) .* v)
 
+
+-- linearCombination :: (VectorSpace v , Foldable t) => t (Scalar v, v) -> v
+-- linearCombination  =  foldr (\(a, x) (b, y) -> (a .* x) ^+^ (b .* y)) 
 
 
 
@@ -86,9 +77,6 @@ instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
 infixr 7 `dot`
 
 class (VectorSpace v, AdditiveGroup (Scalar v)) => Hilbert v where
-  -- type HT e :: *
-  -- type instance HT e = Double
-  -- | inner product
   dot :: v -> v -> Scalar v
 
 -- (<.>) = dot  
@@ -100,7 +88,7 @@ class (VectorSpace v, AdditiveGroup (Scalar v)) => Hilbert v where
 
 -- ** Hilbert-space distance function
 -- |`hilbertDistSq x y = || x - y ||^2`
--- hilbertDistSq :: Hilbert f e => f e -> f e -> HT e
+hilbertDistSq :: Hilbert v => v -> v -> Scalar v
 hilbertDistSq x y = dot t t where
   t = x ^-^ y
 
