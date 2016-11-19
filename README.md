@@ -179,6 +179,7 @@ GPL3, see LICENSE
 Inspired by
 
 * `linear` : https://hackage.haskell.org/package/linear
+* `vector-space` : https://hackage.haskell.org/package/vector-space
 * `sparse-lin-alg` : https://github.com/laughedelic/sparse-lin-alg
 
 ## References

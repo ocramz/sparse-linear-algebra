@@ -1,58 +1,81 @@
 {-# LANGUAGE TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances #-}
 module Numeric.LinearAlgebra.Class where
 
+import Control.Applicative
 import Data.Complex
+import Data.Ratio
 
 -- * Matrix and vector elements (possibly Complex)
 class (Eq e , Fractional e) => Elt e where
   conj :: e -> e
   conj = id
-  
 instance Elt Double
 instance Elt Float
 instance RealFloat e => Elt (Complex e) where
   conj = conjugate
   
 
+-- * Additive group
+class AdditiveGroup e where
+  -- | Identity element
+  zero :: e
+  -- | Group action
+  (^+^) :: e -> e -> e
+  -- | Inverse element
+  negated :: e -> e
+  -- | Inverse group action
+  (^-^) :: e -> e -> e
+  x ^-^ y = x ^+^ negated y
 
--- * Additive monoid
-class Functor f => Additive f where
-  -- | Monoid neutral element
-  zero :: Num e => f e
-  
-  -- | Monoid +
-  (^+^) :: Num e => f e -> f e -> f e
-
-  -- one :: Num a => f a
-  -- (^*^) :: Num a => f a -> f a -> f a
-
-
-
--- | negate the values in a functor
-negated :: (Num a, Functor f) => f a -> f a
-negated = fmap negate
-
--- | subtract two Additive objects
-(^-^) :: (Num e , Additive f) => f e -> f e -> f e
-x ^-^ y = x ^+^ negated y
+-- | Numeric isntances for AdditiveGroup
+instance AdditiveGroup Int where {zero=0; (^+^) = (+); negated = negate}
+instance AdditiveGroup Integer where {zero=0; (^+^) = (+); negated = negate}
+instance AdditiveGroup Double where {zero=0; (^+^) = (+); negated = negate}
+instance AdditiveGroup Float where {zero=0; (^+^) = (+); negated = negate}
+instance Integral a => AdditiveGroup (Ratio a) where
+  {zero=0; (^+^) = (+); negated = negate}
+instance (RealFloat v, AdditiveGroup v) => AdditiveGroup (Complex v) where
+  zero   = zero :+ zero
+  (^+^)   = (+)
+  negated = negate
 
 
-
-
+-- Standard instance for an applicative functor applied to a vector space.
+instance AdditiveGroup v => AdditiveGroup (a -> v) where
+  zero   = pure   zero
+  (^+^)   = liftA2 (^+^)
+  negated = fmap   negated
 
 
 -- * Vector space
-class (Elt e , Additive f) => VectorSpace f e where
-  -- | multiplication by a scalar
-  (.*) :: e -> f e -> f e
-  
+-- class (Elt e , Additive f) => VectorSpace f e where
+--   -- | multiplication by a scalar
+--   (.*) :: e -> f e -> f e
+
+-- class Additive f => VectorSpace f where
+--   -- | multiplication by a scalar
+--   (.*) :: Elt e => e -> f e -> f e
+
+-- or
+
+-- class Elt e => VectorSpace e where
+--   (.*) :: Additive f => e -> f e -> f e
+class AdditiveGroup v => VectorSpace v where
+  type Scalar v :: *
+  -- | Scale a vector
+  (.*) :: Scalar v -> v -> v  
 
 -- |linear interpolation
-lerp :: VectorSpace f e => e -> f e -> f e -> f e
+-- lerp :: VectorSpace f e => e -> f e -> f e -> f e
 lerp a u v = a .* u ^+^ ((1-a) .* v)
 
 
 
+
+-- numerical instances for VectorSpace
+instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
+  type Scalar (Complex v) = Scalar v
+  s .* (u :+ v) = s .* u :+ s .* v
 
 
 
@@ -60,17 +83,24 @@ lerp a u v = a .* u ^+^ ((1-a) .* v)
 
 
 -- * Hilbert space (inner product)
-class VectorSpace f e => Hilbert f e where
-  type HT e :: *
-  type instance HT e = Double
+infixr 7 `dot`
+
+class (VectorSpace v, AdditiveGroup (Scalar v)) => Hilbert v where
+  -- type HT e :: *
+  -- type instance HT e = Double
   -- | inner product
-  dot :: f e -> f e -> HT e
+  dot :: v -> v -> Scalar v
+
+-- (<.>) = dot  
+
+
+-- infixr 7 <.>
 
 
 
 -- ** Hilbert-space distance function
 -- |`hilbertDistSq x y = || x - y ||^2`
-hilbertDistSq :: Hilbert f e => f e -> f e -> HT e
+-- hilbertDistSq :: Hilbert f e => f e -> f e -> HT e
 hilbertDistSq x y = dot t t where
   t = x ^-^ y
 
@@ -82,9 +112,9 @@ hilbertDistSq x y = dot t t where
 
 
 -- * Normed vector space
-class Hilbert f e => Normed f e where
+class Hilbert e => Normed e where
   -- |p-norm (p finite)
-  norm :: RealFloat a => a -> f e -> HT e
+  norm :: RealFloat a => a -> f e -> Scalar e
   -- |Normalize w.r.t. p-norm
   normalize :: RealFloat a => a -> f e -> f e
 
@@ -94,7 +124,7 @@ class Hilbert f e => Normed f e where
 -- ** Norms and related results
 
 -- | Squared 2-norm
-normSq :: Hilbert f e => f e -> HT e
+-- normSq :: Hilbert f e => f e -> HT e
 normSq v = v `dot` v
 
 
@@ -103,7 +133,7 @@ norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 norm1 v = sum (fmap abs v)
 
 -- |Euclidean norm
-norm2 :: (Hilbert f e, Floating (HT e)) => f e -> HT e
+-- norm2 :: (Hilbert f e, Floating (HT e)) => f e -> HT e
 norm2 v = sqrt (normSq v)
 
 -- |Lp norm (p > 0)
@@ -148,9 +178,9 @@ scale n = fmap (* n)
 
 -- * FiniteDim : finite-dimensional objects
 
-class Additive f => FiniteDim f where
+class Functor f => FiniteDim f where
   type FDSize f :: *
-  dim :: f e -> FDSize f
+  dim :: f a -> FDSize f
 
 
 -- | unary dimension-checking bracket
@@ -183,7 +213,7 @@ withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
 
 -- * HasData : accessing inner data (do not export)
 
-class Additive f => HasData f a where
+class HasData f a where
   type HDData f a :: * 
   dat :: f a -> HDData f a
 
@@ -227,7 +257,7 @@ class Sparse c a => SpContainer c a where
 
 -- * SparseVector
 
-class (SpContainer v e, Hilbert v e) => SparseVector v e where
+class (SpContainer v e, Hilbert e) => SparseVector v e where
   type SpvIx v :: *
   svFromList :: Int -> [(SpvIx v, e)] -> v e
   svFromListDense :: Int -> [e] -> v e
@@ -236,7 +266,7 @@ class (SpContainer v e, Hilbert v e) => SparseVector v e where
 
 -- * SparseMatrix
 
-class (SpContainer m e, Additive m) => SparseMatrix m e where
+class (SpContainer m e, AdditiveGroup (m e)) => SparseMatrix m e where
   type SpmIxRow m :: *
   type SpmIxCol m :: *  
   smFromFoldable :: Foldable t => (Int, Int) -> t (SpmIxRow m, SpmIxCol m, e) -> m e
@@ -260,11 +290,11 @@ class (SparseMatrix m e, SparseVector v e) => LinearSpace m v e where
 -- class (Elt e, SparseVector v e) => DOT s v e where
 --   dot' :: StratCxt s -> v e -> v e -> ResS s e
 
-class (Elt e, SparseVector v e) => VectorSpace' v e where
-  vscale :: e -> v e -> v e
+-- class (Elt e, SparseVector v e) => VectorSpace' v e where
+--   vscale :: e -> v e -> v e
 
-class (VectorSpace' v e) => Hilbert' v e where
-  vdot :: v e -> v e -> e
+-- class (VectorSpace' v e) => Hilbert' v e where
+--   vdot :: v e -> v e -> e
 
-class Hilbert' v e => Normed' v e where
-  vnorm :: Floating a => Int -> v e -> a
+-- class Hilbert' v e => Normed' v e where
+--   vnorm :: Floating a => Int -> v e -> a

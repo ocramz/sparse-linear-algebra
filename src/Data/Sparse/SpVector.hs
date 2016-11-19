@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# language TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
@@ -83,11 +84,13 @@ instance Elt a => SpContainer SpVector a where
   v @@ i = lookupDenseSV i v
 
 
-instance Elt a => SparseVector SpVector a where
+instance SparseVector SpVector Double where
   type SpvIx SpVector = Int
   svFromList = fromListSV
   svFromListDense = fromListDenseSV
   svConcat = foldr concatSV zero
+
+-- instance SparseVector SpVector (Complex Double) where
 
 
 -- | 'SpVector's form a Hilbert space, in that we can define an inner product over them
@@ -96,9 +99,11 @@ instance Elt e => Hilbert SpVector e where
             | otherwise =
                      error $ "dot : sizes must coincide, instead we got " ++
                            show (dim a, dim b)
+                           
+
 
 -- | Since 'SpVector's form a Hilbert space, we can define a norm for them 
-instance Elt e => Normed SpVector e where
+instance Normed SpVector Double where
   norm p (SV _ v) = norm p v
 
 
@@ -311,7 +316,7 @@ ifilterSV q sv = SV (dim sv) (IM.filterWithKey q (dat sv))
 -- * Orthogonal vector
 
 -- | Generate an arbitrary (not random) vector `u` such that `v dot u = 0`
-orthogonalSV :: Fractional a => SpVector a -> SpVector a
+-- orthogonalSV :: Fractional a => SpVector a -> SpVector a
 orthogonalSV v = u where
   (h, t) = (headSV v, tailSV v)
   n = dim v

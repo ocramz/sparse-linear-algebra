@@ -29,22 +29,28 @@ instance Elt e => VectorSpace IM.IntMap e where
   n .* im = IM.map (* n) im
 
   
-instance Hilbert IM.IntMap Double where
-  type HT Double = Double
-  a `dot` b = sum $ liftI2 (*) a b
+instance (Real e, Elt e) => Hilbert IM.IntMap e where
+  type HT e = Double
+  a `dot` b = realToFrac $ sum $ liftI2 (*) a b
               
-instance Hilbert IM.IntMap (Complex Double) where
-  type HT (Complex Double) = Double
-  a `dot` b = realPart $ sum $ liftI2 (*) (fmap conj a) b
+instance RealFloat e => Hilbert IM.IntMap (Complex e) where
+  type HT (Complex e) = Double
+  a `dot` b = realToFrac $ realPart $ sum $ liftI2 (*) (conj <$> a) b
+
+
+
+
+
 
 -- instance Elt e => Hilbert IM.IntMap e 
 
 
 instance Normed IM.IntMap Double where
   norm p v | p==1 = norm1 v
-           | p==2 = norm2 v
-           | otherwise = normP p v
+           | otherwise = norm2 v
+           -- | otherwise = normP p v
 
+instance Normed IM.IntMap (Complex Double) where
 
 
 
