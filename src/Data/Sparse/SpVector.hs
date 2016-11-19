@@ -54,13 +54,14 @@ instance Set SpVector where
 instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
 
-instance Additive SpVector where
+instance Num a => AdditiveGroup (SpVector a) where
   zero = SV 0 IM.empty
   (^+^) = liftU2 (+)
 
 
 -- | 'SpVector's form a vector space because they can be multiplied by a scalar
-instance Elt e => VectorSpace SpVector e where
+instance (Num e , AdditiveGroup e) => VectorSpace (SpVector e) where
+  type (Scalar (SpVector e)) = e
   n .* v = scale n v
 
 -- | 'SpVector's are finite-dimensional vectors
@@ -94,7 +95,7 @@ instance SparseVector SpVector Double where
 
 
 -- | 'SpVector's form a Hilbert space, in that we can define an inner product over them
-instance Elt e => Hilbert SpVector e where
+instance (AdditiveGroup e, Elt e) => Hilbert (SpVector e) where
   a `dot` b | dim a == dim b = dot (dat a) (dat b)
             | otherwise =
                      error $ "dot : sizes must coincide, instead we got " ++
@@ -103,7 +104,7 @@ instance Elt e => Hilbert SpVector e where
 
 
 -- | Since 'SpVector's form a Hilbert space, we can define a norm for them 
-instance Normed SpVector Double where
+instance Normed (SpVector e) where
   norm p (SV _ v) = norm p v
 
 

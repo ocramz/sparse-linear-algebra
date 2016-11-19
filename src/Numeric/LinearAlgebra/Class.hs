@@ -61,9 +61,9 @@ lerp a u v = a .* u ^+^ ((1-a) .* v)
 -- linearCombination :: (VectorSpace v , Foldable t) => t (Scalar v, v) -> v
 -- linearCombination  =  foldr (\(a, x) (b, y) -> (a .* x) ^+^ (b .* y)) 
 
-
-
 -- numerical instances for VectorSpace
+instance VectorSpace Int where {type Scalar Int = Int; (.*) = (*)}
+instance VectorSpace Double where {type Scalar Double = Double; (.*) = (*)}
 instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
   type Scalar (Complex v) = Scalar v
   s .* (u :+ v) = s .* u :+ s .* v
@@ -102,9 +102,9 @@ hilbertDistSq x y = dot t t where
 -- * Normed vector space
 class Hilbert e => Normed e where
   -- |p-norm (p finite)
-  norm :: RealFloat a => a -> f e -> Scalar e
+  norm :: RealFloat a => a -> e -> Scalar e
   -- |Normalize w.r.t. p-norm
-  normalize :: RealFloat a => a -> f e -> f e
+  normalize :: RealFloat a => a -> e -> e
 
 
 
@@ -112,7 +112,7 @@ class Hilbert e => Normed e where
 -- ** Norms and related results
 
 -- | Squared 2-norm
--- normSq :: Hilbert f e => f e -> HT e
+normSq :: Hilbert v => v -> Scalar v
 normSq v = v `dot` v
 
 
@@ -121,13 +121,14 @@ norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 norm1 v = sum (fmap abs v)
 
 -- |Euclidean norm
--- norm2 :: (Hilbert f e, Floating (HT e)) => f e -> HT e
+norm2 :: (Hilbert v, Floating (Scalar v)) => v -> Scalar v
 norm2 v = sqrt (normSq v)
 
 -- |Lp norm (p > 0)
 -- normP :: (Hilbert f e, Floating a) => a -> f e -> HT e
--- normP p v = sum u**(1/p) where
---   u = fmap (**p) v
+normP :: (Foldable t, Functor t, Floating a) => a -> t a -> a
+normP p v = sum u**(1/p) where
+  u = fmap (**p) v
 
 -- |Infinity-norm
 normInfty :: (Foldable t, Ord a) => t a -> a

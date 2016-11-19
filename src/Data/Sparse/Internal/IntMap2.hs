@@ -18,7 +18,7 @@ instance Set IM.IntMap where
   liftI2 = IM.intersectionWith
   {-# INLINE liftI2 #-}
 
-instance Elt a => AdditiveGroup (IM.IntMap a) where
+instance Num a => AdditiveGroup (IM.IntMap a) where
   zero = IM.empty
   {-# INLINE zero #-}
   (^+^) = liftU2 (+)
@@ -28,21 +28,17 @@ instance Elt a => AdditiveGroup (IM.IntMap a) where
   negated = fmap negate
   {-# INLINE negated #-}
 
-instance Elt e => VectorSpace (IM.IntMap e) where
+
+instance (Num e, AdditiveGroup e) => VectorSpace (IM.IntMap e) where
   type (Scalar (IM.IntMap e)) = e
   n .* im = IM.map (* n) im
 
+instance (Real e, Fractional e, AdditiveGroup e) => Hilbert (IM.IntMap e) where
+  a `dot` b = realToFrac $ sum $ liftI2 (*) a b
 
+instance (RealFloat e, AdditiveGroup e) => Hilbert (IM.IntMap (Complex e)) where
+  a `dot` b = realToFrac $ realPart $ sum $ liftI2 (*) (conj <$> a) b
   
--- instance (Real e, Elt e) => Hilbert (IM.IntMap e) where
---   -- type HT (IM.IntMap e) = Double
---   a `dot` b = realToFrac $ sum $ liftI2 (*) a b
-              
--- instance RealFloat e => Hilbert (IM.IntMap (Complex e)) where
---   type HT (IM.IntMap (Complex e)) = Double
---   a `dot` b = realToFrac $ realPart $ sum $ liftI2 (*) (conj <$> a) b
-
-
 
 
 
@@ -50,10 +46,12 @@ instance Elt e => VectorSpace (IM.IntMap e) where
 -- instance Elt e => Hilbert IM.IntMap e 
 
 
--- instance Normed (IM.IntMap e) where
---   norm p v | p==1 = norm1 v
---            | otherwise = norm2 v
---            -- | otherwise = normP p v
+instance (RealFloat e, AdditiveGroup e) => Normed (IM.IntMap e) where
+  norm p v | p==1 = norm1 v
+           | otherwise = norm2 v
+           -- | otherwise = normP p v
+
+-- instance (RealFloat e, AdditiveGroup e) => Normed (IM.IntMap (Complex e)) where
 
 -- instance Normed (IM.IntMap (Complex e)) where
 
