@@ -11,6 +11,8 @@ import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Algorithms.Merge as VA (sort, sortBy)
 import qualified Data.Vector.Generic as VG (convert)
 
+import Data.Sparse.Utils
+
 {-| Compressed Row Storage specification :
 
    http://netlib.org/utk/people/JackDongarra/etemplates/node373.html
@@ -49,43 +51,25 @@ toCSR m n ijxv = CsrMatrix m n nz cv crp where
   cv = V.map tail3 ijxv'  -- map ( O(N) )
   crp = csrPtrVM m $ V.map fst3 ijxv'
   sortByRows = V.modify (VA.sortBy f) where
-    f x y = compare (fst3 x) (fst3 y)
+       f x y = compare (fst3 x) (fst3 y)
   nz = V.length ijxv'
   tail3 (_,j,x) = (j,x)
   fst3 (i, _, _) = i
-
--- csrRowPtr : for every row index in [0 .. m-1], count # NZ elements having matching row number
-csrPtrVM :: Int -> V.Vector Int -> V.Vector Int
-csrPtrVM nrows xs = V.scanl (+) 0 $ V.modify modf (V.replicate nrows 0) where
- modf vm = do
-  let loop v ll i | i == nrows = return ()
-                  | otherwise = do
-        let lp = V.length $ V.takeWhile (== i) ll
-        VM.write v i lp
-        loop v (V.drop lp ll) (i + 1)
-  loop vm xs 0  
-
-
--- csrPtr :: (Num t, Eq t) => t -> V.Vector t -> V.Vector Int
-csrPtr nrows xs = scanl (+) 0 $ go xs 0 where
-  go ll i | i == nrows = []
-          | otherwise = lp : go (drop lp ll) (i + 1) where
-              lp = length $ takeWhile (== i) ll
-              
-csrPtrV :: (Num t, Eq t) => t -> V.Vector t -> V.Vector Int
-csrPtrV nrows xs = V.scanl' (+) 0 $ go xs 0 where
- go ll i | i == nrows = V.empty
-         | otherwise = V.singleton lp V.++ go (V.drop lp ll) (i + 1) where
-               lp = V.length $ V.takeWhile (== i) ll
-
-
+  csrPtrVM nrows xs = V.scanl (+) 0 $ V.modify modf (V.replicate nrows 0) where
+   modf vm = do
+     let loop v ll i | i == nrows = return ()
+                     | otherwise = do
+                                     let lp = V.length $ V.takeWhile (== i) ll
+                                     VM.write v i lp
+                                     loop v (V.drop lp ll) (i + 1)
+     loop vm xs 0  
 
 
 data CsrVector a = CsrVector { cvDim :: {-# UNPACK #-} !Int,
                                cvIxVal :: V.Vector (Int, a) } deriving Eq
 
 extractRow :: CsrMatrix a -> Int -> V.Vector (Int, a)
-extractRow (CsrMatrix _ _ _ cv rp) irow = vals where
+extractRow (CsrMatrix m n _ cv rp) irow = vals where
   imin = rp V.! irow
   imax = (rp V.! (irow + 1)) - 1
   vals = V.drop imin $ V.take (imax + 1) cv
