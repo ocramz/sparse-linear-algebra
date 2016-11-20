@@ -46,6 +46,7 @@ library
                      , mtl >= 2.2.1
                      , mwc-random
                      , vector
+                     , vector-algorithms
 
 
 executable sparse-linear-algebra
