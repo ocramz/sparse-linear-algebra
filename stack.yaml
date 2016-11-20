@@ -48,7 +48,7 @@ flags: {}
 extra-package-dbs: []
 
 ghc-options:
-  "*" : -w
+  "*" : -w -fprint-potential-instances
 
 # Control whether we use the GHC we find on the path
 # system-ghc: true

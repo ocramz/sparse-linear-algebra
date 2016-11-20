@@ -223,7 +223,7 @@ qr mm = (transposeSM qt, r) where
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
-eigsQR :: (Epsilon a, RealFloat a) => Int -> SpMatrix a -> SpVector a
+-- eigsQR :: (Epsilon a, RealFloat a) => Int -> SpMatrix a -> SpVector a
 eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
   eigsStep mm = r #~# q where (q, r) = qr mm
   convergtest g = modifyInspectN nitermax f g where
@@ -239,10 +239,10 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
 -- ** Rayleigh iteration
 
 -- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair
-eigRayleigh :: (Epsilon a, RealFloat a) => Int -- max # iterations
-     -> SpMatrix a           -- matrix
-     -> (SpVector a, a) -- initial guess of (eigenvector, eigenvalue)
-     -> (SpVector a, a) -- final estimate of (eigenvector, eigenvalue)
+-- eigRayleigh :: (Epsilon a, RealFloat a) => Int -- max # iterations
+--      -> SpMatrix a           -- matrix
+--      -> (SpVector a, a) -- initial guess of (eigenvector, eigenvalue)
+--      -> (SpVector a, a) -- final estimate of (eigenvector, eigenvalue)
 eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
   convergtest g = modifyInspectN nitermax f g where
     f [(b1, _), (b2, _)] = nearZero $ norm2 (b2 ^-^ b1)
@@ -250,7 +250,7 @@ eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
       ii = eye (nrows aa)
       nom = (aa ^-^ (mu `matScale` ii)) <\> b
       b' = normalize 2 nom
-      mu' = b' `dot` (aa #> b') / (b' `dot` b')
+      mu' = (b' `dot` (aa #> b')) / (b' `dot` b')
 
 
 
@@ -258,7 +258,7 @@ eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
 -- * Householder vector 
 
 -- (Golub & Van Loan, Alg. 5.1.1, function `house`)
-hhV :: (Epsilon a, Real a, Floating a) => SpVector a -> (SpVector a, a)
+-- hhV :: (Epsilon a, Real a, Floating a) => SpVector a -> (SpVector a, a)
 hhV x = (v, beta) where
   n = dim x
   tx = tailSV x
@@ -348,7 +348,7 @@ chol aa = lfin where
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 -- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
-lu :: (Epsilon a, Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+-- lu :: (Epsilon a, Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 lu aa = (lf, ufin) where
   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
   ufin = uUpdSparse (ixf, lf, uf) -- final U update
@@ -434,7 +434,7 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 
 arnoldi ::
-  (Epsilon a, Floating a, Eq a) =>
+  (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) =>
      SpMatrix a -> SpVector a -> Int -> (SpMatrix a, SpMatrix a)
 arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
   where
@@ -493,7 +493,7 @@ diagPartitions aa = (e,d,f) where
 -- ** Incomplete LU
 
 -- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
-ilu0 :: (Epsilon a, Real a, Fractional a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+ilu0 :: (Epsilon a, Real a, Fractional a, AdditiveGroup a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 ilu0 aa = (lh, uh) where
   (l, u) = lu aa
   lh = sparsifyLU l aa
@@ -523,12 +523,12 @@ mSsor aa omega = (l, r) where
 
 -- | Direct solver based on a triangular factorization of the system matrix.
 luSolve ::
-  (Fractional a, Eq a, Epsilon a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
+  (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
 luSolve ll uu b
   | isLowerTriSM ll && isUpperTriSM uu = triUpperSolve uu (triLowerSolve ll b)
   | otherwise = error "luSolve : factors must be triangular matrices" 
 
-triLowerSolve :: (Epsilon a, Fractional a) => SpMatrix a -> SpVector a -> SpVector a
+triLowerSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 triLowerSolve ll b = sparsifySV v where
   (v, _) = execState (modifyUntil q lStep) lInit where
   q (_, i) = i == dim b
@@ -545,7 +545,7 @@ triLowerSolve ll b = sparsifySV v where
     ww0 = insertSpVector 0 w0 $ zeroSV (dim b)  
 
 -- | NB in the computation of `xi` we must rebalance the subrow indices because `dropSV` does that too, in order to take the inner product with consistent index pairs
-triUpperSolve :: (Epsilon a, Fractional a) => SpMatrix a -> SpVector a -> SpVector a
+triUpperSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 triUpperSolve uu w = sparsifySV x where
   (x, _) = execState (modifyUntil q uStep) uInit
   q (_, i) = i == (- 1)
@@ -581,7 +581,7 @@ triUpperSolve uu w = sparsifySV x where
 --
 -- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
-gmres :: (Epsilon a, RealFloat a) => SpMatrix a -> SpVector a -> SpVector a
+gmres :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 gmres aa b = qa' #> yhat where
   m = ncols aa
   (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
@@ -610,12 +610,12 @@ gmres aa b = qa' #> yhat where
 
 -- ** CGNE
 
-cgneStep :: Fractional a => SpMatrix a -> CGNE a -> CGNE a
+cgneStep :: (RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> CGNE a -> CGNE a
 cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
-  alphai = r `dot` r / (p `dot` p)
+  alphai = (r `dot` r) / (p `dot` p)
   x1 = x ^+^ (alphai .* p)
   r1 = r ^-^ (alphai .* (aa #> p))
-  beta = r1 `dot` r1 / (r `dot` r)
+  beta = (r1 `dot` r1) / (r `dot` r)
   p1 = transposeSM aa #> r ^+^ (beta .* p)
 
 data CGNE a =
@@ -625,7 +625,7 @@ instance Show a => Show (CGNE a) where
                         "r = " ++ show r ++ "\n" ++
                         "p = " ++ show p ++ "\n"
 
-cgne :: (Epsilon a, Fractional a) => SpMatrix a -> SpVector a -> SpVector a -> CGNE a
+cgne :: (RealFrac a, Elt a, AdditiveGroup a, Epsilon a) => SpMatrix a -> SpVector a -> SpVector a -> CGNE a
 cgne aa b x0 = execState (untilConverged _xCgne (cgneStep aa)) cgneInit where
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
   p0 = transposeSM aa #> r0
@@ -635,7 +635,7 @@ cgne aa b x0 = execState (untilConverged _xCgne (cgneStep aa)) cgneInit where
 -- ** TFQMR
 
 -- | one step of TFQMR
-tfqmrStep :: Floating a => SpMatrix a -> SpVector a -> TFQMR a -> TFQMR a
+-- tfqmrStep :: Floating a => SpMatrix a -> SpVector a -> TFQMR a -> TFQMR a
 tfqmrStep aa r0hat (TFQMR x w u v d m tau theta eta rho alpha) =
   TFQMR x1 w1 u1 v1 d1 (m+1) tau1 theta1 eta1 rho1 alpha1
   where
@@ -659,7 +659,7 @@ tfqmrStep aa r0hat (TFQMR x w u v d m tau theta eta rho alpha) =
                    v' = (aa #> u') ^+^ (beta .* (aa #> u ^+^ (beta .* v)) )
                   in (alpha, u', rho', v')
 
-tfqmr :: (Epsilon a, Floating a) => SpMatrix a -> SpVector a -> SpVector a -> TFQMR a
+-- tfqmr :: (Epsilon a, Floating a) => SpMatrix a -> SpVector a -> SpVector a -> TFQMR a
 tfqmr aa b x0 = execState (untilConverged _xTfq (tfqmrStep aa r0)) tfqmrInit where
   n = dim b
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
@@ -690,7 +690,7 @@ instance Show a => Show (TFQMR a) where
 -- ** BCG
 
 -- | one step of BCG
-bcgStep :: Fractional a => SpMatrix a -> BCG a -> BCG a
+-- bcgStep :: Fractional a => SpMatrix a -> BCG a -> BCG a
 bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
   aap = aa #> p
   alpha = (r `dot` rhat) / (aap `dot` phat)
@@ -704,7 +704,7 @@ bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
 data BCG a =
   BCG { _xBcg, _rBcg, _rHatBcg, _pBcg, _pHatBcg :: SpVector a } deriving Eq
 
-bcg :: (Epsilon a, Fractional a) => SpMatrix a -> SpVector a -> SpVector a -> BCG a
+-- bcg :: (Epsilon a, Fractional a) => SpMatrix a -> SpVector a -> SpVector a -> BCG a
 bcg aa b x0 = execState (untilConverged _xBcg (bcgStep aa)) bcgInit where
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
   r0hat = r0
@@ -723,7 +723,7 @@ instance Show a => Show (BCG a) where
 -- ** CGS
 
 -- | one step of CGS
-cgsStep :: Fractional a => SpMatrix a -> SpVector a -> CGS a -> CGS a
+-- cgsStep :: Fractional a => SpMatrix a -> SpVector a -> CGS a -> CGS a
 cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
   where
   aap = aa #> p
@@ -738,8 +738,8 @@ cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
 data CGS a = CGS { _x, _r, _p, _u :: SpVector a} deriving Eq
 
 -- | iterate solver until convergence or until max # of iterations is reached
-cgs :: (Epsilon a, Fractional a) =>
-  SpMatrix a -> SpVector a -> SpVector a -> SpVector a -> CGS a
+-- cgs :: (Epsilon a, Fractional a) =>
+--   SpMatrix a -> SpVector a -> SpVector a -> SpVector a -> CGS a
 cgs aa b x0 rhat =
   execState (untilConverged _x (cgsStep aa rhat)) cgsInit where
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
@@ -766,7 +766,7 @@ instance (Show a) => Show (CGS a) where
 -- _r0hat :: SpVector Double, -- candidate solution: r0hat `dot` r0 >= 0
 
 -- | one step of BiCGSTAB
-bicgstabStep :: Fractional a => SpMatrix a -> SpVector a -> BICGSTAB a -> BICGSTAB a
+-- bicgstabStep :: Fractional a => SpMatrix a -> SpVector a -> BICGSTAB a -> BICGSTAB a
 bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
   aap = aa #> p
   alphaj = (r `dot` r0hat) / (aap `dot` r0hat)
@@ -782,9 +782,9 @@ data BICGSTAB a =
   BICGSTAB { _xBicgstab, _rBicgstab, _pBicgstab :: SpVector a} deriving Eq
 
 -- | iterate solver until convergence or until max # of iterations is reached
-bicgstab ::
-  (Epsilon a, Fractional a) =>
-     SpMatrix a -> SpVector a -> SpVector a -> SpVector a -> BICGSTAB a
+-- bicgstab ::
+--   (Epsilon a, Fractional a) =>
+--      SpMatrix a -> SpVector a -> SpVector a -> SpVector a -> BICGSTAB a
 bicgstab aa b x0 r0hat =
   execState (untilConverged _xBicgstab (bicgstabStep aa r0hat)) bicgsInit where
    r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
@@ -802,7 +802,7 @@ instance Show a => Show (BICGSTAB a) where
 
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equaitons. Uses <\\> for the linear solve
-pinv :: (Epsilon a, RealFloat a) => SpMatrix a -> SpVector a -> SpVector a
+pinv :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 pinv aa b = aa #^# aa <\> atb where
   atb = transposeSM aa #> b
 
@@ -829,8 +829,8 @@ data LinSolveMethod = GMRES_ | CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving
 --                    BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
 
 -- | Linear solve with _deterministic_ starting vector (every component at 0.1) 
-linSolve :: (Epsilon a, RealFloat a) =>
-  LinSolveMethod -> SpMatrix a -> SpVector a -> SpVector a
+-- linSolve :: (Epsilon a, RealFloat a) =>
+--   LinSolveMethod -> SpMatrix a -> SpVector a -> SpVector a
 linSolve method aa b
   | n /= nb = error "linSolve : operand dimensions mismatch"
   | otherwise = solve aa b where
@@ -848,7 +848,7 @@ linSolve method aa b
       nb     = dim b
 
 -- | linSolve using the GMRES method as default
-(<\>) :: (Epsilon a, RealFloat a) => SpMatrix a -> SpVector a -> SpVector a
+(<\>) :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 (<\>) = linSolve GMRES_ 
   
 
@@ -951,12 +951,12 @@ diffSqL xx = (x1 - x2)**2 where [x1, x2] = [head xx, xx!!1]
 
 
 -- | iterate until convergence is verified or we run out of a fixed iteration budget
-untilConverged :: (MonadState s m, Epsilon a) => (s -> SpVector a) -> (s -> s) -> m s
+-- untilConverged :: (MonadState s m, Epsilon a) => (s -> SpVector a) -> (s -> s) -> m s
 untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
 
 -- | convergence check (FIXME)
-normDiffConverged :: (Foldable t, Functor t, Epsilon b) =>
-     (a -> SpVector b) -> t a -> Bool
+-- normDiffConverged :: (Foldable t, Functor t, Epsilon b) =>
+--      (a -> SpVector b) -> t a -> Bool
 normDiffConverged fp xx = nearZero $ normSq (foldrMap fp (^-^) (zeroSV 0) xx)
 
 

@@ -28,7 +28,7 @@ import qualified Data.Vector as V
 -- * Sparse Vector
 
 data SpVector a = SV { svDim :: {-# UNPACK #-} !Int ,
-                       svData :: {-# UNPACK #-} !(IM.IntMap a)} deriving Eq
+                       svData :: !(IM.IntMap a)} deriving Eq
 
 -- | SpVector sparsity
 spySV :: Fractional b => SpVector a -> b
@@ -85,17 +85,17 @@ instance Elt a => SpContainer SpVector a where
   v @@ i = lookupDenseSV i v
 
 
-instance SparseVector SpVector Double where
-  type SpvIx SpVector = Int
-  svFromList = fromListSV
-  svFromListDense = fromListDenseSV
-  svConcat = foldr concatSV zero
+-- instance (Elt e, RealFloat e) => SparseVector SpVector e where
+--   type SpvIx SpVector = Int
+--   svFromList = fromListSV
+--   svFromListDense = fromListDenseSV
+--   svConcat = foldr concatSV zero
 
 -- instance SparseVector SpVector (Complex Double) where
 
 
 -- | 'SpVector's form a Hilbert space, in that we can define an inner product over them
-instance (AdditiveGroup e, Elt e) => Hilbert (SpVector e) where
+instance (AdditiveGroup e, Real e, Elt e) => Hilbert (SpVector e) where
   a `dot` b | dim a == dim b = dot (dat a) (dat b)
             | otherwise =
                      error $ "dot : sizes must coincide, instead we got " ++
@@ -104,7 +104,7 @@ instance (AdditiveGroup e, Elt e) => Hilbert (SpVector e) where
 
 
 -- | Since 'SpVector's form a Hilbert space, we can define a norm for them 
-instance Normed (SpVector e) where
+instance (Elt e, RealFloat e, AdditiveGroup e) => Normed (SpVector e) where
   norm p (SV _ v) = norm p v
 
 

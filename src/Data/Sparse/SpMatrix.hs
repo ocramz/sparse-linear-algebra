@@ -41,7 +41,7 @@ import Data.Maybe
 -- * Sparse Matrix
 
 data SpMatrix a = SM {smDim :: {-# UNPACK #-} !(Rows, Cols),
-                      smData :: {-# UNPACK #-} !(IM.IntMap (IM.IntMap a))}
+                      smData :: !(IM.IntMap (IM.IntMap a))}
                 deriving Eq
 
 
@@ -61,7 +61,7 @@ instance Set SpMatrix where
   liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) ((liftI2.liftI2) f2 x1 x2)
 
 -- | 'SpMatrix'es form a ring, in that they can be added and possess a zero element  
-instance Additive SpMatrix where
+instance Num a => AdditiveGroup (SpMatrix a) where
   zero = SM (0,0) IM.empty
   (^+^) = liftU2 (+)
 
@@ -360,11 +360,10 @@ isLowerTriSM m = m == lm where
 isUpperTriSM m = m == lm where
   lm = ifilterSM (\i j _ -> i <= j) m
 
--- |Is the matrix orthogonal? i.e. Q^t ## Q == I
+-- -- |Is the matrix orthogonal? i.e. Q^t ## Q == I
 isOrthogonalSM :: (Eq a, Epsilon a) => SpMatrix a -> Bool
 isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
   rsm = roundZeroOneSM $ transposeSM sm ## sm
-
 
 
 
@@ -645,7 +644,7 @@ matScale a = fmap (*a)
 
 
 -- ** Frobenius norm
-normFrobenius :: Floating a => SpMatrix a -> a
+-- normFrobenius :: Floating a => SpMatrix a -> a
 normFrobenius m = sqrt $ foldlSM (+) 0 m' where
   m' | nrows m > ncols m = transposeSM m ## m
      | otherwise = m ## transposeSM m 
@@ -671,16 +670,18 @@ normFrobenius m = sqrt $ foldlSM (+) 0 m' where
 -- ** Matrix-matrix product
 
 matMat, (##) :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
-matMat m1 m2
-  | c1 == r2 = matMatU m1 m2
-  | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
-      d1@(r1, c1) = dim m1
-      d2@(r2, c2) = dim m2
-      matMatU :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
-      matMatU m1 m2 =
-        SM (nrows m1, ncols m2) im where
-          im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
-    
+-- matMat m1 m2
+--   | c1 == r2 = matMatU m1 m2
+--   | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
+--       d1@(r1, c1) = dim m1
+--       d2@(r2, c2) = dim m2
+--       matMatU :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
+--       matMatU m1 m2 =
+--         SM (nrows m1, ncols m2) im where
+--           im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
+
+matMat m1 m2 = undefined
+      
 
 (##) = matMat
 

@@ -1,9 +1,11 @@
-{-# LANGUAGE TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances #-}
+{-# language TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances #-}
+{-# language CPP #-}
 module Numeric.LinearAlgebra.Class where
 
 import Control.Applicative
 import Data.Complex
 import Data.Ratio
+import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 
 -- * Matrix and vector elements (possibly Complex)
 class (Eq e , Fractional e) => Elt e where
@@ -28,10 +30,14 @@ class AdditiveGroup e where
   x ^-^ y = x ^+^ negated y
 
 -- | Numeric isntances for AdditiveGroup
-instance AdditiveGroup Int where {zero=0; (^+^) = (+); negated = negate}
-instance AdditiveGroup Integer where {zero=0; (^+^) = (+); negated = negate}
-instance AdditiveGroup Double where {zero=0; (^+^) = (+); negated = negate}
-instance AdditiveGroup Float where {zero=0; (^+^) = (+); negated = negate}
+
+-- For 'Num' types:
+-- 
+-- instance AdditiveGroup n where {zeroV=0; (^+^) = (+); negateV = negate}
+
+
+
+
 instance Integral a => AdditiveGroup (Ratio a) where
   {zero=0; (^+^) = (+); negated = negate}
 instance (RealFloat v, AdditiveGroup v) => AdditiveGroup (Complex v) where
@@ -61,9 +67,7 @@ lerp a u v = a .* u ^+^ ((1-a) .* v)
 -- linearCombination :: (VectorSpace v , Foldable t) => t (Scalar v, v) -> v
 -- linearCombination  =  foldr (\(a, x) (b, y) -> (a .* x) ^+^ (b .* y)) 
 
--- numerical instances for VectorSpace
-instance VectorSpace Int where {type Scalar Int = Int; (.*) = (*)}
-instance VectorSpace Double where {type Scalar Double = Double; (.*) = (*)}
+-- | numerical instances for VectorSpace
 instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
   type Scalar (Complex v) = Scalar v
   s .* (u :+ v) = s .* u :+ s .* v
@@ -71,18 +75,15 @@ instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
 
 
 
-
-
 -- * Hilbert space (inner product)
 infixr 7 `dot`
-
 class (VectorSpace v, AdditiveGroup (Scalar v)) => Hilbert v where
   dot :: v -> v -> Scalar v
-
+  
+-- infixr 7 <.>
 -- (<.>) = dot  
 
 
--- infixr 7 <.>
 
 
 
@@ -276,14 +277,23 @@ class (SparseMatrix m e, SparseVector v e) => LinearSpace m v e where
 
 
 
--- class (Elt e, SparseVector v e) => DOT s v e where
---   dot' :: StratCxt s -> v e -> v e -> ResS s e
 
--- class (Elt e, SparseVector v e) => VectorSpace' v e where
---   vscale :: e -> v e -> v e
 
--- class (VectorSpace' v e) => Hilbert' v e where
---   vdot :: v e -> v e -> e
 
--- class Hilbert' v e => Normed' v e where
---   vnorm :: Floating a => Int -> v e -> a
+#define ScalarType(t) \
+  instance AdditiveGroup (t) where {zero = 0; (^+^) = (+); negated = negate};\
+  instance VectorSpace (t) where {type Scalar (t) = (t); (.*) = (*) };\
+  instance Hilbert (t) where dot = (*)
+
+ScalarType(Int)
+ScalarType(Integer)
+ScalarType(Float)
+ScalarType(Double)
+ScalarType(CSChar)
+ScalarType(CInt)
+ScalarType(CShort)
+ScalarType(CLong)
+ScalarType(CLLong)
+ScalarType(CIntMax)
+ScalarType(CFloat)
+ScalarType(CDouble)

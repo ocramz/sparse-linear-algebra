@@ -214,18 +214,22 @@ FIXME : matVec is more general than SpVector's :
 
 
 -- |Matrix-on-vector
-matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
-matVec (SM (nr, nc) mdata) (SV n sv)
-  | nc == n = SV nr $ fmap (`dot` sv) mdata
-  | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
+-- matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
+-- matVec (SM (nr, nc) mdata) (SV n sv)
+--   | nc == n = SV nr $ fmap (`dot` sv) mdata
+--   | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
+
+matVec m v = undefined
 
 (#>) = matVec
 
 -- |Vector-on-matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
-vecMat, (<#) :: Num a => SpVector a -> SpMatrix a -> SpVector a  
-vecMat (SV n sv) (SM (nr, nc) mdata)
-  | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
-  | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)
+-- vecMat, (<#) :: Num a => SpVector a -> SpMatrix a -> SpVector a  
+-- vecMat (SV n sv) (SM (nr, nc) mdata)
+--   | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
+--   | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)
+
+vecMat v m = undefined
 
 (<#) = vecMat  
 

@@ -133,7 +133,7 @@ checkQr a = c1 && c2 && c3 where
 
 {- LU -}
 
-checkLu :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
+-- checkLu :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
 checkLu a = c1 && c2 where
   (l, u) = lu a
   c1 = nearZero (normFrobenius ((l #~# u) ^-^ a))
@@ -143,7 +143,7 @@ checkLu a = c1 && c2 where
 
 {- Cholesky -}
 
-checkChol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
+-- checkChol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
 checkChol a = c1 && c2 where
   l = chol a
   c1 = nearZero $ normFrobenius ((l ##^ l) ^-^ a)
@@ -152,7 +152,7 @@ checkChol a = c1 && c2 where
 
 {- direct linear solver -}
 
-checkLuSolve :: (Epsilon a, Real a, Floating a) => SpMatrix a -> SpVector a -> Bool
+-- checkLuSolve :: (Epsilon a, Real a, Floating a) => SpMatrix a -> SpVector a -> Bool
 checkLuSolve amat rhs = nearZero (normSq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
   where
      (lmat, umat) = lu amat
@@ -160,7 +160,7 @@ checkLuSolve amat rhs = nearZero (normSq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
       
   
 {- Arnoldi iteration -}
-checkArnoldi :: (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> Bool
+-- checkArnoldi :: (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> Bool
 checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
   b = onesSV (nrows aa)
   (q, h) = arnoldi aa b kn
@@ -200,7 +200,7 @@ x0true = mkSpVectorD 2 [2,3]
 
 
 
-aa0tx0 = mkSpVectorD 2 [11,16]
+aa0tx0 = mkSpVectorD 2 [11,16] :: SpVector Double
 
 
 
@@ -375,20 +375,18 @@ tv1 = fromListSV 2 [(0,1)]
 
 tm1 = sparsifySM $ fromListDenseSM 3 [6,5,0,5,1,4,0,4,3]
 
-tm1g1 = givens tm1 1 0
-tm1a2 = tm1g1 ## tm1
+-- tm1g1 = givens tm1 1 0
+-- tm1a2 = tm1g1 ## tm1
 
-tm1g2 = givens tm1a2 2 1
-tm1a3 = tm1g2 ## tm1a2
+-- tm1g2 = givens tm1a2 2 1
+-- tm1a3 = tm1g2 ## tm1a2
 
-tm1q = transposeSM (tm1g2 ## tm1g1)
+-- tm1q = transposeSM (tm1g2 ## tm1g1)
 
 
 -- wp test matrix for QR decomposition via Givens rotation
 
 tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
-
-
 
 
 tm3 = transposeSM $ fromListDenseSM 3 [1 .. 9]
