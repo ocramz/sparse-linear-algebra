@@ -1,6 +1,8 @@
 module Data.Sparse.Internal.CSR where
 
+import Control.Applicative
 import Control.Monad.Primitive
+import Control.Monad.ST
 
 import Data.Foldable (foldl')
 -- import Data.List (group, groupBy)
@@ -91,7 +93,68 @@ fromDenseV n xs = CsrVector n (V.indexed xs)
 
 v0,v1 :: V.Vector Int
 v0 = V.fromList [0,1,2,5,6]
-v1 = V.fromList [2,3,4]
+v1 = V.fromList [0,2,3,4,6]
+
+-- | intersection between sorted vectors, in-place updates
+isectvM :: (Ord a, Num a) => V.Vector a -> V.Vector a -> V.Vector a
+isectvM u_ v_ = V.force $ V.modify (modf u_ v_) (V.replicate n 0) where
+  n = max (V.length u_) (V.length v_)
+  modf u_ v_ vm = do
+    let go u_ v_ i vm | V.null u_ || V.null v_ || i == n = return ()
+                      | otherwise =  do
+         let (u,us) = (V.head u_, V.tail u_)
+             (v,vs) = (V.head v_, V.tail v_)
+         if u == v then do VM.write vm i u
+                           go us vs (i + 1) vm
+                   else if u < v then go us v_ i vm
+                                 else go u_ vs i vm
+    go u_ v_ 0 vm
+
+isectvM' :: (PrimMonad m, Ord a) => Int -> V.Vector a -> V.Vector a -> m (V.Vector a)
+isectvM' n u_ v_ = do
+    vm <- VM.new n
+    let go u_ v_ i vm | V.null u_ || V.null v_ || i == n = return (vm, i)
+                      | otherwise =  do
+         let (u,us) = (V.head u_, V.tail u_)
+             (v,vs) = (V.head v_, V.tail v_)
+
+         if u == v then do VM.write vm i u
+                           go us vs (i + 1) vm
+                   else if u < v then go us v_ i vm
+                                 else go u_ vs i vm
+    (vm', i') <- go u_ v_ 0 vm
+    V.take i' <$> V.freeze vm'
+ 
+
+
+-- | intersection between sorted Vectors
+
+isectv' u_ v_ = V.create $ do
+  let n = max (V.length u_) (V.length v_)
+  vm <- VM.new n
+  let go u_ v_ i vm | V.null u_ || V.null v_ || i == n = return (vm, i)
+                      | otherwise =  do
+         let (u,us) = (V.head u_, V.tail u_)
+             (v,vs) = (V.head v_, V.tail v_)
+         if u == v then do VM.write vm i u
+                           go us vs (i + 1) vm
+                   else if u < v then go us v_ i vm
+                                 else go u_ vs i vm
+  (vm', i') <- go u_ v_ 0 vm
+  let vm'' = VM.take i' vm'
+  return vm''
+
+isectv :: Ord a => V.Vector a -> V.Vector a -> V.Vector a
+isectv = isectvWith compare
+
+isectvWith :: (a -> t -> Ordering) -> V.Vector a -> V.Vector t -> V.Vector a
+isectvWith cmp u_ v_ | V.null u_ || V.null v_ = V.empty
+                     | otherwise = 
+  let (u,us) = (V.head u_, V.tail u_)
+      (v,vs) = (V.head v_, V.tail v_)
+  in case cmp u v of EQ -> V.cons u (isectvWith cmp us vs)
+                     LT -> isectvWith cmp us v_
+                     GT -> isectvWith cmp u_ vs
 
 
 -- | intersection between _sorted_ lists (see @isect@ in `data-ordlist`)
@@ -103,20 +166,10 @@ intersect (x:xs) (y:ys) | x == y = x : xs `intersect` ys
 intersect _ [] = []
 intersect [] _ = []
 
--- isect :: Ord a => [a] -> [a] -> [a]
--- isect = isectBy compare
 
--- -- |  The 'isectBy' function is the non-overloaded version of 'isect'.
-isectBy :: (a -> b -> Ordering) -> [a] -> [b] -> [a]
-isectBy cmp = loop
-  where
-     loop [] _ys  = []
-     loop _xs []  = []
-     loop (x:xs) (y:ys)
-       = case cmp x y of
-          LT ->     loop xs (y:ys)
-          EQ -> x : loop xs ys
-          GT ->     loop (x:xs) ys
+
+
+
 
 
 
