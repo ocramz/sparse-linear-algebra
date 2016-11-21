@@ -4,7 +4,7 @@ import Control.Applicative
 import Control.Monad.Primitive
 import Control.Monad.ST
 
-import Data.Foldable (foldl')
+import qualified Data.Foldable as F -- (foldl')
 -- import Data.List (group, groupBy)
 
 import qualified Data.Vector as V 
@@ -12,6 +12,8 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Algorithms.Merge as VA (sortBy)
 -- import qualified Data.Vector.Generic as VG (convert)
+
+import Data.Complex
 
 import Data.Sparse.Utils
 
@@ -93,84 +95,56 @@ fromDenseV n xs = CsrVector n (V.indexed xs)
 
 v0,v1 :: V.Vector Int
 v0 = V.fromList [0,1,2,5,6]
-v1 = V.fromList [0,2,3,4,6]
+v1 = V.fromList [0,3,4,6]
 
 -- | intersection between sorted vectors, in-place updates
-isectvM :: (Ord a, Num a) => V.Vector a -> V.Vector a -> V.Vector a
-isectvM u_ v_ = V.force $ V.modify (modf u_ v_) (V.replicate n 0) where
-  n = max (V.length u_) (V.length v_)
-  modf u_ v_ vm = do
-    let go u_ v_ i vm | V.null u_ || V.null v_ || i == n = return ()
-                      | otherwise =  do
-         let (u,us) = (V.head u_, V.tail u_)
-             (v,vs) = (V.head v_, V.tail v_)
-         if u == v then do VM.write vm i u
-                           go us vs (i + 1) vm
-                   else if u < v then go us v_ i vm
-                                 else go u_ vs i vm
-    go u_ v_ 0 vm
-
-isectvM' :: (PrimMonad m, Ord a) => Int -> V.Vector a -> V.Vector a -> m (V.Vector a)
-isectvM' n u_ v_ = do
-    vm <- VM.new n
-    let go u_ v_ i vm | V.null u_ || V.null v_ || i == n = return (vm, i)
-                      | otherwise =  do
-         let (u,us) = (V.head u_, V.tail u_)
-             (v,vs) = (V.head v_, V.tail v_)
-
-         if u == v then do VM.write vm i u
-                           go us vs (i + 1) vm
-                   else if u < v then go us v_ i vm
-                                 else go u_ vs i vm
-    (vm', i') <- go u_ v_ 0 vm
-    V.take i' <$> V.freeze vm'
- 
-
-
--- | intersection between sorted Vectors
-
-isectv' u_ v_ = V.create $ do
+intersectWith ::
+  Ord b => (a -> b) -> (a -> a -> c) -> V.Vector a -> V.Vector a -> V.Vector c
+intersectWith f g u_ v_ = V.force $ V.create $ do
   let n = max (V.length u_) (V.length v_)
   vm <- VM.new n
   let go u_ v_ i vm | V.null u_ || V.null v_ || i == n = return (vm, i)
-                      | otherwise =  do
+                    | otherwise =  do
          let (u,us) = (V.head u_, V.tail u_)
              (v,vs) = (V.head v_, V.tail v_)
-         if u == v then do VM.write vm i u
-                           go us vs (i + 1) vm
-                   else if u < v then go us v_ i vm
-                                 else go u_ vs i vm
+         if f u == f v then do VM.write vm i (g u v)
+                               go us vs (i + 1) vm
+                   else if f u < f v then go us v_ i vm
+                                     else go u_ vs i vm
   (vm', i') <- go u_ v_ 0 vm
   let vm'' = VM.take i' vm'
   return vm''
 
-isectv :: Ord a => V.Vector a -> V.Vector a -> V.Vector a
-isectv = isectvWith compare
+-- intersectIxVectors :: Ord a => V.Vector (a, c) -> V.Vector (a, c) -> V.Vector c
+-- intersectIxVectors = intersectWith fst snd
 
-isectvWith :: (a -> t -> Ordering) -> V.Vector a -> V.Vector t -> V.Vector a
-isectvWith cmp u_ v_ | V.null u_ || V.null v_ = V.empty
-                     | otherwise = 
-  let (u,us) = (V.head u_, V.tail u_)
-      (v,vs) = (V.head v_, V.tail v_)
-  in case cmp u v of EQ -> V.cons u (isectvWith cmp us vs)
-                     LT -> isectvWith cmp us v_
-                     GT -> isectvWith cmp u_ vs
+liftIV ::
+  Ord i => (a -> a -> b) -> V.Vector (i, a) -> V.Vector (i, a) -> V.Vector (i, b)
+liftIV f = intersectWith fst (\(i, x) (_, y) -> (i, f x y))
 
+dot :: (Ord i, Num b) => V.Vector (i, b) -> V.Vector (i, b) -> b
+dot a b = foldlIxV' (+) 0 $ liftIV (*) a b 
 
--- | intersection between _sorted_ lists (see @isect@ in `data-ordlist`)
-intersect :: Ord a => [a] -> [a] -> [a]
-intersect (x:xs) (y:ys) | x == y = x : xs `intersect` ys
-                        | otherwise = if x < y
-                                      then xs `intersect` (y:ys)
-                                      else (x:xs) `intersect` ys
-intersect _ [] = []
-intersect [] _ = []
+dotC ::
+  (RealFloat a, Ord t) => V.Vector (t, Complex a) -> V.Vector (t, Complex a) -> a
+dotC a b = realPart $ foldlIxV' (+) 0 $ liftIV (\x y -> conjugate x * y) a b 
 
+newtype IxVector a = IxVector { unIxVector :: V.Vector (Int, a)}
 
+-- instance F.Foldable IxVector where
+--   foldr f z v = foldr (\(_, x) a -> f a x) z (unIxVector v)
 
+foldrIxV :: (t1 -> t2 -> t1) -> t1 -> V.Vector (t, t2) -> t1
+foldrIxV f z v = V.foldr (\(_, x) a -> f a x) z v
 
+foldlIxV' :: (t1 -> t2 -> t1) -> t1 -> V.Vector (t, t2) -> t1
+foldlIxV' f z v = V.foldl' (\b (_, x) -> f b x) z v
 
+e1, e2 :: V.Vector (Int, Double)
+e1 = V.indexed $ V.fromList [1,0,0]
+e2 = V.indexed $ V.fromList [0,1,0]
 
+e1c = V.indexed $ V.fromList [1,0,0] :: V.Vector (Int, Complex Double)
 
 
 -- * Utilities
