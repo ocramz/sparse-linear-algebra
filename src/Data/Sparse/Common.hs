@@ -23,6 +23,7 @@ module Data.Sparse.Common
          prd) where
 
 import Data.Sparse.Utils as X
+import Data.Sparse.PPrint as X
 import Data.Sparse.Types as X
 import Data.Sparse.Internal.IntMap2 -- as X
 import Data.Sparse.SpMatrix as X
@@ -267,8 +268,6 @@ toDenseRowClip sm irow ncomax
            h = take (ncomax - 2) dr
            t = last dr
 
-newline :: IO ()
-newline = putStrLn ""
 
 printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
 printDenseSM sm = do
@@ -306,8 +305,7 @@ printDenseSV sv = do
            | otherwise = rr_
 
 -- ** Pretty printer typeclass
-class PrintDense a where
-  prd :: a -> IO ()
+
 
 instance (Show a, Num a) => PrintDense (SpVector a) where
   prd = printDenseSV
