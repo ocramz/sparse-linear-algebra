@@ -223,7 +223,7 @@ class Functor f => Set f where
   liftU2 :: (a -> a -> a) -> f a -> f a -> f a
 
   -- |intersection binary lift : apply function on _intersection_ of two Sets
-  liftI2 :: (a -> b -> c) -> f a -> f b -> f c  
+  liftI2 :: (a -> a -> b) -> f a -> f a -> f b
 
 
 

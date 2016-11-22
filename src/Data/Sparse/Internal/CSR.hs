@@ -18,6 +18,9 @@ import Data.Complex
 import Data.Sparse.Utils
 import Data.Sparse.Types
 
+import Numeric.LinearAlgebra.Class
+
+
 {-| Compressed Row Storage specification :
 
    http://netlib.org/utk/people/JackDongarra/etemplates/node373.html
@@ -39,63 +42,85 @@ import Data.Sparse.Types
 -}
 
 data CsrMatrix a =
-  CsrMatrix {
+  CM {
       csrNrows :: {-# UNPACK #-} !Int,
       csrNcols :: {-# UNPACK #-} !Int,
       csrNz :: {-# UNPACK #-} !Int,
-      csrColVal :: V.Vector (Int, a),
-      csrRowPtr :: V.Vector Int } deriving Eq
+      csrColIx :: V.Vector Int,
+      csrRowPtr :: V.Vector Int,
+      csrVal :: V.Vector a} deriving Eq
 
 instance Functor CsrMatrix where
-  fmap f (CsrMatrix m n nz cv rp) = CsrMatrix m n nz (fmap f' cv) rp where
-    f' (_i, x) = (_i, f x) -- FIXME maybe use `second` from Control.Arrow ?
+  fmap f (CM m n nz cc rp x) = CM m n nz cc rp (fmap f x)
+
+instance Foldable CsrMatrix where
+  foldr f z (CM _ _ _ _ _ x) = foldr f z x
 
 instance Show a => Show (CsrMatrix a) where
-  show (CsrMatrix m n nz cv rp) = szs where
-    szs = unwords ["CSR (",show m, "x", show n,"),",show nz, "NZ"]
+  show mm@(CM m n nz cix rp x) = szs where
+    szs = unwords ["CSR (",show m, "x", show n,"),",show nz, "NZ:",show $ fromCSR mm]
 
 toCSR :: Int -> Int -> V.Vector (Int, Int, a) -> CsrMatrix a
-toCSR m n ijxv = CsrMatrix m n nz cv crp where
+toCSR m n ijxv = CM m n nz cix crp x where
   ijxv' = sortByRows ijxv -- merge sort over row indices ( O(log N) )
   nz = V.length ijxv'  
-  cv = V.map tail3 ijxv'  -- map ( O(N) )
-  crp = csrPtrVM m $ V.map fst3 ijxv' -- scanl + replicate + takeWhile * map ( O(N) )
+  (rp, cix, x) = V.unzip3 ijxv'
+  crp = csrPtrVM m rp        -- scanl + replicate + takeWhile * map ( O(N) )
   sortByRows = V.modify (VA.sortBy f) where
-       f x y = compare (fst3 x) (fst3 y)
-  csrPtrVM nrows xs = V.scanl (+) 0 $ V.modify modf (V.replicate nrows 0) where
-   modf vm = do
+       f a b = compare (fst3 a) (fst3 b)
+  csrPtrVM nrows xs = V.scanl (+) 0 $ V.create createf where
+   createf :: ST s (VM.MVector s Int)
+   createf = do
+     vm <- VM.new nrows
      let loop v ll i | i == nrows = return ()
                      | otherwise = do
                                      let lp = V.length $ V.takeWhile (== i) ll
                                      VM.write v i lp
                                      loop v (V.drop lp ll) (i + 1)
-     loop vm xs 0  
+     loop vm xs 0
+     return vm
 
-lookupRow :: CsrMatrix a -> IxRow -> Maybe (V.Vector (IxCol, a))
-lookupRow cm i | V.null er = Nothing
+
+
+
+     
+-- -- | O(1) : lookup row
+lookupRow :: CsrMatrix a -> IxRow -> Maybe (CsrVector a)
+lookupRow cm i | null er = Nothing
                | otherwise = Just er where er = extractRow cm i
 
-lookupEntry :: V.Vector (IxCol, a) -> IxCol -> Maybe (IxCol, a)
-lookupEntry cr j = V.find ((== j) . fst) cr
+-- -- | O(N) lookup entry by index in a sparse Vector
+-- lookupEntry :: V.Vector (IxCol, a) -> IxCol -> Maybe (IxCol, a)
+-- lookupEntry cr j = F.find (== j) (cvIx cr)  >>= \j' -> V
 
-lookupCSR :: CsrMatrix a -> (IxRow, IxCol) -> Maybe a
-lookupCSR csr (i,j) = lookupRow csr i >>= \c -> snd <$> lookupEntry c j
+-- -- | O(N) : lookup entry by (row, column) indices. Returns Nothing if the entry is not present.
+-- lookupCSR :: CsrMatrix a -> (IxRow, IxCol) -> Maybe a
+-- lookupCSR csr (i,j) = lookupRow csr i >>= \c -> snd <$> lookupEntry c j
 
-
-extractRow :: CsrMatrix a -> IxRow -> V.Vector (Int, a)
-extractRow (CsrMatrix m n _ cv rp) irow = vals where
+-- | O(1) : extract a row from the CSR matrix. Returns an empty Vector if the row is not present.
+extractRow :: CsrMatrix a -> IxRow -> CsrVector a
+extractRow (CM m n _ cc rp x) irow = CV n ixs vals where
   imin = rp V.! irow
   imax = (rp V.! (irow + 1)) - 1
-  vals = V.drop imin $ V.take (imax + 1) cv
+  ixs = V.slice imin imax cc -- V.drop imin $ V.take (imax + 1) cv
+  vals = V.slice imin imax x
 
+extractRow' (CM m n _ cc rp x) irow = (imin, imax, ixs, vals)where
+  imin = rp V.! irow
+  imax = (rp V.! (irow + 1)) - 1
+  ixs = V.slice imin imax cc -- V.drop imin $ V.take (imax + 1) cv
+  vals = V.slice imin imax x
+
+
+
+-- | Rebuilds the (row, column, entry) Vector from the CSR representation. Not optimized for efficiency.
 fromCSR :: CsrMatrix a -> V.Vector (Int, Int, a)
 fromCSR mc = mconcat $ map (\i -> withRowIx (extractRow mc i) i) [0 .. csrNrows mc - 1] where
-  withRowIx v i = V.zip3 (V.replicate n i) icol_ v_ where
-    (icol_, v_) = V.unzip v
-    n = V.length v_
+  withRowIx (CV n icol_ v_) i = V.zip3 (V.replicate n i) icol_ v_
+
 
 -- NOT OPTIMIZED : 
-transposeCSR m1@(CsrMatrix m n _ _ _) = toCSR n m $ V.zip3 jj ii xx where
+transposeCSR m1@(CM m n _ _ _ _) = toCSR n m $ V.zip3 jj ii xx where
   (ii, jj, xx) = V.unzip3 $ fromCSR m1
 
 
@@ -105,16 +130,44 @@ transposeCSR m1@(CsrMatrix m n _ _ _) = toCSR n m $ V.zip3 jj ii xx where
 
 -- * Sparse vector
 
-data CsrVector a = CsrVector { cvDim :: {-# UNPACK #-} !Int,
-                               cvIxVal :: V.Vector (Int, a) } deriving Eq
+data CsrVector a = CV { cvDim :: {-# UNPACK #-} !Int,
+                        cvIx :: V.Vector Int,
+                        cvVal :: V.Vector a } deriving Eq
+
+instance Show a => Show (CsrVector a) where
+  show (CV n ix v) = unwords ["CV (",show n,"),",show nz,"NZ:",show v]
+    where nz = V.length ix
+
+instance Functor CsrVector where
+  fmap f (CV n ix v) = CV n ix (fmap f v)
+
+instance Foldable CsrVector where
+  foldr f z (CV _ _ v) = foldr f z v
+
+instance Traversable CsrVector where
+  traverse f (CV n ix v) = CV n ix <$> traverse f v
+
+-- ** Construction 
 
 fromDenseV :: V.Vector a -> CsrVector a
-fromDenseV xs = CsrVector (V.length xs) (V.indexed xs)
+fromDenseV xs = CV n (V.enumFromTo 0 (n-1)) xs where
+  n = V.length xs
+
+
+-- * Query
+
+-- | O(N) Lookup an index in a CsrVector (based on `find` from Data.Foldable)
+indexCV :: CsrVector a -> Int -> Maybe a
+indexCV cv i =
+  case F.find (== i) (cvIx cv) of
+    Just i' -> Just $ (V.!) (cvVal cv) i'
+    Nothing -> Nothing
+      
 
 
 
 
--- | intersection between sorted vectors, in-place updates
+-- | Intersection between sorted vectors, in-place updates
 intersectWith ::
   Ord b => (a -> b) -> (a -> a -> c) -> V.Vector a -> V.Vector a -> V.Vector c
 intersectWith f g u_ v_ = V.force $ V.create $ do
@@ -132,27 +185,54 @@ intersectWith f g u_ v_ = V.force $ V.create $ do
   let vm'' = VM.take i' vm'
   return vm''
 
+-- unionWith f g u_ v_ = V.force $ V.create $ do
+--   let n = max (V.length u_) (V.length v_)
+--   vm <- VM.new n
+--   let go u_ v_ i vm | i == n = return (vm, i)
+--                     | V.null u_ && V.length v_ == 1 = do
+--                         VM.write vm i (g u v)
+--                     | otherwise =  do
+--          let (u,us) = (V.head u_, V.tail u_)
+--              (v,vs) = (V.head v_, V.tail v_)
+--          if f u == f v then do VM.write vm i (g u v)
+--                                go us vs (i + 1) vm
+--                    else if f u < f v then go us v_ i vm
+--                                      else go u_ vs i vm
+--   (vm', i') <- go u_ v_ 0 vm
+--   let vm'' = VM.take i' vm'
+--   return vm''
+
+
+union u_ v_ = go u_ v_ where
+  go [] [b] = [b]
+  go [a] [] = [a]
+  go uu@(u:us) vv@(v:vs)
+    | u == v =    u : go us vs
+    | u < v =     u : go us vv 
+    | otherwise = v : go uu vs
 
 
 
 -- | Binary lift over index intersection for indexed Vector
-liftIV ::
+liftI2V ::
   Ord i => (a -> a -> b) -> V.Vector (i, a) -> V.Vector (i, a) -> V.Vector (i, b)
-liftIV f = intersectWith fst (\(i, x) (_, y) -> (i, f x y))
+liftI2V f = intersectWith fst (\(i, x) (_, y) -> (i, f x y))
+
+
 
 
 
 
 -- | Dot product, real domain
 dot :: (Ord i, Num b) => V.Vector (i, b) -> V.Vector (i, b) -> b
-dot a b = foldlIxV' (+) 0 $ liftIV (*) a b 
+dot a b = foldlIxV' (+) 0 $ liftI2V (*) a b 
 
 -- | Dot product, complex domain
 dotC ::
   (RealFloat a, Ord t) => V.Vector (t, Complex a) -> V.Vector (t, Complex a) -> a
-dotC a b = realPart $ foldlIxV' (+) 0 $ liftIV (\x y -> conjugate x * y) a b 
+dotC a b = realPart $ foldlIxV' (+) 0 $ liftI2V (\x y -> conjugate x * y) a b 
 
-newtype IxVector a = IxVector { unIxVector :: V.Vector (Int, a)}
+
 
 -- instance F.Foldable IxVector where
 --   foldr f z v = foldr (\(_, x) a -> f a x) z (unIxVector v)
@@ -166,6 +246,24 @@ foldlIxV' f z v = V.foldl' (\b (_, x) -> f b x) z v
 
 
 
+-- * IxVector newtype
+-- newtype IxVector a = IxVector { unIxVector :: V.Vector (Int, a)} deriving (Eq, Show)
+
+-- instance Functor IxVector where
+--   fmap f iv = IxVector $ fmap g (unIxVector iv) where
+--     g (_i, x) = (_i, f x) -- bleh
+    
+-- instance Set IxVector where
+--   liftI2 = liftI2IxV
+
+-- liftI2IxV :: (a -> a -> b) -> IxVector a -> IxVector a -> IxVector b
+-- liftI2IxV f a b = IxVector $ liftI2V f a' b' where
+--   a' = unIxVector a
+--   b' = unIxVector b
+
+  
+
+
 
 
 
@@ -176,6 +274,8 @@ foldlIxV' f z v = V.foldl' (\b (_, x) -> f b x) z v
 tail3 :: (t, t1, t2) -> (t1, t2)
 tail3 (_,j,x) = (j,x)
 
+snd3 (_,j,_) = j
+
 fst3 :: (t, t1, t2) -> t
 fst3 (i, _, _) = i
 
@@ -184,6 +284,10 @@ fst3 (i, _, _) = i
 
 
 -- test data
+
+l0 = [1,2,4,5,8]
+l1 = [2,3,6]
+l2 = [7]
 
 v0,v1 :: V.Vector Int
 v0 = V.fromList [0,1,2,5,6]
