@@ -58,7 +58,7 @@ instance Foldable CsrMatrix where
 
 instance Show a => Show (CsrMatrix a) where
   show mm@(CM m n nz cix rp x) = szs where
-    szs = unwords ["CSR (",show m, "x", show n,"),",show nz, "NZ:",show $ fromCSR mm]
+    szs = unwords ["CSR (",show m, "x", show n,"),",show nz, "NZ:","column indices:",show cix,", row pointers:", show rp,", data:",show x]
 
 toCSR :: Int -> Int -> V.Vector (Int, Int, a) -> CsrMatrix a
 toCSR m n ijxv = CM m n nz cix crp x where
