@@ -1,3 +1,4 @@
+{-# language TypeFamilies #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -28,6 +29,7 @@ import Data.Sparse.Types as X
 import Data.Sparse.Internal.IntMap2 -- as X
 import Data.Sparse.SpMatrix as X
 import Data.Sparse.SpVector as X
+import Data.Sparse.Internal.CSR as X
 
 import Numeric.Eps as X
 import Numeric.LinearAlgebra.Class as X
@@ -256,31 +258,35 @@ showNonZero :: (Show a, Num a, Eq a) => a -> String
 showNonZero x  = if x == 0 then " " else show x
 
 
-toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
-toDenseRow (SM (_,ncol) im) irow =
-  fmap (\icol -> im `lookupWD_IM` (irow,icol)) [0..ncol-1]
+-- toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
+toDenseRow sm irow =
+  fmap (\icol -> sm @@ (irow,icol)) [0..ncol-1] where (_, ncol) = dim sm
 
-toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
+
+
+-- toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
 toDenseRowClip sm irow ncomax
-  | ncols sm > ncomax = unwords (map show h) ++  " ... " ++ show t
+  | nco > ncomax = unwords (map show h) ++  " ... " ++ show t
   | otherwise = show dr
      where dr = toDenseRow sm irow
            h = take (ncomax - 2) dr
            t = last dr
+           (_, nco) = dim sm
 
 
-printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
+-- printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
 printDenseSM sm = do
   newline
-  putStrLn $ sizeStr sm
+  -- putStrLn $ sizeStr sm
   newline
   printDenseSM' sm 5 5
   newline
   where    
-    printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
-    printDenseSM' sm'@(SM (nr,_) _) nromax ncomax = mapM_ putStrLn rr_' where
+    -- printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
+    printDenseSM' sm' nromax ncomax = mapM_ putStrLn rr_' where
+      (nr, _) = dim sm'
       rr_ = map (\i -> toDenseRowClip sm' i ncomax) [0..nr - 1]
-      rr_' | nrows sm > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
+      rr_' | nr > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
            | otherwise = rr_
 
 
@@ -319,7 +325,8 @@ instance (Show a, Num a) => PrintDense (SpMatrix a) where
 
 
 
-
+instance (Elt a, Show a) => PrintDense (CsrMatrix a) where
+  prd = printDenseSM
 
 
 

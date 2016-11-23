@@ -45,10 +45,13 @@ data SpMatrix a = SM {smDim :: {-# UNPACK #-} !(Rows, Cols),
                 deriving Eq
 
 
-sizeStr :: SpMatrix a -> String
+-- sizeStr :: SpMatrix a -> String
 sizeStr sm =
-  unwords ["(",show (nrows sm),"rows,",show (ncols sm),"columns ) ,",show nz,"NZ ( sparsity",show sy,")"] where
-  (SMInfo nz sy) = infoSM sm
+  unwords ["(",show nr,"rows,",show nc,"columns ) ,",show nz,"NZ ( sparsity",show sy,")"] where
+  (nr, nc) = dim sm
+  nz = nnz sm
+  sy = spy sm :: Double
+  -- (SMInfo nz sy) = infoSM sm
 
 instance Show a => Show (SpMatrix a) where
   show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList x)
@@ -72,6 +75,7 @@ instance FiniteDim SpMatrix where
 
 instance HasData SpMatrix a where
   type HDData SpMatrix a = IM.IntMap (IM.IntMap a)
+  nnz = nzSM
   dat = smData
 
 instance Sparse SpMatrix a where

@@ -57,7 +57,11 @@ instance AdditiveGroup v => AdditiveGroup (a -> v) where
 class AdditiveGroup v => VectorSpace v where
   type Scalar v :: *
   -- | Scale a vector
-  (.*) :: Scalar v -> v -> v  
+  (.*) :: Scalar v -> v -> v
+
+
+-- (./) :: v -> Scalar v -> v
+v ./ n = recip n .* v
 
 -- |Linear interpolation
 lerp :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
@@ -204,7 +208,8 @@ withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
 -- * HasData : accessing inner data (do not export)
 
 class HasData f a where
-  type HDData f a :: * 
+  type HDData f a :: *
+  nnz :: f a -> Int
   dat :: f a -> HDData f a
 
 
@@ -266,11 +271,11 @@ class (SpContainer m e, AdditiveGroup (m e)) => SparseMatrix m e where
     m e -> (SpmIxRow m, SpmIxRow m) -> (SpmIxCol m, SpmIxCol m) -> m e
 
 
-class (SparseMatrix m e, SparseVector v e) => LinearSpace m v e where
-  lsInsertRow :: m e -> v e -> SpmIxRow m -> m e
-  lsInsertCol :: m e -> v e -> SpmIxCol m -> m e
-  lsExtractRow :: m e -> SpmIxRow m -> v e
-  lsExtractCol :: m e -> SpmIxCol m -> v e  
+class (SparseMatrix m e, SparseVector v e) => SparseMatVec m v e where
+  smvInsertRow :: m e -> v e -> SpmIxRow m -> m e
+  smvInsertCol :: m e -> v e -> SpmIxCol m -> m e
+  smvExtractRow :: m e -> SpmIxRow m -> v e
+  smvExtractCol :: m e -> SpmIxCol m -> v e  
 
 
 

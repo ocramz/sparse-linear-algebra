@@ -1,4 +1,4 @@
-{-# language TypeFamilies, FlexibleInstances, CPP #-}
+{-# language TypeFamilies, FlexibleInstances, MultiParamTypeClasses, CPP #-}
 module Data.Sparse.Internal.CSR where
 
 import Control.Applicative
@@ -14,6 +14,8 @@ import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Algorithms.Merge as VA (sortBy)
 -- import qualified Data.Vector.Generic as VG (convert)
 
+import Data.Maybe
+
 import Data.Complex
 import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 
@@ -22,6 +24,7 @@ import Data.Sparse.Utils
 import Data.Sparse.Types
 
 import Numeric.LinearAlgebra.Class
+-- import Data.Sparse.Common
 
 
 {-| Compressed Row Storage specification :
@@ -57,18 +60,19 @@ instance Functor CsrMatrix where
   fmap f (CM m n nz cc rp x) = CM m n nz cc rp (fmap f x)
 
 instance Foldable CsrMatrix where
-  foldr f z (CM _ _ _ _ _ x) = foldr f z x
+  foldr f z cm = foldr f z (csrVal cm)
 
 instance Show a => Show (CsrMatrix a) where
-  show (CM m n nz cix rp x) = szs where
-    szs = unwords ["CSR (",show m, "x", show n,"),",show nz, "NZ:","column indices:",show cix,", row pointers:", show rp,", data:",show x]
+  show m'@(CM m n nz cix rp x) = szs where
+    szs = unwords ["CSR (",show m, "x", show n,"),",show nz, "NZ ( sparsity",show (spy m'),"), column indices:",show cix,", row pointers:", show rp,", data:",show x]
 
+-- * Creation
+-- | Copy a Vector of (row index, column index, entry) into a CSR structure. Sorts the Vector by row indices ( O(log N) ), unzips column indices and data ( O(N) ) and generates the row pointer vector ( 2 passes of O(N) )
 toCSR :: Int -> Int -> V.Vector (Int, Int, a) -> CsrMatrix a
 toCSR m n ijxv = CM m n nz cix crp x where
-  ijxv' = sortByRows ijxv -- merge sort over row indices ( O(log N) )
-  nz = V.length ijxv'  
-  (rix, cix, x) = V.unzip3 ijxv'
-  crp = csrPtrVM m rix        -- scanl + replicate + takeWhile * map ( O(N) )
+  nz = V.length x
+  (rix, cix, x) = V.unzip3 (sortByRows ijxv)
+  crp = csrPtrVM m rix
   sortByRows = V.modify (VA.sortBy f) where
        f a b = compare (fst3 a) (fst3 b)
   csrPtrVM nrows xs = V.scanl (+) 0 $ V.create createf where
@@ -84,33 +88,47 @@ toCSR m n ijxv = CM m n nz cix crp x where
      return vm
 
 
-     
--- -- | O(1) : lookup row
+-- * Lookup
+-- | O(1) : lookup row
 lookupRow :: CsrMatrix a -> IxRow -> Maybe (CsrVector a)
 lookupRow cm i | null er = Nothing
-               | otherwise = Just er where er = extractRow cm i
+               | otherwise = Just er where er = extractRowCSR cm i
 
--- -- | O(N) lookup entry by index in a sparse Vector
--- lookupEntry :: V.Vector (IxCol, a) -> IxCol -> Maybe (IxCol, a)
--- lookupEntry cr j = F.find (== j) (cvIx cr)  >>= \j' -> V
+-- | O(N) lookup entry by index in a sparse Vector, using a default value in case of missing entry
+lookupEntry_WD :: a -> CsrVector a -> Int -> a
+lookupEntry_WD z cr j = maybe z (\j -> cvVal cr V.! j) (V.findIndex (== j) (cvIx cr))
 
--- -- | O(N) : lookup entry by (row, column) indices. Returns Nothing if the entry is not present.
--- lookupCSR :: CsrMatrix a -> (IxRow, IxCol) -> Maybe a
--- lookupCSR csr (i,j) = lookupRow csr i >>= \c -> snd <$> lookupEntry c j
 
+
+
+-- | O(N) : lookup entry by (row, column) indices, using a default value in case of missing entry
+lookupCSR_WD :: a -> CsrMatrix a -> (IxRow, IxCol) -> a
+lookupCSR_WD z csr (i,j) = maybe z (\r -> lookupEntry_WD z r j) (lookupRow csr i)
+
+-- | O(N) : lookup entry by (row, column) indices
+lookupCSR :: a -> CsrMatrix a -> (IxRow, IxCol) -> Maybe a
+lookupCSR z csr (i, j) = lookupRow csr i >>= \cr -> return $ lookupEntry_WD z cr j
+
+
+-- ** Extract a row
 -- | O(1) : extract a row from the CSR matrix. Returns an empty Vector if the row is not present.
-extractRow :: CsrMatrix a -> IxRow -> CsrVector a
-extractRow (CM m n _ cc rp x) irow = CV n ixs vals where
+extractRowCSR :: CsrMatrix a -> IxRow -> CsrVector a
+extractRowCSR (CM _ n _ cix rp x) irow = CV n ixs vals where
   imin = rp V.! irow
   imax = rp V.! (irow + 1)
-  ixs = V.slice imin imax cc 
-  vals = V.slice imin imax x
+  ixs = trimf imin imax cix
+  vals = trimf imin imax x
+  trimf i1 i2 w = V.drop i1 (V.take i2 w)
 
+
+-- matVec mm v = fmap (\ri -> extractRow mm ri `dot` v) irows_ where
+--   nrows = csrNrows mm
+--   irows_ = [0 .. nrows - 1]
 
 
 -- | Rebuilds the (row, column, entry) Vector from the CSR representation. Not optimized for efficiency.
 fromCSR :: CsrMatrix a -> V.Vector (Int, Int, a)
-fromCSR mc = mconcat $ map (\i -> withRowIx (extractRow mc i) i) [0 .. csrNrows mc - 1] where
+fromCSR mc = mconcat $ map (\i -> withRowIx (extractRowCSR mc i) i) [0 .. csrNrows mc - 1] where
   withRowIx (CV n icol_ v_) i = V.zip3 (V.replicate n i) icol_ v_
 
 
@@ -118,6 +136,34 @@ fromCSR mc = mconcat $ map (\i -> withRowIx (extractRow mc i) i) [0 .. csrNrows 
 transposeCSR m1@(CM m n _ _ _ _) = toCSR n m $ V.zip3 jj ii xx where
   (ii, jj, xx) = V.unzip3 $ fromCSR m1
 
+
+
+
+-- * Pretty printing
+-- toDenseRow :: Elt a => CsrMatrix a -> Int -> [a]
+-- toDenseRow cm irow =
+--   fmap (\icol -> cm @@ (irow,icol)) [0..ncol-1] where (_, ncol) = dim cm
+
+
+-- * Some instances
+
+instance FiniteDim CsrMatrix where
+  type FDSize CsrMatrix = (Int, Int)
+  dim m = (csrNrows m, csrNcols m)
+
+
+instance HasData CsrMatrix a where
+  nnz = csrNz
+  
+instance Sparse CsrMatrix a where
+  spy m = fromIntegral (nnz m) / fromIntegral (csrNrows m * csrNcols m) 
+
+instance Elt a => SpContainer CsrMatrix a where
+  type ScIx CsrMatrix = (Int, Int)
+  -- scInsert = undefined
+  (@@) = lookupCSR_WD 0
+
+-- instance Elt a => SparseMatrix CsrMatrix a where
 
 
 
@@ -144,15 +190,22 @@ instance Traversable CsrVector where
 
 
 
+
 #define CVType(t) \
   instance AdditiveGroup (CsrVector t) where {zero = CV 0 V.empty V.empty; (^+^) = unionWithCV (+) 0 ; negated = fmap negate};\
   instance VectorSpace (CsrVector t) where {type Scalar (CsrVector t) = (t); n .* x = fmap (* n) x };\
   instance Hilbert (CsrVector t) where {x `dot` y = sum $ intersectWithCV (*) x y };\
+  -- instance Normed (CsrVector t) where {norm p v = norm' p v}
 
 #define CVTypeC(t) \
   instance AdditiveGroup (CsrVector (Complex t)) where {zero = CV 0 V.empty V.empty; (^+^) = unionWithCV (+) (0 :+ 0) ; negated = fmap negate};\
   instance VectorSpace (CsrVector (Complex t)) where {type Scalar (CsrVector (Complex t)) = (Complex t); n .* x = fmap (* n) x };\
   instance Hilbert (CsrVector (Complex t)) where {x `dot` y = sum $ intersectWithCV (*) (fmap conjugate x) y};\
+
+#define NormedType(t) \
+  instance Normed (CsrVector t) where { norm p v | p==1 = norm1 v | otherwise = norm2 v ; normalize p v = v ./ norm p v};\
+  instance Normed (CsrVector (Complex t)) where { norm p v | p==1 = norm1 v | otherwise = norm2 v ; normalize p v = v ./ norm p v}
+
 
 CVType(Int)
 CVType(Integer)
@@ -172,8 +225,10 @@ CVTypeC(Double)
 CVTypeC(CFloat)
 CVTypeC(CDouble)
 
-
-
+NormedType(Float)
+NormedType(Double)
+NormedType(CFloat)
+NormedType(CDouble)
 
 -- ** Construction 
 
@@ -220,8 +275,8 @@ intersectWith f g u_ v_ = V.force $ V.create $ do
   return vm''
 
 
--- | O(N) Applies a function to the index _intersection_ of two CsrVector s
-intersectWithCV :: (t -> t1 -> a) -> CsrVector t -> CsrVector t1 -> CsrVector a
+-- | O(N) Applies a function to the index _intersection_ of two CsrVector s. Useful e.g. to compute the inner product of two sparse vectors.
+intersectWithCV :: (a -> b -> c) -> CsrVector a -> CsrVector b -> CsrVector c
 intersectWithCV g (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV nfin ixf vf where
    nfin = V.length vf
    (ixf, vf) = V.unzip $ V.force $ V.create $ do
@@ -241,6 +296,7 @@ intersectWithCV g (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV nfin ixf vf where
     let vm'' = VM.take nfin vm'
     return vm''
 
+-- | O(N) Applies a function to the index _union_ of two CsrVector s. Useful e.g. to compute the vector sum of two sparse vectors.
 unionWithCV :: (t -> t -> a) -> t -> CsrVector t -> CsrVector t -> CsrVector a
 unionWithCV g z (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV n ixf vf where
    n = max n1 n2
@@ -269,28 +325,6 @@ unionWithCV g z (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV n ixf vf where
     let vm'' = VM.take nfin vm'
     return vm''                                                       
            
-
-
-
-union :: Ord a => [a] -> [a] -> [a]
-union u_ v_ = go u_ v_ where
-  go [] x = x
-  go y [] = y
-  go uu@(u:us) vv@(v:vs)
-    | u == v =    u : go us vs
-    | u < v =     u : go us vv 
-    | otherwise = v : go uu vs
-
-
-
--- | Binary lift over index intersection for indexed Vector
-liftI2V ::
-  Ord i => (a -> a -> b) -> V.Vector (i, a) -> V.Vector (i, a) -> V.Vector (i, b)
-liftI2V f = intersectWith fst (\(i, x) (_, y) -> (i, f x y))
-
-
-
-
 
 
 
@@ -331,9 +365,10 @@ v1 = V.fromList [0,3,4,6]
 -- e1 = V.indexed $ V.fromList [1,0,0]
 -- e2 = V.indexed $ V.fromList [0,1,0]
 
-e1 = fromListCV 3 [(0, 1)]
-e2 = fromListCV 3 [(1, 1)]
-e3 = fromListCV 3 [(0, 1 :+ 2)] :: CsrVector (Complex Double)
+e1, e2:: CsrVector Double
+e1 = fromListCV 4 [(0, 1)] 
+e2 = fromListCV 4 [(1, 1)]
+e3 = fromListCV 4 [(0, 1 :+ 2)] :: CsrVector (Complex Double)
 
 e1c = V.indexed $ V.fromList [1,0,0] :: V.Vector (Int, Complex Double)
 
@@ -362,3 +397,14 @@ safeHead = vectorNonEmpty V.head
 
 safeTail :: V.Vector a -> Maybe (V.Vector a)
 safeTail = vectorNonEmpty V.tail
+
+
+
+union :: Ord a => [a] -> [a] -> [a]
+union u_ v_ = go u_ v_ where
+  go [] x = x
+  go y [] = y
+  go uu@(u:us) vv@(v:vs)
+    | u == v =    u : go us vs
+    | u < v =     u : go us vv 
+    | otherwise = v : go uu vs
