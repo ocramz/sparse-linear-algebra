@@ -275,9 +275,10 @@ toDenseRowClip sm irow ncomax
 
 
 -- printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
+printDenseSM :: (ScIx c ~ (Int, Int), FDSize c ~ (Int, Int), SpContainer c a, Show a) => c a -> IO ()
 printDenseSM sm = do
   newline
-  -- putStrLn $ sizeStr sm
+  putStrLn $ sizeStr sm
   newline
   printDenseSM' sm 5 5
   newline

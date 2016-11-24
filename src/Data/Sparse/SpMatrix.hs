@@ -45,13 +45,12 @@ data SpMatrix a = SM {smDim :: {-# UNPACK #-} !(Rows, Cols),
                 deriving Eq
 
 
--- sizeStr :: SpMatrix a -> String
+sizeStr :: (FDSize f ~ (a1, a2), Sparse f a, Show a2, Show a1) => f a -> String
 sizeStr sm =
   unwords ["(",show nr,"rows,",show nc,"columns ) ,",show nz,"NZ ( sparsity",show sy,")"] where
   (nr, nc) = dim sm
   nz = nnz sm
   sy = spy sm :: Double
-  -- (SMInfo nz sy) = infoSM sm
 
 instance Show a => Show (SpMatrix a) where
   show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList x)
@@ -67,6 +66,7 @@ instance Set SpMatrix where
 instance Num a => AdditiveGroup (SpMatrix a) where
   zero = SM (0,0) IM.empty
   (^+^) = liftU2 (+)
+  negated = fmap negate
 
 -- | 'SpMatrix'es are maps between finite-dimensional spaces
 instance FiniteDim SpMatrix where
