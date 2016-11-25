@@ -35,6 +35,7 @@ library
                        Data.Sparse.Common
   other-modules:       Data.Sparse.Internal.IntMap2
                        Data.Sparse.Internal.CSR
+                       Data.Sparse.Internal.CSRVector
                        Data.Sparse.Utils
                        Data.Sparse.PPrint
                        Data.Sparse.Types
