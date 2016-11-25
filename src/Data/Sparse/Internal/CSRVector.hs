@@ -1,5 +1,5 @@
 {-# language TypeFamilies, FlexibleInstances, MultiParamTypeClasses, CPP #-}
-module Data.Sparse.Internal.CSR where
+module Data.Sparse.Internal.CSRVector where
 
 import qualified Data.Foldable as F -- (foldl')
 -- import Data.List (group, groupBy)
