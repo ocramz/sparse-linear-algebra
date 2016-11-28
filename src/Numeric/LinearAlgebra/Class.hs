@@ -252,7 +252,7 @@ class Sparse c a => SpContainer c a where
 
 -- * SparseVector
 
-class (SpContainer v e, Hilbert e) => SparseVector v e where
+class SpContainer v e => SparseVector v e where
   type SpvIx v :: *
   svFromList :: Int -> [(SpvIx v, e)] -> v e
   svFromListDense :: Int -> [e] -> v e
@@ -261,7 +261,7 @@ class (SpContainer v e, Hilbert e) => SparseVector v e where
 
 -- * SparseMatrix
 
-class (SpContainer m e, AdditiveGroup (m e)) => SparseMatrix m e where
+class SpContainer m e => SparseMatrix m e where
   type SpmIxRow m :: *
   type SpmIxCol m :: *  
   smFromFoldable :: Foldable t => (Int, Int) -> t (SpmIxRow m, SpmIxCol m, e) -> m e
@@ -269,6 +269,8 @@ class (SpContainer m e, AdditiveGroup (m e)) => SparseMatrix m e where
   smTranspose :: m e -> m e
   smExtractSubmatrix ::
     m e -> (SpmIxRow m, SpmIxRow m) -> (SpmIxCol m, SpmIxCol m) -> m e
+  encodeIx :: m e -> (SpmIxCol m, SpmIxRow m) -> Int
+  decodeIx :: m e -> Int -> (SpmIxCol m, SpmIxRow m)
 
 
 class (SparseMatrix m e, SparseVector v e) => SparseMatVec m v e where

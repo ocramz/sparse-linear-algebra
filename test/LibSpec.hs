@@ -460,3 +460,35 @@ tm8' = fromListSM (2,2) [(0,0,1), (1,0,1), (1,1,1)]
 
 tm9 :: SpMatrix Double
 tm9 = fromListSM (4, 3) [(0,0,pi), (1,1, 3), (2,2,4), (3,2, 1), (3,1, 5)]
+
+
+
+
+
+
+-- -- test data
+
+-- l0 = [1,2,4,5,8]
+-- l1 = [2,3,6]
+-- l2 = [7]
+
+-- v0,v1 :: V.Vector Int
+-- v0 = V.fromList [0,1,2,5,6]
+-- v1 = V.fromList [0,3,4,6]
+
+-- -- e1, e2 :: V.Vector (Int, Double)
+-- -- e1 = V.indexed $ V.fromList [1,0,0]
+-- -- e2 = V.indexed $ V.fromList [0,1,0]
+
+-- e1, e2:: CsrVector Double
+-- e1 = fromListCV 4 [(0, 1)] 
+-- e2 = fromListCV 4 [(1, 1)]
+-- e3 = fromListCV 4 [(0, 1 :+ 2)] :: CsrVector (Complex Double)
+
+-- e1c = V.indexed $ V.fromList [1,0,0] :: V.Vector (Int, Complex Double)
+
+-- m0,m1,m2,m3 :: CsrMatrix Double
+-- m0 = toCSR 2 2 $ V.fromList [(0,0, pi), (1,0,3), (1,1,2)]
+-- m1 = toCSR 4 4 $ V.fromList [(0,0,1), (0,2,5), (1,0,2), (1,1,3), (2,0,4), (2,3,1), (3,2,2)]
+-- m2 = toCSR 4 4 $ V.fromList [(0,0,1), (0,2,5), (2,0,4), (2,3,1), (3,2,2)]
+-- m3 = toCSR 4 4 $ V.fromList [(1,0,5), (1,1,8), (2,2,3), (3,1,6)]

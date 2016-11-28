@@ -64,11 +64,15 @@ instance Functor CsrMatrix where
 instance Foldable CsrMatrix where
   foldr f z cm = foldr f z (csrVal cm)
 
--- instance Set CsrMatrix where
+
+-- instance Set CsrMatrix where -- TODO: efficiency of intersection and union of sparse matrices depends on internal representation
 
 instance Show a => Show (CsrMatrix a) where
   show m'@(CM m n nz cix rp x) = szs where
     szs = unwords ["CSR (",show m, "x", show n,"),",show nz, "NZ ( sparsity",show (spy m'),"), column indices:",show cix,", row pointers:", show rp,", data:",show x]
+
+
+
 
 -- * Creation
 -- | Copy a Vector containing (row index, column index, entry) into a CSR structure. Sorts the Vector by row indices ( O(log N) ), unzips column indices and data ( O(N) ) and generates the row pointer vector ( 2 O(N) passes )
@@ -76,10 +80,16 @@ toCSR :: Int -> Int -> V.Vector (Int, Int, a) -> CsrMatrix a
 toCSR m n ijxv = CM m n nz cix crp x where
   nz = V.length x
   (rix, cix, x) = V.unzip3 (sortByRows ijxv)
-  crp = csrPtrVM m rix
+  crp = csrPtrV m rix
   sortByRows = V.modify (VA.sortBy f) where
        f a b = compare (fst3 a) (fst3 b)
-  csrPtrVM nrows xs = V.scanl (+) 0 $ V.create createf where
+
+-- | Given a number of "rows" a Vector of Integers in increasing order (containing the row indices of nonzero entries), return the cumulative vector of nonzero entries of length `nrows + 1` (the "row pointer" of the CSR format)
+-- E.g.:
+-- > csrPtrV 4 (V.fromList [0,0,1,1,3])
+-- [0,2,4,4,5]
+csrPtrV :: Int -> V.Vector Int -> V.Vector Int
+csrPtrV nrows xs = V.scanl (+) 0 $ V.create createf where
    createf :: ST s (VM.MVector s Int)
    createf = do
      vm <- VM.new nrows
@@ -90,6 +100,10 @@ toCSR m n ijxv = CM m n nz cix crp x where
                                      loop v (V.drop lp ll) (i + 1)
      loop vm xs 0
      return vm
+
+
+
+
 
 
 
@@ -217,32 +231,7 @@ fst3 (i, _, _) = i
 
 
 
--- test data
 
-l0 = [1,2,4,5,8]
-l1 = [2,3,6]
-l2 = [7]
-
-v0,v1 :: V.Vector Int
-v0 = V.fromList [0,1,2,5,6]
-v1 = V.fromList [0,3,4,6]
-
--- e1, e2 :: V.Vector (Int, Double)
--- e1 = V.indexed $ V.fromList [1,0,0]
--- e2 = V.indexed $ V.fromList [0,1,0]
-
-e1, e2:: CsrVector Double
-e1 = fromListCV 4 [(0, 1)] 
-e2 = fromListCV 4 [(1, 1)]
-e3 = fromListCV 4 [(0, 1 :+ 2)] :: CsrVector (Complex Double)
-
-e1c = V.indexed $ V.fromList [1,0,0] :: V.Vector (Int, Complex Double)
-
-m0,m1,m2,m3 :: CsrMatrix Double
-m0 = toCSR 2 2 $ V.fromList [(0,0, pi), (1,0,3), (1,1,2)]
-m1 = toCSR 4 4 $ V.fromList [(0,0,1), (0,2,5), (1,0,2), (1,1,3), (2,0,4), (2,3,1), (3,2,2)]
-m2 = toCSR 4 4 $ V.fromList [(0,0,1), (0,2,5), (2,0,4), (2,3,1), (3,2,2)]
-m3 = toCSR 4 4 $ V.fromList [(1,0,5), (1,1,8), (2,2,3), (3,1,6)]
 
 
 
@@ -305,8 +294,17 @@ unionWith g z u_ v_ = V.create $ do
   let vm'' = VM.take nfin vm'
   return vm''
 
+newtype O a = O { unO :: (Int, Int, a)} -- deriving Eq
+
+instance Eq a => Eq (O a) where
+  O (i, j, x) == O (i', j', x') = i==i' && j==j' && x==x' 
+
+instance Eq a => Ord (O a) where
+  O (i, j, _) <= O (i', j', _) = i<=i' && j<=j'
   
-      
+
+
+    
 
 safe :: (a -> Bool) -> (a -> b) -> a -> Maybe b
 safe q f v

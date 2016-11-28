@@ -57,6 +57,7 @@ instance Foldable SpVector where
 instance Num a => AdditiveGroup (SpVector a) where
   zero = SV 0 IM.empty
   (^+^) = liftU2 (+)
+  negated = fmap negate
 
 
 -- | 'SpVector's form a vector space because they can be multiplied by a scalar
