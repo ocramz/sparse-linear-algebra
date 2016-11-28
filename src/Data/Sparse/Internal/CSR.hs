@@ -239,22 +239,6 @@ fst3 (i, _, _) = i
 
 -- playground
 
--- | Intersection between sorted vectors, in-place updates
-intersectWith :: Ord a => (a -> a -> c) -> V.Vector a -> V.Vector a -> V.Vector c
-intersectWith g u_ v_ = V.create $ do
-  let n = min (V.length u_) (V.length v_)
-  vm <- VM.new n
-  let go u_ v_ i vm | V.null u_ || V.null v_ || i == n = return (vm, i)
-                    | otherwise =  do
-         let (u,us) = (V.head u_, V.tail u_)
-             (v,vs) = (V.head v_, V.tail v_)
-         if u == v then do VM.write vm i (g u v)
-                           go us vs (i + 1) vm
-                   else if u < v then go us v_ i vm
-                                 else go u_ vs i vm
-  (vm', i') <- go u_ v_ 0 vm
-  let vm'' = VM.take i' vm'
-  return vm''
 
   
 
@@ -269,38 +253,9 @@ union u_ v_ = go u_ v_ where
     | otherwise = v : go uu vs
 
 
-unionWith :: Ord t => (t -> t -> a) -> t -> V.Vector t -> V.Vector t -> V.Vector a 
-unionWith g z u_ v_ = V.create $ do
-  let n = (V.length u_) + (V.length v_)
-  vm <- VM.new n
-  let go u_ v_ i vm
-        | (V.null u_ && V.null v_) || i==n = return (vm, i)
-        | V.null u_ = do
-            VM.write vm i (g z (V.head v_))
-            go u_ (V.tail v_) (i+1) vm
-        | V.null v_ = do
-            VM.write vm i (g (V.head u_) z)
-            go (V.tail u_) v_ (i+1) vm
-        | otherwise =  do
-           let (u,us) = (V.head u_, V.tail u_)
-               (v,vs) = (V.head v_, V.tail v_)
-           if u==v then do VM.write vm i (g u v)
-                           go us vs (i + 1) vm
-                   else if u < v then do VM.write vm i (g u z)
-                                         go us v_ (i + 1) vm
-                                 else do VM.write vm i (g z v)
-                                         go u_ vs (i + 1) vm
-  (vm', nfin) <- go u_ v_ 0 vm
-  let vm'' = VM.take nfin vm'
-  return vm''
 
-newtype O a = O { unO :: (Int, Int, a)} -- deriving Eq
 
-instance Eq a => Eq (O a) where
-  O (i, j, x) == O (i', j', x') = i==i' && j==j' && x==x' 
 
-instance Eq a => Ord (O a) where
-  O (i, j, _) <= O (i', j', _) = i<=i' && j<=j'
   
 
 

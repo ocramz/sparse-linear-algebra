@@ -7,6 +7,8 @@ import Data.Complex
 import Data.Ratio
 import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 
+import Data.Sparse.Types
+
 -- * Matrix and vector elements (possibly Complex)
 class (Eq e , Fractional e) => Elt e where
   conj :: e -> e
@@ -261,23 +263,32 @@ class SpContainer v e => SparseVector v e where
 
 -- * SparseMatrix
 
+-- class SpContainer m e => SparseMatrix m e where
+--   type SpmIxRow m :: *
+--   type SpmIxCol m :: *  
+--   smFromFoldable :: Foldable t => (Int, Int) -> t (SpmIxRow m, SpmIxCol m, e) -> m e
+--   smFromFoldableDense :: Foldable t => t e -> m e  
+--   smTranspose :: m e -> m e
+--   smExtractSubmatrix ::
+--     m e -> (SpmIxRow m, SpmIxRow m) -> (SpmIxCol m, SpmIxCol m) -> m e
+--   encodeIx :: m e -> (SpmIxRow m, SpmIxCol m) -> Int
+--   decodeIx :: m e -> Int -> (SpmIxRow m, SpmIxCol m)
+
 class SpContainer m e => SparseMatrix m e where
-  type SpmIxRow m :: *
-  type SpmIxCol m :: *  
-  smFromFoldable :: Foldable t => (Int, Int) -> t (SpmIxRow m, SpmIxCol m, e) -> m e
+  smFromFoldable :: Foldable t => (Int, Int) -> t (IxRow, IxCol, e) -> m e
   smFromFoldableDense :: Foldable t => t e -> m e  
   smTranspose :: m e -> m e
   smExtractSubmatrix ::
-    m e -> (SpmIxRow m, SpmIxRow m) -> (SpmIxCol m, SpmIxCol m) -> m e
-  encodeIx :: m e -> (SpmIxCol m, SpmIxRow m) -> Int
-  decodeIx :: m e -> Int -> (SpmIxCol m, SpmIxRow m)
+    m e -> (IxRow, IxRow) -> (IxCol, IxCol) -> m e
+  encodeIx :: m e -> (IxRow, IxCol) -> Int
+  decodeIx :: m e -> Int -> (IxRow, IxCol)
 
 
 class (SparseMatrix m e, SparseVector v e) => SparseMatVec m v e where
-  smvInsertRow :: m e -> v e -> SpmIxRow m -> m e
-  smvInsertCol :: m e -> v e -> SpmIxCol m -> m e
-  smvExtractRow :: m e -> SpmIxRow m -> v e
-  smvExtractCol :: m e -> SpmIxCol m -> v e  
+  smvInsertRow :: m e -> v e -> IxRow -> m e
+  smvInsertCol :: m e -> v e -> IxCol -> m e
+  smvExtractRow :: m e -> IxRow -> v e
+  smvExtractCol :: m e -> IxCol -> v e  
 
 
 
