@@ -7,6 +7,8 @@ import Data.Complex
 import Data.Ratio
 import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 
+import qualified Data.Vector as V (Vector)
+
 import Data.Sparse.Types
 
 -- * Matrix and vector elements (possibly Complex)
@@ -263,32 +265,42 @@ class SpContainer v e => SparseVector v e where
 
 -- * SparseMatrix
 
--- class SpContainer m e => SparseMatrix m e where
---   type SpmIxRow m :: *
---   type SpmIxCol m :: *  
---   smFromFoldable :: Foldable t => (Int, Int) -> t (SpmIxRow m, SpmIxCol m, e) -> m e
---   smFromFoldableDense :: Foldable t => t e -> m e  
---   smTranspose :: m e -> m e
---   smExtractSubmatrix ::
---     m e -> (SpmIxRow m, SpmIxRow m) -> (SpmIxCol m, SpmIxCol m) -> m e
---   encodeIx :: m e -> (SpmIxRow m, SpmIxCol m) -> Int
---   decodeIx :: m e -> Int -> (SpmIxRow m, SpmIxCol m)
-
 class SpContainer m e => SparseMatrix m e where
-  smFromFoldable :: Foldable t => (Int, Int) -> t (IxRow, IxCol, e) -> m e
-  smFromFoldableDense :: Foldable t => t e -> m e  
+  smFromVector :: LexOrd -> (Int, Int) -> V.Vector (IxRow, IxCol, e) -> m e
+  -- smFromFoldableDense :: Foldable t => t e -> m e  
   smTranspose :: m e -> m e
-  smExtractSubmatrix ::
-    m e -> (IxRow, IxRow) -> (IxCol, IxCol) -> m e
-  encodeIx :: m e -> (IxRow, IxCol) -> Int
-  decodeIx :: m e -> Int -> (IxRow, IxCol)
+  -- smExtractSubmatrix ::
+  --   m e -> (IxRow, IxRow) -> (IxCol, IxCol) -> m e
+  encodeIx :: m e -> LexOrd -> (IxRow, IxCol) -> LexIx
+  decodeIx :: m e -> LexOrd -> LexIx -> (IxRow, IxCol)
 
 
-class (SparseMatrix m e, SparseVector v e) => SparseMatVec m v e where
-  smvInsertRow :: m e -> v e -> IxRow -> m e
-  smvInsertCol :: m e -> v e -> IxCol -> m e
-  smvExtractRow :: m e -> IxRow -> v e
-  smvExtractCol :: m e -> IxCol -> v e  
+-- data RowsFirst = RowsFirst
+-- data ColsFirst = ColsFirst
+
+-- class SpContainer m e => SparseMatrix m o e where
+--   smFromVector :: o -> (Int, Int) -> V.Vector (IxRow, IxCol, e) -> m e
+--   -- smFromFoldableDense :: Foldable t => t e -> m e  
+--   smTranspose :: o -> m e -> m e
+--   -- smExtractSubmatrix ::
+--   --   m e -> (IxRow, IxRow) -> (IxCol, IxCol) -> m e
+--   encodeIx :: m e -> o -> (IxRow, IxCol) -> LexIx
+--   decodeIx :: m e -> o -> LexIx -> (IxRow, IxCol)
+
+
+
+
+
+
+-- * SparseMatVec
+
+-- | Combining functions for relating (structurally) matrices and vectors, e.g. extracting/inserting rows/columns/submatrices
+
+-- class (SparseMatrix m o e, SparseVector v e) => SparseMatVec m o v e where
+--   smvInsertRow :: m e -> v e -> IxRow -> m e
+--   smvInsertCol :: m e -> v e -> IxCol -> m e
+--   smvExtractRow :: m e -> IxRow -> v e
+--   smvExtractCol :: m e -> IxCol -> v e  
 
 
 

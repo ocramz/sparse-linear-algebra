@@ -24,6 +24,7 @@ import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CD
 import Data.Sparse.Utils
 import Data.Sparse.Types
 import Data.Sparse.Internal.CSRVector
+import Data.Sparse.Internal.Utils
 
 import Numeric.LinearAlgebra.Class
 -- import Data.Sparse.Common
@@ -84,22 +85,7 @@ toCSR m n ijxv = CM m n nz cix crp x where
   sortByRows = V.modify (VA.sortBy f) where
        f a b = compare (fst3 a) (fst3 b)
 
--- | Given a number of "rows" a Vector of Integers in increasing order (containing the row indices of nonzero entries), return the cumulative vector of nonzero entries of length `nrows + 1` (the "row pointer" of the CSR format)
--- E.g.:
--- > csrPtrV 4 (V.fromList [0,0,1,1,3])
--- [0,2,4,4,5]
-csrPtrV :: Int -> V.Vector Int -> V.Vector Int
-csrPtrV nrows xs = V.scanl (+) 0 $ V.create createf where
-   createf :: ST s (VM.MVector s Int)
-   createf = do
-     vm <- VM.new nrows
-     let loop v ll i | i == nrows = return ()
-                     | otherwise = do
-                                     let lp = V.length $ V.takeWhile (== i) ll
-                                     VM.write v i lp
-                                     loop v (V.drop lp ll) (i + 1)
-     loop vm xs 0
-     return vm
+
 
 
 
