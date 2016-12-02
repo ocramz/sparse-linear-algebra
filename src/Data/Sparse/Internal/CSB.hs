@@ -20,12 +20,14 @@ import Data.Complex
 import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 
 import Control.Concurrent
+-- import qualified Control.Monad.Par as Par
 -- import Control.DeepSeq
 
 
 import Data.Sparse.Utils
 import Data.Sparse.Types
 import Data.Sparse.Internal.CSRVector
+import Data.Sparse.Internal.Utils
 
 import Numeric.LinearAlgebra.Class
 
@@ -49,12 +51,18 @@ The blk_ptr array stores the index of each block in the val array, which is anal
 [1] A. Buluc, et al., Parallel Sparse Matrix-Vector and Matrix-Transpose-Vector Multiplication Using Compressed Sparse Blocks
 -}
 
+
 -- * CSB Block
+
+-- | Invariants :
+-- 1) rowIx, colIx and val have same length
+-- 2) " have at most (bRows x bCols) NZ
+
 data Block a = Block {
   bRows, bCols :: {-# UNPACK #-} !Int,
   rowIx :: V.Vector Int,
   colIx :: V.Vector Int,
-  val :: V.Vector a -- invariant: at most (bRows x bCols) NZ
+  val :: V.Vector a      -- invariant: 
   } deriving (Eq, Show)
 
 instance Functor Block where
@@ -67,25 +75,74 @@ instance Traversable Block where
   traverse f (Block br bc ri ci v) = Block br bc ri ci <$> traverse f v
 
 
+sortWith :: Ord o => (t -> o) -> V.Vector t -> V.Vector t
+sortWith f v = V.modify (VA.sortBy q) v where
+  q x y = compare (f x) (f y)
+
+sortWith3 :: Ord o =>
+   ((a, b, c) -> o) ->
+   V.Vector a ->
+   V.Vector b ->
+   V.Vector c ->
+   V.Vector (a, b, c)
+sortWith3 f x y z = sortWith f $ V.zip3 x y z
+
+
+sortByFst3 :: Ord a => V.Vector a -> V.Vector b -> V.Vector c -> V.Vector (a, b, c)
+sortByFst3 = sortWith3 fst3
+
+sortBySnd3 :: Ord b => V.Vector a -> V.Vector b -> V.Vector c -> V.Vector (a, b, c)
+sortBySnd3 = sortWith3 snd3
+
+
+
+
+
+
 
 -- * CSB Matrix
+
+-- | Invariants:
+-- 1) csbNrows = sum bRows, csbNcols = sum bCols
+
 data CsbMatrix a =
   CB { csbNrows :: {-# UNPACK #-} !Int,
        csbNcols :: {-# UNPACK #-} !Int,
-       csbBlkPtr :: V.Vector Int,
+       -- csbBlkPtr :: V.Vector Int,
        csbBlocks :: V.Vector (Block a) -- block ordering function f(i,j)
      } deriving Eq
 
-
 instance Functor CsbMatrix where
-  fmap f (CB m n bp bb) = CB m n bp $ fmap (fmap f) bb
+  fmap f (CB m n bb) = CB m n $ fmap (fmap f) bb
 
 -- instance Foldable CsbMatrix where
-  -- foldr f z cm = foldr f z (csbBlocks cm)
+--   foldr f z cm = foldr f z (csbBlocks cm)
 
 -- instance Traversable CsbMatrix where
 --   traverse f (CB m n bp x) = CB m n bp <$> traverse f x
 
 
+
+
+
+-- * fromList
+-- m n [(i, j, x)] -> C
+
+
+
+
+
+
+-- * Mat-vec (y = A x)
+-- y[i] = < A[i,:] , x >
+
+
+-- * MatT-vec (y = A^T x)
+-- y[i] = < A[:, j] , x>
+
+
+-- * Mat-vec (y = A x, parallel over CSB and block-partitioned x)
+-- | Invariants:
+-- 1) # cols block Aij == # entries j'th partition of x
 
 
