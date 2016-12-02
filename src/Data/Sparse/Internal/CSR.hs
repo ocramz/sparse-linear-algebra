@@ -16,6 +16,7 @@ import qualified Data.Vector.Algorithms.Merge as VA (sortBy)
 
 import Control.Monad
 import Data.Maybe
+import Data.Ord (comparing)
 
 import Data.Complex
 import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
@@ -76,14 +77,12 @@ instance Show a => Show (CsrMatrix a) where
 
 
 -- * Creation
--- | Copy a Vector containing (row index, column index, entry) into a CSR structure. Sorts the Vector by row indices ( O(log N) ), unzips column indices and data ( O(N) ) and generates the row pointer vector ( 2 O(N) passes )
+-- | O(N log N) : Copy a Vector containing (row index, column index, entry) into a CSR structure. Sorts the Vector by row indices ( O(log N) ), unzips column indices and data ( O(N) ) and generates the row pointer vector ( 2 O(N) passes )
 toCSR :: Int -> Int -> V.Vector (Int, Int, a) -> CsrMatrix a
 toCSR m n ijxv = CM m n nz cix crp x where
   nz = V.length x
-  (rix, cix, x) = V.unzip3 (sortByRows ijxv)
+  (rix, cix, x) = V.unzip3 (sortWith fst3 ijxv)  -- sort by rows
   crp = csrPtrV (==) m rix
-  sortByRows = V.modify (VA.sortBy f) where
-       f a b = compare (fst3 a) (fst3 b)
 
 
 
@@ -309,13 +308,7 @@ sortByIx = V.modify (VA.sortBy f) where
 
 -- * Utilities
 
-tail3 :: (t, t1, t2) -> (t1, t2)
-tail3 (_,j,x) = (j,x)
 
-snd3 (_,j,_) = j
-
-fst3 :: (t, t1, t2) -> t
-fst3 (i, _, _) = i
 
 
 

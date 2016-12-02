@@ -226,6 +226,19 @@ matVec m v = undefined
 
 (#>) = matVec
 
+
+
+
+
+-- generalized matVec : we require a function `rowsf` that produces a functor of elements of a Hilbert space (the rows of `m`)
+matVecG :: (Hilbert v, Functor f) => (t -> f v) -> t -> v -> f (Scalar v)
+matVecG rowsf m v = fmap (`dot` v) (rowsf m)
+
+
+
+
+
+
 -- |Vector-on-matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
 -- vecMat, (<#) :: Num a => SpVector a -> SpMatrix a -> SpVector a  
 -- vecMat (SV n sv) (SM (nr, nc) mdata)
