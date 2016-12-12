@@ -33,27 +33,6 @@ class AdditiveGroup e where
   (^-^) :: e -> e -> e
   x ^-^ y = x ^+^ negated y
 
--- | Numeric isntances for AdditiveGroup
-
--- For 'Num' types:
--- 
--- instance AdditiveGroup n where {zeroV=0; (^+^) = (+); negateV = negate}
-
-
-
-
-instance Integral a => AdditiveGroup (Ratio a) where
-  {zero=0; (^+^) = (+); negated = negate}
-instance (RealFloat v, AdditiveGroup v) => AdditiveGroup (Complex v) where
-  zero   = zero :+ zero
-  (^+^)   = (+)
-  negated = negate
-
--- | Standard instance for an applicative functor applied to a vector space.
-instance AdditiveGroup v => AdditiveGroup (a -> v) where
-  zero   = pure   zero
-  (^+^)   = liftA2 (^+^)
-  negated = fmap   negated
 
 
 
@@ -67,7 +46,7 @@ class AdditiveGroup v => VectorSpace v where
 -- (./) :: v -> Scalar v -> v
 v ./ n = recip n .* v
 
--- |Linear interpolation
+-- | Convex combination of two vectors (NB: 0 <= `a` <= 1). 
 lerp :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
 lerp a u v = a .* u ^+^ ((1-a) .* v)
 
@@ -75,10 +54,7 @@ lerp a u v = a .* u ^+^ ((1-a) .* v)
 -- linearCombination :: (VectorSpace v , Foldable t) => t (Scalar v, v) -> v
 -- linearCombination  =  foldr (\(a, x) (b, y) -> (a .* x) ^+^ (b .* y)) 
 
--- | numerical instances for VectorSpace
-instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
-  type Scalar (Complex v) = Scalar v
-  s .* (u :+ v) = s .* u :+ s .* v
+
 
 
 
@@ -88,8 +64,9 @@ infixr 7 `dot`
 class (VectorSpace v, AdditiveGroup (Scalar v)) => Hilbert v where
   dot :: v -> v -> Scalar v
   
--- infixr 7 <.>
--- (<.>) = dot  
+infixr 7 <.>
+(<.>) :: Hilbert v => v -> v -> Scalar v
+(<.>) = dot  
 
 
 
@@ -97,7 +74,7 @@ class (VectorSpace v, AdditiveGroup (Scalar v)) => Hilbert v where
 
 -- ** Hilbert-space distance function
 -- |`hilbertDistSq x y = || x - y ||^2`
-hilbertDistSq :: Hilbert v => v -> v -> Scalar v
+hilbertDistSq :: (Hilbert v, s ~ Scalar v) => v -> v -> s
 hilbertDistSq x y = dot t t where
   t = x ^-^ y
 
@@ -307,6 +284,27 @@ class SpContainer m e => SparseMatrix m e where
 
 
 
+
+-- | Instances for AdditiveGroup
+instance Integral a => AdditiveGroup (Ratio a) where
+  {zero=0; (^+^) = (+); negated = negate}
+
+instance (RealFloat v, AdditiveGroup v) => AdditiveGroup (Complex v) where
+  zero    = zero :+ zero
+  (^+^)   = (+)
+  negated = negate
+
+-- | Standard instance for an applicative functor applied to a vector space.
+instance AdditiveGroup v => AdditiveGroup (a -> v) where
+  zero    = pure   zero
+  (^+^)   = liftA2 (^+^)
+  negated = fmap   negated
+
+
+-- | Instances for VectorSpace
+instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
+  type Scalar (Complex v) = Scalar v
+  s .* (u :+ v) = s .* u :+ s .* v
 
 
 

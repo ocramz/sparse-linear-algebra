@@ -129,7 +129,6 @@ extractRowCSR (CM _ n _ cix rp x) irow = CV n ixs vals where
 -- | O(N) : Rebuilds the (row, column, entry) Vector from the CSR representation. 
 fromCSR :: CsrMatrix a -> V.Vector (Int, Int, a)
 fromCSR mc = V.zip3 ii jj xx where (ii,jj,xx) = fromCSR0 mc
-
 fromCSR0 :: CsrMatrix a -> (V.Vector Int, V.Vector Int, V.Vector a)
 fromCSR0 mc = (rows, csrColIx mc, csrVal mc) where
   (m, n) = dim mc

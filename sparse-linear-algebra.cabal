@@ -37,6 +37,7 @@ library
                        Data.Sparse.Internal.CSR
                        Data.Sparse.Internal.CSRVector
                        Data.Sparse.Internal.CSB
+                       Data.Sparse.Internal.Utils
                        Data.Sparse.Utils
                        Data.Sparse.PPrint
                        Data.Sparse.Types
@@ -50,6 +51,7 @@ library
                      , mwc-random
                      , vector
                      , vector-algorithms
+                     , monad-par
 
 
 executable sparse-linear-algebra
@@ -80,3 +82,4 @@ test-suite spec
 source-repository head
   type:     git
   location: https://github.com/ocramz/sparse-linear-algebra
+

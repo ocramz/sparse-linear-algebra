@@ -1,4 +1,5 @@
 {-# language TypeFamilies #-}
+{-# language TypeOperators, GADTs #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -35,6 +36,9 @@ import Numeric.Eps as X
 import Numeric.LinearAlgebra.Class as X
 
 import qualified Data.IntMap as IM
+
+import Control.Applicative
+import Data.Traversable
 
 import Data.Maybe (fromMaybe, maybe)
 import qualified Data.Vector as V
@@ -231,9 +235,33 @@ matVec m v = undefined
 
 
 -- generalized matVec : we require a function `rowsf` that produces a functor of elements of a Hilbert space (the rows of `m`)
-matVecG :: (Hilbert v, Functor f) => (t -> f v) -> t -> v -> f (Scalar v)
+matVecG :: (Hilbert v, Functor f, f (Scalar v) ~ v) => (m -> f v) -> m -> v -> v
 matVecG rowsf m v = fmap (`dot` v) (rowsf m)
 
+-- matVecGA
+--   :: (Hilbert v, Traversable t, t (Scalar v) ~ v, Applicative f) =>
+--      (m -> t v) -> m -> v -> f v
+matVecGA rowsf m v = traverse (\l -> pure $ l <.> v) (rowsf m)
+
+-- | From the definitions, a matrix maps between two finite-dimensional Hilbert spaces, i.e.
+-- matVec :: (Hilbert u, Hilbert v) => (u -> v) -> u -> v
+-- which is a specialization of a function application operator like ($) :: (a -> b) -> a -> b
+
+
+
+
+-- | from `vector-space`
+
+-- data a -* b where
+--   Dot :: VectorSpace b => b -> (b -* Scalar b)
+--   (:&&) :: (a -* c) -> (a -* d) -> (a -* (c, d)) -- a,c,d should be constrained
+
+-- apply :: Hilbert a => (a -* b) -> (a -> b)
+-- apply (Dot b) = dot b
+-- apply (f :&& g) = apply f &&& apply g
+--   where (u &&& v) a = (u a, v a) -- (&&&) from Control.Arrow
+
+-- -- type a :~ b = Scalar a ~ Scalar b
 
 
 
@@ -351,6 +379,12 @@ instance (Elt a, Show a) => PrintDense (CsrMatrix a) where
 
 
 
+
+
+
+
+
+-- * Test data
 
 
 
