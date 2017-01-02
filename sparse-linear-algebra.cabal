@@ -44,6 +44,7 @@ library
                        Numeric.Eps
   build-depends:       QuickCheck
                      , base >= 4.7 && < 5
+                     , vector-space
                      , containers
                      , hspec
                      , primitive >= 0.6.1.0
@@ -70,6 +71,7 @@ test-suite spec
   other-modules:       LibSpec
   main-is:             Spec.hs
   build-depends:       base
+                     , vector-space
                      , containers
                      , hspec
                      , mtl >= 2.2.1

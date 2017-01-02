@@ -372,7 +372,7 @@ lu aa = (lf, ufin) where
      | isNz ujj = (a - p)/ujj
      | otherwise =
         error $ unwords ["solveForLij : U",
-                       show (j ,j ),
+                       show (j ,j),
                        "is close to 0. Permute rows in order to have a nonzero diagonal of U"]
       where
        a = aa @@! (i, j)

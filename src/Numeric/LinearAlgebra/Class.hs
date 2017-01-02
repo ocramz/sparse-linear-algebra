@@ -5,11 +5,18 @@ module Numeric.LinearAlgebra.Class where
 import Control.Applicative
 import Data.Complex
 import Data.Ratio
-import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
+-- import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 
 import qualified Data.Vector as V (Vector)
 
+import Data.AffineSpace
+import Data.VectorSpace
+
 import Data.Sparse.Types
+
+
+
+
 
 -- * Matrix and vector elements (possibly Complex)
 class (Eq e , Fractional e) => Elt e where
@@ -22,33 +29,34 @@ instance RealFloat e => Elt (Complex e) where
   
 
 -- * Additive group
-class AdditiveGroup e where
-  -- | Identity element
-  zero :: e
-  -- | Group action
-  (^+^) :: e -> e -> e
-  -- | Inverse element
-  negated :: e -> e
-  -- | Inverse group action
-  (^-^) :: e -> e -> e
-  x ^-^ y = x ^+^ negated y
+-- class AdditiveGroup e where
+--   -- | Identity element
+--   zero :: e
+--   -- | Group action
+--   (^+^) :: e -> e -> e
+--   -- | Inverse element
+--   negated :: e -> e
+--   -- | Inverse group action
+--   (^-^) :: e -> e -> e
+--   x ^-^ y = x ^+^ negated y
 
 
 
 
 -- * Vector space
-class AdditiveGroup v => VectorSpace v where
-  type Scalar v :: *
-  -- | Scale a vector
-  (.*) :: Scalar v -> v -> v
+-- class AdditiveGroup v => VectorSpace v where
+--   type Scalar v :: *
+--   -- | Scale a vector
+--   (.*) :: Scalar v -> v -> v
 
+-- (.*) = (^*)
 
--- (./) :: v -> Scalar v -> v
-v ./ n = recip n .* v
+-- (./) :: VectorSpace v => v -> Scalar v -> v
+-- v ./ n = recip n .* v
 
 -- | Convex combination of two vectors (NB: 0 <= `a` <= 1). 
-lerp :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
-lerp a u v = a .* u ^+^ ((1-a) .* v)
+-- lerp :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
+-- lerp a u v = a .* u ^+^ ((1-a) .* v)
 
 
 -- linearCombination :: (VectorSpace v , Foldable t) => t (Scalar v, v) -> v
@@ -60,13 +68,16 @@ lerp a u v = a .* u ^+^ ((1-a) .* v)
 
 
 -- * Hilbert space (inner product)
-infixr 7 `dot`
-class (VectorSpace v, AdditiveGroup (Scalar v)) => Hilbert v where
-  dot :: v -> v -> Scalar v
+-- infixr 7 `dot`
+-- class (VectorSpace v, AdditiveGroup (Scalar v)) => Hilbert v where
+--   dot :: v -> v -> Scalar v
+
+dot :: InnerSpace v => v -> v -> Scalar v
+dot = (<.>)
   
-infixr 7 <.>
-(<.>) :: Hilbert v => v -> v -> Scalar v
-(<.>) = dot  
+-- infixr 7 <.>
+-- (<.>) :: Hilbert v => v -> v -> Scalar v
+-- (<.>) = dot  
 
 
 
@@ -74,7 +85,7 @@ infixr 7 <.>
 
 -- ** Hilbert-space distance function
 -- |`hilbertDistSq x y = || x - y ||^2`
-hilbertDistSq :: (Hilbert v, s ~ Scalar v) => v -> v -> s
+hilbertDistSq :: InnerSpace v => v -> v -> Scalar v
 hilbertDistSq x y = dot t t where
   t = x ^-^ y
 
@@ -86,11 +97,11 @@ hilbertDistSq x y = dot t t where
 
 
 -- * Normed vector space
-class Hilbert e => Normed e where
+class InnerSpace e => Normed e where
   -- |p-norm (p finite)
-  norm :: RealFloat a => a -> e -> Scalar e
+  norm :: RealFloat p => p -> e -> Scalar e
   -- |Normalize w.r.t. p-norm
-  normalize :: RealFloat a => a -> e -> e
+  normalize :: RealFloat p => p -> e -> e
 
 
 
@@ -98,7 +109,7 @@ class Hilbert e => Normed e where
 -- ** Norms and related results
 
 -- | Squared 2-norm
-normSq :: Hilbert v => v -> Scalar v
+-- normSq :: Hilbert v => v -> Scalar v
 normSq v = v `dot` v
 
 
@@ -107,7 +118,7 @@ norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 norm1 v = sum (fmap abs v)
 
 -- |Euclidean norm
-norm2 :: (Hilbert v, Floating (Scalar v)) => v -> Scalar v
+-- norm2 :: (Hilbert v, Floating (Scalar v)) => v -> Scalar v
 norm2 v = sqrt (normSq v)
 
 -- |Lp norm (p > 0)
@@ -285,43 +296,43 @@ class SpContainer m e => SparseMatrix m e where
 
 
 
--- | Instances for AdditiveGroup
-instance Integral a => AdditiveGroup (Ratio a) where
-  {zero=0; (^+^) = (+); negated = negate}
+-- -- | Instances for AdditiveGroup
+-- instance Integral a => AdditiveGroup (Ratio a) where
+--   {zero=0; (^+^) = (+); negated = negate}
 
-instance (RealFloat v, AdditiveGroup v) => AdditiveGroup (Complex v) where
-  zero    = zero :+ zero
-  (^+^)   = (+)
-  negated = negate
+-- instance (RealFloat v, AdditiveGroup v) => AdditiveGroup (Complex v) where
+--   zero    = zero :+ zero
+--   (^+^)   = (+)
+--   negated = negate
 
--- | Standard instance for an applicative functor applied to a vector space.
-instance AdditiveGroup v => AdditiveGroup (a -> v) where
-  zero    = pure   zero
-  (^+^)   = liftA2 (^+^)
-  negated = fmap   negated
-
-
--- | Instances for VectorSpace
-instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
-  type Scalar (Complex v) = Scalar v
-  s .* (u :+ v) = s .* u :+ s .* v
+-- -- | Standard instance for an applicative functor applied to a vector space.
+-- instance AdditiveGroup v => AdditiveGroup (a -> v) where
+--   zero    = pure   zero
+--   (^+^)   = liftA2 (^+^)
+--   negated = fmap   negated
 
 
+-- -- | Instances for VectorSpace
+-- instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
+--   type Scalar (Complex v) = Scalar v
+--   s .* (u :+ v) = s .* u :+ s .* v
 
-#define ScalarType(t) \
-  instance AdditiveGroup (t) where {zero = 0; (^+^) = (+); negated = negate};\
-  instance VectorSpace (t) where {type Scalar (t) = (t); (.*) = (*) };\
-  instance Hilbert (t) where dot = (*)
 
-ScalarType(Int)
-ScalarType(Integer)
-ScalarType(Float)
-ScalarType(Double)
-ScalarType(CSChar)
-ScalarType(CInt)
-ScalarType(CShort)
-ScalarType(CLong)
-ScalarType(CLLong)
-ScalarType(CIntMax)
-ScalarType(CFloat)
-ScalarType(CDouble)
+
+-- #define ScalarType(t) \
+--   instance AdditiveGroup (t) where {zero = 0; (^+^) = (+); negated = negate};\
+--   instance VectorSpace (t) where {type Scalar (t) = (t); (.*) = (*) };\
+--   instance Hilbert (t) where dot = (*)
+
+-- ScalarType(Int)
+-- ScalarType(Integer)
+-- ScalarType(Float)
+-- ScalarType(Double)
+-- ScalarType(CSChar)
+-- ScalarType(CInt)
+-- ScalarType(CShort)
+-- ScalarType(CLong)
+-- ScalarType(CLLong)
+-- ScalarType(CIntMax)
+-- ScalarType(CFloat)
+-- ScalarType(CDouble)

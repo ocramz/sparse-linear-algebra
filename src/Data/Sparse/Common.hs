@@ -220,14 +220,22 @@ FIXME : matVec is more general than SpVector's :
 
 
 
+
+
 -- |Matrix-on-vector
 -- matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
 -- matVec (SM (nr, nc) mdata) (SV n sv)
 --   | nc == n = SV nr $ fmap (`dot` sv) mdata
 --   | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
 
+-- matVecD :: Epsilon e => SpMatrix e -> SpVector e -> SpVector e
+-- matVecD (SM (nr, nc) mdata) (SV n sv) 
+--   | nc == n = SV nr $ fmap (`dot` sv) mdata
+--   | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
+
 matVec m v = undefined
 
+-- matVec = matVecD
 (#>) = matVec
 
 
@@ -239,9 +247,9 @@ matVecG :: (Hilbert v, Functor f, f (Scalar v) ~ v) => (m -> f v) -> m -> v -> v
 matVecG rowsf m v = fmap (`dot` v) (rowsf m)
 
 -- matVecGA
---   :: (Hilbert v, Traversable t, t (Scalar v) ~ v, Applicative f) =>
---      (m -> t v) -> m -> v -> f v
-matVecGA rowsf m v = traverse (\l -> pure $ l <.> v) (rowsf m)
+--   :: (Hilbert v, Traversable t, t (Scalar v) ~ v) =>
+--      (m -> t v) -> m -> v -> v
+matVecGA rowsf m v = traverse (<.> v) (rowsf m)
 
 -- | From the definitions, a matrix maps between two finite-dimensional Hilbert spaces, i.e.
 -- matVec :: (Hilbert u, Hilbert v) => (u -> v) -> u -> v

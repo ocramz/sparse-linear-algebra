@@ -10,7 +10,7 @@
 -- Testing for values "near" zero
 -----------------------------------------------------------------------------
 module Numeric.Eps
-  ( Epsilon(..), nearZero, isNz, roundZero, roundOne, roundZeroOne
+  ( Epsilon(..), isNz, roundZero, roundOne, roundZeroOne
   ) where
 import Data.Complex
 import Foreign.C.Types (CFloat, CDouble)
