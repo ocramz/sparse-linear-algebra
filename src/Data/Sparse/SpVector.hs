@@ -25,6 +25,8 @@ import qualified Data.IntMap as IM
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 
+import Data.VectorSpace
+
 -- * Sparse Vector
 
 data SpVector a = SV { svDim :: {-# UNPACK #-} !Int ,
@@ -55,15 +57,15 @@ instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
 
 instance Num a => AdditiveGroup (SpVector a) where
-  zero = SV 0 IM.empty
+  zeroV = SV 0 IM.empty
   (^+^) = liftU2 (+)
-  negated = fmap negate
+  negateV = fmap negate
 
 
 -- | 'SpVector's form a vector space because they can be multiplied by a scalar
 instance (Num e , AdditiveGroup e) => VectorSpace (SpVector e) where
   type (Scalar (SpVector e)) = e
-  n .* v = scale n v
+  n *^ v = scale n v
 
 -- | 'SpVector's are finite-dimensional vectors
 instance FiniteDim SpVector where
@@ -96,12 +98,16 @@ instance Elt a => SpContainer SpVector a where
 
 
 -- | 'SpVector's form a Hilbert space, in that we can define an inner product over them
-instance (AdditiveGroup e, Real e, Elt e) => Hilbert (SpVector e) where
-  a `dot` b | dim a == dim b = dot (dat a) (dat b)
-            | otherwise =
-                     error $ "dot : sizes must coincide, instead we got " ++
+instance (AdditiveGroup e, Real e, Elt e) => InnerSpace (SpVector e) where
+  a <.> b | dim a == dim b = dot (dat a) (dat b)
+          | otherwise =
+                     error $ "<.> : sizes must coincide, instead we got " ++
                            show (dim a, dim b)
-                           
+
+a `dotS` b = withDim2 a b compatDimQ (<.>) "dotS : Incompatible dimensions" showErr
+  where
+   showErr aa bb = unwords [show (dim aa), show (dim bb)]
+   compatDimQ m n  _ _ = m == n
 
 
 -- | Since 'SpVector's form a Hilbert space, we can define a norm for them 

@@ -10,6 +10,7 @@ import Data.Sparse.Types
 import Data.Complex
 import Data.Maybe
 
+import Data.VectorSpace
 
 
 instance Set IM.IntMap where
@@ -19,25 +20,25 @@ instance Set IM.IntMap where
   {-# INLINE liftI2 #-}
 
 instance Num a => AdditiveGroup (IM.IntMap a) where
-  zero = IM.empty
-  {-# INLINE zero #-}
+  zeroV = IM.empty
+  {-# INLINE zeroV #-}
   (^+^) = liftU2 (+)
   {-# INLINE (^+^) #-}
   (^-^) = liftU2 (-)
   {-# INLINE (^-^) #-}
-  negated = fmap negate
-  {-# INLINE negated #-}
+  negateV = fmap negate
+  {-# INLINE negateV #-}
 
 
 instance (Num e, AdditiveGroup e) => VectorSpace (IM.IntMap e) where
   type (Scalar (IM.IntMap e)) = e
-  n .* im = IM.map (* n) im
+  n *^ im = IM.map (* n) im
 
-instance (Real e, Fractional e, AdditiveGroup e) => Hilbert (IM.IntMap e) where
-  a `dot` b = realToFrac $ sum $ liftI2 (*) a b
+instance (Real e, Fractional e, AdditiveGroup e) => InnerSpace (IM.IntMap e) where
+  a <.> b = realToFrac $ sum $ liftI2 (*) a b
 
-instance (RealFloat e, AdditiveGroup e) => Hilbert (IM.IntMap (Complex e)) where
-  a `dot` b = realToFrac $ realPart $ sum $ liftI2 (*) (conj <$> a) b
+instance (RealFloat e, AdditiveGroup e) => InnerSpace (IM.IntMap (Complex e)) where
+  a <.> b = realToFrac $ realPart $ sum $ liftI2 (*) (conj <$> a) b
   
 
 
