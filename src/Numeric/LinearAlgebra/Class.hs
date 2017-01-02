@@ -9,7 +9,6 @@ import Data.Ratio
 
 import qualified Data.Vector as V (Vector)
 
-import Data.AffineSpace
 import Data.VectorSpace
 
 import Data.Sparse.Types
@@ -29,30 +28,19 @@ instance RealFloat e => Elt (Complex e) where
   
 
 -- * Additive group
--- class AdditiveGroup e where
---   -- | Identity element
---   zero :: e
---   -- | Group action
---   (^+^) :: e -> e -> e
---   -- | Inverse element
---   negated :: e -> e
---   -- | Inverse group action
---   (^-^) :: e -> e -> e
---   x ^-^ y = x ^+^ negated y
 
-
+zero :: AdditiveGroup v => v
+zero = zeroV
+negated :: AdditiveGroup v => v -> v
+negated = negateV
 
 
 -- * Vector space
--- class AdditiveGroup v => VectorSpace v where
---   type Scalar v :: *
---   -- | Scale a vector
---   (.*) :: Scalar v -> v -> v
+(.*) :: VectorSpace v => Scalar v -> v -> v
+(.*) = (*^)
 
--- (.*) = (^*)
-
--- (./) :: VectorSpace v => v -> Scalar v -> v
--- v ./ n = recip n .* v
+(./) :: (VectorSpace v, Fractional (Scalar v)) => v -> Scalar v -> v
+v ./ n = recip n .* v
 
 -- | Convex combination of two vectors (NB: 0 <= `a` <= 1). 
 -- lerp :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
@@ -68,16 +56,10 @@ instance RealFloat e => Elt (Complex e) where
 
 
 -- * Hilbert space (inner product)
--- infixr 7 `dot`
--- class (VectorSpace v, AdditiveGroup (Scalar v)) => Hilbert v where
---   dot :: v -> v -> Scalar v
 
 dot :: InnerSpace v => v -> v -> Scalar v
 dot = (<.>)
   
--- infixr 7 <.>
--- (<.>) :: Hilbert v => v -> v -> Scalar v
--- (<.>) = dot  
 
 
 
@@ -109,7 +91,7 @@ class InnerSpace e => Normed e where
 -- ** Norms and related results
 
 -- | Squared 2-norm
--- normSq :: Hilbert v => v -> Scalar v
+normSq :: InnerSpace v => v -> Scalar v
 normSq v = v `dot` v
 
 
@@ -118,11 +100,10 @@ norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 norm1 v = sum (fmap abs v)
 
 -- |Euclidean norm
--- norm2 :: (Hilbert v, Floating (Scalar v)) => v -> Scalar v
+norm2 :: (InnerSpace v, Floating (Scalar v)) => v -> Scalar v
 norm2 v = sqrt (normSq v)
 
 -- |Lp norm (p > 0)
--- normP :: (Hilbert f e, Floating a) => a -> f e -> HT e
 normP :: (Foldable t, Functor t, Floating a) => a -> t a -> a
 normP p v = sum u**(1/p) where
   u = fmap (**p) v
