@@ -2,9 +2,9 @@
 {-# language CPP #-}
 module Numeric.LinearAlgebra.Class where
 
-import Control.Applicative
+-- import Control.Applicative
 import Data.Complex
-import Data.Ratio
+-- import Data.Ratio
 -- import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 
 import qualified Data.Vector as V (Vector)

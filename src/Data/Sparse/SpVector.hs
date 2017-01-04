@@ -99,12 +99,9 @@ instance Elt a => SpContainer SpVector a where
 
 -- | 'SpVector's form a Hilbert space, in that we can define an inner product over them
 instance (AdditiveGroup e, Real e, Elt e) => InnerSpace (SpVector e) where
-  a <.> b | dim a == dim b = dot (dat a) (dat b)
-          | otherwise =
-                     error $ "<.> : sizes must coincide, instead we got " ++
-                           show (dim a, dim b)
+  (<.>) = dotS
 
-a `dotS` b = withDim2 a b compatDimQ (<.>) "dotS : Incompatible dimensions" showErr
+a `dotS` b = withDim2 a b compatDimQ (<.>) "dotS : Incompatible dimensions " showErr
   where
    showErr aa bb = unwords [show (dim aa), show (dim bb)]
    compatDimQ m n  _ _ = m == n

@@ -1,16 +1,22 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# language MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
+{-# language GeneralizedNewtypeDeriving, DeriveFunctor #-}
+{-# language CPP #-}
 module Data.Sparse.Internal.IntMap2 where
 
 import Numeric.LinearAlgebra.Class
-
 import qualified Data.IntMap.Strict as IM
 import Data.Sparse.Types
+
+import Control.Applicative
 
 import Data.Complex
 import Data.Maybe
 
 import Data.VectorSpace
+
+
+
+
 
 
 instance Set IM.IntMap where
@@ -30,35 +36,37 @@ instance Num a => AdditiveGroup (IM.IntMap a) where
   {-# INLINE negateV #-}
 
 
-instance (Num e, AdditiveGroup e) => VectorSpace (IM.IntMap e) where
-  type (Scalar (IM.IntMap e)) = e
-  n *^ im = IM.map (* n) im
-
-instance (Real e, Fractional e, AdditiveGroup e) => InnerSpace (IM.IntMap e) where
-  a <.> b = realToFrac $ sum $ liftI2 (*) a b
-
-instance (RealFloat e, AdditiveGroup e) => InnerSpace (IM.IntMap (Complex e)) where
-  a <.> b = realToFrac $ realPart $ sum $ liftI2 (*) (conj <$> a) b
-  
+-- | VectorSpace
+#define IntMapInstance(t) \
+  instance VectorSpace (IM.IntMap (t)) where {type (Scalar (IM.IntMap (t))) = (t); n *^ im = IM.map (* n) im};\
+  instance VectorSpace (IM.IntMap (Complex (t))) where {type (Scalar (IM.IntMap (Complex (t)))) = Complex (t); n *^ im = IM.map (* n) im};\
+  instance InnerSpace (IM.IntMap (t)) where {a <.> b = sum $ liftI2 (*) a b};\
+  instance InnerSpace (IM.IntMap (Complex (t))) where {a <.> b = sum $ liftI2 (*) (conjugate <$> a) b};\
+  instance Normed (IM.IntMap (t)) where {norm p v | p==1 = norm1 v | otherwise = norm2 v};\
+  instance Normed (IM.IntMap (Complex (t))) where {norm p v | p==1 = norm1 v | otherwise = norm2 v};\
 
 
+IntMapInstance(Double)
+IntMapInstance(Float)
 
 
--- instance Elt e => Hilbert IM.IntMap e 
 
+mkIm xs = IM.fromList $ indexed xs :: IM.IntMap Double
+mkImC xs = IM.fromList $ indexed xs :: IM.IntMap (Complex Double)
 
-instance (RealFloat e, AdditiveGroup e) => Normed (IM.IntMap e) where
-  norm p v | p==1 = norm1 v
-           | otherwise = norm2 v
-           -- | otherwise = normP p v
+-- instance (RealFrac e, Floating e, AdditiveGroup e) => Normed (IM.IntMap e) where
+--   norm p v | p==1 = norm1 v
+--            | otherwise = norm2 v
+-- --            -- | otherwise = normP p v
 
 -- instance (RealFloat e, AdditiveGroup e) => Normed (IM.IntMap (Complex e)) where
 
--- instance Normed (IM.IntMap (Complex e)) where
+-- -- instance Normed (IM.IntMap (Complex e)) where
 
 
 
--- set-like brackets
+
+
 
 
 
@@ -212,5 +220,11 @@ mapColumnIM2 :: (b -> b) -> IM.IntMap (IM.IntMap b) -> Int -> IM.IntMap (IM.IntM
 mapColumnIM2 f im jj = imapIM2 (\i j x -> if j == jj then f x else x) im
 
 
+
+
+-- | utilities
+
+indexed :: [b] -> [(Int, b)]
+indexed x = zip [0 .. length x - 1] x
 
 
