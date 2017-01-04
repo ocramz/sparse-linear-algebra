@@ -17,8 +17,6 @@ import Data.VectorSpace
 
 
 
-
-
 instance Set IM.IntMap where
   liftU2 = IM.unionWith
   {-# INLINE liftU2 #-}
@@ -50,20 +48,10 @@ IntMapInstance(Double)
 IntMapInstance(Float)
 
 
+-- | Now we must pin data to a concrete type: 
 
-mkIm xs = IM.fromList $ indexed xs :: IM.IntMap Double
-mkImC xs = IM.fromList $ indexed xs :: IM.IntMap (Complex Double)
-
--- instance (RealFrac e, Floating e, AdditiveGroup e) => Normed (IM.IntMap e) where
---   norm p v | p==1 = norm1 v
---            | otherwise = norm2 v
--- --            -- | otherwise = normP p v
-
--- instance (RealFloat e, AdditiveGroup e) => Normed (IM.IntMap (Complex e)) where
-
--- -- instance Normed (IM.IntMap (Complex e)) where
-
-
+-- mkIm xs = IM.fromList $ indexed xs :: IM.IntMap Double
+-- mkImC xs = IM.fromList $ indexed xs :: IM.IntMap (Complex Double)
 
 
 

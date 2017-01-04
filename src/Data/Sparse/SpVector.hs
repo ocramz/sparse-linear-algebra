@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# language TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
+{-# language CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -56,16 +57,11 @@ instance Set SpVector where
 instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
 
-instance Num a => AdditiveGroup (SpVector a) where
-  zeroV = SV 0 IM.empty
-  (^+^) = liftU2 (+)
-  negateV = fmap negate
+
 
 
 -- | 'SpVector's form a vector space because they can be multiplied by a scalar
-instance (Num e , AdditiveGroup e) => VectorSpace (SpVector e) where
-  type (Scalar (SpVector e)) = e
-  n *^ v = scale n v
+
 
 -- | 'SpVector's are finite-dimensional vectors
 instance FiniteDim SpVector where
@@ -96,20 +92,31 @@ instance Elt a => SpContainer SpVector a where
 
 -- instance SparseVector SpVector (Complex Double) where
 
+# define SpVectorInstance (t) \
+  instance AdditiveGroup (SpVector (t)) where { zeroV = SV 0 IM.empty; (^+^) = liftU2 (+); negateV = fmap negate };\
+  instance AdditiveGroup (SpVector (Complex (t))) where { zeroV = SV 0 IM.empty; (^+^) = liftU2 (+); negateV = fmap negate }  
 
--- | 'SpVector's form a Hilbert space, in that we can define an inner product over them
-instance (AdditiveGroup e, Real e, Elt e) => InnerSpace (SpVector e) where
-  (<.>) = dotS
+instance Num a => AdditiveGroup (SpVector a) where
+  zeroV = SV 0 IM.empty
+  (^+^) = liftU2 (+)
+  negateV = fmap negate
+instance (Num e , AdditiveGroup e) => VectorSpace (SpVector e) where
+  type (Scalar (SpVector e)) = e
+  n *^ v = scale n v
+instance (AdditiveGroup a, RealFloat a) => InnerSpace (SpVector a) where
+  (SV _ x) <.> (SV _ y) = x <.> y -- dotS x y
 
-a `dotS` b = withDim2 a b compatDimQ (<.>) "dotS : Incompatible dimensions " showErr
-  where
-   showErr aa bb = unwords [show (dim aa), show (dim bb)]
-   compatDimQ m n  _ _ = m == n
+-- a `dotS` b = withDim2 a b compatDimQ (<.>) "dotS : Incompatible dimensions " showErr
+--   where
+--    showErr aa bb = unwords [show (dim aa), show (dim bb)]
+--    compatDimQ m n  _ _ = m == n
+
+
 
 
 -- | Since 'SpVector's form a Hilbert space, we can define a norm for them 
-instance (Elt e, RealFloat e, AdditiveGroup e) => Normed (SpVector e) where
-  norm p (SV _ v) = norm p v
+-- instance (Elt e, RealFloat e, AdditiveGroup e) => Normed (SpVector e) where
+--   norm p (SV _ v) = norm p v
 
 
 
