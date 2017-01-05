@@ -22,7 +22,7 @@ import qualified Data.IntMap as IM
 
 import Data.Maybe
 
-
+import Data.VectorSpace
 
 -- *
 
@@ -64,9 +64,10 @@ instance Set SpMatrix where
 
 -- | 'SpMatrix'es form a ring, in that they can be added and possess a zero element  
 instance Num a => AdditiveGroup (SpMatrix a) where
-  zero = SM (0,0) IM.empty
+  zeroV = SM (0,0) IM.empty
   (^+^) = liftU2 (+)
-  negated = fmap negate
+  negateV = fmap negate
+
 
 -- | 'SpMatrix'es are maps between finite-dimensional spaces
 instance FiniteDim SpMatrix where

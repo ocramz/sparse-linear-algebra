@@ -21,8 +21,7 @@ module Data.Sparse.Common
          extractSubRow, extractSubCol,
          extractSubRow_RK, extractSubCol_RK,
          matVec, (#>), vecMat, (<#),
-         fromCols,
-         prd) where
+         fromCols) where
 
 import Data.Sparse.Utils as X
 import Data.Sparse.PPrint as X
@@ -30,7 +29,7 @@ import Data.Sparse.Types as X
 import Data.Sparse.Internal.IntMap2 -- as X
 import Data.Sparse.SpMatrix as X
 import Data.Sparse.SpVector as X
-import Data.Sparse.Internal.CSR as X
+-- import Data.Sparse.Internal.CSR as X
 
 import Numeric.Eps as X
 import Numeric.LinearAlgebra.Class as X
@@ -42,6 +41,8 @@ import Data.Traversable
 
 import Data.Maybe (fromMaybe, maybe)
 import qualified Data.Vector as V
+
+import Data.VectorSpace
 
 -- withBoundsSM m ij e f
 --   | isValidIxSM m ij = f m ij
@@ -223,7 +224,8 @@ FIXME : matVec is more general than SpVector's :
 
 
 -- |Matrix-on-vector
--- matVec, (#>) :: Num a => SpMatrix a -> SpVector a -> SpVector a
+-- matVec, (#>) :: Epsilon a => SpMatrix a -> SpVector a -> SpVector a
+-- -- matVec :: SpMatrix Double -> SpVector Double -> SpVector Double -- this works, but we can' have `matVec` as a monomorphic method.
 -- matVec (SM (nr, nc) mdata) (SV n sv)
 --   | nc == n = SV nr $ fmap (`dot` sv) mdata
 --   | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
@@ -243,8 +245,8 @@ matVec m v = undefined
 
 
 -- generalized matVec : we require a function `rowsf` that produces a functor of elements of a Hilbert space (the rows of `m`)
-matVecG :: (Hilbert v, Functor f, f (Scalar v) ~ v) => (m -> f v) -> m -> v -> v
-matVecG rowsf m v = fmap (`dot` v) (rowsf m)
+-- matVecG :: (Hilbert v, Functor f, f (Scalar v) ~ v) => (m -> f v) -> m -> v -> v
+-- matVecG rowsf m v = fmap (`dot` v) (rowsf m)
 
 -- matVecGA
 --   :: (Hilbert v, Traversable t, t (Scalar v) ~ v) =>
@@ -375,8 +377,8 @@ instance (Show a, Num a) => PrintDense (SpMatrix a) where
 
 
 
-instance (Elt a, Show a) => PrintDense (CsrMatrix a) where
-  prd = printDenseSM
+-- instance (Elt a, Show a) => PrintDense (CsrMatrix a) where
+--   prd = printDenseSM
 
 
 

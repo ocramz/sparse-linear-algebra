@@ -79,29 +79,37 @@ hilbertDistSq x y = dot t t where
 
 
 -- * Normed vector space
-class InnerSpace e => Normed e where
-  -- |p-norm (p finite)
-  norm :: RealFloat p => p -> e -> Scalar e
-  -- |Normalize w.r.t. p-norm
-  normalize :: RealFloat p => p -> e -> e
+-- class InnerSpace v => Normed v where
+--   -- |p-norm (p finite)
+--   norm :: RealFloat p => p -> v -> Scalar v
+--   -- |Normalize w.r.t. p-norm
+--   normalize :: RealFloat p => p -> v -> v
+
+
+class InnerSpace v => Normed v where
+  type Magnitude v :: *
+  norm2Sq :: v -> Magnitude v
+  -- norm2Sq x = x <.> x  -- Magnitude v doesn't unify with Scalar v in general
+  -- normalize :: RealFloat p => p -> v -> v
+
+
+
+  
+
 
 
 
 
 -- ** Norms and related results
 
--- | Squared 2-norm
-normSq :: InnerSpace v => v -> Scalar v
-normSq v = v `dot` v
-
-
 -- |L1 norm
-norm1 :: (Foldable t, Num a, Functor t) => t a -> a
+-- norm1 :: (Foldable t, Num a, Functor t) => t a -> a
+-- norm1 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
 norm1 v = sum (fmap abs v)
 
 -- |Euclidean norm
-norm2 :: (InnerSpace v, Floating (Scalar v)) => v -> Scalar v
-norm2 v = sqrt (normSq v)
+norm2 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
+norm2 x = sqrt (norm2Sq x)
 
 -- |Lp norm (p > 0)
 normP :: (Foldable t, Functor t, Floating a) => a -> t a -> a

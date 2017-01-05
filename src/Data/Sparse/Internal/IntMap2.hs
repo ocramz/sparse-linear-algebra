@@ -40,8 +40,9 @@ instance Num a => AdditiveGroup (IM.IntMap a) where
   instance VectorSpace (IM.IntMap (Complex (t))) where {type (Scalar (IM.IntMap (Complex (t)))) = Complex (t); n *^ im = IM.map (* n) im};\
   instance InnerSpace (IM.IntMap (t)) where {a <.> b = sum $ liftI2 (*) a b};\
   instance InnerSpace (IM.IntMap (Complex (t))) where {a <.> b = sum $ liftI2 (*) (conjugate <$> a) b};\
-  instance Normed (IM.IntMap (t)) where {norm p v | p==1 = norm1 v | otherwise = norm2 v};\
-  instance Normed (IM.IntMap (Complex (t))) where {norm p v | p==1 = norm1 v | otherwise = norm2 v};\
+  instance Normed (IM.IntMap (t)) where {type Magnitude (IM.IntMap (t)) = t; norm2Sq a = sum $ liftI2 (*) a a};\
+  instance Normed (IM.IntMap (Complex (t))) where {type Magnitude (IM.IntMap(Complex (t))) = (t); norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a}
+
 
 
 IntMapInstance(Double)
@@ -53,6 +54,17 @@ IntMapInstance(Float)
 -- mkIm xs = IM.fromList $ indexed xs :: IM.IntMap Double
 -- mkImC xs = IM.fromList $ indexed xs :: IM.IntMap (Complex Double)
 
+
+
+
+-- | test newtype
+
+-- newtype V a = V [a]
+-- instance AdditiveGroup (V Double) where
+-- instance VectorSpace (V Double) where
+--   type Scalar (V Double) = Double
+-- instance InnerSpace (V Double) where
+-- instance Normed (V Double) where
 
 
 
