@@ -26,7 +26,55 @@ import qualified Data.IntMap as IM
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 
-import Data.VectorSpace
+import Data.VectorSpace hiding (magnitude)
+
+
+
+
+instance Set IM.IntMap where
+  liftU2 = IM.unionWith
+  {-# INLINE liftU2 #-}
+  liftI2 = IM.intersectionWith
+  {-# INLINE liftI2 #-}
+
+instance Num a => AdditiveGroup (IM.IntMap a) where
+  zeroV = IM.empty
+  {-# INLINE zeroV #-}
+  (^+^) = liftU2 (+)
+  {-# INLINE (^+^) #-}
+  (^-^) = liftU2 (-)
+  {-# INLINE (^-^) #-}
+  negateV = fmap negate
+  {-# INLINE negateV #-}
+
+
+-- | ParamInstance can be used with all types that are instances of Set (which are by construction also instances of Functor)
+#define ParamInstance(f, t) \
+  instance VectorSpace (f t) where {type (Scalar (f (t))) = (t); n *^ im = fmap (* n) im};\
+  instance VectorSpace (f (Complex t)) where {type (Scalar (f (Complex t))) = Complex (t); n *^ im = IM.map (* n) im};\
+  instance InnerSpace (f t) where {a <.> b = sum $ liftI2 (*) a b};\
+  instance InnerSpace (f (Complex t)) where {a <.> b = sum $ liftI2 (*) (conjugate <$> a) b};\
+  instance Normed (f t) where {type RealScalar (f t) = t ; type Magnitude (f t) = t ; norm1 a = sum (abs <$> a) ; norm2Sq a = sum $ liftI2 (*) a a; normP p v = sum u**(1/p) where u = fmap (**p) v; normInfty x = maximum x }; \
+  instance Normed (f (Complex t)) where {type RealScalar (f (Complex t)) = t; type Magnitude (f (Complex t)) = t; norm1 a = realPart $ sum (abs <$> a); norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a; normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v; normInfty x = maximum (magnitude <$> x) }
+
+
+
+-- | IntMap instances
+#define IntMapInstance(t) \
+  ParamInstance( IM.IntMap, t )
+
+IntMapInstance(Double)
+IntMapInstance(Float)
+
+
+-- | Now we must pin data to a concrete type: 
+
+mkIm xs = IM.fromList $ indexed xs :: IM.IntMap Double
+mkImC xs = IM.fromList $ indexed xs :: IM.IntMap (Complex Double)
+
+
+
+
 
 -- * Sparse Vector
 
@@ -97,14 +145,17 @@ instance Elt a => SpContainer SpVector a where
 
 #define SpVectorInstance(t) \
   instance AdditiveGroup (SpVector (t)) where { zeroV = SV 0 IM.empty; (^+^) = liftU2 (+); negateV = fmap negate };\
-  instance VectorSpace (SpVector (t)) where { type (Scalar (SpVector (t))) = (t); n *^ v = scale n v};\
-  instance InnerSpace (SpVector (t)) where { x <.> y = x `dotS` y};\
-  instance Normed (SpVector (t)) where {norm p (SV _ v) = norm p v}
+  instance AdditiveGroup (SpVector (Complex t)) where { zeroV = SV 0 IM.empty; (^+^) = liftU2 (+); negateV = fmap negate };\
+  instance VectorSpace (SpVector t) where { type (Scalar (SpVector t)) = t; n *^ v = scale n v};\
+  instance VectorSpace (SpVector (Complex t)) where { type (Scalar (SpVector (Complex t))) = Complex t; n *^ v = scale n v};\
+  instance InnerSpace (SpVector (t)) where { (<.>) = dotS };\
+  instance InnerSpace (SpVector (Complex (t))) where { (<.>) = dotS };\
+  instance Normed (SpVector (t)) where {type RealScalar (SpVector (t)) = t; type Magnitude (SpVector (t)) = t; normP p (SV _ v) = normP p v; normInfty (SV _ v) = normInfty v};\
+  instance Normed (SpVector (Complex t)) where {type RealScalar (SpVector (Complex t)) = t; type Magnitude (SpVector (Complex t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normInfty (SV _ v) = normInfty v}
 
 SpVectorInstance(Double)
 SpVectorInstance(Float)
-SpVectorInstance(Complex Double)
-SpVectorInstance(Complex Float)
+
 
 dotS :: InnerSpace (IM.IntMap t) => SpVector t -> SpVector t -> Scalar (IM.IntMap t)
 (SV m a) `dotS` (SV n b)

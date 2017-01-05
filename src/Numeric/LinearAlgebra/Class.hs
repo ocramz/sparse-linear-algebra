@@ -88,7 +88,11 @@ hilbertDistSq x y = dot t t where
 
 class InnerSpace v => Normed v where
   type Magnitude v :: *
+  type RealScalar v :: *
+  norm1 :: v -> Magnitude v
   norm2Sq :: v -> Magnitude v
+  normP :: RealScalar v -> v -> Magnitude v
+  normInfty :: v -> Magnitude v
   -- norm2Sq x = x <.> x  -- Magnitude v doesn't unify with Scalar v in general
   -- normalize :: RealFloat p => p -> v -> v
 
@@ -105,20 +109,20 @@ class InnerSpace v => Normed v where
 -- |L1 norm
 -- norm1 :: (Foldable t, Num a, Functor t) => t a -> a
 -- norm1 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
-norm1 v = sum (fmap abs v)
+-- norm1 v = sum (fmap abs v)
 
 -- |Euclidean norm
 norm2 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
 norm2 x = sqrt (norm2Sq x)
 
 -- |Lp norm (p > 0)
-normP :: (Foldable t, Functor t, Floating a) => a -> t a -> a
-normP p v = sum u**(1/p) where
-  u = fmap (**p) v
+-- normP :: (Foldable t, Functor t, Floating a) => a -> t a -> a
+-- normP p v = sum u**(1/p) where
+--   u = fmap (**p) v
 
 -- |Infinity-norm
-normInfty :: (Foldable t, Ord a) => t a -> a
-normInfty = maximum
+-- normInfty :: (Foldable t, Ord a) => t a -> a
+-- normInfty = maximum
 
 
 
@@ -205,10 +209,10 @@ class (FiniteDim f, HasData f a) => Sparse f a where
 -- * Set : types that behave as sets
 
 class Functor f => Set f where
-  -- |union binary lift : apply function on _union_ of two Sets
+  -- |union binary lift : apply function on _union_ of two "sets"
   liftU2 :: (a -> a -> a) -> f a -> f a -> f a
 
-  -- |intersection binary lift : apply function on _intersection_ of two Sets
+  -- |intersection binary lift : apply function on _intersection_ of two "sets"
   liftI2 :: (a -> a -> b) -> f a -> f a -> f b
 
 

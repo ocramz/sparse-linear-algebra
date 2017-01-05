@@ -3,71 +3,14 @@
 {-# language CPP #-}
 module Data.Sparse.Internal.IntMap2 where
 
-import Numeric.LinearAlgebra.Class
+-- import Numeric.LinearAlgebra.Class
 import qualified Data.IntMap.Strict as IM
 import Data.Sparse.Types
 
 import Control.Applicative
 
-import Data.Complex
 import Data.Maybe
-
-import Data.VectorSpace
-
-
-
-
-instance Set IM.IntMap where
-  liftU2 = IM.unionWith
-  {-# INLINE liftU2 #-}
-  liftI2 = IM.intersectionWith
-  {-# INLINE liftI2 #-}
-
-instance Num a => AdditiveGroup (IM.IntMap a) where
-  zeroV = IM.empty
-  {-# INLINE zeroV #-}
-  (^+^) = liftU2 (+)
-  {-# INLINE (^+^) #-}
-  (^-^) = liftU2 (-)
-  {-# INLINE (^-^) #-}
-  negateV = fmap negate
-  {-# INLINE negateV #-}
-
-
--- | VectorSpace
-#define IntMapInstance(t) \
-  instance VectorSpace (IM.IntMap (t)) where {type (Scalar (IM.IntMap (t))) = (t); n *^ im = IM.map (* n) im};\
-  instance VectorSpace (IM.IntMap (Complex (t))) where {type (Scalar (IM.IntMap (Complex (t)))) = Complex (t); n *^ im = IM.map (* n) im};\
-  instance InnerSpace (IM.IntMap (t)) where {a <.> b = sum $ liftI2 (*) a b};\
-  instance InnerSpace (IM.IntMap (Complex (t))) where {a <.> b = sum $ liftI2 (*) (conjugate <$> a) b};\
-  instance Normed (IM.IntMap (t)) where {type Magnitude (IM.IntMap (t)) = t; norm2Sq a = sum $ liftI2 (*) a a};\
-  instance Normed (IM.IntMap (Complex (t))) where {type Magnitude (IM.IntMap(Complex (t))) = (t); norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a}
-
-
-
-IntMapInstance(Double)
-IntMapInstance(Float)
-
-
--- | Now we must pin data to a concrete type: 
-
--- mkIm xs = IM.fromList $ indexed xs :: IM.IntMap Double
--- mkImC xs = IM.fromList $ indexed xs :: IM.IntMap (Complex Double)
-
-
-
-
--- | test newtype
-
--- newtype V a = V [a]
--- instance AdditiveGroup (V Double) where
--- instance VectorSpace (V Double) where
---   type Scalar (V Double) = Double
--- instance InnerSpace (V Double) where
--- instance Normed (V Double) where
-
-
-
+  
 
 
 
