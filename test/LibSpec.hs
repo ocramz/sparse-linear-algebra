@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
 {-# language ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |

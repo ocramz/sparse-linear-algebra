@@ -34,9 +34,9 @@ library
                        Data.Sparse.SpMatrix
                        Data.Sparse.Common
   other-modules:       Data.Sparse.Internal.IntMap2
-                       Data.Sparse.Internal.CSR
-                       Data.Sparse.Internal.CSRVector
-                       Data.Sparse.Internal.CSB
+                       -- Data.Sparse.Internal.CSR
+                       -- Data.Sparse.Internal.CSRVector
+                       -- Data.Sparse.Internal.CSB
                        Data.Sparse.Internal.Utils
                        Data.Sparse.Utils
                        Data.Sparse.PPrint
