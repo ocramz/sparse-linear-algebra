@@ -1,4 +1,5 @@
 {-# language TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances #-}
+{-# language AllowAmbiguousTypes #-}
 {-# language CPP #-}
 module Numeric.LinearAlgebra.Class where
 
@@ -12,6 +13,7 @@ import qualified Data.Vector as V (Vector)
 import Data.VectorSpace hiding (magnitude)
 
 import Data.Sparse.Types
+import Numeric.Eps
 
 
 
@@ -154,12 +156,46 @@ scale n = fmap (* n)
 
 class VectorSpace v => LinearVectorSpace v where
   type MatrixType v :: *
-  matVec :: MatrixType v -> v -> v
+  (#>) :: MatrixType v -> v -> v
+  (<#) :: v -> MatrixType v -> v
+  -- matVec :: MatrixType v -> v -> v
+  -- vecMat :: v -> MatrixType v -> v
 
-(#> ):: LinearVectorSpace v => MatrixType v -> v -> v
-(#>) = matVec
+-- (#> ):: LinearVectorSpace v => MatrixType v -> v -> v
+-- (#>) = matVec
 
+-- (<# ):: LinearVectorSpace v => v -> MatrixType v -> v
+-- (<#) = vecMat
   
+
+
+
+
+
+
+-- * Matrix ring
+
+-- | A matrix ring is any collection of matrices over some ring R that form a ring under matrix addition and matrix multiplication
+
+-- class AdditiveGroup m => MatrixRing m where
+--   type Matrix m :: *
+--   -- matrixId :: Int -> Matrix m  -- Identity is not in definition of Ring
+--   (##) :: Matrix m -> Matrix m -> Matrix m
+
+class (Num a, AdditiveGroup (m a)) => MatrixRing (m :: * -> *) a where
+  type Matrix m a :: *
+  (##) :: Matrix m a -> Matrix m a -> Matrix m a
+  transpose :: Matrix m a -> Matrix m a
+  normFrobenius :: Matrix m a -> a
+
+
+class MatrixRing m a => SparseMatrixRing m a where
+  (#~#) :: Epsilon a => Matrix m a -> Matrix m a -> Matrix m a
+
+
+
+
+
 
 
 

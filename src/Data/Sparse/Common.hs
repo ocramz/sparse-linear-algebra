@@ -1,6 +1,6 @@
 {-# language TypeFamilies #-}
 {-# language TypeOperators, GADTs #-}
-{-# language FlexibleInstances #-}
+{-# language FlexibleInstances, FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -21,7 +21,6 @@ module Data.Sparse.Common
          extractDiagDense,
          extractSubRow, extractSubCol,
          extractSubRow_RK, extractSubCol_RK,
-         vecMat, (<#),
          fromCols) where
 
 import Data.Sparse.Utils as X
@@ -36,6 +35,8 @@ import Numeric.Eps as X
 import Numeric.LinearAlgebra.Class as X
 
 import qualified Data.IntMap as IM
+
+import Data.Complex
 
 import Control.Applicative
 import Data.Traversable
@@ -224,49 +225,53 @@ FIXME : matVec is more general than SpVector's :
 
 
 
--- |Matrix-on-vector
+-- | LinearVectorSpace instances
 instance LinearVectorSpace (SpVector Double) where
   type MatrixType (SpVector Double) = SpMatrix Double
-  matVec = matVecSD
+  (#>) = matVecSD
+  (<#) = vecMatSD
 
-matVecSD :: SpMatrix Double -> SpVector Double -> SpVector Double
--- -- matVec :: SpMatrix Double -> SpVector Double -> SpVector Double -- this works, but we can' have `matVec` as a monomorphic method.
+instance LinearVectorSpace (SpVector (Complex Double)) where
+  type MatrixType (SpVector (Complex Double)) = SpMatrix (Complex Double)
+  (#>) = matVecSD
+  (<#) = vecMatSD
+
+
+matVecSD :: (InnerSpace (IM.IntMap t), s ~ Scalar (IM.IntMap t)) =>
+    SpMatrix t -> SpVector t -> SpVector s
 matVecSD (SM (nr, nc) mdata) (SV n sv)
   | nc == n = SV nr $ fmap (`dot` sv) mdata
-  | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
+  | otherwise = error $ "matVec : mismatched dimensions " ++ show (nc, n)
 
--- matVecD :: Epsilon e => SpMatrix e -> SpVector e -> SpVector e
--- matVecD (SM (nr, nc) mdata) (SV n sv) 
---   | nc == n = SV nr $ fmap (`dot` sv) mdata
---   | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
-
--- matVec m v = undefined
--- asdfm = matVec
-
--- matVec = matVecD
--- (#>) = matVec
+-- |Vector-on-matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
+-- vecMat, (<#) :: SpVector Double -> SpMatrix Double -> SpVector Double
+vecMatSD :: (InnerSpace (IM.IntMap t), s ~ Scalar(IM.IntMap t)) =>
+    SpVector t -> SpMatrix t -> SpVector s
+vecMatSD (SV n sv) (SM (nr, nc) mdata)
+  | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
+  | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)
 
 
 
 
 
--- generalized matVec : we require a function `rowsf` that produces a functor of elements of a Hilbert space (the rows of `m`)
+-- -- generalized matVec : we require a function `rowsf` that produces a functor of elements of a Hilbert space (the rows of `m`)
 -- matVecG :: (Hilbert v, Functor f, f (Scalar v) ~ v) => (m -> f v) -> m -> v -> v
 -- matVecG rowsf m v = fmap (`dot` v) (rowsf m)
 
 -- matVecGA
 --   :: (Hilbert v, Traversable t, t (Scalar v) ~ v) =>
 --      (m -> t v) -> m -> v -> v
-matVecGA rowsf m v = traverse (<.> v) (rowsf m)
+-- matVecGA rowsf m v = traverse (<.> v) (rowsf m)
 
--- | From the definitions, a matrix maps between two finite-dimensional Hilbert spaces, i.e.
+-- -- --  Really, a matrix is just notation for a linear map between two finite-dimensional Hilbert spaces, i.e.
 -- matVec :: (Hilbert u, Hilbert v) => (u -> v) -> u -> v
 -- which is a specialization of a function application operator like ($) :: (a -> b) -> a -> b
 
 
 
 
--- | from `vector-space`
+-- -- --  from `vector-space`
 
 -- data a -* b where
 --   Dot :: VectorSpace b => b -> (b -* Scalar b)
@@ -283,15 +288,13 @@ matVecGA rowsf m v = traverse (<.> v) (rowsf m)
 
 
 
--- |Vector-on-matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
-vecMat, (<#) :: SpVector Double -> SpMatrix Double -> SpVector Double  
-vecMat (SV n sv) (SM (nr, nc) mdata)
-  | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
-  | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)
 
--- vecMat v m = undefined
 
-(<#) = vecMat  
+
+
+
+
+
 
 
 
@@ -398,9 +401,6 @@ instance (Show a, Num a) => PrintDense (SpMatrix a) where
 
 
 
-
-
--- * Test data
 
 
 

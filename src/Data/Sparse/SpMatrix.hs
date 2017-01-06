@@ -1,4 +1,4 @@
-{-# language FlexibleInstances, MultiParamTypeClasses, TypeFamilies #-}
+{-# language FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, TypeFamilies #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -21,6 +21,7 @@ import Data.Sparse.Internal.IntMap2
 
 import qualified Data.IntMap as IM
 
+import Data.Complex
 import Data.Maybe
 
 import Data.VectorSpace
@@ -58,6 +59,9 @@ instance Show a => Show (SpMatrix a) where
 
 instance Functor SpMatrix where
   fmap f (SM d md) = SM d ((fmap . fmap) f md)
+
+-- instance Foldable SpMatrix where
+--   foldr f x (SM _ im) = foldr f x im
 
 instance Set SpMatrix where
   liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
@@ -366,10 +370,10 @@ isLowerTriSM m = m == lm where
 isUpperTriSM m = m == lm where
   lm = ifilterSM (\i j _ -> i <= j) m
 
--- -- |Is the matrix orthogonal? i.e. Q^t ## Q == I
--- isOrthogonalSM :: (Eq a, Epsilon a) => SpMatrix a -> Bool
-isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
-  rsm = roundZeroOneSM $ transposeSM sm ## sm
+-- -- -- |Is the matrix orthogonal? i.e. Q^t ## Q == I
+-- -- isOrthogonalSM :: (Eq a, Epsilon a) => SpMatrix a -> Bool
+-- isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
+--   rsm = roundZeroOneSM $ transpose sm ## sm
 
 
 
@@ -630,7 +634,7 @@ swapRowsSafe i1 i2 m
 
 -- ** Matrix transpose
 -- | transposeSM : Matrix transpose
-transposeSM :: SpMatrix a -> SpMatrix a
+-- transposeSM :: SpMatrix Double -> SpMatrix Double
 transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
 
@@ -650,22 +654,18 @@ matScale a = fmap (*a)
 
 
 -- ** Frobenius norm
--- normFrobenius :: Floating a => SpMatrix a -> a
-normFrobenius m = sqrt $ foldlSM (+) 0 m' where
-  m' | nrows m > ncols m = transposeSM m ## m
-     | otherwise = m ## transposeSM m 
+
+-- normFrobeniusSM m = sqrt $ foldlSM (+) 0 m' where
+--   m' | nrows m > ncols m = transposeSM m ## m
+--      | otherwise = m ## transposeSM m 
 
 
+-- normFrobenius :: Floating a => Matrix m a -> a
+-- normFrobenius m = sqrt $ sumSM m' where
+--   m' | nrows m > ncols m = transpose m ## m
+--      | otherwise = m ## transpose m 
 
-
-
-
-
-
-
-
-
-
+-- sumSM m = sum (dat m)
 
 
 
@@ -675,21 +675,39 @@ normFrobenius m = sqrt $ foldlSM (+) 0 m' where
 
 -- ** Matrix-matrix product
 
-matMat, (##) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
-matMat m1 m2
+-- instance MatrixRing (SpMatrix Double) where
+--   type Matrix (SpMatrix Double) = SpMatrix Double
+--   (##) = matMatSD
+
+-- instance MatrixRing (SpMatrix (Complex Double)) where
+--   type Matrix (SpMatrix (Complex Double)) = SpMatrix (Complex Double)
+--   (##) = matMatSD
+
+instance MatrixRing SpMatrix Double where
+  type Matrix SpMatrix Double = SpMatrix Double
+  (##) = matMatSD
+  transpose = transposeSM
+  normFrobenius = undefined
+  -- normFrobenius = normFrobeniusSM
+
+instance SparseMatrixRing SpMatrix Double where
+  (#~#) = undefined
+  -- (#~#) = matMatSparsified
+
+-- matMat, (##) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+matMatSD :: (InnerSpace (IM.IntMap a), s ~ Scalar (IM.IntMap a)) =>
+   SpMatrix a -> SpMatrix a -> SpMatrix s
+matMatSD m1 m2
   | c1 == r2 = matMatU m1 m2
   | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
       d1@(r1, c1) = dim m1
       d2@(r2, c2) = dim m2
-      matMatU ::  SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+      -- matMatU ::  SpMatrix Double -> SpMatrix Double -> SpMatrix Double
       matMatU m1 m2 =
         SM (nrows m1, ncols m2) im where
           im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
 
--- matMat m1 m2 = undefined
-      
-
-(##) = matMat
+     
 
 -- matMat m1 m2 =
 --   withDim2 m1 m2
@@ -704,24 +722,24 @@ matMat m1 m2
 
 -- ** Matrix-matrix product, sparsified
 -- | Removes all elements `x` for which `| x | <= eps`)
--- matMatSparsified, (#~#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
-matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
+-- matMatSparsified :: (Epsilon a, mm a ~ Matrix m a) => mm a -> mm a -> mm a
+-- matMatSparsified m1 m2 = sparsifySM $ m1 ## m2
 
-(#~#) = matMatSparsified
+-- (#~#) = matMatSparsified
 
 
 
 
 -- *** Sparsified matrix products of two matrices
 
--- | A^T B
+-- -- | A^T B
 -- (#^#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
-a #^# b = transposeSM a #~# b
+-- a #^# b = transpose a #~# b
 
 
--- | A B^T
--- (##^) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
-a ##^ b = a #~# transposeSM b
+-- -- | A B^T
+-- -- (##^) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
+-- a ##^ b = a #~# transpose b
 
 
 
