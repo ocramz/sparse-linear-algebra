@@ -4,6 +4,8 @@ Numerical computation in native Haskell
 
 TravisCI : [![Build Status](https://travis-ci.org/ocramz/sparse-linear-algebra.png)](https://travis-ci.org/ocramz/sparse-linear-algebra)
 
+Hackage : [![Hackage](https://img.shields.io/hackage/v/sparse-linear-algebra.svg)](https://img.shields.io/hackage/v/sparse-linear-algebra.svg)
+
 This library provides common numerical analysis functionality, without requiring any external bindings. It is not optimized for performance (yet), but it serves as an experimental platform for scientific computation in a purely functional setting.
 
 Contents :
