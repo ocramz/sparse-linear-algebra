@@ -1,5 +1,6 @@
 {-# language TypeFamilies #-}
 {-# language TypeOperators, GADTs #-}
+{-# language FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -20,7 +21,7 @@ module Data.Sparse.Common
          extractDiagDense,
          extractSubRow, extractSubCol,
          extractSubRow_RK, extractSubCol_RK,
-         matVec, (#>), vecMat, (<#),
+         vecMat, (<#),
          fromCols) where
 
 import Data.Sparse.Utils as X
@@ -224,21 +225,26 @@ FIXME : matVec is more general than SpVector's :
 
 
 -- |Matrix-on-vector
--- matVec, (#>) :: Epsilon a => SpMatrix a -> SpVector a -> SpVector a
+instance LinearVectorSpace (SpVector Double) where
+  type MatrixType (SpVector Double) = SpMatrix Double
+  matVec = matVecSD
+
+matVecSD :: SpMatrix Double -> SpVector Double -> SpVector Double
 -- -- matVec :: SpMatrix Double -> SpVector Double -> SpVector Double -- this works, but we can' have `matVec` as a monomorphic method.
--- matVec (SM (nr, nc) mdata) (SV n sv)
---   | nc == n = SV nr $ fmap (`dot` sv) mdata
---   | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
+matVecSD (SM (nr, nc) mdata) (SV n sv)
+  | nc == n = SV nr $ fmap (`dot` sv) mdata
+  | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
 
 -- matVecD :: Epsilon e => SpMatrix e -> SpVector e -> SpVector e
 -- matVecD (SM (nr, nc) mdata) (SV n sv) 
 --   | nc == n = SV nr $ fmap (`dot` sv) mdata
 --   | otherwise = error $ "matVec : mismatching dimensions " ++ show (nc, n)
 
-matVec m v = undefined
+-- matVec m v = undefined
+-- asdfm = matVec
 
 -- matVec = matVecD
-(#>) = matVec
+-- (#>) = matVec
 
 
 
@@ -278,12 +284,12 @@ matVecGA rowsf m v = traverse (<.> v) (rowsf m)
 
 
 -- |Vector-on-matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
--- vecMat, (<#) :: Num a => SpVector a -> SpMatrix a -> SpVector a  
--- vecMat (SV n sv) (SM (nr, nc) mdata)
---   | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
---   | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)
+vecMat, (<#) :: SpVector Double -> SpMatrix Double -> SpVector Double  
+vecMat (SV n sv) (SM (nr, nc) mdata)
+  | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
+  | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)
 
-vecMat v m = undefined
+-- vecMat v m = undefined
 
 (<#) = vecMat  
 

@@ -1,13 +1,10 @@
 {-# LANGUAGE TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
-{-# language GeneralizedNewtypeDeriving, DeriveFunctor #-}
-{-# language CPP #-}
 module Data.Sparse.Internal.IntMap2 where
 
 -- import Numeric.LinearAlgebra.Class
 import qualified Data.IntMap.Strict as IM
 import Data.Sparse.Types
 
-import Control.Applicative
 
 import Data.Maybe
   

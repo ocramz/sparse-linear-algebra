@@ -9,7 +9,7 @@ import Data.Complex
 
 import qualified Data.Vector as V (Vector)
 
-import Data.VectorSpace
+import Data.VectorSpace hiding (magnitude)
 
 import Data.Sparse.Types
 
@@ -68,7 +68,7 @@ dot = (<.>)
 -- ** Hilbert-space distance function
 -- |`hilbertDistSq x y = || x - y ||^2`
 hilbertDistSq :: InnerSpace v => v -> v -> Scalar v
-hilbertDistSq x y = dot t t where
+hilbertDistSq x y = t <.> t where
   t = x ^-^ y
 
 
@@ -78,27 +78,14 @@ hilbertDistSq x y = dot t t where
 
 
 
--- * Normed vector space
--- class InnerSpace v => Normed v where
---   -- |p-norm (p finite)
---   norm :: RealFloat p => p -> v -> Scalar v
---   -- |Normalize w.r.t. p-norm
---   normalize :: RealFloat p => p -> v -> v
-
+-- * Normed vector spaces
 
 class InnerSpace v => Normed v where
   type Magnitude v :: *
   type RealScalar v :: *
   norm1 :: v -> Magnitude v
-  norm2Sq :: v -> Magnitude v
+  norm2Sq :: v -> Magnitude v   -- ^ Lp norm (p > 0)
   normP :: RealScalar v -> v -> Magnitude v
-  normInfty :: v -> Magnitude v
-  -- norm2Sq x = x <.> x  -- Magnitude v doesn't unify with Scalar v in general
-  -- normalize :: RealFloat p => p -> v -> v
-
-
-
-  
 
 
 
@@ -106,23 +93,31 @@ class InnerSpace v => Normed v where
 
 -- ** Norms and related results
 
--- |L1 norm
--- norm1 :: (Foldable t, Num a, Functor t) => t a -> a
--- norm1 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
--- norm1 v = sum (fmap abs v)
+-- | Normalize w.r.t. Lp-norm
+normalize :: (Magnitude v ~ Scalar v, Normed v, Fractional (Scalar v)) =>
+   RealScalar v -> v -> v
+normalize p v =  v ./ normP p v
+
+-- | Normalize w.r.t. L2 norm
+normalize2 :: (Magnitude v ~ Scalar v, Normed v, Floating (Scalar v)) => v -> v
+normalize2 v = v ./ norm2 v
+
+
+
+-- | Infinity-norm (Real)
+normInftyR :: (Foldable t, Ord a) => t a -> a
+normInftyR x = maximum x
+
+-- | Infinity-norm (Complex)
+normInftyC :: (Foldable t, RealFloat a, Functor t) => t (Complex a) -> a
+normInftyC x = maximum (magnitude <$> x)
+
+
 
 -- |Euclidean norm
 norm2 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
 norm2 x = sqrt (norm2Sq x)
 
--- |Lp norm (p > 0)
--- normP :: (Foldable t, Functor t, Floating a) => a -> t a -> a
--- normP p v = sum u**(1/p) where
---   u = fmap (**p) v
-
--- |Infinity-norm
--- normInfty :: (Foldable t, Ord a) => t a -> a
--- normInfty = maximum
 
 
 
@@ -133,14 +128,16 @@ norm2 x = sqrt (norm2Sq x)
 
 
 
--- |Lp inner product (p > 0)
+
+
+-- | Lp inner product (p > 0)
 dotLp :: (Set t, Foldable t, Floating a) => a -> t a -> t a ->  a
 dotLp p v1 v2 = sum u**(1/p) where
   f a b = (a*b)**p
   u = liftI2 f v1 v2
 
 
--- |Reciprocal
+-- | Reciprocal
 reciprocal :: (Functor f, Fractional b) => f b -> f b
 reciprocal = fmap recip
 
@@ -150,6 +147,19 @@ scale :: (Num b, Functor f) => b -> f b -> f b
 scale n = fmap (* n)
 
 
+
+
+
+-- * Linear vector space
+
+class VectorSpace v => LinearVectorSpace v where
+  type MatrixType v :: *
+  matVec :: MatrixType v -> v -> v
+
+(#> ):: LinearVectorSpace v => MatrixType v -> v -> v
+(#>) = matVec
+
+  
 
 
 

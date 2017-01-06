@@ -10,6 +10,7 @@
 -----------------------------------------------------------------------------
 module Data.Sparse.SpMatrix where
 
+import Data.Sparse.SpVector
 import Data.Sparse.Utils
 import Data.Sparse.Types
 
@@ -366,7 +367,7 @@ isUpperTriSM m = m == lm where
   lm = ifilterSM (\i j _ -> i <= j) m
 
 -- -- |Is the matrix orthogonal? i.e. Q^t ## Q == I
-isOrthogonalSM :: (Eq a, Epsilon a) => SpMatrix a -> Bool
+-- isOrthogonalSM :: (Eq a, Epsilon a) => SpMatrix a -> Bool
 isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
   rsm = roundZeroOneSM $ transposeSM sm ## sm
 
@@ -674,18 +675,18 @@ normFrobenius m = sqrt $ foldlSM (+) 0 m' where
 
 -- ** Matrix-matrix product
 
-matMat, (##) :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
--- matMat m1 m2
---   | c1 == r2 = matMatU m1 m2
---   | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
---       d1@(r1, c1) = dim m1
---       d2@(r2, c2) = dim m2
---       matMatU :: Num a => SpMatrix a -> SpMatrix a -> SpMatrix a
---       matMatU m1 m2 =
---         SM (nrows m1, ncols m2) im where
---           im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
+matMat, (##) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+matMat m1 m2
+  | c1 == r2 = matMatU m1 m2
+  | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
+      d1@(r1, c1) = dim m1
+      d2@(r2, c2) = dim m2
+      matMatU ::  SpMatrix Double -> SpMatrix Double -> SpMatrix Double
+      matMatU m1 m2 =
+        SM (nrows m1, ncols m2) im where
+          im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
 
-matMat m1 m2 = undefined
+-- matMat m1 m2 = undefined
       
 
 (##) = matMat
@@ -703,7 +704,7 @@ matMat m1 m2 = undefined
 
 -- ** Matrix-matrix product, sparsified
 -- | Removes all elements `x` for which `| x | <= eps`)
-matMatSparsified, (#~#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
+-- matMatSparsified, (#~#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
 matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
 
 (#~#) = matMatSparsified
@@ -714,12 +715,12 @@ matMatSparsified m1 m2 = sparsifySM $ matMat m1 m2
 -- *** Sparsified matrix products of two matrices
 
 -- | A^T B
-(#^#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
+-- (#^#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
 a #^# b = transposeSM a #~# b
 
 
 -- | A B^T
-(##^) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
+-- (##^) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
 a ##^ b = a #~# transposeSM b
 
 

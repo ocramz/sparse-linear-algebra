@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# language ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
@@ -19,6 +20,8 @@ import Control.Monad.Primitive
 import Data.Foldable (foldrM)
 
 import Data.Sparse.Common
+
+import Data.VectorSpace hiding (magnitude)
 
 import Control.Monad.State.Strict (execState)
 
@@ -46,9 +49,9 @@ spec = do
     it "transposeSM : sparse matrix transpose" $
       transposeSM m1 `shouldBe` m1t
     it "matVec : matrix-vector product" $
-      nearZero ( normSq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
+      nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
     it "vecMat : vector-matrix product" $
-      nearZero ( normSq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True  
+      nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True  
     it "matMat : matrix-matrix product" $
       (m1 `matMat` m2) `shouldBe` m1m2
     it "eye : identity matrix" $
@@ -77,23 +80,23 @@ spec = do
     -- it "TFQMR (2 x 2 dense)" $
     --   normSq (_xTfq (tfqmr aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "GMRES (2 x 2 dense)" $
-      nearZero (normSq (linSolve GMRES_ aa0 b0 ^-^ x0true)) `shouldBe` True
+      nearZero (norm2Sq (linSolve GMRES_ aa0 b0 ^-^ x0true)) `shouldBe` True
     it "GMRES (3 x 3 sparse, s.p.d.)" $
-      nearZero (normSq (linSolve GMRES_ aa2 b2 ^-^ x2)) `shouldBe` True
+      nearZero (norm2Sq (linSolve GMRES_ aa2 b2 ^-^ x2)) `shouldBe` True
     it "GMRES (4 x 4 sparse)" $
-      nearZero (normSq (linSolve GMRES_ aa1 b1 ^-^ x1)) `shouldBe` True      
+      nearZero (norm2Sq (linSolve GMRES_ aa1 b1 ^-^ x1)) `shouldBe` True      
     it "BCG (2 x 2 dense)" $
-      nearZero (normSq (linSolve BCG_ aa0 b0 ^-^ x0true)) `shouldBe` True
+      nearZero (norm2Sq (linSolve BCG_ aa0 b0 ^-^ x0true)) `shouldBe` True
     it "BCG (3 x 3 sparse, SPD)" $
-      nearZero (normSq (linSolve BCG_ aa2 b2 ^-^ x2)) `shouldBe` True      
+      nearZero (norm2Sq (linSolve BCG_ aa2 b2 ^-^ x2)) `shouldBe` True      
     -- it "BiCGSTAB (2 x 2 dense)" $ 
     --   nearZero (normSq (linSolve BICGSTAB_ aa0 b0 ^-^ x0true)) `shouldBe` True
     it "BiCGSTAB (3 x 3 sparse, SPD)" $ 
-      nearZero (normSq (linSolve BICGSTAB_ aa2 b2 ^-^ x2)) `shouldBe` True      
+      nearZero (norm2Sq (linSolve BICGSTAB_ aa2 b2 ^-^ x2)) `shouldBe` True      
     it "CGS (2 x 2 dense)" $ 
-      nearZero (normSq (linSolve CGS_ aa0 b0 ^-^ x0true)) `shouldBe` True
+      nearZero (norm2Sq (linSolve CGS_ aa0 b0 ^-^ x0true)) `shouldBe` True
     it "CGS (3 x 3 sparse, SPD)" $ 
-      nearZero (normSq (linSolve CGS_ aa2 b2 ^-^ x2)) `shouldBe` True      
+      nearZero (norm2Sq (linSolve CGS_ aa2 b2 ^-^ x2)) `shouldBe` True      
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ 
     it "luSolve (4 x 4 sparse)" $ 
       checkLuSolve aa1 b1 `shouldBe` True         
@@ -122,7 +125,7 @@ spec = do
 {- QR-}
 
 
-checkQr :: (Epsilon a, RealFloat a) => SpMatrix a -> Bool
+-- checkQr :: (Epsilon a, RealFloat a) => SpMatrix a -> Bool
 checkQr a = c1 && c2 && c3 where
   (q, r) = qr a
   c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
@@ -153,7 +156,7 @@ checkChol a = c1 && c2 where
 {- direct linear solver -}
 
 -- checkLuSolve :: (Epsilon a, Real a, Floating a) => SpMatrix a -> SpVector a -> Bool
-checkLuSolve amat rhs = nearZero (normSq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
+checkLuSolve amat rhs = nearZero (norm2Sq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
   where
      (lmat, umat) = lu amat
      xlu = luSolve lmat umat rhs
@@ -191,16 +194,16 @@ aa0 = fromListDenseSM 2 [1,3,2,4]
 
 -- b0, x0 : r.h.s and initial solution resp.
 b0, x0, x0true :: SpVector Double
-b0 = mkSpVectorD 2 [8,18]
-x0 = mkSpVectorD 2 [0.3,1.4]
+b0 = mkSpVR 2 [8,18]
+x0 = mkSpVR 2 [0.3,1.4]
 
 
 -- x0true : true solution
-x0true = mkSpVectorD 2 [2,3]
+x0true = mkSpVR 2 [2,3]
 
 
 
-aa0tx0 = mkSpVectorD 2 [11,16] :: SpVector Double
+aa0tx0 = mkSpVR 2 [11,16]
 
 
 
@@ -214,9 +217,9 @@ aa1 :: SpMatrix Double
 aa1 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
 
 x1, b1 :: SpVector Double
-x1 = mkSpVectorD 4 [1,2,3,4]
+x1 = mkSpVR 4 [1,2,3,4]
 
-b1 = mkSpVectorD 4 [30,56,60,101]
+b1 = mkSpVR 4 [30,56,60,101]
 
 
 
@@ -224,9 +227,9 @@ b1 = mkSpVectorD 4 [30,56,60,101]
 aa2 :: SpMatrix Double
 aa2 = sparsifySM $ fromListDenseSM 3 [2, -1, 0, -1, 2, -1, 0, -1, 2]
 x2, b2 :: SpVector Double
-x2 = mkSpVectorD 3 [3,2,3]
+x2 = mkSpVR 3 [3,2,3]
 
-b2 = mkSpVectorD 3 [4,-2,4]
+b2 = mkSpVR 3 [4,-2,4]
 
 
 aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
@@ -345,7 +348,7 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 aa3 = fromListDenseSM 3 [1,1,3,2,2,2,3,1,1] :: SpMatrix Double
 
-b3 = mkSpVectorD 3 [1,1,1] :: SpVector Double
+b3 = mkSpVR 3 [1,1,1] :: SpVector Double
 
 
 
@@ -367,7 +370,7 @@ tm0, tm1, tm2, tm3, tm4 :: SpMatrix Double
 tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
 
 tv0, tv1 :: SpVector Double
-tv0 = mkSpVectorD 2 [5, 6]
+tv0 = mkSpVR 2 [5, 6]
 
 tv1 = fromListSV 2 [(0,1)] 
 

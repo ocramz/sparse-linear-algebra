@@ -53,6 +53,8 @@ import Control.Monad.State.Strict
 -- import Control.Monad.Trans.Writer (runWriterT)
 import Data.Complex
 
+import Data.VectorSpace
+
 import qualified Data.IntMap.Strict as IM
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
 
@@ -83,7 +85,7 @@ sparsifySV = filterSV isNz
 -- * Matrix condition number
 
 -- |uses the R matrix from the QR factorization
-conditionNumberSM :: (Epsilon a, RealFloat a) => SpMatrix a -> a
+-- conditionNumberSM :: (Epsilon a, RealFloat a) => SpMatrix a -> a
 conditionNumberSM m | nearZero lmin = error "Infinite condition number : rank-deficient system"
                     | otherwise = kappa where
   kappa = lmax / lmin
@@ -143,10 +145,10 @@ givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
 givensCoef :: (Floating a, Ord a) => a -> a -> (a, a, a)
 givensCoef = givensCoef0 abs
 
--- | Givens coefficients, complex-valued
-givensCoefC :: RealFloat a =>
-   Complex a -> Complex a -> (Complex a, Complex a, Complex a)
-givensCoefC = givensCoef0 magnitude
+-- -- | Givens coefficients, complex-valued
+-- givensCoefC :: RealFloat a =>
+--    Complex a -> Complex a -> (Complex a, Complex a, Complex a)
+-- givensCoefC = givensCoef0 magnitude
 
 
 
@@ -197,7 +199,7 @@ firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
 
 
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
-qr :: (Epsilon a, RealFloat a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+-- qr :: (Epsilon a, RealFloat a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 qr mm = (transposeSM qt, r) where
   (qt, r, _) = execState (modifyUntil qf stepf) gminit
   qf (_, _, iis) = null iis
@@ -433,9 +435,9 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 -- | Given a matrix A, a vector b and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (as the columns of matrix Q), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 
-arnoldi ::
-  (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) =>
-     SpMatrix a -> SpVector a -> Int -> (SpMatrix a, SpMatrix a)
+-- arnoldi ::
+--   (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) =>
+--      SpMatrix a -> SpVector a -> Int -> (SpMatrix a, SpMatrix a)
 arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
   where
   (qvfin, hhfin, nmax, _) = execState (modifyUntil tf arnoldiStep) arnInit 
@@ -447,7 +449,7 @@ arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
       h11 = q0 `dot` aq0          
       q1nn = (aq0 ^-^ (h11 .* q0))
       hh1 = V.fromList [(0, 0, h11), (1, 0, h21)] where        
-        h21 = norm 2 q1nn
+        h21 = norm2 q1nn
       q1 = normalize 2 q1nn       -- q1 `dot` q0 ~ 0
       qv1 = V.fromList [q0, q1]
   arnoldiStep (qv, hh, i, _) = (qv', hh', i + 1, fb') where
@@ -457,8 +459,8 @@ arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
     zv = zeroSV m
     qipnn =
       aqi ^-^ (V.foldl' (^+^) zv (V.zipWith (.*) hhcoli qv)) -- unnormalized q_{i+1}
-    qipnorm = norm 2 qipnn      -- normalization factor H_{i+1, i}
-    qip = normalize 2 qipnn              -- q_{i + 1}
+    qipnorm = norm2 qipnn      -- normalization factor H_{i+1, i}
+    qip = normalize2 qipnn              -- q_{i + 1}
     hh' = (V.++) hh (indexed2 $ V.snoc hhcoli qipnorm) where -- update H
       indexed2 v = V.zip3 ii jj v
       ii = V.fromList [0 .. n]    -- nth col of upper Hessenberg has `n+1` nz
@@ -493,7 +495,7 @@ diagPartitions aa = (e,d,f) where
 -- ** Incomplete LU
 
 -- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
-ilu0 :: (Epsilon a, Real a, Fractional a, AdditiveGroup a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+-- ilu0 :: (Epsilon a, Real a, Fractional a, AdditiveGroup a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
 ilu0 aa = (lh, uh) where
   (l, u) = lu aa
   lh = sparsifyLU l aa
@@ -505,7 +507,7 @@ ilu0 aa = (lh, uh) where
 -- ** SSOR
 
 -- | `mSsor aa omega` : if `omega = 1` it returns the symmetric Gauss-Seidel preconditioner. When ω = 1, the SOR reduces to Gauss-Seidel; when ω > 1 and ω < 1, it corresponds to over-relaxation and under-relaxation, respectively.
-mSsor :: Fractional a => SpMatrix a -> a -> (SpMatrix a, SpMatrix a)
+-- mSsor :: Fractional a => SpMatrix a -> a -> (SpMatrix a, SpMatrix a)
 mSsor aa omega = (l, r) where
   (e, d, f) = diagPartitions aa
   n = nrows e
@@ -522,13 +524,13 @@ mSsor aa omega = (l, r) where
 -- * Linear solver, LU-based
 
 -- | Direct solver based on a triangular factorization of the system matrix.
-luSolve ::
-  (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
+-- luSolve ::
+--   (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
 luSolve ll uu b
   | isLowerTriSM ll && isUpperTriSM uu = triUpperSolve uu (triLowerSolve ll b)
   | otherwise = error "luSolve : factors must be triangular matrices" 
 
-triLowerSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
+-- triLowerSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 triLowerSolve ll b = sparsifySV v where
   (v, _) = execState (modifyUntil q lStep) lInit where
   q (_, i) = i == dim b
@@ -545,7 +547,7 @@ triLowerSolve ll b = sparsifySV v where
     ww0 = insertSpVector 0 w0 $ zeroSV (dim b)  
 
 -- | NB in the computation of `xi` we must rebalance the subrow indices because `dropSV` does that too, in order to take the inner product with consistent index pairs
-triUpperSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
+-- triUpperSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 triUpperSolve uu w = sparsifySV x where
   (x, _) = execState (modifyUntil q uStep) uInit
   q (_, i) = i == (- 1)
@@ -581,7 +583,7 @@ triUpperSolve uu w = sparsifySV x where
 --
 -- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
-gmres :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
+-- gmres :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 gmres aa b = qa' #> yhat where
   m = ncols aa
   (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
@@ -610,7 +612,7 @@ gmres aa b = qa' #> yhat where
 
 -- ** CGNE
 
-cgneStep :: (RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> CGNE a -> CGNE a
+-- cgneStep :: (RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> CGNE a -> CGNE a
 cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
   alphai = (r `dot` r) / (p `dot` p)
   x1 = x ^+^ (alphai .* p)
@@ -625,7 +627,7 @@ instance Show a => Show (CGNE a) where
                         "r = " ++ show r ++ "\n" ++
                         "p = " ++ show p ++ "\n"
 
-cgne :: (RealFrac a, Elt a, AdditiveGroup a, Epsilon a) => SpMatrix a -> SpVector a -> SpVector a -> CGNE a
+-- cgne :: (RealFrac a, Elt a, AdditiveGroup a, Epsilon a) => SpMatrix a -> SpVector a -> SpVector a -> CGNE a
 cgne aa b x0 = execState (untilConverged _xCgne (cgneStep aa)) cgneInit where
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
   p0 = transposeSM aa #> r0
@@ -802,7 +804,7 @@ instance Show a => Show (BICGSTAB a) where
 
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equaitons. Uses <\\> for the linear solve
-pinv :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
+-- pinv :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 pinv aa b = aa #^# aa <\> atb where
   atb = transposeSM aa #> b
 
@@ -843,12 +845,12 @@ linSolve method aa b
         BCG_ -> _xBcg (bcg aa' b' x0)
         BICGSTAB_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
         CGS_ -> _x (cgs aa' b' x0 x0)
-      x0 = mkSpVectorD n $ replicate n 0.1 
+      x0 = mkSpVR n $ replicate n 0.1 
       (m, n) = dim aa
       nb     = dim b
 
 -- | linSolve using the GMRES method as default
-(<\>) :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
+-- (<\>) :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 (<\>) = linSolve GMRES_ 
   
 
@@ -957,7 +959,7 @@ untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
 -- | convergence check (FIXME)
 -- normDiffConverged :: (Foldable t, Functor t, Epsilon b) =>
 --      (a -> SpVector b) -> t a -> Bool
-normDiffConverged fp xx = nearZero $ normSq (foldrMap fp (^-^) (zeroSV 0) xx)
+normDiffConverged fp xx = nearZero $ norm2Sq (foldrMap fp (^-^) (zeroSV 0) xx)
 
 
 
