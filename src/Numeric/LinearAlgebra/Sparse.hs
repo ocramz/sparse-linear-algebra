@@ -53,7 +53,7 @@ import Control.Monad.State.Strict
 -- import Control.Monad.Trans.Writer (runWriterT)
 import Data.Complex
 
-import Data.VectorSpace
+import Data.VectorSpace hiding (magnitude)
 
 import qualified Data.IntMap.Strict as IM
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
@@ -129,25 +129,35 @@ hhRefl = hhMat (fromInteger 2)
 hypot :: Floating a => a -> a -> a
 hypot x y = abs x * (sqrt (1 + y/x)**2)
 
+signumR = signum
+signumC = signum . magnitude
+
+class Signum x where
+  type SigFloat x :: *
+  signum' :: x -> SigFloat x
+
+instance Signum Double where {type SigFloat Double = Double; signum' = signumR}
+instance Signum (Complex Double) where {type SigFloat (Complex Double) = Double; signum' = signumC}
+
+
 -- | Givens coefficients (using stable algorithm shown in  Anderson, Edward (4 December 2000). "Discontinuous Plane Rotations and the Symmetric Eigenvalue Problem". LAPACK Working Note)
-givensCoef0 :: (Ord b, Floating a, Eq a) => (a -> b) -> a -> a -> (a, a, a)
+-- givensCoef0 :: (Ord b, Floating a, Eq a) => (a -> b) -> a -> a -> (a, a, a)
 givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
-  | b==0 = (signum a, 0, abs a)
-  | a==0 = (0, signum b, abs b)
+  | b==0 = (signum' a, 0, abs a)
+  | a==0 = (0, signum' b, abs b)
   | ff a > ff b = let t = b/a
-                      u = signum a * abs ( sqrt (1 + t**2))
+                      u = signum' a * abs ( sqrt (1 + t**2))
                   in (1/u, - t/u, a*u)
   | otherwise = let t = a/b
-                    u = signum b * abs ( sqrt (1 + t**2))
+                    u = signum' b * abs ( sqrt (1 + t**2))
                 in (t/u, - 1/u, b*u)
                    
 -- | Givens coefficients, real-valued
-givensCoef :: (Floating a, Ord a) => a -> a -> (a, a, a)
+-- givensCoef :: (Floating a, Ord a) => a -> a -> (a, a, a)
 givensCoef = givensCoef0 abs
 
 -- -- | Givens coefficients, complex-valued
--- givensCoefC :: RealFloat a =>
---    Complex a -> Complex a -> (Complex a, Complex a, Complex a)
+-- givensCoefC :: RealFloat a => Complex a -> Complex a -> (Complex a, Complex a, Complex a)
 -- givensCoefC = givensCoef0 magnitude
 
 
@@ -165,7 +175,7 @@ NB: the current version is quite inefficient in that:
 2. at each iteration `i` we multiply `G_i` by the previous partial result `M`. Since this corresponds to a rotation, and the `givensCoef` function already computes the value of the resulting non-zero component (output `r`), `G_i ## M` can be simplified by just changing two entries of `M` (i.e. zeroing one out and changing the other into `r`).
 -}
 {-# inline givens #-}
-givens :: (RealFloat a, Epsilon a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
+-- givens :: (Floating a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
 givens mm i j 
   | isValidIxSM mm (i,j) && nrows mm >= ncols mm =
        fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
@@ -200,7 +210,7 @@ firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
 
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
 -- qr :: (Epsilon a, RealFloat a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
-qr mm = (transposeSM qt, r) where
+qr mm = (transpose qt, r) where
   (qt, r, _) = execState (modifyUntil qf stepf) gminit
   qf (_, _, iis) = null iis
   stepf (qmatt, m, iis) = (qmatt', m', tail iis) where

@@ -311,12 +311,17 @@ fromCols qv = V.ifoldl' ins (zeroSM m n) qv where
 
 
 
+
+
+
+
+
 -- * Pretty printing
 
 
-showNonZero :: (Show a, Num a, Eq a) => a -> String
-showNonZero x  = if x == 0 then " " else show x
-
+showNz :: (Epsilon a, Show a) => a -> String
+showNz x | nearZero x = " _ "
+        | otherwise = show x
 
 -- toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
 toDenseRow sm irow =
@@ -326,8 +331,8 @@ toDenseRow sm irow =
 
 -- toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
 toDenseRowClip sm irow ncomax
-  | nco > ncomax = unwords (map show h) ++  " ... " ++ show t
-  | otherwise = show dr
+  | nco > ncomax = unwords (map showNz h) ++  " ... " ++ showNz t
+  | otherwise = unwords $ showNz <$> dr
      where dr = toDenseRow sm irow
            h = take (ncomax - 2) dr
            t = last dr
@@ -335,7 +340,7 @@ toDenseRowClip sm irow ncomax
 
 
 -- printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
-printDenseSM :: (ScIx c ~ (Int, Int), FDSize c ~ (Int, Int), SpContainer c a, Show a) => c a -> IO ()
+printDenseSM :: (ScIx c ~ (Int, Int), FDSize c ~ (Int, Int), SpContainer c a, Show a, Epsilon a) => c a -> IO ()
 printDenseSM sm = do
   newline
   putStrLn $ sizeStr sm
@@ -351,15 +356,16 @@ printDenseSM sm = do
            | otherwise = rr_
 
 
-toDenseListClip :: (Show a, Num a) => SpVector a -> Int -> String
+
+toDenseListClip :: (Show a, Num a, Epsilon a) => SpVector a -> Int -> String
 toDenseListClip sv ncomax
-  | dim sv > ncomax = unwords (map show h) ++  " ... " ++ show t
-  | otherwise = show dr
+  | dim sv > ncomax = unwords (map showNz h) ++  " ... " ++ showNz t
+  | otherwise = unwords $ showNz <$> dr
      where dr = toDenseListSV sv
            h = take (ncomax - 2) dr
            t = last dr
 
-printDenseSV :: (Show t, Num t) => SpVector t -> IO ()
+printDenseSV :: (Show t, Num t, Epsilon t) => SpVector t -> IO ()
 printDenseSV sv = do
   newline
   putStrLn $ sizeStrSV sv
@@ -374,10 +380,10 @@ printDenseSV sv = do
 -- ** Pretty printer typeclass
 
 
-instance (Show a, Num a) => PrintDense (SpVector a) where
+instance (Show a, Num a, Epsilon a) => PrintDense (SpVector a) where
   prd = printDenseSV
 
-instance (Show a, Num a) => PrintDense (SpMatrix a) where
+instance (Show a, Num a, Epsilon a) => PrintDense (SpMatrix a) where
   prd = printDenseSM
 
 
