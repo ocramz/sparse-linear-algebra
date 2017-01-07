@@ -37,6 +37,8 @@ negated :: AdditiveGroup v => v -> v
 negated = negateV
 
 
+
+
 -- * Vector space
 (.*) :: VectorSpace v => Scalar v -> v -> v
 (.*) = (*^)
@@ -177,20 +179,33 @@ class VectorSpace v => LinearVectorSpace v where
 
 -- | A matrix ring is any collection of matrices over some ring R that form a ring under matrix addition and matrix multiplication
 
--- class AdditiveGroup m => MatrixRing m where
---   type Matrix m :: *
---   -- matrixId :: Int -> Matrix m  -- Identity is not in definition of Ring
---   (##) :: Matrix m -> Matrix m -> Matrix m
-
-class (Num a, AdditiveGroup (m a)) => MatrixRing (m :: * -> *) a where
-  type Matrix m a :: *
-  (##) :: Matrix m a -> Matrix m a -> Matrix m a
-  transpose :: Matrix m a -> Matrix m a
-  normFrobenius :: Matrix m a -> a
+class AdditiveGroup m => MatrixRing m where
+  type MatrixNorm m :: *
+  (##) :: m -> m -> m
+  transpose :: m -> m
+  normFrobenius :: m -> MatrixNorm m
 
 
-class MatrixRing m a => SparseMatrixRing m a where
-  (#~#) :: Epsilon a => Matrix m a -> Matrix m a -> Matrix m a
+--
+
+-- class MatrixRing (m :: * -> *) a where
+--   type Matrix m a :: *
+--   (##) :: Matrix m a -> Matrix m a -> Matrix m a
+--   transpose :: Matrix m a -> Matrix m a
+--   normFrobenius :: Matrix m a -> a
+
+
+--
+
+-- class (Num a, AdditiveGroup (m a)) => MatrixRing (m :: * -> *) a where
+--   type Matrix m a :: *
+--   (##) :: Matrix m a -> Matrix m a -> Matrix m a
+--   transpose :: Matrix m a -> Matrix m a
+--   normFrobenius :: Matrix m a -> a
+
+
+-- class MatrixRing m a => SparseMatrixRing m a where
+--   (#~#) :: Epsilon a => Matrix m a -> Matrix m a -> Matrix m a
 
 
 

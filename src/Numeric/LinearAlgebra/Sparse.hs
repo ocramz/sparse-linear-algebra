@@ -254,6 +254,7 @@ eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
       b' = normalize 2 nom
       mu' = (b' `dot` (aa #> b')) / (b' `dot` b')
 
+toC x = (\r -> r :+ 0) <$> x 
 
 
 
@@ -350,7 +351,8 @@ chol aa = lfin where
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 -- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
--- lu :: (Epsilon a, Fractional a, Real a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+lu :: (Scalar (SpVector t) ~ t, VectorSpace (SpVector t), Epsilon t, Fractional t) =>
+     SpMatrix t -> (SpMatrix t, SpMatrix t)
 lu aa = (lf, ufin) where
   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
   ufin = uUpdSparse (ixf, lf, uf) -- final U update
@@ -444,7 +446,7 @@ arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
   tf (_, _, ii, fbreak) = ii == kn || fbreak -- termination criterion
   (m, n) = dim aa
   arnInit = (qv1, hh1, 1, False) where
-      q0 = normalize 2 b   -- starting basis vector
+      q0 = normalize2 b   -- starting basis vector
       aq0 = aa #> q0       -- A q0
       h11 = q0 `dot` aq0          
       q1nn = (aq0 ^-^ (h11 .* q0))
@@ -526,11 +528,15 @@ mSsor aa omega = (l, r) where
 -- | Direct solver based on a triangular factorization of the system matrix.
 -- luSolve ::
 --   (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
+luSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t), Epsilon t) =>
+     SpMatrix t -> SpMatrix t -> SpVector t -> SpVector t
 luSolve ll uu b
   | isLowerTriSM ll && isUpperTriSM uu = triUpperSolve uu (triLowerSolve ll b)
   | otherwise = error "luSolve : factors must be triangular matrices" 
 
 -- triLowerSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
+triLowerSolve :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Elt t, Fractional t) =>
+     SpMatrix t -> SpVector t -> SpVector t
 triLowerSolve ll b = sparsifySV v where
   (v, _) = execState (modifyUntil q lStep) lInit where
   q (_, i) = i == dim b
@@ -548,6 +554,8 @@ triLowerSolve ll b = sparsifySV v where
 
 -- | NB in the computation of `xi` we must rebalance the subrow indices because `dropSV` does that too, in order to take the inner product with consistent index pairs
 -- triUpperSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
+triUpperSolve :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Elt t, Fractional t) =>
+     SpMatrix t -> SpVector t -> SpVector t
 triUpperSolve uu w = sparsifySV x where
   (x, _) = execState (modifyUntil q uStep) uInit
   q (_, i) = i == (- 1)
@@ -805,7 +813,7 @@ instance Show a => Show (BICGSTAB a) where
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equaitons. Uses <\\> for the linear solve
 -- pinv :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
-pinv aa b = aa #^# aa <\> atb where
+pinv aa b = aa #~^# aa <\> atb where
   atb = transposeSM aa #> b
 
 
@@ -845,9 +853,28 @@ linSolve method aa b
         BCG_ -> _xBcg (bcg aa' b' x0)
         BICGSTAB_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
         CGS_ -> _x (cgs aa' b' x0 x0)
-      x0 = mkSpVR n $ replicate n 0.1 
+      x0 = mkSpVR n $ replicate n 0.1
       (m, n) = dim aa
       nb     = dim b
+
+linSolve0 method aa b x0
+  | n /= nb = error "linSolve : operand dimensions mismatch"
+  | otherwise = solve aa b where
+      solve aa' b' | isDiagonalSM aa' = reciprocal aa' #> b' -- diagonal solve is easy
+                   | otherwise = solveWith aa' b' 
+      solveWith aa' b' = case method of
+        GMRES_ -> gmres aa' b'
+        CGNE_ -> _xCgne (cgne aa' b' x0)
+        TFQMR_ -> _xTfq (tfqmr aa' b' x0)
+        BCG_ -> _xBcg (bcg aa' b' x0)
+        BICGSTAB_ ->  _xBicgstab (bicgstab aa' b' x0 x0)
+        CGS_ -> _x (cgs aa' b' x0 x0)
+      (m, n) = dim aa
+      nb     = dim b
+
+linSolveR method aa b = linSolve0 method aa b (mkSpVR n $ replicate n 0.1)
+  where n = ncols aa
+
 
 -- | linSolve using the GMRES method as default
 -- (<\>) :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a

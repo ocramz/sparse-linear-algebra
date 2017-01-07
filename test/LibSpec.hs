@@ -68,8 +68,8 @@ spec = do
       countSubdiagonalNZSM m3 `shouldBe` 1
     it "permutPairsSM : permutation matrices are orthogonal" $ do
       let pm0 = permutPairsSM 3 [(0,2), (1,2)] :: SpMatrix Double
-      pm0 ##^ pm0 `shouldBe` eye 3
-      pm0 #^# pm0 `shouldBe` eye 3
+      pm0 #~#^ pm0 `shouldBe` eye 3
+      pm0 #~^# pm0 `shouldBe` eye 3
     it "isLowerTriSM : checks whether matrix is lower triangular" $
       isLowerTriSM tm8' && isUpperTriSM tm8 `shouldBe` True
     it "modifyInspectN : early termination by iteration count" $
@@ -311,6 +311,7 @@ matMat
 [3, 4] [7, 8]   [43, 50]
 -}
 
+m1, m2, m1m2 :: SpMatrix Double
 m1 = fromListDenseSM 2 [1,3,2,4]
 m2 = fromListDenseSM 2 [5, 7, 6, 8]     
 m1m2 = fromListDenseSM 2 [19, 43, 22, 50]

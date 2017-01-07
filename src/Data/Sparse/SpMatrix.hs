@@ -72,6 +72,10 @@ instance Num a => AdditiveGroup (SpMatrix a) where
   zeroV = SM (0,0) IM.empty
   (^+^) = liftU2 (+)
   negateV = fmap negate
+  (^-^) = liftU2 (-)
+
+
+
 
 
 -- | 'SpMatrix'es are maps between finite-dimensional spaces
@@ -94,6 +98,11 @@ instance Num a => SpContainer SpMatrix a where
   scLookup m (i, j) = lookupSM m i j
   m @@ d | isValidIxSM m d = m @@! d
          | otherwise = error $ "@@ : incompatible indices : matrix size is " ++ show (dim m) ++ ", but user looked up " ++ show d
+
+
+
+
+
 
 
 
@@ -265,6 +274,7 @@ extractDiag = filterSM (\i j _ -> i == j)
 
 
 
+
 -- | Extract a submatrix given the specified index bounds, rebalancing keys with the two supplied functions
 extractSubmatrixSM ::
   (IM.Key -> IM.Key) ->   -- row index function
@@ -372,8 +382,8 @@ isUpperTriSM m = m == lm where
 
 -- -- -- |Is the matrix orthogonal? i.e. Q^t ## Q == I
 -- -- isOrthogonalSM :: (Eq a, Epsilon a) => SpMatrix a -> Bool
--- isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
---   rsm = roundZeroOneSM $ transpose sm ## sm
+isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
+  rsm = roundZeroOneSM $ transpose sm ## sm
 
 
 
@@ -608,6 +618,9 @@ roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im
 
 
 
+
+
+
 -- * Primitive algebra operations
 
 
@@ -634,9 +647,12 @@ swapRowsSafe i1 i2 m
 
 -- ** Matrix transpose
 -- | transposeSM : Matrix transpose
--- transposeSM :: SpMatrix Double -> SpMatrix Double
+transposeSM :: SpMatrix a -> SpMatrix a
 transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
+-- | Hermitian conjugate
+hermitianConj :: Num a => SpMatrix (Complex a) -> SpMatrix (Complex a)
+hermitianConj m = conjugate <$> transposeSM m
 
 
 
@@ -645,27 +661,33 @@ transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
 
 -- ** Multiply matrix by a scalar
 matScale :: Num a => a -> SpMatrix a -> SpMatrix a
-matScale a = fmap (*a)
+matScale a = fmap (* a)
 
 
 
+
+
+
+
+
+-- ** Trace
+
+trace :: Num b => SpMatrix b -> b
+trace m = foldlSM (+) 0 $ extractDiag m
 
 
 
 
 -- ** Frobenius norm
 
--- normFrobeniusSM m = sqrt $ foldlSM (+) 0 m' where
---   m' | nrows m > ncols m = transposeSM m ## m
---      | otherwise = m ## transposeSM m 
+normFrobeniusSM :: (MatrixRing (SpMatrix a), Floating a) => SpMatrix a -> a
+normFrobeniusSM m = sqrt $ trace (m ##^ m)
+
+normFrobeniusSMC ::
+  (MatrixRing (SpMatrix (Complex a)), RealFloat a) => SpMatrix (Complex a) -> a
+normFrobeniusSMC m = sqrt $ realPart $ trace (m ##^ m)
 
 
--- normFrobenius :: Floating a => Matrix m a -> a
--- normFrobenius m = sqrt $ sumSM m' where
---   m' | nrows m > ncols m = transpose m ## m
---      | otherwise = m ## transpose m 
-
--- sumSM m = sum (dat m)
 
 
 
@@ -675,24 +697,18 @@ matScale a = fmap (*a)
 
 -- ** Matrix-matrix product
 
--- instance MatrixRing (SpMatrix Double) where
---   type Matrix (SpMatrix Double) = SpMatrix Double
---   (##) = matMatSD
-
--- instance MatrixRing (SpMatrix (Complex Double)) where
---   type Matrix (SpMatrix (Complex Double)) = SpMatrix (Complex Double)
---   (##) = matMatSD
-
-instance MatrixRing SpMatrix Double where
-  type Matrix SpMatrix Double = SpMatrix Double
+instance MatrixRing (SpMatrix Double) where
+  type MatrixNorm (SpMatrix Double) = Double
   (##) = matMatSD
   transpose = transposeSM
-  normFrobenius = undefined
-  -- normFrobenius = normFrobeniusSM
+  normFrobenius = normFrobeniusSM
 
-instance SparseMatrixRing SpMatrix Double where
-  (#~#) = undefined
-  -- (#~#) = matMatSparsified
+instance MatrixRing (SpMatrix (Complex Double)) where
+  type MatrixNorm (SpMatrix (Complex Double)) = Double
+  (##) = matMatSD
+  transpose = hermitianConj
+  normFrobenius = normFrobeniusSMC
+
 
 -- matMat, (##) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
 matMatSD :: (InnerSpace (IM.IntMap a), s ~ Scalar (IM.IntMap a)) =>
@@ -700,32 +716,31 @@ matMatSD :: (InnerSpace (IM.IntMap a), s ~ Scalar (IM.IntMap a)) =>
 matMatSD m1 m2
   | c1 == r2 = matMatU m1 m2
   | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
-      d1@(r1, c1) = dim m1
-      d2@(r2, c2) = dim m2
+      d1@(_, c1) = dim m1
+      d2@(r2, _) = dim m2
       -- matMatU ::  SpMatrix Double -> SpMatrix Double -> SpMatrix Double
       matMatU m1 m2 =
         SM (nrows m1, ncols m2) im where
           im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
 
-     
 
--- matMat m1 m2 =
---   withDim2 m1 m2
---     (\(r1,c1) (r2,c2) _ _ -> c1 == r2)
---     matMatU
---     "matMat : incompatible matrix sizes"
---     (\m1 m2 -> unwords [show (dim m1), show (dim m2)])
+matMat :: MatrixRing m => m -> m -> m
+matMat = (##)
 
 
 
+a #^# b = transpose a ## b
+
+a ##^ b = a ## transpose b
 
 
 -- ** Matrix-matrix product, sparsified
 -- | Removes all elements `x` for which `| x | <= eps`)
--- matMatSparsified :: (Epsilon a, mm a ~ Matrix m a) => mm a -> mm a -> mm a
--- matMatSparsified m1 m2 = sparsifySM $ m1 ## m2
+matMatSparsified, (#~#) :: (MatrixRing (SpMatrix a), Epsilon a) =>
+    SpMatrix a -> SpMatrix a -> SpMatrix a
+matMatSparsified m1 m2 = sparsifySM $ m1 ## m2
 
--- (#~#) = matMatSparsified
+(#~#) = matMatSparsified
 
 
 
@@ -734,12 +749,12 @@ matMatSD m1 m2
 
 -- -- | A^T B
 -- (#^#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
--- a #^# b = transpose a #~# b
+a #~^# b = transpose a #~# b
 
 
 -- -- | A B^T
 -- -- (##^) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
--- a ##^ b = a #~# transpose b
+a #~#^ b = a #~# transpose b
 
 
 
