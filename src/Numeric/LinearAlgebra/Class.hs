@@ -97,6 +97,12 @@ class InnerSpace v => Normed v where
 
 -- ** Norms and related results
 
+-- |Euclidean norm
+norm2 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
+norm2 x = sqrt (norm2Sq x)
+
+
+
 -- | Normalize w.r.t. Lp-norm
 normalize :: (Magnitude v ~ Scalar v, Normed v, Fractional (Scalar v)) =>
    RealScalar v -> v -> v
@@ -118,11 +124,22 @@ normInftyC x = maximum (magnitude <$> x)
 
 
 
--- |Euclidean norm
-norm2 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
-norm2 x = sqrt (norm2Sq x)
 
 
+instance Normed Double where
+  type Magnitude Double = Double
+  type RealScalar Double = Double
+  norm1 = abs
+  norm2Sq = abs
+  normP _ = abs
+
+instance Normed (Complex Double) where
+  type Magnitude (Complex Double) = Double
+  type RealScalar (Complex Double) = Double
+  norm1 (r :+ i) = abs r + abs i
+  norm2Sq = (**2) . magnitude
+  -- normP p (r :+ i) = (r**p + i**p)**(1/p)
+  
 
 
 

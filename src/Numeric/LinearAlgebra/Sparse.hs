@@ -129,36 +129,47 @@ hhRefl = hhMat (fromInteger 2)
 hypot :: Floating a => a -> a -> a
 hypot x y = abs x * (sqrt (1 + y/x)**2)
 
-signumR = signum
-signumC = signum . magnitude
+-- signumR = signum
+-- signumC = signum . magnitude
 
-class Signum x where
-  type SigFloat x :: *
-  signum' :: x -> SigFloat x
+-- class Signum x where
+--   type SigFloat x :: *
+--   signum' :: x -> SigFloat x
 
-instance Signum Double where {type SigFloat Double = Double; signum' = signumR}
-instance Signum (Complex Double) where {type SigFloat (Complex Double) = Double; signum' = signumC}
+-- instance Signum Double where {type SigFloat Double = Double; signum' = signumR}
+-- instance Signum (Complex Double) where {type SigFloat (Complex Double) = Double; signum' = signumC}
 
 
--- | Givens coefficients (using stable algorithm shown in  Anderson, Edward (4 December 2000). "Discontinuous Plane Rotations and the Symmetric Eigenvalue Problem". LAPACK Working Note)
--- givensCoef0 :: (Ord b, Floating a, Eq a) => (a -> b) -> a -> a -> (a, a, a)
-givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
-  | b==0 = (signum' a, 0, abs a)
-  | a==0 = (0, signum' b, abs b)
-  | ff a > ff b = let t = b/a
-                      u = signum' a * abs ( sqrt (1 + t**2))
-                  in (1/u, - t/u, a*u)
-  | otherwise = let t = a/b
-                    u = signum' b * abs ( sqrt (1 + t**2))
-                in (t/u, - 1/u, b*u)
-                   
--- | Givens coefficients, real-valued
+-- -- | Givens coefficients (using stable algorithm shown in  Anderson, Edward (4 December 2000). "Discontinuous Plane Rotations and the Symmetric Eigenvalue Problem". LAPACK Working Note)
+-- -- givensCoef0 :: (Ord b, Floating a, Eq a) => (a -> b) -> a -> a -> (a, a, a)
+-- givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
+--   | b==0 = (signum' a, 0, abs a)
+--   | a==0 = (0, signum' b, abs b)
+--   | ff a > ff b = let t = b/a
+--                       u = signum' a * abs ( sqrt (1 + t**2))
+--                   in (1/u, - t/u, a*u)
+--   | otherwise = let t = a/b
+--                     u = signum' b * abs ( sqrt (1 + t**2))
+--                 in (t/u, - 1/u, b*u)
+
+-- -- | Givens coefficients, real-valued
 -- givensCoef :: (Floating a, Ord a) => a -> a -> (a, a, a)
-givensCoef = givensCoef0 abs
+-- givensCoef = givensCoef0 abs
 
 -- -- | Givens coefficients, complex-valued
 -- givensCoefC :: RealFloat a => Complex a -> Complex a -> (Complex a, Complex a, Complex a)
 -- givensCoefC = givensCoef0 magnitude
+
+givensCoef :: (Elt t, Floating t) => t -> t -> (t, t, t)
+givensCoef a b = (c0/d, s0/d, d) where
+  c0 = conj a
+  s0 = conj b
+  d = hypot c0 s0 -- sqrt $ (norm1 c0)**2 + (norm1 s0)**2
+
+
+
+                   
+
 
 
 
@@ -175,7 +186,7 @@ NB: the current version is quite inefficient in that:
 2. at each iteration `i` we multiply `G_i` by the previous partial result `M`. Since this corresponds to a rotation, and the `givensCoef` function already computes the value of the resulting non-zero component (output `r`), `G_i ## M` can be simplified by just changing two entries of `M` (i.e. zeroing one out and changing the other into `r`).
 -}
 {-# inline givens #-}
--- givens :: (Floating a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
+givens :: (Elt a, Floating a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
 givens mm i j 
   | isValidIxSM mm (i,j) && nrows mm >= ncols mm =
        fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
