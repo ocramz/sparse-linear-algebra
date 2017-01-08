@@ -127,7 +127,7 @@ hhRefl = hhMat (fromInteger 2)
 
 -- | Stable hypotenuse calculation
 hypot :: Floating a => a -> a -> a
-hypot x y = abs x * (sqrt (1 + y/x)**2)
+hypot x y = abs x * (sqrt (1 + (y/x)**2))
 
 -- signumR = signum
 -- signumC = signum . magnitude
@@ -163,7 +163,7 @@ hypot x y = abs x * (sqrt (1 + y/x)**2)
 givensCoef :: (Elt t, Floating t) => t -> t -> (t, t, t)
 givensCoef a b = (c0/d, s0/d, d) where
   c0 = conj a
-  s0 = conj b
+  s0 = - conj b
   d = hypot c0 s0 -- sqrt $ (norm1 c0)**2 + (norm1 s0)**2
 
 
@@ -459,7 +459,7 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 
 -- arnoldi ::
---   (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) =>
+--   (Epsilon a, Elt a) =>
 --      SpMatrix a -> SpVector a -> Int -> (SpMatrix a, SpMatrix a)
 arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
   where
