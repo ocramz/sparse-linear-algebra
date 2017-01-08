@@ -275,7 +275,6 @@ eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
       b' = normalize 2 nom
       mu' = (b' `dot` (aa #> b')) / (b' `dot` b')
 
-toC x = (\r -> r :+ 0) <$> x 
 
 
 
@@ -459,7 +458,7 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 
 -- arnoldi ::
---   (Epsilon a, Elt a, RealFloat a) =>
+--   (Epsilon a, Elt a) =>
 --      SpMatrix a -> SpVector a -> Int -> (SpMatrix a, SpMatrix a)
 -- arnoldi :: SpMatrix (Complex Double) -> SpVector (Complex Double) -> Int ->
 --   (SpMatrix (Complex Double), SpMatrix (Complex Double))

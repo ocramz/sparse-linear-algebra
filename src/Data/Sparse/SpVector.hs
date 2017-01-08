@@ -55,8 +55,8 @@ instance Num a => AdditiveGroup (IM.IntMap a) where
   instance VectorSpace (f (Complex t)) where {type (Scalar (f (Complex t))) = Complex (t); n *^ im = IM.map (* n) im};\
   instance InnerSpace (f t) where {a <.> b = sum $ liftI2 (*) a b};\
   instance InnerSpace (f (Complex t)) where {a <.> b = sum $ liftI2 (*) (conjugate <$> a) b};\
-  instance Normed (f t) where {type RealScalar (f t) = t ; type Magnitude (f t) = t ; norm1 a = sum (abs <$> a) ; norm2Sq a = sum $ liftI2 (*) a a; normP p v = sum u**(1/p) where u = fmap (**p) v; }; \
-  instance Normed (f (Complex t)) where {type RealScalar (f (Complex t)) = t; type Magnitude (f (Complex t)) = t; norm1 a = realPart $ sum (abs <$> a); norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a; normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v }
+  instance Normed (f t) where {type RealScalar (f t) = t ; type Magnitude (f t) = t ; norm1 a = sum (abs <$> a) ; norm2Sq a = sum $ liftI2 (*) a a; normP p v = sum u**(1/p) where u = fmap (**p) v; normalize p v = v ./ normP p v; normalize2 v = v ./ norm2 v}; \
+  instance Normed (f (Complex t)) where {type RealScalar (f (Complex t)) = t; type Magnitude (f (Complex t)) = t; norm1 a = realPart $ sum (abs <$> a); norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a; normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v; normalize p v = v ./ toC (normP p v); normalize2 v = v ./ toC (norm2 v) }
 
 
 
@@ -157,8 +157,8 @@ instance Elt a => SpContainer SpVector a where
   instance VectorSpace (SpVector (Complex t)) where { type (Scalar (SpVector (Complex t))) = Complex t; n *^ v = scale n v};\
   instance InnerSpace (SpVector (t)) where { (<.>) = dotS };\
   instance InnerSpace (SpVector (Complex (t))) where { (<.>) = dotS };\
-  instance Normed (SpVector (t)) where {type RealScalar (SpVector (t)) = t; type Magnitude (SpVector (t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v};\
-  instance Normed (SpVector (Complex t)) where {type RealScalar (SpVector (Complex t)) = t; type Magnitude (SpVector (Complex t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v}
+  instance Normed (SpVector (t)) where {type RealScalar (SpVector (t)) = t; type Magnitude (SpVector (t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)};\
+  instance Normed (SpVector (Complex t)) where {type RealScalar (SpVector (Complex t)) = t; type Magnitude (SpVector (Complex t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)}
 
 
 

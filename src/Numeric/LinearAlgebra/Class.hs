@@ -90,8 +90,14 @@ class InnerSpace v => Normed v where
   norm1 :: v -> Magnitude v
   norm2Sq :: v -> Magnitude v   -- ^ Lp norm (p > 0)
   normP :: RealScalar v -> v -> Magnitude v
+  normalize :: RealScalar v -> v -> v  -- ^ Normalize w.r.t. Lp norm
+  normalize2 :: v -> v     -- ^ Normalize w.r.t. L2 norm
 
 
+
+-- | Lift a real number onto the complex plane
+toC :: Num a => a -> Complex a
+toC r = r :+ 0
 
 
 
@@ -101,16 +107,6 @@ class InnerSpace v => Normed v where
 norm2 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
 norm2 x = sqrt (norm2Sq x)
 
-
-
--- | Normalize w.r.t. Lp-norm
-normalize :: (Magnitude v ~ Scalar v, Normed v, Fractional (Scalar v)) =>
-   RealScalar v -> v -> v
-normalize p v =  v ./ normP p v
-
--- | Normalize w.r.t. L2 norm
-normalize2 :: (Magnitude v ~ Scalar v, Normed v, Floating (Scalar v)) => v -> v
-normalize2 v = v ./ norm2 v
 
 
 
