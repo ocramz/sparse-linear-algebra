@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# language TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
 {-# language CPP #-}
+{-# language NoMonomorphismRestriction #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -55,9 +56,44 @@ instance Num a => AdditiveGroup (IM.IntMap a) where
   instance VectorSpace (f (Complex t)) where {type (Scalar (f (Complex t))) = Complex (t); n *^ im = IM.map (* n) im};\
   instance InnerSpace (f t) where {a <.> b = sum $ liftI2 (*) a b};\
   instance InnerSpace (f (Complex t)) where {a <.> b = sum $ liftI2 (*) (conjugate <$> a) b};\
-  instance Normed (f t) where {type RealScalar (f t) = t ; type Magnitude (f t) = t ; norm1 a = sum (abs <$> a) ; norm2Sq a = sum $ liftI2 (*) a a; normP p v = sum u**(1/p) where u = fmap (**p) v; normalize p v = v ./ normP p v; normalize2 v = v ./ norm2 v}; \
-  instance Normed (f (Complex t)) where {type RealScalar (f (Complex t)) = t; type Magnitude (f (Complex t)) = t; norm1 a = realPart $ sum (abs <$> a); norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a; normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v; normalize p v = v ./ toC (normP p v); normalize2 v = v ./ toC (norm2 v) }
+  -- instance Normed (f t) where {type RealScalar (f t) = t ; type Magnitude (f t) = t ; norm1 a = sum (abs <$> a) ; norm2Sq a = sum $ liftI2 (*) a a; normP p v = sum u**(1/p) where u = fmap (**p) v; normalize = normzPR ; normalize2 = normz2R}; \
+  -- instance Normed (f (Complex t)) where {type RealScalar (f (Complex t)) = t; type Magnitude (f (Complex t)) = t; norm1 a = realPart $ sum (abs <$> a); norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a; normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v; normalize = normzPC; normalize2 = normz2C }
 
+
+instance Normed (IM.IntMap Double) where
+  type RealScalar (IM.IntMap Double) = Double
+  type Magnitude (IM.IntMap Double) = Double
+  norm1 a = sum (abs <$> a)
+  norm2Sq a = sum $ liftI2 (*) a a
+  normP p v = sum u**(1/p) where u = fmap (**p) v
+  normalize p v = v ./ normP p v -- normzPR
+  normalize2 v = v ./ norm2 v --  normz2R
+  
+instance Normed (IM.IntMap (Complex Double)) where
+  type RealScalar (IM.IntMap (Complex Double)) = Double
+  type Magnitude (IM.IntMap (Complex Double)) = Double
+  norm1 a = realPart $ sum (abs <$> a)
+  norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a
+  normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v
+  normalize p v = v ./ toC (normP p v) -- normzPC
+  normalize2 v = v ./ toC (norm2 v) -- normz2C
+
+normzPR :: (Magnitude v ~ Scalar v, Normed v, Fractional (Scalar v)) =>
+     RealScalar v -> v -> v
+normzPR p v = v ./ normP p v
+
+normz2R :: (Magnitude v ~ Scalar v, Normed v, Floating (Scalar v)) =>
+     v -> v
+normz2R v = v ./ norm2 v
+
+normzPC :: (Scalar v ~ Complex (Magnitude v), Normed v, RealFloat (Magnitude v)) =>
+     RealScalar v -> v -> v
+normzPC p v = v ./ toC (normP p v)
+
+normz2C :: (Scalar v ~ Complex (Magnitude v), Normed v,
+      RealFloat (Magnitude v)) =>
+     v -> v
+normz2C v = v ./ toC (norm2 v)
 
 
 
@@ -66,7 +102,7 @@ instance Num a => AdditiveGroup (IM.IntMap a) where
   ParamInstance( IM.IntMap, t )
 
 IntMapInstance(Double)
-IntMapInstance(Float)
+-- IntMapInstance(Float)
 
 
 
@@ -163,7 +199,7 @@ instance Elt a => SpContainer SpVector a where
 
 
 SpVectorInstance(Double)
-SpVectorInstance(Float)
+-- SpVectorInstance(Float)
 
 
 dotS :: InnerSpace (IM.IntMap t) => SpVector t -> SpVector t -> Scalar (IM.IntMap t)

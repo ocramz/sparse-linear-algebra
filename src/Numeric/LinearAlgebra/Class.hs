@@ -87,9 +87,9 @@ hilbertDistSq x y = t <.> t where
 class InnerSpace v => Normed v where
   type Magnitude v :: *
   type RealScalar v :: *
-  norm1 :: v -> Magnitude v
-  norm2Sq :: v -> Magnitude v   -- ^ Lp norm (p > 0)
-  normP :: RealScalar v -> v -> Magnitude v
+  norm1 :: v -> Magnitude v      -- ^ L1 norm
+  norm2Sq :: v -> Magnitude v    -- ^ Euclidean (L2) norm
+  normP :: RealScalar v -> v -> Magnitude v -- ^ Lp norm (p > 0)
   normalize :: RealScalar v -> v -> v  -- ^ Normalize w.r.t. Lp norm
   normalize2 :: v -> v     -- ^ Normalize w.r.t. L2 norm
 
