@@ -459,8 +459,10 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 
 -- arnoldi ::
---   (Epsilon a, Elt a) =>
+--   (Epsilon a, Elt a, RealFloat a) =>
 --      SpMatrix a -> SpVector a -> Int -> (SpMatrix a, SpMatrix a)
+-- arnoldi :: SpMatrix (Complex Double) -> SpVector (Complex Double) -> Int ->
+--   (SpMatrix (Complex Double), SpMatrix (Complex Double))
 arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
   where
   (qvfin, hhfin, nmax, _) = execState (modifyUntil tf arnoldiStep) arnInit 
@@ -473,7 +475,7 @@ arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
       q1nn = (aq0 ^-^ (h11 .* q0))
       hh1 = V.fromList [(0, 0, h11), (1, 0, h21)] where        
         h21 = norm2 q1nn
-      q1 = normalize 2 q1nn       -- q1 `dot` q0 ~ 0
+      q1 = normalize2 q1nn       -- q1 `dot` q0 ~ 0
       qv1 = V.fromList [q0, q1]
   arnoldiStep (qv, hh, i, _) = (qv', hh', i + 1, fb') where
     qi = V.last qv
@@ -494,6 +496,15 @@ arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
 
 
 
+arnInit' aa b = (qv1, hh1, 1, False) where
+      q0 = normalize2 b   -- starting basis vector
+      aq0 = aa #> q0       -- A q0
+      h11 = q0 `dot` aq0          
+      q1nn = (aq0 ^-^ (h11 .* q0))
+      hh1 = V.fromList [(0, 0, h11), (1, 0, h21)] where        
+        h21 = norm2 q1nn
+      q1 = normalize2 q1nn       -- q1 `dot` q0 ~ 0
+      qv1 = V.fromList [q0, q1]
 
 
 
