@@ -208,7 +208,6 @@ example 0 : 2x2 linear system
 [1 2] [2] = [8]
 [3 4] [3]   [18]
 
-
 [1 3] [2] = [11]
 [2 4] [3]   [16]
 
@@ -219,17 +218,14 @@ example 0 : 2x2 linear system
 aa0 :: SpMatrix Double
 aa0 = fromListDenseSM 2 [1,3,2,4]
 
-
 -- b0, x0 : r.h.s and initial solution resp.
-b0, x0, x0true :: SpVector Double
+b0, x0, x0true, aa0tx0 :: SpVector Double
 b0 = mkSpVR 2 [8,18]
 x0 = mkSpVR 2 [0.3,1.4]
 
 
 -- x0true : true solution
 x0true = mkSpVR 2 [2,3]
-
-
 
 aa0tx0 = mkSpVR 2 [11,16]
 
@@ -263,10 +259,20 @@ b2 = mkSpVR 3 [4,-2,4]
 aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
 
 
+
+
+
+{- 2x2 Complex system -}
+
+aa0c = fromListDenseSM 2 [ 3 :+ 1, -3, -2, 1 :+ (-2)]
+
+b0c = mkSpVC 2 [3 :+ (-4), (-1) :+ 0.5]
+
+
 -- --
 
 {-
-example 1 : random linear system
+random linear system
 
 -}
 

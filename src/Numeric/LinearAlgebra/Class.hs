@@ -197,8 +197,8 @@ data LinSysError = NotConverged  -- ^ residual norm is greater than tolerance
                  deriving (Show, Eq)
   
 class LinearVectorSpace v => LinearSystem v where
-  (<\>) :: MatrixType v ->      -- ^ System matrix
-           v ->                 -- ^ Right hand side
+  (<\>) :: MatrixType v ->      
+           v ->                 
            Either LinSysError v 
 
 

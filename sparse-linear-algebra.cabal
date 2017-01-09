@@ -49,7 +49,7 @@ library
                      , mwc-random
                      , vector
                      , vector-algorithms
-                     , monad-par
+                     -- , monad-par
 
 
 -- executable sparse-linear-algebra
