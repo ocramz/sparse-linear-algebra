@@ -66,8 +66,8 @@ instance Normed (IM.IntMap Double) where
   norm1 a = sum (abs <$> a)
   norm2Sq a = sum $ liftI2 (*) a a
   normP p v = sum u**(1/p) where u = fmap (**p) v
-  normalize p v = v ./ normP p v -- normzPR
-  normalize2 v = v ./ norm2 v --  normz2R
+  normalize p v = v ./ normP p v 
+  normalize2 v = v ./ norm2 v 
   
 instance Normed (IM.IntMap (Complex Double)) where
   type RealScalar (IM.IntMap (Complex Double)) = Double
@@ -75,25 +75,10 @@ instance Normed (IM.IntMap (Complex Double)) where
   norm1 a = realPart $ sum (abs <$> a)
   norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a
   normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v
-  normalize p v = v ./ toC (normP p v) -- normzPC
-  normalize2 v = v ./ toC (norm2 v) -- normz2C
+  normalize p v = v ./ toC (normP p v)
+  normalize2 v = v ./ toC (norm2 v)
 
-normzPR :: (Magnitude v ~ Scalar v, Normed v, Fractional (Scalar v)) =>
-     RealScalar v -> v -> v
-normzPR p v = v ./ normP p v
 
-normz2R :: (Magnitude v ~ Scalar v, Normed v, Floating (Scalar v)) =>
-     v -> v
-normz2R v = v ./ norm2 v
-
-normzPC :: (Scalar v ~ Complex (Magnitude v), Normed v, RealFloat (Magnitude v)) =>
-     RealScalar v -> v -> v
-normzPC p v = v ./ toC (normP p v)
-
-normz2C :: (Scalar v ~ Complex (Magnitude v), Normed v,
-      RealFloat (Magnitude v)) =>
-     v -> v
-normz2C v = v ./ toC (norm2 v)
 
 
 

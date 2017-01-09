@@ -19,6 +19,12 @@ import Numeric.Eps
 
 
 
+-- | Lift a real number onto the complex plane
+toC :: Num a => a -> Complex a
+toC r = r :+ 0
+
+
+
 -- * Matrix and vector elements (possibly Complex)
 class (Eq e , Fractional e) => Elt e where
   conj :: e -> e
@@ -95,17 +101,21 @@ class InnerSpace v => Normed v where
 
 
 
--- | Lift a real number onto the complex plane
-toC :: Num a => a -> Complex a
-toC r = r :+ 0
-
-
-
 -- ** Norms and related results
 
 -- |Euclidean norm
 norm2 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
 norm2 x = sqrt (norm2Sq x)
+
+-- |Euclidean norm; returns a Complex (norm :+ 0) for containers of complex values
+norm2' :: (Normed v, Floating (Scalar v)) => v -> Scalar v
+norm2' x = sqrt $ x <.> x
+
+
+-- |Normalize a vector using norm2' instead of norm2
+normalize2' :: (Normed v, Floating (Scalar v)) => v -> v
+normalize2' x = x ./ norm2' x
+
 
 
 
@@ -138,6 +148,7 @@ instance Normed (Complex Double) where
   
 
 
+  
 
 
 
@@ -173,16 +184,22 @@ class VectorSpace v => LinearVectorSpace v where
   type MatrixType v :: *
   (#>) :: MatrixType v -> v -> v
   (<#) :: v -> MatrixType v -> v
-  -- matVec :: MatrixType v -> v -> v
-  -- vecMat :: v -> MatrixType v -> v
 
--- (#> ):: LinearVectorSpace v => MatrixType v -> v -> v
--- (#>) = matVec
 
--- (<# ):: LinearVectorSpace v => v -> MatrixType v -> v
--- (<#) = vecMat
+
+
+
+
+-- ** Linear systems
+
+data LinSysError = NotConverged  -- ^ residual norm is greater than tolerance
+                 | Diverging     -- ^ residual norm increased
+                 deriving (Show, Eq)
   
-
+class LinearVectorSpace v => LinearSystem v where
+  (<\>) :: MatrixType v ->      -- ^ System matrix
+           v ->                 -- ^ Right hand side
+           Either LinSysError v 
 
 
 
@@ -199,23 +216,7 @@ class AdditiveGroup m => MatrixRing m where
   normFrobenius :: m -> MatrixNorm m
 
 
---
-
--- class MatrixRing (m :: * -> *) a where
---   type Matrix m a :: *
---   (##) :: Matrix m a -> Matrix m a -> Matrix m a
---   transpose :: Matrix m a -> Matrix m a
---   normFrobenius :: Matrix m a -> a
-
-
---
-
--- class (Num a, AdditiveGroup (m a)) => MatrixRing (m :: * -> *) a where
---   type Matrix m a :: *
---   (##) :: Matrix m a -> Matrix m a -> Matrix m a
---   transpose :: Matrix m a -> Matrix m a
---   normFrobenius :: Matrix m a -> a
-
+-- a "sparse matrix ring" ?
 
 -- class MatrixRing m a => SparseMatrixRing m a where
 --   (#~#) :: Epsilon a => Matrix m a -> Matrix m a -> Matrix m a

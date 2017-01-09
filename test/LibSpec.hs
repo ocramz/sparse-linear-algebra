@@ -11,22 +11,24 @@
 -----------------------------------------------------------------------------
 module LibSpec where
 
+import Data.Sparse.Common
 import Numeric.LinearAlgebra.Sparse
 -- import Numeric.LinearAlgebra.Class
 
-import Control.Applicative (liftA2)
--- import Control.Monad (liftM, liftM2, replicateM)
-import Control.Monad.Primitive
-import Data.Foldable (foldrM)
+-- import Control.Applicative (liftA2)
+-- -- import Control.Monad (liftM, liftM2, replicateM)
+-- import Control.Monad.Primitive
+-- import Data.Foldable (foldrM)
 
-import Data.Sparse.Common
+import Data.Complex
+import Data.Either (either, isRight)
 
 import Data.VectorSpace hiding (magnitude)
 
 import Control.Monad.State.Strict (execState)
 
-import qualified System.Random.MWC as MWC
-import qualified System.Random.MWC.Distributions as MWC
+-- import qualified System.Random.MWC as MWC
+-- import qualified System.Random.MWC.Distributions as MWC
        
 import Test.Hspec
 -- import Test.Hspec.QuickCheck
@@ -76,27 +78,26 @@ spec = do
       execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
       nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True 
-  describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers" $ do
+  describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real-valued)" $ do
     -- it "TFQMR (2 x 2 dense)" $
-    --   normSq (_xTfq (tfqmr aa0 b0 x0) ^-^ x0true) <= eps `shouldBe` True
     it "GMRES (2 x 2 dense)" $
-      nearZero (norm2Sq (linSolve GMRES_ aa0 b0 ^-^ x0true)) `shouldBe` True
+      checkLinSolveR GMRES_ aa0 b0 x0true `shouldBe` True
     it "GMRES (3 x 3 sparse, s.p.d.)" $
-      nearZero (norm2Sq (linSolve GMRES_ aa2 b2 ^-^ x2)) `shouldBe` True
+      checkLinSolveR GMRES_ aa2 b2 x2 `shouldBe` True
     it "GMRES (4 x 4 sparse)" $
-      nearZero (norm2Sq (linSolve GMRES_ aa1 b1 ^-^ x1)) `shouldBe` True      
+      checkLinSolveR GMRES_ aa1 b1 x1 `shouldBe` True
     it "BCG (2 x 2 dense)" $
-      nearZero (norm2Sq (linSolve BCG_ aa0 b0 ^-^ x0true)) `shouldBe` True
+      checkLinSolveR BCG_ aa0 b0 x0true `shouldBe` True
     it "BCG (3 x 3 sparse, SPD)" $
-      nearZero (norm2Sq (linSolve BCG_ aa2 b2 ^-^ x2)) `shouldBe` True      
+      checkLinSolveR BCG_ aa2 b2 x2 `shouldBe` True
     -- it "BiCGSTAB (2 x 2 dense)" $ 
     --   nearZero (normSq (linSolve BICGSTAB_ aa0 b0 ^-^ x0true)) `shouldBe` True
     it "BiCGSTAB (3 x 3 sparse, SPD)" $ 
-      nearZero (norm2Sq (linSolve BICGSTAB_ aa2 b2 ^-^ x2)) `shouldBe` True      
+      checkLinSolveR BICGSTAB_ aa2 b2 x2 `shouldBe` True
     it "CGS (2 x 2 dense)" $ 
-      nearZero (norm2Sq (linSolve CGS_ aa0 b0 ^-^ x0true)) `shouldBe` True
+      checkLinSolveR CGS_ aa0 b0 x0true `shouldBe` True
     it "CGS (3 x 3 sparse, SPD)" $ 
-      nearZero (norm2Sq (linSolve CGS_ aa2 b2 ^-^ x2)) `shouldBe` True      
+      checkLinSolveR CGS_ aa2 b2 x2 `shouldBe` True
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ 
     it "luSolve (4 x 4 sparse)" $ 
       checkLuSolve aa1 b1 `shouldBe` True         
@@ -120,6 +121,33 @@ spec = do
       checkArnoldi tm6 4 `shouldBe` True
     it "arnoldi (5 x 5 sparse)" $
       checkArnoldi tm7 5 `shouldBe` True    
+
+
+{- linear systems -}
+
+checkLinSolve method aa b x x0r =
+  either
+    (error . show)
+    (\xhat -> nearZero (norm2Sq (x ^-^ xhat)))
+    (linSolve0 method aa b x0r)
+
+checkLinSolveR
+  :: LinSolveMethod
+     -> SpMatrix Double -> SpVector Double -> SpVector Double -> Bool
+checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
+  x0r = mkSpVR n $ replicate n 0.1
+  n = ncols aa
+
+checkLinSolveC
+  :: LinSolveMethod
+     -> SpMatrix (Complex Double)
+     -> SpVector (Complex Double)
+     -> SpVector (Complex Double)
+     -> Bool
+checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
+  x0r = mkSpVC n $ replicate n (0.1 :+ 0.1)
+  n = ncols aa
+
 
 
 {- QR-}
