@@ -253,7 +253,9 @@ qr mm = (transpose qt, r) where
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
 -- eigsQR :: (Epsilon a, RealFloat a) => Int -> SpMatrix a -> SpVector a
 eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
-  eigsStep mm = r #~# q where (q, r) = qr mm
+  eigsStep mm = q #~^# (m ## q) -- r #~# q
+   where
+    (q, _) = qr mm
   convergtest g = modifyInspectN nitermax f g where
     f [m1, m2] = let dm1 = extractDiagDense m1
                      dm2 = extractDiagDense m2

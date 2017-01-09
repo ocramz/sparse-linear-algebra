@@ -201,6 +201,14 @@ checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
   lhs = aa #~# q'
 
 
+
+
+
+-- -- test data
+
+
+
+
 {-
 
 example 0 : 2x2 linear system
@@ -264,74 +272,16 @@ aa22 = fromListDenseSM 2 [2,1,1,2] :: SpMatrix Double
 
 {- 2x2 Complex system -}
 
-aa0c = fromListDenseSM 2 [ 3 :+ 1, -3, -2, 1 :+ (-2)]
+aa0c :: SpMatrix (Complex Double)
+aa0c = fromListDenseSM 2 [ 3 :+ 1, (-3) :+ 2, (-2) :+ (-1), 1 :+ (-2)]
 
 b0c = mkSpVC 2 [3 :+ (-4), (-1) :+ 0.5]
 
 x1c = mkSpVC 2 [2 :+ 2, 2 :+ 3]
 b1c = mkSpVC 2 [4 :+ (-2), (-10) :+ 1]
 
-
-
--- --
-
-{-
-random linear system
-
--}
-
-
-
--- -- dense
--- solveRandom n = do
---   aa0 <- randMat n
---   let aa = aa0 ^+^ eye n
---   xtrue <- randVec n
---   -- x0 <- randVec n
---   let b = aa #> xtrue
---       dx = aa <\> b ^-^ xtrue
---   return $ normSq dx
---   -- let xhatB = _xBicgstab (bicgstab aa b x0 x0)
---   --     xhatC = _x (cgs aa b x0 x0)
---   -- return (aa, x, x0, b, xhatB, xhatC)
-
--- -- sparse
--- solveSpRandom :: Int -> Int -> IO Double
--- solveSpRandom n nsp = do
---   aa0 <- randSpMat n nsp
---   let aa = aa0 ^+^ eye n
---   xtrue <- randSpVec n nsp
---   let b = (aa ^+^ eye n) #> xtrue
---       dx = aa <\> b ^-^ xtrue
---   return $ normSq dx
-
-
-
-
--- solveRandomBanded n bw mu sig = do
---   let ndiags = 2*bw
---   bands <- replicateM (ndiags + 1) (randArray n mu sig)
---   xtrue <- randVec n
---   b <- randVec n
---   let
---     diags = [-bw .. bw - 1]
-
--- randDiagMat :: PrimMonad m =>
---      Rows -> Double -> Double -> Int -> m (SpMatrix Double)
--- randDiagMat n mu sig i = do
---   x <- randArray n mu sig
---   return $ mkSubDiagonal n i x
-
-
--- go (m:ms) mat =
---   m ^+^ go ms mat
--- go [] mat = mat
-
--- plusM ::
---   (Additive f1, Applicative f, Num a) => f (f1 a) -> f (f1 a) -> f (f1 a)  
--- plusM = liftA2 (^+^)
-
-
+aa2c :: SpMatrix (Complex Double)
+aa2c = fromListDenseSM 2 [3, -3, -2, 1]
 
 
 
@@ -370,11 +320,6 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 
 
-{- mkSubDiagonal -}
-
-
-
-
 
 
 
@@ -393,6 +338,8 @@ b3 = mkSpVR 3 [1,1,1] :: SpVector Double
 
 -- aa4 : eigenvalues 1 (mult.=2) and -1
 aa4 = fromListDenseSM 3 [3,2,-2,2,2,-1,6,5,-4] :: SpMatrix Double
+
+aa4c = toC <$> aa4
 
 b4 = fromListDenseSV 3 [-3,-3,-3] :: SpVector Double
 
@@ -508,7 +455,7 @@ tm9 = fromListSM (4, 3) [(0,0,pi), (1,1, 3), (2,2,4), (3,2, 1), (3,1, 5)]
 
 
 
--- -- test data
+
 
 -- l0 = [1,2,4,5,8]
 -- l1 = [2,3,6]
@@ -534,3 +481,58 @@ tm9 = fromListSM (4, 3) [(0,0,pi), (1,1, 3), (2,2,4), (3,2, 1), (3,1, 5)]
 -- m1 = toCSR 4 4 $ V.fromList [(0,0,1), (0,2,5), (1,0,2), (1,1,3), (2,0,4), (2,3,1), (3,2,2)]
 -- m2 = toCSR 4 4 $ V.fromList [(0,0,1), (0,2,5), (2,0,4), (2,3,1), (3,2,2)]
 -- m3 = toCSR 4 4 $ V.fromList [(1,0,5), (1,1,8), (2,2,3), (3,1,6)]
+
+
+
+
+
+
+
+-- --
+
+{-
+random linear system
+
+-}
+
+
+
+-- -- dense
+-- solveRandom n = do
+--   aa0 <- randMat n
+--   let aa = aa0 ^+^ eye n
+--   xtrue <- randVec n
+--   -- x0 <- randVec n
+--   let b = aa #> xtrue
+--       dx = aa <\> b ^-^ xtrue
+--   return $ normSq dx
+--   -- let xhatB = _xBicgstab (bicgstab aa b x0 x0)
+--   --     xhatC = _x (cgs aa b x0 x0)
+--   -- return (aa, x, x0, b, xhatB, xhatC)
+
+-- -- sparse
+-- solveSpRandom :: Int -> Int -> IO Double
+-- solveSpRandom n nsp = do
+--   aa0 <- randSpMat n nsp
+--   let aa = aa0 ^+^ eye n
+--   xtrue <- randSpVec n nsp
+--   let b = (aa ^+^ eye n) #> xtrue
+--       dx = aa <\> b ^-^ xtrue
+--   return $ normSq dx
+
+
+
+
+-- solveRandomBanded n bw mu sig = do
+--   let ndiags = 2*bw
+--   bands <- replicateM (ndiags + 1) (randArray n mu sig)
+--   xtrue <- randVec n
+--   b <- randVec n
+--   let
+--     diags = [-bw .. bw - 1]
+
+-- randDiagMat :: PrimMonad m =>
+--      Rows -> Double -> Double -> Int -> m (SpMatrix Double)
+-- randDiagMat n mu sig i = do
+--   x <- randArray n mu sig
+--   return $ mkSubDiagonal n i x
