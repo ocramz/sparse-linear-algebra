@@ -47,7 +47,7 @@ import Data.Sparse.Common
 
 
 import Control.Monad.Primitive
-import Control.Monad (mapM_, forM_, replicateM)
+import Control.Monad (replicateM)
 import Control.Monad.State.Strict
 -- import Control.Monad.Writer
 -- import Control.Monad.Trans
@@ -63,9 +63,9 @@ import qualified Data.IntMap.Strict as IM
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC
 
-import Data.Monoid
-import qualified Data.Foldable as F
-import qualified Data.Traversable as T
+-- import Data.Monoid
+-- import qualified Data.Foldable as F
+-- import qualified Data.Traversable as T
 
 -- import qualified Data.List as L
 import Data.Maybe
@@ -88,6 +88,8 @@ sparsifySV = filterSV isNz
 
 -- |uses the R matrix from the QR factorization
 -- conditionNumberSM :: (Epsilon a, RealFloat a) => SpMatrix a -> a
+-- conditionNumberSM :: (Elt t, MatrixRing (SpMatrix t), Epsilon t, Ord t, Floating t) =>
+--      SpMatrix t -> t
 conditionNumberSM m | nearZero lmin = error "Infinite condition number : rank-deficient system"
                     | otherwise = kappa where
   kappa = lmax / lmin
@@ -131,28 +133,29 @@ hhRefl = hhMat (fromInteger 2)
 hypot :: Floating a => a -> a -> a
 hypot x y = abs x * (sqrt (1 + (y/x)**2))
 
--- signumR = signum
--- signumC = signum . magnitude
 
--- class Signum x where
---   type SigFloat x :: *
---   signum' :: x -> SigFloat x
+class Signum x where
+  type SigFloat x :: *
+  signum' :: x -> SigFloat x
 
--- instance Signum Double where {type SigFloat Double = Double; signum' = signumR}
--- instance Signum (Complex Double) where {type SigFloat (Complex Double) = Double; signum' = signumC}
+instance Signum Double where {type SigFloat Double = Double; signum' = signum}
+instance Signum (Complex Double) where {type SigFloat (Complex Double) = Double; signum' = signum . magnitude}
 
 
 -- -- | Givens coefficients (using stable algorithm shown in  Anderson, Edward (4 December 2000). "Discontinuous Plane Rotations and the Symmetric Eigenvalue Problem". LAPACK Working Note)
 -- -- givensCoef0 :: (Ord b, Floating a, Eq a) => (a -> b) -> a -> a -> (a, a, a)
--- givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
---   | b==0 = (signum' a, 0, abs a)
---   | a==0 = (0, signum' b, abs b)
---   | ff a > ff b = let t = b/a
---                       u = signum' a * abs ( sqrt (1 + t**2))
---                   in (1/u, - t/u, a*u)
---   | otherwise = let t = a/b
---                     u = signum' b * abs ( sqrt (1 + t**2))
---                 in (t/u, - 1/u, b*u)
+-- givensCoef0
+--   :: (Signum t, Ord a, Floating t, Eq t) =>
+--      (t -> a) -> t -> t -> (t, t, t)
+givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
+  | b==0 = (signum' a, 0, abs a)
+  | a==0 = (0, signum' b, abs b)
+  | ff a > ff b = let t = b/a
+                      u = signum' a * abs ( sqrt (1 + t**2))
+                  in (1/u, - t/u, a*u)
+  | otherwise = let t = a/b
+                    u = signum' b * abs ( sqrt (1 + t**2))
+                in (t/u, - 1/u, b*u)
 
 -- -- | Givens coefficients, real-valued
 -- givensCoef :: (Floating a, Ord a) => a -> a -> (a, a, a)
@@ -333,7 +336,7 @@ SVD of A, Golub-Kahan method
 -- * Cholesky factorization
 
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
-chol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> SpMatrix a
+chol :: (Epsilon a, Floating a) => SpMatrix a -> SpMatrix a
 chol aa = lfin where
   (_, lfin) = execState (modifyUntil q cholUpd) cholInit
   q (i, _) = i == nrows aa              -- stopping criterion
@@ -375,15 +378,16 @@ chol aa = lfin where
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 -- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
--- lu :: (Scalar (SpVector t) ~ t, VectorSpace (SpVector t), Epsilon t, Fractional t) =>
---      SpMatrix t -> (SpMatrix t, SpMatrix t)
+lu :: (VectorSpace (SpVector t), Epsilon t, Fractional t) =>
+     SpMatrix t -> (SpMatrix t, SpMatrix t)
 lu aa = (lf, ufin) where
   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
   ufin = uUpdSparse (ixf, lf, uf) -- final U update
   q (i, _, _) = i == (nrows aa - 1)
   n = nrows aa
   luInit = (1, l0, u0) where
-    l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
+--  l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
+    l0 = insertCol (eye n) (scale (1/u00) (extractSubCol aa 0 (1, n-1))) 0
     u0 = insertRow (zeroSM n n) (extractRow aa 0) 0                     -- initial U
     u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
   luUpd (i, l, u) = (i + 1, l', u') where
