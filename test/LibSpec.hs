@@ -290,7 +290,7 @@ aa2c = fromListDenseSM 2 [3, -3, -2, 1]
 
 
 
---
+-- Test data
 
 {-
 matMat
@@ -322,11 +322,6 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 
 
-
-
-
-
-
 {- eigenvalues -}
 
 
@@ -347,10 +342,6 @@ b4 = fromListDenseSV 3 [-3,-3,-3] :: SpVector Double
 
 
 
-
-
-
--- test data
 
 tm0, tm1, tm2, tm3, tm4 :: SpMatrix Double
 tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
@@ -390,6 +381,7 @@ tm3g1 = fromListDenseSM 3 [1, 0,0, 0,c,-s, 0, s, c]
 tm4 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
 
 
+
 tm5 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] :: SpMatrix Double
 
 
@@ -403,40 +395,6 @@ tm7 = a ^+^ b ^+^ c where
   c = mkSubDiagonal n (-1) $ replicate n (-1)
 
 
-
-
-
-
--- -- run N iterations 
-
--- -- runNBiC :: Int -> SpMatrix Double -> SpVector Double -> BICGSTAB
--- runNBiC n aa b = map _xBicgstab $ runAppendN' (bicgstabStep aa x0) n bicgsInit where
---    x0 = mkSpVectorD nd $ replicate nd 0.9
---    nd = dim r0
---    r0 = b ^-^ (aa #> x0)    
---    p0 = r0
---    bicgsInit = BICGSTAB x0 r0 p0
-
--- -- runNCGS :: Int -> SpMatrix Double -> SpVector Double -> CGS
--- runNCGS n aa b = map _x $ runAppendN' (cgsStep aa x0) n cgsInit where
---   x0 = mkSpVectorD nd $ replicate nd 0.1
---   nd = dim r0
---   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
---   p0 = r0
---   u0 = r0
---   cgsInit = CGS x0 r0 p0 u0
-
-
-
--- solveRandomN ndim nsp niter = do
---   aa0 <- randSpMat ndim (nsp ^ 2)
---   let aa = aa0 ^+^ eye ndim
---   xtrue <- randSpVec ndim nsp
---   let b = aa #> xtrue
---       xhatB = head $ runNBiC niter aa b
---       xhatC = head $ runNCGS niter aa b
---   -- printDenseSM aa    
---   return (normSq (xhatB ^-^ xtrue), normSq (xhatC ^-^ xtrue))
 
 
 tm8 :: SpMatrix Double
@@ -489,6 +447,40 @@ tm9 = fromListSM (4, 3) [(0,0,pi), (1,1, 3), (2,2,4), (3,2, 1), (3,1, 5)]
 
 
 -- --
+
+
+-- -- run N iterations 
+
+-- -- runNBiC :: Int -> SpMatrix Double -> SpVector Double -> BICGSTAB
+-- runNBiC n aa b = map _xBicgstab $ runAppendN' (bicgstabStep aa x0) n bicgsInit where
+--    x0 = mkSpVectorD nd $ replicate nd 0.9
+--    nd = dim r0
+--    r0 = b ^-^ (aa #> x0)    
+--    p0 = r0
+--    bicgsInit = BICGSTAB x0 r0 p0
+
+-- -- runNCGS :: Int -> SpMatrix Double -> SpVector Double -> CGS
+-- runNCGS n aa b = map _x $ runAppendN' (cgsStep aa x0) n cgsInit where
+--   x0 = mkSpVectorD nd $ replicate nd 0.1
+--   nd = dim r0
+--   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+--   p0 = r0
+--   u0 = r0
+--   cgsInit = CGS x0 r0 p0 u0
+
+
+
+-- solveRandomN ndim nsp niter = do
+--   aa0 <- randSpMat ndim (nsp ^ 2)
+--   let aa = aa0 ^+^ eye ndim
+--   xtrue <- randSpVec ndim nsp
+--   let b = aa #> xtrue
+--       xhatB = head $ runNBiC niter aa b
+--       xhatC = head $ runNCGS niter aa b
+--   -- printDenseSM aa    
+--   return (normSq (xhatB ^-^ xtrue), normSq (xhatC ^-^ xtrue))
+
+
 
 {-
 random linear system
