@@ -29,6 +29,7 @@ import qualified Data.Vector as V
 
 import Data.VectorSpace hiding (magnitude)
 
+import qualified Test.QuickCheck as QC
 
 
 -- | IntMap instances
@@ -77,6 +78,7 @@ instance Normed (IM.IntMap (Complex Double)) where
   normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v
   normalize p v = v ./ toC (normP p v)
   normalize2 v = v ./ toC (norm2 v)
+
 
 
 
@@ -132,6 +134,20 @@ instance Set SpVector where
   
 instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
+
+
+nArb = 100
+
+instance QC.Arbitrary (SpVector Double) where
+  arbitrary = SV nArb <$> ixv `QC.suchThat` (isNz . sum) where
+    ixv = do
+      let i_ = [0 .. nArb-1]
+      v_ <- QC.vector nArb
+      return $ IM.fromList (zip i_ v_)
+
+
+
+
 
 
 

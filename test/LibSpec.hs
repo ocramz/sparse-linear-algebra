@@ -31,7 +31,7 @@ import Control.Monad.State.Strict (execState)
 -- import qualified System.Random.MWC.Distributions as MWC
        
 import Test.Hspec
--- import Test.Hspec.QuickCheck
+import Test.Hspec.QuickCheck
 
 
 
@@ -46,8 +46,10 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : library" $ do
     -- prop "subtraction is cancellative" $ \(x :: SpVector Double) ->
     --   x ^-^ x `shouldBe` zero
-    it "dot : inner product" $
-      tv0 `dot` tv0 `shouldBe` 61
+    it "<.> : inner product" $
+      tv0 <.> tv0 `shouldBe` 61
+    prop "<.> : inner product (Arbitrary)" $
+      \(v :: SpVector Double) -> let v' = normalize2 v in almostOne (v' <.> v')      
     it "transposeSM : sparse matrix transpose" $
       transposeSM m1 `shouldBe` m1t
     it "matVec : matrix-vector product" $
