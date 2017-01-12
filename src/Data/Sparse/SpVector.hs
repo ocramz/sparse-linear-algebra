@@ -137,9 +137,9 @@ instance Foldable SpVector where
 
 
 nArb = 100
-
+-- | An Arbitrary SpVector such that at least one entry is nonzero
 instance QC.Arbitrary (SpVector Double) where
-  arbitrary = SV nArb <$> ixv `QC.suchThat` (isNz . sum) where
+  arbitrary = SV nArb <$> ixv `QC.suchThat` any isNz where
     ixv = do
       let i_ = [0 .. nArb-1]
       v_ <- QC.vector nArb

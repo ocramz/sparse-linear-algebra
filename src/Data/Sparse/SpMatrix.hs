@@ -771,9 +771,9 @@ a #~#^ b = a #~# transpose b
 -- ** Partial inner product
 -- | Contract row `i` of A with column `j` of B up to an index `n`, i.e. summing over repeated indices: 
 -- Aij Bjk , for j in [0 .. n] 
-contractSub :: Num a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> Int -> a
+contractSub :: Elt a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> Int -> a
 contractSub a b i j n
   | ncols a == nrows b &&
     isValidIxSM a (i,j) &&
-    n <= ncols a = sum $ map (\i' -> a@@!(i,i')*b@@!(i',j)) [0 .. n]
+    n <= ncols a = sum $ map (\i' -> conj (a@@!(i,i'))*b@@!(i',j)) [0 .. n]
   | otherwise = error "contractSub : n must be <= i"

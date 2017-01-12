@@ -338,7 +338,7 @@ SVD of A, Golub-Kahan method
 -- * Cholesky factorization
 
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
-chol :: (Epsilon a, Floating a) => SpMatrix a -> SpMatrix a
+chol :: (Epsilon a, Floating a, Elt a) => SpMatrix a -> SpMatrix a
 chol aa = lfin where
   (_, lfin) = execState (modifyUntil q cholUpd) cholInit
   q (i, _) = i == nrows aa              -- stopping criterion
@@ -380,7 +380,7 @@ chol aa = lfin where
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 -- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
-lu :: (VectorSpace (SpVector t), Epsilon t, Fractional t) =>
+lu :: (VectorSpace (SpVector t), Epsilon t, Fractional t, Elt t) =>
      SpMatrix t -> (SpMatrix t, SpMatrix t)
 lu aa = (lf, ufin) where
   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
