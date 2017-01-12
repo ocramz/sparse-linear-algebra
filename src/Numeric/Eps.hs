@@ -80,8 +80,8 @@ withDefault q d x | q x = d
                   | otherwise = x
 
 roundZero, roundOne, roundZeroOne :: Epsilon a => a -> a
-roundZero = withDefault almostZero (fromIntegral 0)
-roundOne = withDefault almostOne (fromIntegral 1)
+roundZero = withDefault almostZero (fromIntegral (0 :: Int))
+roundOne = withDefault almostOne (fromIntegral (1 :: Int))
 
 with2Defaults :: (t -> Bool) -> (t -> Bool) -> t -> t -> t -> t
 with2Defaults q1 q2 d1 d2 x | q1 x = d1
@@ -89,4 +89,4 @@ with2Defaults q1 q2 d1 d2 x | q1 x = d1
                             | otherwise = x
 
 -- | Round to respectively 0 or 1
-roundZeroOne = with2Defaults almostZero almostOne (fromIntegral 0) (fromIntegral 1)
+roundZeroOne = with2Defaults almostZero almostOne (fromIntegral (0 :: Int)) (fromIntegral (1 :: Int))

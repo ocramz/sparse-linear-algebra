@@ -47,6 +47,7 @@ data SpMatrix a = SM {smDim :: {-# UNPACK #-} !(Rows, Cols),
                 deriving Eq
 
 
+
 sizeStr :: (FDSize f ~ (a1, a2), Sparse f a, Show a2, Show a1) => f a -> String
 sizeStr sm =
   unwords ["(",show nr,"rows,",show nc,"columns ) ,",show nz,"NZ ( sparsity",show sy,")"] where
@@ -199,6 +200,17 @@ fromListSM' iix sm = foldl ins sm iix where
 -- | Create new SpMatrix using data from list (row, col, value)
 fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
 fromListSM (m,n) iix = fromListSM' iix (zeroSM m n)
+
+
+mkSpMR :: Foldable t =>
+   (Int, Int) -> t (IxRow, IxCol, Double) -> SpMatrix Double
+mkSpMR d ixv = fromListSM d ixv :: SpMatrix Double
+
+mkSpMC :: Foldable t =>
+   (Int, Int) -> t (IxRow, IxCol, Complex Double) -> SpMatrix (Complex Double)
+mkSpMC d ixv = fromListSM d ixv :: SpMatrix (Complex Double)
+
+
 
 
 -- | Create new SpMatrix assuming contiguous, 0-based indexing of elements

@@ -134,8 +134,10 @@ checkLinSolve method aa b x x0r =
     (linSolve0 method aa b x0r)
 
 checkLinSolveR
-  :: LinSolveMethod
-     -> SpMatrix Double -> SpVector Double -> SpVector Double -> Bool
+  :: LinSolveMethod ->
+     SpMatrix Double ->       -- ^ operator
+     SpVector Double ->       -- ^ r.h.s
+     SpVector Double -> Bool  -- ^ candidate solution
 checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
   x0r = mkSpVR n $ replicate n 0.1
   n = ncols aa

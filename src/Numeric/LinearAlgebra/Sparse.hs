@@ -1,6 +1,12 @@
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
 {-# language NoMonomorphismRestriction #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
+{-|
+
+This module exposes the high-level functionality of the library.
+
+-}
+
 module Numeric.LinearAlgebra.Sparse
        (
          -- * Matrix factorizations
@@ -20,7 +26,7 @@ module Numeric.LinearAlgebra.Sparse
          -- eigRayleigh,
          -- * Linear solvers
          -- ** Iterative methods
-         linSolve0, LinSolveMethod(..),
+         linSolve0, LinSolveMethod(..), (<\>),
          -- pinv,
          -- ** Direct methods
          luSolve, triLowerSolve, triUpperSolve,
@@ -87,9 +93,8 @@ sparsifySV = filterSV isNz
 -- * Matrix condition number
 
 -- |uses the R matrix from the QR factorization
--- conditionNumberSM :: (Epsilon a, RealFloat a) => SpMatrix a -> a
--- conditionNumberSM :: (Elt t, MatrixRing (SpMatrix t), Epsilon t, Ord t, Floating t) =>
---      SpMatrix t -> t
+conditionNumberSM :: (Elt t, MatrixRing (SpMatrix t), Epsilon t, Ord t, Floating t) =>
+     SpMatrix t -> t
 conditionNumberSM m | nearZero lmin = error "Infinite condition number : rank-deficient system"
                     | otherwise = kappa where
   kappa = lmax / lmin
@@ -107,7 +112,7 @@ conditionNumberSM m | nearZero lmin = error "Infinite condition number : rank-de
 -- * Householder transformation
 
 hhMat :: Num a => a -> SpVector a -> SpMatrix a
-hhMat beta x = eye n ^-^ scale beta (x >< x) where
+hhMat beta x = eye n ^-^ beta `scale` (x >< x) where
   n = dim x
 
 
@@ -129,33 +134,31 @@ hhRefl = hhMat (fromInteger 2)
 
 -- * Givens rotation matrix
 
--- | Stable hypotenuse calculation
-hypot :: Floating a => a -> a -> a
-hypot x y = abs x * (sqrt (1 + (y/x)**2))
 
 
-class Signum x where
-  type SigFloat x :: *
-  signum' :: x -> SigFloat x
 
-instance Signum Double where {type SigFloat Double = Double; signum' = signum}
-instance Signum (Complex Double) where {type SigFloat (Complex Double) = Double; signum' = signum . magnitude}
+-- class Signum x where
+--   type SigFloat x :: *
+--   signum' :: x -> SigFloat x
+
+-- instance Signum Double where {type SigFloat Double = Double; signum' = signum}
+-- instance Signum (Complex Double) where {type SigFloat (Complex Double) = Double; signum' = signum . magnitude}
 
 
--- -- | Givens coefficients (using stable algorithm shown in  Anderson, Edward (4 December 2000). "Discontinuous Plane Rotations and the Symmetric Eigenvalue Problem". LAPACK Working Note)
--- -- givensCoef0 :: (Ord b, Floating a, Eq a) => (a -> b) -> a -> a -> (a, a, a)
--- givensCoef0
---   :: (Signum t, Ord a, Floating t, Eq t) =>
---      (t -> a) -> t -> t -> (t, t, t)
-givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
-  | b==0 = (signum' a, 0, abs a)
-  | a==0 = (0, signum' b, abs b)
-  | ff a > ff b = let t = b/a
-                      u = signum' a * abs ( sqrt (1 + t**2))
-                  in (1/u, - t/u, a*u)
-  | otherwise = let t = a/b
-                    u = signum' b * abs ( sqrt (1 + t**2))
-                in (t/u, - 1/u, b*u)
+-- -- -- | Givens coefficients (using stable algorithm shown in  Anderson, Edward (4 December 2000). "Discontinuous Plane Rotations and the Symmetric Eigenvalue Problem". LAPACK Working Note)
+-- -- -- givensCoef0 :: (Ord b, Floating a, Eq a) => (a -> b) -> a -> a -> (a, a, a)
+-- -- givensCoef0
+-- --   :: (Signum t, Ord a, Floating t, Eq t) =>
+-- --      (t -> a) -> t -> t -> (t, t, t)
+-- givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
+--   | b==0 = (signum' a, 0, abs a)
+--   | a==0 = (0, signum' b, abs b)
+--   | ff a > ff b = let t = b/a
+--                       u = signum' a * abs ( sqrt (1 + t**2))
+--                   in (1/u, - t/u, a*u)
+--   | otherwise = let t = a/b
+--                     u = signum' b * abs ( sqrt (1 + t**2))
+--                 in (t/u, - 1/u, b*u)
 
 -- -- | Givens coefficients, real-valued
 -- givensCoef :: (Floating a, Ord a) => a -> a -> (a, a, a)
@@ -165,13 +168,16 @@ givensCoef0 ff a b  -- returns (c, s, r) where r = norm (a, b)
 -- givensCoefC :: RealFloat a => Complex a -> Complex a -> (Complex a, Complex a, Complex a)
 -- givensCoefC = givensCoef0 magnitude
 
+-- | Givens coefficients
 givensCoef :: (Elt t, Floating t) => t -> t -> (t, t, t)
 givensCoef a b = (c0/d, s0/d, d) where
   c0 = conj a
   s0 = - conj b
   d = hypot c0 s0 -- sqrt $ (norm1 c0)**2 + (norm1 s0)**2
 
-
+-- | Stable hypotenuse calculation
+hypot :: Floating a => a -> a -> a
+hypot x y = abs x * (sqrt (1 + (y/x)**2))
 
                    
 
@@ -219,13 +225,18 @@ firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
 
 
 
+tm0c :: SpMatrix (Complex Double)
+tm0c = fromListDenseSM 3 [1,2,3,4,5,6,7,8,9]
+
+
 
 
 -- * QR decomposition
 
 
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
--- qr :: (Epsilon a, RealFloat a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, Floating a) =>
+     SpMatrix a -> (SpMatrix a, SpMatrix a)
 qr mm = (transpose qt, r) where
   (qt, r, _) = execState (modifyUntil qf stepf) gminit
   qf (_, _, iis) = null iis
@@ -251,7 +262,8 @@ qr mm = (transpose qt, r) where
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
--- eigsQR :: (Epsilon a, RealFloat a) => Int -> SpMatrix a -> SpVector a
+eigsQR :: (Elt a, Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon (Scalar (SpVector a)), Epsilon a, Floating (Scalar (SpVector a)), Floating a) =>
+     Int -> SpMatrix a -> SpVector a
 eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
   eigsStep mm = q #~^# (m ## q) -- r #~# q
    where
@@ -260,6 +272,7 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
     f [m1, m2] = let dm1 = extractDiagDense m1
                      dm2 = extractDiagDense m2
                  in nearZero $ norm2' (dm1 ^-^ dm2)
+    f _ = False
 
 
 
@@ -291,8 +304,8 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
 
 -- (Golub & Van Loan, Alg. 5.1.1, function `house`)
 -- hhV :: (Epsilon a, Real a, Floating a) => SpVector a -> (SpVector a, a)
+hhV :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Ord t, Floating t) => SpVector t -> (SpVector t, t)
 hhV x = (v, beta) where
-  n = dim x
   tx = tailSV x
   sigma = tx <.> tx
   vtemp = singletonSV 1 `concatSV` tx
@@ -301,7 +314,7 @@ hhV x = (v, beta) where
                               xh = headSV x
                               vh | xh <= 1 = xh - mu
                                  | otherwise = - sigma / (xh + mu)
-                              vnew = (1 / vh) .* insertSpVector 0 vh vtemp     
+                              vnew = (1 / vh) `scale` insertSpVector 0 vh vtemp     
                           in (vnew, 2 * xh**2 / (sigma + vh**2))
 
                          
@@ -530,7 +543,8 @@ diagPartitions aa = (e,d,f) where
 -- ** Incomplete LU
 
 -- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
--- ilu0 :: (Epsilon a, Real a, Fractional a, AdditiveGroup a) => SpMatrix a -> (SpMatrix a, SpMatrix a)
+ilu0 :: (Elt a, VectorSpace (SpVector a), Epsilon a) =>
+   SpMatrix a -> (SpMatrix a, SpMatrix a)
 ilu0 aa = (lh, uh) where
   (l, u) = lu aa
   lh = sparsifyLU l aa
@@ -542,7 +556,8 @@ ilu0 aa = (lh, uh) where
 -- ** SSOR
 
 -- | `mSsor aa omega` : if `omega = 1` it returns the symmetric Gauss-Seidel preconditioner. When ω = 1, the SOR reduces to Gauss-Seidel; when ω > 1 and ω < 1, it corresponds to over-relaxation and under-relaxation, respectively.
--- mSsor :: Fractional a => SpMatrix a -> a -> (SpMatrix a, SpMatrix a)
+mSsor :: (MatrixRing (SpMatrix b), Fractional b) =>
+     SpMatrix b -> b -> (SpMatrix b, SpMatrix b)
 mSsor aa omega = (l, r) where
   (e, d, f) = diagPartitions aa
   n = nrows e
@@ -568,8 +583,7 @@ luSolve ll uu b
   | otherwise = error "luSolve : factors must be triangular matrices" 
 
 -- triLowerSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
-triLowerSolve :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Elt t, Fractional t) =>
-     SpMatrix t -> SpVector t -> SpVector t
+triLowerSolve :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Elt t) => SpMatrix t -> SpVector t -> SpVector t
 triLowerSolve ll b = sparsifySV v where
   (v, _) = execState (modifyUntil q lStep) lInit where
   q (_, i) = i == dim b
@@ -586,9 +600,9 @@ triLowerSolve ll b = sparsifySV v where
     ww0 = insertSpVector 0 w0 $ zeroSV (dim b)  
 
 -- | NB in the computation of `xi` we must rebalance the subrow indices because `dropSV` does that too, in order to take the inner product with consistent index pairs
--- triUpperSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
-triUpperSolve :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Elt t, Fractional t) =>
-     SpMatrix t -> SpVector t -> SpVector t
+triUpperSolve ::
+  (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Elt t) =>
+  SpMatrix t -> SpVector t -> SpVector t
 triUpperSolve uu w = sparsifySV x where
   (x, _) = execState (modifyUntil q uStep) uInit
   q (_, i) = i == (- 1)
@@ -643,7 +657,7 @@ gmres aa b = qa' #> yhat where
 
 
 
--- *** Left-preconditioning
+
 
 
 
@@ -652,14 +666,6 @@ gmres aa b = qa' #> yhat where
 
 
 -- ** CGNE
-
--- cgneStep :: (RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> CGNE a -> CGNE a
-cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
-  alphai = (r `dot` r) / (p `dot` p)
-  x1 = x ^+^ (alphai .* p)
-  r1 = r ^-^ (alphai .* (aa #> p))
-  beta = (r1 `dot` r1) / (r `dot` r)
-  p1 = transposeSM aa #> r ^+^ (beta .* p)
 
 data CGNE a =
   CGNE {_xCgne , _rCgne, _pCgne :: SpVector a} deriving Eq
@@ -673,34 +679,15 @@ cgne aa b x0 = execState (untilConverged _xCgne (cgneStep aa)) cgneInit where
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
   p0 = transposeSM aa #> r0
   cgneInit = CGNE x0 r0 p0
+  cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
+    alphai = (r `dot` r) / (p `dot` p)
+    x1 = x ^+^ (alphai .* p)
+    r1 = r ^-^ (alphai .* (aa #> p))
+    beta = (r1 `dot` r1) / (r `dot` r)
+    p1 = transposeSM aa #> r ^+^ (beta .* p)
 
 
 -- ** TFQMR
-
--- | one step of TFQMR
--- tfqmrStep :: Floating a => SpMatrix a -> SpVector a -> TFQMR a -> TFQMR a
-tfqmrStep aa r0hat (TFQMR x w u v d m tau theta eta rho alpha) =
-  TFQMR x1 w1 u1 v1 d1 (m+1) tau1 theta1 eta1 rho1 alpha1
-  where
-  w1 = w ^-^ (alpha .* (aa #> u))
-  d1 = u ^+^ ((theta**2/alpha*eta) .* d)
-  theta1 = norm2' w1 / tau
-  c = recip $ sqrt (1 + theta1**2)
-  tau1 = tau * theta1 * c
-  eta1 = c**2 * alpha
-  x1 = x^+^ (eta1 .* d1)
-  (alpha1, u1, rho1, v1)
-    | even m = let
-                   alpha' = rho / (v `dot` r0hat)
-                   u' = u ^-^ (alpha' .* v)
-               in
-                   (alpha', u', rho, v)
-    | otherwise = let
-                   rho' = w1 `dot` r0hat
-                   beta = rho'/rho
-                   u' = w1 ^+^ (beta .* u)
-                   v' = (aa #> u') ^+^ (beta .* (aa #> u ^+^ (beta .* v)) )
-                  in (alpha, u', rho', v')
 
 -- tfqmr :: (Epsilon a, Floating a) => SpMatrix a -> SpVector a -> SpVector a -> TFQMR a
 tfqmr aa b x0 = execState (untilConverged _xTfq (tfqmrStep aa r0)) tfqmrInit where
@@ -718,6 +705,28 @@ tfqmr aa b x0 = execState (untilConverged _xTfq (tfqmrStep aa r0)) tfqmrInit whe
   theta0 = 0
   eta0 = 0
   tfqmrInit = TFQMR x0 w0 u0 v0 d0 m tau0 theta0 eta0 rho0 alpha0
+  tfqmrStep aa r0hat (TFQMR x w u v d m tau theta eta rho alpha) =
+    TFQMR x1 w1 u1 v1 d1 (m+1) tau1 theta1 eta1 rho1 alpha1
+    where
+    w1 = w ^-^ (alpha .* (aa #> u))
+    d1 = u ^+^ ((theta**2/alpha*eta) .* d)
+    theta1 = norm2' w1 / tau
+    c = recip $ sqrt (1 + theta1**2)
+    tau1 = tau * theta1 * c
+    eta1 = c**2 * alpha
+    x1 = x^+^ (eta1 .* d1)
+    (alpha1, u1, rho1, v1)
+      | even m = let
+                     alpha' = rho / (v `dot` r0hat)
+                     u' = u ^-^ (alpha' .* v)
+                 in
+                     (alpha', u', rho, v)
+      | otherwise = let
+                     rho' = w1 `dot` r0hat
+                     beta = rho'/rho
+                     u' = w1 ^+^ (beta .* u)
+                     v' = (aa #> u') ^+^ (beta .* (aa #> u ^+^ (beta .* v)) )
+                    in (alpha, u', rho', v')
 
 data TFQMR a =
   TFQMR { _xTfq, _wTfq, _uTfq, _vTfq, _dTfq :: SpVector a,
@@ -732,18 +741,6 @@ instance Show a => Show (TFQMR a) where
 
 -- ** BCG
 
--- | one step of BCG
--- bcgStep :: Fractional a => SpMatrix a -> BCG a -> BCG a
-bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
-  aap = aa #> p
-  alpha = (r `dot` rhat) / (aap `dot` phat)
-  x1 = x ^+^ (alpha .* p)
-  r1 = r ^-^ (alpha .* aap)
-  rhat1 = rhat ^-^ (alpha .* (transposeSM aa #> phat))
-  beta = (r1 `dot` rhat1) / (r `dot` rhat)
-  p1 = r1 ^+^ (beta .* p)
-  phat1 = rhat1 ^+^ (beta .* phat)
-
 data BCG a =
   BCG { _xBcg, _rBcg, _rHatBcg, _pBcg, _pHatBcg :: SpVector a } deriving Eq
 
@@ -754,6 +751,15 @@ bcg aa b x0 = execState (untilConverged _xBcg (bcgStep aa)) bcgInit where
   p0 = r0
   p0hat = r0
   bcgInit = BCG x0 r0 r0hat p0 p0hat
+  bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
+    aap = aa #> p
+    alpha = (r `dot` rhat) / (aap `dot` phat)
+    x1 = x ^+^ (alpha .* p)
+    r1 = r ^-^ (alpha .* aap)
+    rhat1 = rhat ^-^ (alpha .* (transposeSM aa #> phat))
+    beta = (r1 `dot` rhat1) / (r `dot` rhat)
+    p1 = r1 ^+^ (beta .* p)
+    phat1 = rhat1 ^+^ (beta .* phat)
 
 instance Show a => Show (BCG a) where
   show (BCG x r rhat p phat) = "x = " ++ show x ++ "\n" ++
@@ -764,19 +770,6 @@ instance Show a => Show (BCG a) where
 
 
 -- ** CGS
-
--- | one step of CGS
--- cgsStep :: Fractional a => SpMatrix a -> SpVector a -> CGS a -> CGS a
-cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
-  where
-  aap = aa #> p
-  alphaj = (r `dot` rhat) / (aap `dot` rhat)
-  q = u ^-^ (alphaj .* aap)
-  xj1 = x ^+^ (alphaj .* (u ^+^ q))         -- updated solution
-  rj1 = r ^-^ (alphaj .* (aa #> (u ^+^ q))) -- updated residual
-  betaj = (rj1 `dot` rhat) / (r `dot` rhat)
-  uj1 = rj1 ^+^ (betaj .* q)
-  pj1 = uj1 ^+^ (betaj .* (q ^+^ (betaj .* p)))
 
 data CGS a = CGS { _x, _r, _p, _u :: SpVector a} deriving Eq
 
@@ -789,6 +782,16 @@ cgs aa b x0 rhat =
   p0 = r0
   u0 = r0
   cgsInit = CGS x0 r0 p0 u0
+  cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
+    where
+    aap = aa #> p
+    alphaj = (r `dot` rhat) / (aap `dot` rhat)
+    q = u ^-^ (alphaj .* aap)
+    xj1 = x ^+^ (alphaj .* (u ^+^ q))         -- updated solution
+    rj1 = r ^-^ (alphaj .* (aa #> (u ^+^ q))) -- updated residual
+    betaj = (rj1 `dot` rhat) / (r `dot` rhat)
+    uj1 = rj1 ^+^ (betaj .* q)
+    pj1 = uj1 ^+^ (betaj .* (q ^+^ (betaj .* p)))
 
 
 instance (Show a) => Show (CGS a) where
@@ -810,16 +813,7 @@ instance (Show a) => Show (CGS a) where
 
 -- | one step of BiCGSTAB
 -- bicgstabStep :: Fractional a => SpMatrix a -> SpVector a -> BICGSTAB a -> BICGSTAB a
-bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
-  aap = aa #> p
-  alphaj = (r `dot` r0hat) / (aap `dot` r0hat)
-  sj = r ^-^ (alphaj .* aap)
-  aasj = aa #> sj
-  omegaj = (aasj `dot` sj) / (aasj `dot` aasj)
-  xj1 = x ^+^ (alphaj .* p) ^+^ (omegaj .* sj)    -- updated solution
-  rj1 = sj ^-^ (omegaj .* aasj)
-  betaj = (rj1 `dot` r0hat)/(r `dot` r0hat) * alphaj / omegaj
-  pj1 = rj1 ^+^ (betaj .* (p ^-^ (omegaj .* aap)))
+
 
 data BICGSTAB a =
   BICGSTAB { _xBicgstab, _rBicgstab, _pBicgstab :: SpVector a} deriving Eq
@@ -833,6 +827,16 @@ bicgstab aa b x0 r0hat =
    r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
    p0 = r0
    bicgsInit = BICGSTAB x0 r0 p0
+   bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
+     aap = aa #> p
+     alphaj = (r `dot` r0hat) / (aap `dot` r0hat)
+     sj = r ^-^ (alphaj .* aap)
+     aasj = aa #> sj
+     omegaj = (aasj `dot` sj) / (aasj `dot` aasj)
+     xj1 = x ^+^ (alphaj .* p) ^+^ (omegaj .* sj)    -- updated solution
+     rj1 = sj ^-^ (omegaj .* aasj)
+     betaj = (rj1 `dot` r0hat)/(r `dot` r0hat) * alphaj / omegaj
+     pj1 = rj1 ^+^ (betaj .* (p ^-^ (omegaj .* aap)))
 
 instance Show a => Show (BICGSTAB a) where
   show (BICGSTAB x r p) = "x = " ++ show x ++ "\n" ++
