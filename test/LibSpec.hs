@@ -422,14 +422,25 @@ tm9 = fromListSM (4, 3) [(0,0,pi), (1,1, 3), (2,2,4), (3,2, 1), (3,1, 5)]
 
 
 tvc0, tvc1, tvc2, tvc3 :: SpVector (Complex Double)
-tvc0 = fromListSV 2 [(1,2 :+ 1)]
-tvc1 = fromListSV 2 [(1, 2 :+ (-1))] 
+tvc0 = fromListSV 2 [(0,0), (1,2 :+ 1)]
+tvc1 = fromListSV 2 [(0,0), (1, 2 :+ (-1))] 
 
 
--- dot([1+i, 2-i], [3-2i, 1+i])
-tvc2 = fromListDenseSV 2 [(1 :+ 1),(2 :+ (-1))]
-tvc3 = fromListDenseSV 2 [(3 :+ (-2)), (1 :+ 1)]
+-- dot([1+i, 2-i], [3-2i, 1+i]) = 2 - 2i
+tvc2 = fromListDenseSV 2 [1 :+ 1,  2 :+ (-1)]
+tvc3 = fromListDenseSV 2 [3 :+ (-2), 1 :+ 1 ]
 
+
+
+newtype C a = C {unC :: Complex a} deriving Eq
+instance (Num a, Ord a, Show a) => Show (C a) where
+  show (C (r :+ i)) = unwords [show r, s, show i' ++ "j"] where
+    s | signum i >= 0 = "+"
+      | otherwise = "-"
+    i' = abs i
+
+c0 = C $ 1 :+ (-2)
+c1 = C $ 3 :+ 2
 
 
 -- l0 = [1,2,4,5,8]
