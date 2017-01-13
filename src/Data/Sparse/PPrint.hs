@@ -9,6 +9,8 @@
 -----------------------------------------------------------------------------
 module Data.Sparse.PPrint where
 
+import Data.Complex
+
 class PrintDense a where
   prd :: a -> IO ()
 
@@ -29,5 +31,5 @@ instance (Num a, Ord a, Show a) => Show (C a) where
       | otherwise = "-"
     i' = abs i
 
-c0 = C $ 1 :+ (-2)
-c1 = C $ 3 :+ 2
+-- c0 = C $ 1 :+ (-2)
+-- c1 = C $ 3 :+ 2

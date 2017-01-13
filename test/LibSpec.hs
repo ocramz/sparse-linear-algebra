@@ -43,25 +43,27 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  describe "Numeric.LinearAlgebra.Sparse : library" $ do
+  describe "Numeric.LinearAlgebra.Sparse : Library" $ do
     -- prop "subtraction is cancellative" $ \(x :: SpVector Double) ->
     --   x ^-^ x `shouldBe` zero
     it "<.> : inner product (Real)" $
       tv0 <.> tv0 `shouldBe` 61
     it "<.> : inner product (Complex)" $
-      tvc0 <.> tvc1 `shouldBe` 5 :+ 0
+      tvc0 <.> tvc0 `shouldBe` 5 :+ 0
     it "<.> : inner product (Complex)" $
       tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
-    prop "<.> : inner product (Arbitrary, Double)" $
+    prop "<.> : inner product (Real, Arbitrary)" $
       \(v :: SpVector Double) -> let v' = normalize2 v in almostOne (v' <.> v')      
     it "transposeSM : sparse matrix transpose" $
       transposeSM m1 `shouldBe` m1t
-    it "matVec : matrix-vector product" $
+    it "(#>) : matrix-vector product (Real)" $
       nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
-    it "vecMat : vector-matrix product" $
+    it "(<#) : vector-matrix product (Real)" $
       nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True  
-    it "matMat : matrix-matrix product" $
-      (m1 `matMat` m2) `shouldBe` m1m2
+    it "(##) : matrix-matrix product (Real)" $
+      (m1 ## m2) `shouldBe` m1m2
+    it "(##) : matrix-matrix product (Complex)" $
+      (aa3c ## aa3c) `shouldBe` aa3cx 
     it "eye : identity matrix" $
       infoSM (eye 10) `shouldBe` SMInfo 10 0.1
     it "insertCol : insert a column in a SpMatrix" $
@@ -84,7 +86,7 @@ spec = do
       execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
       nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True 
-  describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real-valued)" $ do
+  describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
     -- it "TFQMR (2 x 2 dense)" $
     it "GMRES (2 x 2 dense)" $
       checkLinSolveR GMRES_ aa0 b0 x0true `shouldBe` True
@@ -104,25 +106,28 @@ spec = do
       checkLinSolveR CGS_ aa0 b0 x0true `shouldBe` True
     it "CGS (3 x 3 sparse, SPD)" $ 
       checkLinSolveR CGS_ aa2 b2 x2 `shouldBe` True
-  describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers" $ 
+  describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
     it "luSolve (4 x 4 sparse)" $ 
       checkLuSolve aa1 b1 `shouldBe` True         
-  describe "Numeric.LinearAlgebra.Sparse : QR decomposition" $ do    
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do    
     it "qr (4 x 4 sparse)" $
       checkQr tm4 `shouldBe` True
     it "qr (3 x 3 dense)" $ 
       checkQr tm2 `shouldBe` True
     it "qr (10 x 10 sparse)" $
-      checkQr tm7 `shouldBe` True  
-  describe "Numeric.LinearAlgebra.Sparse : LU decomposition" $ do
+      checkQr tm7 `shouldBe` True
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
+    it "qr (2 x 2 dense)" $
+      checkQr aa3cx `shouldBe` True
+  describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
     it "lu (4 x 4 dense)" $
       checkLu tm6 `shouldBe` True
     it "lu (10 x 10 sparse)" $
       checkLu tm7 `shouldBe` True
-  describe "Numeric.LinearAlgebra.Sparse : Cholesky decomposition (SPD matrices)" $ 
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, SPD)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 `shouldBe` True
-  describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration, early breakdown detection" $ do      
+  describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration, early breakdown detection (Real)" $ do      
     it "arnoldi (4 x 4 dense)" $
       checkArnoldi tm6 4 `shouldBe` True
     it "arnoldi (5 x 5 sparse)" $
@@ -156,6 +161,14 @@ checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
   x0r = mkSpVC n $ replicate n (0.1 :+ 0.1)
   n = ncols aa
 
+
+
+{- Givens rotation-}
+
+checkGivens1 tm i j = (rij, nearZero rij) where
+  g = givens tm i j
+  r = g ## tm
+  rij = r @@ (i, j)
 
 
 {- QR-}
@@ -298,7 +311,18 @@ aa2c = fromListDenseSM 2 [3, -3, -2, 1]
 
 
 
--- Test data
+-- matlab : aa = [1, 2-j; 2+j, 1-j]
+aa3c, aa3cx :: SpMatrix (Complex Double)
+aa3c = fromListDenseSM 2 [1, 2 :+ 1, 2 :+ (-1), 1 :+ (-1)]
+
+-- matlab : aaxaa = aa * aa
+aa3cx = fromListDenseSM 2 [6, 5, 3 :+ (-4), 5:+ (-2)]
+
+
+
+
+
+
 
 {-
 matMat
@@ -420,7 +444,7 @@ tm9 = fromListSM (4, 3) [(0,0,pi), (1,1, 3), (2,2,4), (3,2, 1), (3,1, 5)]
 
 
 
-
+-- tvc0 <.> tvc1 = 5 
 tvc0, tvc1, tvc2, tvc3 :: SpVector (Complex Double)
 tvc0 = fromListSV 2 [(0,0), (1,2 :+ 1)]
 tvc1 = fromListSV 2 [(0,0), (1, 2 :+ (-1))] 
@@ -432,15 +456,7 @@ tvc3 = fromListDenseSV 2 [3 :+ (-2), 1 :+ 1 ]
 
 
 
-newtype C a = C {unC :: Complex a} deriving Eq
-instance (Num a, Ord a, Show a) => Show (C a) where
-  show (C (r :+ i)) = unwords [show r, s, show i' ++ "j"] where
-    s | signum i >= 0 = "+"
-      | otherwise = "-"
-    i' = abs i
 
-c0 = C $ 1 :+ (-2)
-c1 = C $ 3 :+ 2
 
 
 -- l0 = [1,2,4,5,8]

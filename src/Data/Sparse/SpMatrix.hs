@@ -719,8 +719,8 @@ instance MatrixRing (SpMatrix (Complex Double)) where
 
 
 -- matMat, (##) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
-matMatSD :: (InnerSpace (IM.IntMap a), s ~ Scalar (IM.IntMap a)) =>
-   SpMatrix a -> SpMatrix a -> SpMatrix s
+-- matMatSD :: (InnerSpace (IM.IntMap a), s ~ Scalar (IM.IntMap a)) =>
+--    SpMatrix a -> SpMatrix a -> SpMatrix s
 matMatSD m1 m2
   | c1 == r2 = matMatU m1 m2
   | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
@@ -729,8 +729,9 @@ matMatSD m1 m2
       -- matMatU ::  SpMatrix Double -> SpMatrix Double -> SpMatrix Double
       matMatU m1 m2 =
         SM (nrows m1, ncols m2) im where
-          im = fmap (\vm1 -> (`dot` vm1) <$> tim) (immSM m1)
+          im = fmap (\vm1 -> (`dott` vm1) <$> tim) (immSM m1)
           tim = transposeIM2 (immSM m2)
+          dott x y = sum $ liftI2 (*) x y    -- NB !! no complex conjugation
 
 
 matMat :: MatrixRing m => m -> m -> m
