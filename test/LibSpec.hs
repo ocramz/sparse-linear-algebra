@@ -46,9 +46,11 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : library" $ do
     -- prop "subtraction is cancellative" $ \(x :: SpVector Double) ->
     --   x ^-^ x `shouldBe` zero
-    it "<.> : inner product" $
+    it "<.> : inner product (Real)" $
       tv0 <.> tv0 `shouldBe` 61
-    prop "<.> : inner product (Arbitrary)" $
+    it "<.> : inner product (Complex)" $
+      tvc0 <.> tvc1 `shouldBe` 5 :+ 0
+    prop "<.> : inner product (Arbitrary, Double)" $
       \(v :: SpVector Double) -> let v' = normalize2 v in almostOne (v' <.> v')      
     it "transposeSM : sparse matrix transpose" $
       transposeSM m1 `shouldBe` m1t
@@ -413,6 +415,13 @@ tm9 :: SpMatrix Double
 tm9 = fromListSM (4, 3) [(0,0,pi), (1,1, 3), (2,2,4), (3,2, 1), (3,1, 5)]
 
 
+
+
+
+
+tvc0, tvc1 :: SpVector (Complex Double)
+tvc0 = fromListSV 2 [(1,2 :+ 1)]
+tvc1 = fromListSV 2 [(1, 2 :+ (-1))] 
 
 
 

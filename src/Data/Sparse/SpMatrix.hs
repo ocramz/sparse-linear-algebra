@@ -506,11 +506,7 @@ bwBoundsSM s = -- b
 
 
 
--- encode :: (Int, Int) -> (Rows, Cols) -> Int
--- encode (nr,_) (i,j) = i + (j * nr)
 
--- decode :: (Int, Int) -> Int -> (Rows, Cols)
--- decode (nr, _) ci = (r, c) where (c,r ) = quotRem ci nr
 
 
 
@@ -733,16 +729,19 @@ matMatSD m1 m2
       -- matMatU ::  SpMatrix Double -> SpMatrix Double -> SpMatrix Double
       matMatU m1 m2 =
         SM (nrows m1, ncols m2) im where
-          im = fmap (\vm1 -> (`dot` vm1) <$> transposeIM2 (immSM m2)) (immSM m1)
+          im = fmap (\vm1 -> (`dot` vm1) <$> tim) (immSM m1)
+          tim = transposeIM2 (immSM m2)
 
 
 matMat :: MatrixRing m => m -> m -> m
 matMat = (##)
 
-
-
+-- | A^T B
+(#^#) :: MatrixRing m => m -> m -> m
 a #^# b = transpose a ## b
 
+-- | A B^T
+(##^) :: MatrixRing m => m -> m -> m
 a ##^ b = a ## transpose b
 
 
@@ -759,13 +758,15 @@ matMatSparsified m1 m2 = sparsifySM $ m1 ## m2
 
 -- *** Sparsified matrix products of two matrices
 
--- -- | A^T B
--- (#^#) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
+-- | A^T B
+(#~#^) :: (MatrixRing (SpMatrix a), Epsilon a) =>
+     SpMatrix a -> SpMatrix a -> SpMatrix a
 a #~^# b = transpose a #~# b
 
 
--- -- | A B^T
--- -- (##^) :: Epsilon a => SpMatrix a -> SpMatrix a -> SpMatrix a
+-- | A B^T
+(#~^#) :: (MatrixRing (SpMatrix a), Epsilon a) =>
+     SpMatrix a -> SpMatrix a -> SpMatrix a
 a #~#^ b = a #~# transpose b
 
 
@@ -789,3 +790,17 @@ contractSub a b i j n
     isValidIxSM a (i,j) &&
     n <= ncols a = sum $ map (\i' -> conj (a@@!(i,i'))*b@@!(i',j)) [0 .. n]
   | otherwise = error "contractSub : n must be <= i"
+
+
+
+
+
+
+
+-- -- * Misc.utilities
+
+-- encode :: (Int, Int) -> (Rows, Cols) -> Int
+-- encode (nr,_) (i,j) = i + (j * nr)
+
+-- decode :: (Int, Int) -> Int -> (Rows, Cols)
+-- decode (nr, _) ci = (r, c) where (c,r ) = quotRem ci nr

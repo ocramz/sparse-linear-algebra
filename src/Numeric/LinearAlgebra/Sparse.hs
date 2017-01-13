@@ -179,11 +179,7 @@ givensCoef a b = (c0/d, s0/d, d) where
 hypot :: Floating a => a -> a -> a
 hypot x y = abs x * (sqrt (1 + (y/x)**2))
 
-                   
-
-
-
-
+                  
 {- |
 Givens method, row version: choose other row index i' s.t. i' is :
 * below the diagonal
@@ -200,7 +196,9 @@ NB: the current version is quite inefficient in that:
 givens :: (Elt a, Floating a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
 givens mm i j 
   | isValidIxSM mm (i,j) && nrows mm >= ncols mm =
-       fromListSM' [(i,i,c),(j,j,c),(j,i,-s),(i,j,s)] (eye (nrows mm))
+       -- fromListSM' [(i,i,c),(j,j,conj c),(j,i,- (conj s)),(i,j,s)] (eye (nrows mm))
+       fromListSM'
+         [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)] (eye (nrows mm))       
   | otherwise = error "givens : indices out of bounds"      
   where
     (c, s, _) = givensCoef a b
@@ -225,8 +223,28 @@ firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
 
 
 
-tm0c :: SpMatrix (Complex Double)
-tm0c = fromListDenseSM 3 [1,2,3,4,5,6,7,8,9]
+checkGivens1 tm i j = (rij, nearZero rij) where
+  g = givens tm i j
+  r = g ## tm
+  rij = r @@ (i, j)
+
+
+-- matlab : aa = [1, 2-j; 2+j, 1-j]
+aa, aax, aa2, aa2x :: SpMatrix (Complex Double)
+aa = fromListDenseSM 2 [1, 2 :+ 1, 2 :+ (-1), 1 :+ (-1)]
+
+-- matlab : aaxaa = aa * aa
+aax = fromListDenseSM 2 [6, 5, 3 :+ (-4), 5:+ (-2)]
+
+
+aa2 = fromListSM (2,2) [(1,0,2 :+ 1), (0,1,2:+ (-1))]
+aa2x = fromListSM (2,2) [(0,0,5),(1,1,5)]
+
+vc0, vc1 :: SpVector (Complex Double)
+vc0 = fromListSV 2 [(1,2 :+ 1)]
+vc1 = fromListSV 2 [(1, 2 :+ (-1))] 
+
+
 
 
 
