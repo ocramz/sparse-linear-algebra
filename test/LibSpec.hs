@@ -50,6 +50,8 @@ spec = do
       tv0 <.> tv0 `shouldBe` 61
     it "<.> : inner product (Complex)" $
       tvc0 <.> tvc1 `shouldBe` 5 :+ 0
+    it "<.> : inner product (Complex)" $
+      tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
     prop "<.> : inner product (Arbitrary, Double)" $
       \(v :: SpVector Double) -> let v' = normalize2 v in almostOne (v' <.> v')      
     it "transposeSM : sparse matrix transpose" $
@@ -419,12 +421,14 @@ tm9 = fromListSM (4, 3) [(0,0,pi), (1,1, 3), (2,2,4), (3,2, 1), (3,1, 5)]
 
 
 
-tvc0, tvc1 :: SpVector (Complex Double)
+tvc0, tvc1, tvc2, tvc3 :: SpVector (Complex Double)
 tvc0 = fromListSV 2 [(1,2 :+ 1)]
 tvc1 = fromListSV 2 [(1, 2 :+ (-1))] 
 
 
-
+-- dot([1+i, 2-i], [3-2i, 1+i])
+tvc2 = fromListDenseSV 2 [(1 :+ 1),(2 :+ (-1))]
+tvc3 = fromListDenseSV 2 [(3 :+ (-2)), (1 :+ 1)]
 
 
 

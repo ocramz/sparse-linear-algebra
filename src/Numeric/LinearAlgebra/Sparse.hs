@@ -240,13 +240,13 @@ aax = fromListDenseSM 2 [6, 5, 3 :+ (-4), 5:+ (-2)]
 aa2 = fromListSM (2,2) [(1,0,2 :+ 1), (0,1,2:+ (-1))]
 aa2x = fromListSM (2,2) [(0,0,5),(1,1,5)]
 
-vc0, vc1 :: SpVector (Complex Double)
+vc0, vc1, vc2, vc3 :: SpVector (Complex Double)
 vc0 = fromListSV 2 [(1,2 :+ 1)]
 vc1 = fromListSV 2 [(1, 2 :+ (-1))] 
 
-
-
-
+-- dot([1+i, 2-i], [3-2i, 1+i])
+vc2 = fromListDenseSV 2 [(1 :+ 1),(2 :+ (-1))]
+vc3 = fromListDenseSV 2 [(3 :+ (-2)), (1 :+ 1)]
 
 
 -- * QR decomposition
