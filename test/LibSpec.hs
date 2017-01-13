@@ -164,7 +164,8 @@ checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
 
 
 {- Givens rotation-}
-
+checkGivens1 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, Floating a) =>
+     SpMatrix a -> IxRow -> IxCol -> (a, Bool)
 checkGivens1 tm i j = (rij, nearZero rij) where
   g = givens tm i j
   r = g ## tm
@@ -173,8 +174,8 @@ checkGivens1 tm i j = (rij, nearZero rij) where
 
 {- QR-}
 
-
--- checkQr :: (Epsilon a, RealFloat a) => SpMatrix a -> Bool
+checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
+     SpMatrix a -> Bool
 checkQr a = c1 && c2 && c3 where
   (q, r) = qr a
   c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
@@ -184,8 +185,8 @@ checkQr a = c1 && c2 && c3 where
 
 
 {- LU -}
-
--- checkLu :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
+checkLu :: (Elt a, MatrixRing (SpMatrix a), VectorSpace (SpVector a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a) =>
+     SpMatrix a -> Bool
 checkLu a = c1 && c2 where
   (l, u) = lu a
   c1 = nearZero (normFrobenius ((l #~# u) ^-^ a))
@@ -195,7 +196,8 @@ checkLu a = c1 && c2 where
 
 {- Cholesky -}
 
--- checkChol :: (Epsilon a, Real a, Floating a) => SpMatrix a -> Bool
+checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
+     SpMatrix a -> Bool
 checkChol a = c1 && c2 where
   l = chol a
   c1 = nearZero $ normFrobenius ((l ##^ l) ^-^ a)
@@ -204,7 +206,10 @@ checkChol a = c1 && c2 where
 
 {- direct linear solver -}
 
--- checkLuSolve :: (Epsilon a, Real a, Floating a) => SpMatrix a -> SpVector a -> Bool
+checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
+      Epsilon (Magnitude (SpVector t)), Epsilon t) =>
+     SpMatrix t -> SpVector t -> Bool
 checkLuSolve amat rhs = nearZero (norm2Sq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
   where
      (lmat, umat) = lu amat

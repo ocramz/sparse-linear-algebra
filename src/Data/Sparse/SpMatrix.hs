@@ -789,7 +789,7 @@ contractSub :: Elt a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> Int -> a
 contractSub a b i j n
   | ncols a == nrows b &&
     isValidIxSM a (i,j) &&
-    n <= ncols a = sum $ map (\i' -> conj (a@@!(i,i'))*b@@!(i',j)) [0 .. n]
+    n <= ncols a = sum $ map (\i' -> (a@@!(i,i'))*b@@!(i',j)) [0 .. n]
   | otherwise = error "contractSub : n must be <= i"
 
 
