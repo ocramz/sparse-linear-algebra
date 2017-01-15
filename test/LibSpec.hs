@@ -93,10 +93,11 @@ spec = do
       \(PropSPD (m :: SpMatrix Double) v) -> prop_spd m v
     prop "prop_dot : (v <.> v) ~= 1 if ||v|| == 1" $
       \(v :: SpVector Double) -> prop_dot v
-    prop "prop_matMat1 : (A B)^T == (B^T A^T)" $
+    prop "prop_matMat1 : (A ## B)^T == (B^T ## A^T)" $
       \p@(PropMatMat (_ :: SpMatrix Double) _) -> prop_matMat1 p
-    prop "prop_matMat2 : transpose m ##^ m == m #^# transpose m" $
-      \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
+    prop "prop_matMat2 : M^T ##^ M == M #^# M^T" $
+    --   \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
+    -- prop "prop_linSolve GMRES" $ prop_linSolve GMRES_
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
     -- it "TFQMR (2 x 2 dense)" $
     it "GMRES (2 x 2 dense)" $
@@ -157,7 +158,8 @@ checkLinSolveR
   :: LinSolveMethod ->
      SpMatrix Double ->       -- ^ operator
      SpVector Double ->       -- ^ r.h.s
-     SpVector Double -> Bool  -- ^ candidate solution
+     SpVector Double ->       -- ^ candidate solution
+     Bool
 checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
   x0r = mkSpVR n $ replicate n 0.1
   n = ncols aa
@@ -171,6 +173,9 @@ checkLinSolveC
 checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
   x0r = mkSpVC n $ replicate n (0.1 :+ 0.1)
   n = ncols aa
+
+
+
 
 
 
@@ -251,6 +256,8 @@ sized2 f = sized $ \i -> sized $ \j -> f i j
 sized3 :: (Int -> Int -> Int -> Gen a) -> Gen a
 sized3 f = sized $ \i -> sized $ \j -> sized $ \k -> f i j k
 
+
+
 -- | An Arbitrary SpVector such that at least one entry is nonzero
 instance Arbitrary (SpVector Double) where
   arbitrary = sized genf `suchThat` any isNz where
@@ -260,12 +267,22 @@ instance Arbitrary (SpVector Double) where
 
 
 
+-- | An arbitrary square SpMatrox
+newtype PropMat0 a = PropMat0 (SpMatrix a) deriving (Eq, Show)
+instance Arbitrary (PropMat0 Double) where
+   arbitrary = sized genf where
+    genf n = do
+      i_ <- vectorOf n (choose (0, n-1))
+      j_ <- vectorOf n (choose (0, n-1))      
+      x <- vector n
+      return $ PropMat0 $ fromListSM (n, n) $ zip3 i_ j_ x
+      
 -- | An arbitrary SpMatrix
 newtype PropMat a = PropMat (SpMatrix a) deriving (Eq, Show)
 instance Arbitrary (PropMat Double) where
   arbitrary = sized2 genf where
     genf m n = do
-      let d1 = 2 * m
+      let d1 = floor (sqrt $ fromIntegral (m * n)) :: Int
       i1_ <- vectorOf d1 (choose (0, m-1))
       j1_ <- vectorOf d1 (choose (0, n-1))      
       x1 <- vector d1
@@ -297,7 +314,7 @@ data PropMatVec a = PropMatVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
 instance Arbitrary (PropMatVec Double) where
   arbitrary = sized genf where
     genf n = do
-      let d = 4 * n
+      let d = floor (fromIntegral n**2 / fromIntegral 2) :: Int
       i_ <- vectorOf d (choose (0, n-1))
       j_ <- vectorOf d (choose (0, n-1))      
       x <- vector d
@@ -306,6 +323,13 @@ instance Arbitrary (PropMatVec Double) where
       xv <- vector d           
       let v = fromListSV n $ zip iv xv 
       return $ PropMatVec m v
+
+
+
+
+
+
+
 
 
 
@@ -348,6 +372,15 @@ prop_matMat1 (PropMatMat a b) =
 
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
+
+
+-- | check a random linear system
+prop_linSolve :: LinSolveMethod -> PropMatVec Double -> Bool
+prop_linSolve method (PropMatVec aa x) = do
+  let
+    aai = aa ^+^ eye (nrows aa) -- for invertibility
+    b = aai #> x
+  checkLinSolveR method aai b x
 
 -- -- test data
 
@@ -466,7 +499,7 @@ m1m2' = fromListDenseSM 2 [10,15,6,13]
 m2m1' = fromListSM (3,3) [(0,0,19),(2,0,12),(0,2,3),(2,2,4)]
 
 -- transposeSM
-
+m1t :: SpMatrix Double
 m1t = fromListDenseSM 2 [1,2,3,4]
 
 
@@ -475,7 +508,7 @@ m1t = fromListDenseSM 2 [1,2,3,4]
 {-
 countSubdiagonalNZ
 -}
-
+m3 :: SpMatrix Double
 m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)] 
 
 
@@ -484,17 +517,18 @@ m3 = fromListSM (3,3) [(0,2,3),(2,0,4),(1,1,3)]
 
 
 {- eigenvalues -}
-
-
-aa3 = fromListDenseSM 3 [1,1,3,2,2,2,3,1,1] :: SpMatrix Double
+aa3 :: SpMatrix Double
+aa3 = fromListDenseSM 3 [1,1,3,2,2,2,3,1,1]
 
 b3 = mkSpVR 3 [1,1,1] :: SpVector Double
 
 
 
 -- aa4 : eigenvalues 1 (mult.=2) and -1
-aa4 = fromListDenseSM 3 [3,2,-2,2,2,-1,6,5,-4] :: SpMatrix Double
+aa4 :: SpMatrix Double
+aa4 = fromListDenseSM 3 [3,2,-2,2,2,-1,6,5,-4] 
 
+aa4c :: SpMatrix (Complex Double)
 aa4c = toC <$> aa4
 
 b4 = fromListDenseSV 3 [-3,-3,-3] :: SpVector Double
@@ -504,7 +538,7 @@ b4 = fromListDenseSV 3 [-3,-3,-3] :: SpVector Double
 
 
 
-tm0, tm1, tm2, tm3, tm4 :: SpMatrix Double
+tm0, tm1, tm2, tm3, tm4, tm5, tm6 :: SpMatrix Double
 tm0 = fromListSM (2,2) [(0,0,pi), (1,0,sqrt 2), (0,1, exp 1), (1,1,sqrt 5)]
 
 tv0, tv1 :: SpVector Double
@@ -516,25 +550,12 @@ tv1 = fromListSV 2 [(0,1)]
 
 tm1 = sparsifySM $ fromListDenseSM 3 [6,5,0,5,1,4,0,4,3]
 
--- tm1g1 = givens tm1 1 0
--- tm1a2 = tm1g1 ## tm1
-
--- tm1g2 = givens tm1a2 2 1
--- tm1a3 = tm1g2 ## tm1a2
-
--- tm1q = transposeSM (tm1g2 ## tm1g1)
-
-
 -- wp test matrix for QR decomposition via Givens rotation
 
 tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
 
-
 tm3 = transposeSM $ fromListDenseSM 3 [1 .. 9]
 
-tm3g1 = fromListDenseSM 3 [1, 0,0, 0,c,-s, 0, s, c]
-  where c= 0.4961
-        s = 0.8682
 
 
 --
@@ -542,11 +563,10 @@ tm3g1 = fromListDenseSM 3 [1, 0,0, 0,c,-s, 0, s, c]
 tm4 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
 
 
+tm5 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] 
 
-tm5 = fromListDenseSM 3 [2, -4, -4, -1, 6, -2, -2, 3, 8] :: SpMatrix Double
 
-
-tm6 = fromListDenseSM 4 [1,3,4,2,2,5,2,10,3,6,8,11,4,7,9,12] :: SpMatrix Double
+tm6 = fromListDenseSM 4 [1,3,4,2,2,5,2,10,3,6,8,11,4,7,9,12] 
 
 tm7 :: SpMatrix Double
 tm7 = a ^+^ b ^+^ c where

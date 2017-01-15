@@ -48,6 +48,7 @@ library
                      , mwc-random
                      , vector
                      , vector-algorithms
+                     , QuickCheck == 2.8.2
                      -- , monad-par
 
 
