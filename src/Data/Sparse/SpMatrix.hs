@@ -26,7 +26,6 @@ import Data.Maybe
 
 import Data.VectorSpace
 
-import qualified Test.QuickCheck as QC
 
 -- *
 
@@ -66,51 +65,11 @@ instance Functor SpMatrix where
 -- instance Foldable SpMatrix where
 --   foldr f x (SM _ im) = foldr f x im
 
--- instance QC.Arbitrary (SpMatrix Double) where
---   arbitrary = QC.sized genf `QC.suchThat` any isNz where
---     genf n = do
---       let i_ = [0 .. n - 1]
---       v_ <- QC.vector n
---       return $ SV n (IM.fromList (zip i_ v_))
-
-
--- | A square matrix and vector of compatible size
-data PropMatVec a = PropMatVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
-
-instance QC.Arbitrary (PropMatVec Double) where
-  arbitrary = QC.sized genf where
-    genf n = do
-      let d = 4 * n
-      i_ <- QC.vectorOf d (QC.choose (0, n-1))
-      j_ <- QC.vectorOf d (QC.choose (0, n-1))      
-      x <- QC.vector d
-      let m = fromListSM (n,n) $ zip3 i_ j_ x
-      iv <- QC.vectorOf d (QC.choose (0, n-1))
-      xv <- QC.vector d           
-      let v = fromListSV n $ zip iv xv 
-      return $ PropMatVec m v
-
-
-
--- | A symmetric positive definite matrix and vector of compatible size
-data PropSPD a = PropSPD (SpMatrix a) (SpVector a) deriving (Eq, Show)
-
-instance QC.Arbitrary (PropSPD Double) where
-  arbitrary = do
-    PropMatVec m v <- QC.arbitrary :: QC.Gen (PropMatVec Double)
-    return $ PropSPD (m #^# m) v
-
-
-
-
-
-
-
 instance Set SpMatrix where
   liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
   liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) ((liftI2.liftI2) f2 x1 x2)
 
--- | 'SpMatrix'es form a ring, in that they can be added and possess a zero element  
+-- | 'SpMatrix'es form an additive group, in that they can have an invertible associtative operation (matrix sum)
 instance Num a => AdditiveGroup (SpMatrix a) where
   zeroV = SM (0,0) IM.empty
   (^+^) = liftU2 (+)

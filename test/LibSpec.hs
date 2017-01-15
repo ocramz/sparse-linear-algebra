@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, TypeFamilies #-}
-{-# language ScopedTypeVariables #-}
+{-# language ScopedTypeVariables, FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -232,6 +232,64 @@ checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
   q' = extractSubmatrix q (0, m - 1) (0, n - 2) -- q' = all but one column of q
   rhs = q #~# h
   lhs = aa #~# q'
+
+
+
+
+
+
+
+-- * Arbitrary newtypes and instances for QuickCheck
+
+
+
+-- | An Arbitrary SpVector such that at least one entry is nonzero
+instance Arbitrary (SpVector Double) where
+  arbitrary = sized genf `suchThat` any isNz where
+    genf n = do
+      v_ <- vector n
+      return $ fromListDenseSV n v_-- SV n (IM.fromList (zip i_ v_))
+
+
+
+
+-- instance QC.Arbitrary (SpMatrix Double) where
+--   arbitrary = QC.sized genf `QC.suchThat` any isNz where
+--     genf n = do
+--       let i_ = [0 .. n - 1]
+--       v_ <- QC.vector n
+--       return $ SV n (IM.fromList (zip i_ v_))
+
+-- | A square matrix and vector of compatible size
+data PropMatVec a = PropMatVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
+
+instance Arbitrary (PropMatVec Double) where
+  arbitrary = sized genf where
+    genf n = do
+      let d = 4 * n
+      i_ <- vectorOf d (choose (0, n-1))
+      j_ <- vectorOf d (choose (0, n-1))      
+      x <- vector d
+      let m = fromListSM (n,n) $ zip3 i_ j_ x
+      iv <- vectorOf d (choose (0, n-1))
+      xv <- vector d           
+      let v = fromListSV n $ zip iv xv 
+      return $ PropMatVec m v
+
+
+
+-- | A symmetric positive definite matrix and vector of compatible size
+data PropSPD a = PropSPD (SpMatrix a) (SpVector a) deriving (Eq, Show)
+
+instance Arbitrary (PropSPD Double) where
+  arbitrary = do
+    PropMatVec m v <- arbitrary :: Gen (PropMatVec Double)
+    return $ PropSPD (m #^# m) v
+
+
+    
+
+
 
 
 

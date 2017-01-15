@@ -29,7 +29,6 @@ import qualified Data.Vector as V
 
 import Data.VectorSpace hiding (magnitude)
 
-import qualified Test.QuickCheck as QC
 
 
 -- | IntMap instances
@@ -136,13 +135,7 @@ instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
 
 
--- | An Arbitrary SpVector such that at least one entry is nonzero
-instance QC.Arbitrary (SpVector Double) where
-  arbitrary = QC.sized genf `QC.suchThat` any isNz where
-    genf n = do
-      let i_ = [0 .. n - 1]
-      v_ <- QC.vector n
-      return $ SV n (IM.fromList (zip i_ v_))
+
 
 
 

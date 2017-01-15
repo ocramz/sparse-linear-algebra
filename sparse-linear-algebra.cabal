@@ -39,8 +39,7 @@ library
                        Data.Sparse.PPrint
                        Data.Sparse.Types
                        Numeric.Eps
-  build-depends:       QuickCheck
-                     , base >= 4.7 && < 5
+  build-depends:       base >= 4.7 && < 5
                      , vector-space
                      , containers
                      , hspec
