@@ -74,15 +74,20 @@ instance Functor SpMatrix where
 --       return $ SV n (IM.fromList (zip i_ v_))
 
 
-data PropSPD a = PropSPD (SpMatrix a) (SpVector a) deriving Eq
+data PropSPD a = PropSPD (SpMatrix a) (SpVector a) deriving (Eq, Show)
 
--- instance QC.Arbitrary (PropSPD Double) where
---   arbitrary = QC.sized genf where
---     genf n = do
---       i_ <- QC.vector n :: [Int]
---       j_ <- QC.vector n :: [Int]
---       x <- QC.vector (2*n)
---       let mm = 
+instance QC.Arbitrary (PropSPD Double) where
+  arbitrary = QC.sized genf where
+    genf n = do
+      i_ <- QC.vectorOf (2*n) (QC.choose (0, n-1))
+      j_ <- QC.vectorOf (2*n) (QC.choose (0, n-1))      
+      x <- QC.vector (2*n)
+      let m = fromListSM (n,n) $ zip3 i_ j_ x
+          m2 = m #^# m
+      iv <- QC.vectorOf (2*n) (QC.choose (0, n-1))
+      xv <- QC.vector (2*n)           
+      let v = fromListSV n $ zip iv xv 
+      return $ PropSPD m2 v
 
 
 

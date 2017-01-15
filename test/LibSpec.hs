@@ -87,6 +87,9 @@ spec = do
       nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True
     -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
     --   prop_psd aa2 v
+  describe "QuickCheck properties:" $ do
+    prop "prop_spd : m #^# m is symmetric positive definite" $
+      \(PropSPD (m :: SpMatrix Double) v) -> prop_spd m v
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
     -- it "TFQMR (2 x 2 dense)" $
     it "GMRES (2 x 2 dense)" $
@@ -235,11 +238,11 @@ checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
 -- | QuickCheck properties
 
 -- | Positive semidefinite. 
-prop_psd :: (LinearVectorSpace v, InnerSpace v, Ord (Scalar v), Num (Scalar v)) =>
+prop_spd :: (LinearVectorSpace v, InnerSpace v, Ord (Scalar v), Num (Scalar v)) =>
      MatrixType v -> v -> Bool
-prop_psd mm v = (v <.> (mm #> v)) >= 0
+prop_spd mm v = (v <.> (mm #> v)) >= 0
 
-
+prop_spd' (PropSPD m v) = prop_spd m v
 
 
 -- -- test data
