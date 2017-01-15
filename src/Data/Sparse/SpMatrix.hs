@@ -80,12 +80,13 @@ data PropMatVec a = PropMatVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
 instance QC.Arbitrary (PropMatVec Double) where
   arbitrary = QC.sized genf where
     genf n = do
-      i_ <- QC.vectorOf (2*n) (QC.choose (0, n-1))
-      j_ <- QC.vectorOf (2*n) (QC.choose (0, n-1))      
-      x <- QC.vector (2*n)
+      let d = 4 * n
+      i_ <- QC.vectorOf d (QC.choose (0, n-1))
+      j_ <- QC.vectorOf d (QC.choose (0, n-1))      
+      x <- QC.vector d
       let m = fromListSM (n,n) $ zip3 i_ j_ x
-      iv <- QC.vectorOf (2*n) (QC.choose (0, n-1))
-      xv <- QC.vector (2*n)           
+      iv <- QC.vectorOf d (QC.choose (0, n-1))
+      xv <- QC.vector d           
       let v = fromListSV n $ zip iv xv 
       return $ PropMatVec m v
 
