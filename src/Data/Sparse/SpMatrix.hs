@@ -749,43 +749,47 @@ normFrobeniusSMC m = sqrt $ realPart $ trace (m ##^ m)
 
 instance MatrixRing (SpMatrix Double) where
   type MatrixNorm (SpMatrix Double) = Double
-  (##) = matMatSD
+  (##) = matMat_ AB
+  (##^) = matMat_ ABt
   transpose = transposeSM
   normFrobenius = normFrobeniusSM
 
 instance MatrixRing (SpMatrix (Complex Double)) where
   type MatrixNorm (SpMatrix (Complex Double)) = Double
-  (##) = matMatSD
+  (##) = matMat_ AB
+  (##^) = matMat_ ABt
   transpose = hermitianConj
   normFrobenius = normFrobeniusSMC
 
 
--- matMat, (##) :: SpMatrix Double -> SpMatrix Double -> SpMatrix Double
--- matMatSD :: (InnerSpace (IM.IntMap a), s ~ Scalar (IM.IntMap a)) =>
---    SpMatrix a -> SpMatrix a -> SpMatrix s
-matMatSD m1 m2
-  | c1 == r2 = matMatU m1 m2
-  | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2) where
-      d1@(_, c1) = dim m1
-      d2@(r2, _) = dim m2
-      -- matMatU ::  SpMatrix Double -> SpMatrix Double -> SpMatrix Double
-      matMatU m1 m2 =
-        SM (nrows m1, ncols m2) im where
-          im = fmap (\vm1 -> (`dott` vm1) <$> tim) (immSM m1)
-          tim = transposeIM2 (immSM m2)
+-- | Internal implementation
+data MatProd_ = AB | ABt deriving (Eq, Show)
+
+matMat_ pt mm1 mm2 =
+  case pt of AB -> matMatCheck (matMatUnsafeWith transposeIM2) mm1 mm2
+             ABt -> matMatCheck (matMatUnsafeWith id) mm1 (trDim mm2)
+   where
+     trDim (SM (a, b) x) = SM (b, a) x
+     matMatCheck mmf m1 m2
+       | c1 == r2 = mmf m1 m2
+       | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2)
+     d1@(_, c1) = dim mm1
+     d2@(r2, _) = dim mm2
+
+
+-- | Matrix product without dimension checks
+matMatUnsafeWith :: Num a =>
+   (IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)) ->
+   SpMatrix a ->
+   SpMatrix a ->
+   SpMatrix a
+matMatUnsafeWith ff2 m1 m2 = SM (nrows m1, ncols m2) (overRows2 <$> immSM m1) where
+          overRows2 vm1 = (`dott` vm1) <$> ff2 (immSM m2)
           dott x y = sum $ liftI2 (*) x y    -- NB !! no complex conjugation
 
 
-matMat :: MatrixRing m => m -> m -> m
-matMat = (##)
 
--- | A^T B
-(#^#) :: MatrixRing m => m -> m -> m
-a #^# b = transpose a ## b
 
--- | A B^T
-(##^) :: MatrixRing m => m -> m -> m
-a ##^ b = a ## transpose b
 
 
 -- ** Matrix-matrix product, sparsified

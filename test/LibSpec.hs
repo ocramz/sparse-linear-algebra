@@ -51,15 +51,17 @@ spec = do
       tv0 <.> tv0 `shouldBe` 61
     it "<.> : inner product (Complex)" $
       tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
-     
     it "transposeSM : sparse matrix transpose" $
       transposeSM m1 `shouldBe` m1t
     it "(#>) : matrix-vector product (Real)" $
       nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
     it "(<#) : vector-matrix product (Real)" $
       nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True  
-    it "(##) : matrix-matrix product (Real)" $
+    it "(##) : matrix-matrix product (Real, square)" $ 
       (m1 ## m2) `shouldBe` m1m2
+    it "(##) : matrix-matrix product (Real, rectangular)" $ do
+      (m1' ## m2') `shouldBe` m1m2'
+      (m2' ## m1') `shouldBe` m2m1'
     it "(##) : matrix-matrix product (Complex)" $
       (aa3c ## aa3c) `shouldBe` aa3cx 
     it "eye : identity matrix" $
@@ -238,6 +240,7 @@ checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
 
 -- | QuickCheck properties
 
+-- | Dot product of a normalized vector with itself is ~= 1
 prop_dot :: (Normed v, Epsilon (Scalar v)) => v -> Bool
 prop_dot v = let v' = normalize2 v in nearOne (v' <.> v')
 
@@ -356,10 +359,15 @@ matMat
 [3, 4] [7, 8]   [43, 50]
 -}
 
-m1, m2, m1m2 :: SpMatrix Double
+m1, m2, m1m2, m1', m2', m1m2', m2m1' :: SpMatrix Double
 m1 = fromListDenseSM 2 [1,3,2,4]
 m2 = fromListDenseSM 2 [5, 7, 6, 8]     
 m1m2 = fromListDenseSM 2 [19, 43, 22, 50]
+
+m1' = fromListSM (2,3) [(0,0,2), (1,0,3), (1,2,4), (1,2,1)]
+m2' = fromListSM (3,2) [(0,0,5), (0,1,3), (2,1,4)]
+m1m2' = fromListDenseSM 2 [10,15,6,13] 
+m2m1' = fromListSM (3,3) [(0,0,19),(1,0,6),(2,0,12),(0,2,3),(1,2,2),(2,2,4)]
 
 -- transposeSM
 

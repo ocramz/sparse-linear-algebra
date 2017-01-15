@@ -212,8 +212,13 @@ class LinearVectorSpace v => LinearSystem v where
 class AdditiveGroup m => MatrixRing m where
   type MatrixNorm m :: *
   (##) :: m -> m -> m
+  (##^) :: m -> m -> m   -- ^ A B^T
+  (#^#) :: m -> m -> m   -- ^ A^T B
+  a #^# b = transpose a ## b
   transpose :: m -> m
   normFrobenius :: m -> MatrixNorm m
+
+
 
 
 -- a "sparse matrix ring" ?
