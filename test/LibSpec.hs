@@ -96,7 +96,7 @@ spec = do
     prop "prop_matMat1 : (A ## B)^T == (B^T ## A^T)" $
       \p@(PropMatMat (_ :: SpMatrix Double) _) -> prop_matMat1 p
     prop "prop_matMat2 : M^T ##^ M == M #^# M^T" $
-    --   \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
+      \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
     -- prop "prop_linSolve GMRES" $ prop_linSolve GMRES_
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
     -- it "TFQMR (2 x 2 dense)" $
@@ -367,9 +367,9 @@ prop_spd' (PropSPD m v) = prop_spd m v
 
 -- | (A B)^T == (B^T A^T)
 prop_matMat1 (PropMatMat a b) =
-  transpose (a ## b) == (transpose b ## transpose a)
+  transpose (a ## b) == (transpose b ##^ a)
 
-
+-- | Implementation of transpose, (##), (##^) and (#^#) is consistent
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 
