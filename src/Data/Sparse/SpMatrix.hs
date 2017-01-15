@@ -74,20 +74,32 @@ instance Functor SpMatrix where
 --       return $ SV n (IM.fromList (zip i_ v_))
 
 
-data PropSPD a = PropSPD (SpMatrix a) (SpVector a) deriving (Eq, Show)
+-- | A square matrix and vector of compatible size
+data PropMatVec a = PropMatVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
 
-instance QC.Arbitrary (PropSPD Double) where
+instance QC.Arbitrary (PropMatVec Double) where
   arbitrary = QC.sized genf where
     genf n = do
       i_ <- QC.vectorOf (2*n) (QC.choose (0, n-1))
       j_ <- QC.vectorOf (2*n) (QC.choose (0, n-1))      
       x <- QC.vector (2*n)
       let m = fromListSM (n,n) $ zip3 i_ j_ x
-          m2 = m #^# m
       iv <- QC.vectorOf (2*n) (QC.choose (0, n-1))
       xv <- QC.vector (2*n)           
       let v = fromListSV n $ zip iv xv 
-      return $ PropSPD m2 v
+      return $ PropMatVec m v
+
+
+
+-- | A symmetric positive definite matrix and vector of compatible size
+data PropSPD a = PropSPD (SpMatrix a) (SpVector a) deriving (Eq, Show)
+
+instance QC.Arbitrary (PropSPD Double) where
+  arbitrary = do
+    PropMatVec m v <- QC.arbitrary :: QC.Gen (PropMatVec Double)
+    return $ PropSPD (m #^# m) v
+
+
 
 
 
