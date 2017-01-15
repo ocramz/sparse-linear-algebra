@@ -93,6 +93,10 @@ spec = do
       \(PropSPD (m :: SpMatrix Double) v) -> prop_spd m v
     prop "prop_dot : (v <.> v) ~= 1 if ||v|| == 1" $
       \(v :: SpVector Double) -> prop_dot v
+    prop "prop_matMat1 : (A B)^T == (B^T A^T)" $
+      \p@(PropMatMat (_ :: SpMatrix Double) _) -> prop_matMat1 p
+    prop "prop_matMat2 : transpose m ##^ m == m #^# transpose m" $
+      \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
     -- it "TFQMR (2 x 2 dense)" $
     it "GMRES (2 x 2 dense)" $
@@ -241,7 +245,11 @@ checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
 
 -- * Arbitrary newtypes and instances for QuickCheck
 
+sized2 :: (Int -> Int -> Gen a) -> Gen a
+sized2 f = sized $ \i -> sized $ \j -> f i j
 
+sized3 :: (Int -> Int -> Int -> Gen a) -> Gen a
+sized3 f = sized $ \i -> sized $ \j -> sized $ \k -> f i j k
 
 -- | An Arbitrary SpVector such that at least one entry is nonzero
 instance Arbitrary (SpVector Double) where
@@ -252,17 +260,34 @@ instance Arbitrary (SpVector Double) where
 
 
 
+-- | An arbitrary SpMatrix
+newtype PropMat a = PropMat (SpMatrix a) deriving (Eq, Show)
+instance Arbitrary (PropMat Double) where
+  arbitrary = sized2 genf where
+    genf m n = do
+      let d1 = 2 * m
+      i1_ <- vectorOf d1 (choose (0, m-1))
+      j1_ <- vectorOf d1 (choose (0, n-1))      
+      x1 <- vector d1
+      return $ PropMat $ fromListSM (m,n) $ zip3 i1_ j1_ x1
 
--- instance QC.Arbitrary (SpMatrix Double) where
---   arbitrary = QC.sized genf `QC.suchThat` any isNz where
---     genf n = do
---       let i_ = [0 .. n - 1]
---       v_ <- QC.vector n
---       return $ SV n (IM.fromList (zip i_ v_))
 
-
-sized2 f = sized $ \i -> sized $ \j -> f i j
-
+-- | A pair of arbitrary SpMatrix, having compliant dimensions
+data PropMatMat a = PropMatMat (SpMatrix a) (SpMatrix a) deriving (Eq, Show)
+instance Arbitrary (PropMatMat Double) where
+  arbitrary = sized3 genf where
+    genf m n o = do
+      let d1 = 2 * m 
+          d2 = 2 * n
+      i1_ <- vectorOf d1 (choose (0, m-1))
+      j1_ <- vectorOf d1 (choose (0, n-1))      
+      x1 <- vector d1
+      i2_ <- vectorOf d2 (choose (0, n-1))
+      j2_ <- vectorOf d2 (choose (0, o-1))      
+      x2 <- vector d2
+      let mat1 = fromListSM (m,n) $ zip3 i1_ j1_ x1
+          mat2 = fromListSM (n,o) $ zip3 i2_ j2_ x2
+      return $ PropMatMat mat1 mat2
 
 
 
@@ -315,6 +340,13 @@ prop_spd mm v = (v <.> (mm #> v)) >= 0
 
 prop_spd' :: PropSPD Double -> Bool
 prop_spd' (PropSPD m v) = prop_spd m v
+
+-- | (A B)^T == (B^T A^T)
+prop_matMat1 (PropMatMat a b) =
+  transpose (a ## b) == (transpose b ## transpose a)
+
+
+prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 
 -- -- test data
