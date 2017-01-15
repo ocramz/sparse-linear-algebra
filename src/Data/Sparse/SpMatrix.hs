@@ -74,10 +74,15 @@ instance Functor SpMatrix where
 --       return $ SV n (IM.fromList (zip i_ v_))
 
 
-newtype SpM2 a = SpM2 (SpMatrix a) deriving Eq
+data PropSPD a = PropSPD (SpMatrix a) (SpVector a) deriving Eq
 
--- instance QC.Arbitrary (SpM2 Double) where
---   arbitrary = 
+-- instance QC.Arbitrary (PropSPD Double) where
+--   arbitrary = QC.sized genf where
+--     genf n = do
+--       i_ <- QC.vector n :: [Int]
+--       j_ <- QC.vector n :: [Int]
+--       x <- QC.vector (2*n)
+--       let mm = 
 
 
 

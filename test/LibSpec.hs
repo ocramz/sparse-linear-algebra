@@ -85,8 +85,8 @@ spec = do
       execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
       nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True
-    prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
-      prop_psd aa2 v
+    -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
+    --   prop_psd aa2 v
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
     -- it "TFQMR (2 x 2 dense)" $
     it "GMRES (2 x 2 dense)" $

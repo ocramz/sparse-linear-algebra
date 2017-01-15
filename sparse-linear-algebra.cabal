@@ -76,7 +76,7 @@ test-suite spec
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra
                      , criterion
-                     -- , QuickCheck
+                     , QuickCheck
 
 source-repository head
   type:     git
