@@ -51,8 +51,7 @@ spec = do
       tv0 <.> tv0 `shouldBe` 61
     it "<.> : inner product (Complex)" $
       tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
-    prop "<.> : inner product (Real, Arbitrary)" $
-      \(v :: SpVector Double) -> let v' = normalize2 v in nearOne (v' <.> v')      
+     
     it "transposeSM : sparse matrix transpose" $
       transposeSM m1 `shouldBe` m1t
     it "(#>) : matrix-vector product (Real)" $
@@ -88,8 +87,10 @@ spec = do
     -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
     --   prop_psd aa2 v
   describe "QuickCheck properties:" $ do
-    prop "prop_spd : m #^# m is symmetric positive definite" $
+    prop "prop_spd : (m #^# m) is symmetric positive definite" $
       \(PropSPD (m :: SpMatrix Double) v) -> prop_spd m v
+    prop "prop_dot : (v <.> v) ~= 1 if ||v|| == 1" $
+      \(v :: SpVector Double) -> prop_dot v
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
     -- it "TFQMR (2 x 2 dense)" $
     it "GMRES (2 x 2 dense)" $
@@ -237,11 +238,15 @@ checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
 
 -- | QuickCheck properties
 
+prop_dot :: (Normed v, Epsilon (Scalar v)) => v -> Bool
+prop_dot v = let v' = normalize2 v in nearOne (v' <.> v')
+
 -- | Positive semidefinite. 
 prop_spd :: (LinearVectorSpace v, InnerSpace v, Ord (Scalar v), Num (Scalar v)) =>
      MatrixType v -> v -> Bool
 prop_spd mm v = (v <.> (mm #> v)) >= 0
 
+prop_spd' :: PropSPD Double -> Bool
 prop_spd' (PropSPD m v) = prop_spd m v
 
 
