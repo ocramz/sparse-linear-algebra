@@ -260,6 +260,12 @@ instance Arbitrary (SpVector Double) where
 --       v_ <- QC.vector n
 --       return $ SV n (IM.fromList (zip i_ v_))
 
+
+sized2 f = sized $ \i -> sized $ \j -> f i j
+
+
+
+
 -- | A square matrix and vector of compatible size
 data PropMatVec a = PropMatVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
 
@@ -425,7 +431,7 @@ m1m2 = fromListDenseSM 2 [19, 43, 22, 50]
 m1' = fromListSM (2,3) [(0,0,2), (1,0,3), (1,2,4), (1,2,1)]
 m2' = fromListSM (3,2) [(0,0,5), (0,1,3), (2,1,4)]
 m1m2' = fromListDenseSM 2 [10,15,6,13] 
-m2m1' = fromListSM (3,3) [(0,0,19),(1,0,6),(2,0,12),(0,2,3),(1,2,2),(2,2,4)]
+m2m1' = fromListSM (3,3) [(0,0,19),(2,0,12),(0,2,3),(2,2,4)]
 
 -- transposeSM
 

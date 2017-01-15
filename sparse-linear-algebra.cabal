@@ -66,16 +66,16 @@ test-suite spec
   hs-source-dirs:      test
   other-modules:       LibSpec
   main-is:             Spec.hs
-  build-depends:       base
-                     , vector-space
+  build-depends:       QuickCheck
+                     , base
                      , containers
+                     , criterion
                      , hspec
                      , mtl >= 2.2.1
                      , mwc-random
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra
-                     , criterion
-                     , QuickCheck
+                     , vector-space
 
 source-repository head
   type:     git

@@ -724,6 +724,7 @@ instance MatrixRing (SpMatrix (Complex Double)) where
 -- | Internal implementation
 data MatProd_ = AB | ABt deriving (Eq, Show)
 
+{-# INLINE matMat_ #-}
 matMat_ pt mm1 mm2 =
   case pt of AB -> matMatCheck (matMatUnsafeWith transposeIM2) mm1 mm2
              ABt -> matMatCheck (matMatUnsafeWith id) mm1 (trDim mm2)
@@ -732,11 +733,13 @@ matMat_ pt mm1 mm2 =
      matMatCheck mmf m1 m2
        | c1 == r2 = mmf m1 m2
        | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2)
-     d1@(_, c1) = dim mm1
-     d2@(r2, _) = dim mm2
+         where
+           d1@(_, c1) = dim m1
+           d2@(r2, _) = dim m2
 
 
 -- | Matrix product without dimension checks
+{-# INLINE matMatUnsafeWith #-}
 matMatUnsafeWith :: Num a =>
    (IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)) ->
    SpMatrix a ->
