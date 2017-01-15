@@ -10,6 +10,9 @@
 module Data.Sparse.PPrint where
 
 import Data.Complex
+import Text.Printf
+
+
 
 class PrintDense a where
   prd :: a -> IO ()
@@ -18,8 +21,18 @@ newline :: IO ()
 newline = putStrLn ""  
 
 
+printfDouble :: (PrintfArg t, PrintfType t1) => PPrintOptions -> t -> t1
+printfDouble opts x = printf pstr x where
+  pstr = concat ["%" , show ni, ".", show nd, "f"]
+  nd = pprintDecimals opts
+  ni = pprintDigits opts - nd
 
+data PPrintOptions =
+  PPrintOptions {
+     pprintDigits :: Int,
+     pprintDecimals :: Int } deriving (Eq, Show)
 
+pprintDefaults = PPrintOptions 5 2
 
 
 

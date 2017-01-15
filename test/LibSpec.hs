@@ -32,6 +32,7 @@ import Control.Monad.State.Strict (execState)
        
 import Test.Hspec
 import Test.Hspec.QuickCheck
+import Test.QuickCheck
 
 
 
@@ -44,16 +45,14 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "Numeric.LinearAlgebra.Sparse : Library" $ do
-    -- prop "subtraction is cancellative" $ \(x :: SpVector Double) ->
-    --   x ^-^ x `shouldBe` zero
+    prop "Subtraction is cancellative" $ \(x :: SpVector Double) ->
+      norm2Sq (x ^-^ x) `shouldBe` zero
     it "<.> : inner product (Real)" $
       tv0 <.> tv0 `shouldBe` 61
     it "<.> : inner product (Complex)" $
-      tvc0 <.> tvc0 `shouldBe` 5 :+ 0
-    it "<.> : inner product (Complex)" $
       tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
     prop "<.> : inner product (Real, Arbitrary)" $
-      \(v :: SpVector Double) -> let v' = normalize2 v in almostOne (v' <.> v')      
+      \(v :: SpVector Double) -> let v' = normalize2 v in nearOne (v' <.> v')      
     it "transposeSM : sparse matrix transpose" $
       transposeSM m1 `shouldBe` m1t
     it "(#>) : matrix-vector product (Real)" $
@@ -85,22 +84,24 @@ spec = do
     it "modifyInspectN : early termination by iteration count" $
       execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
     it "modifyInspectN : termination by value convergence" $
-      nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True 
+      nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True
+    prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
+      prop_psd aa2 v
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
     -- it "TFQMR (2 x 2 dense)" $
     it "GMRES (2 x 2 dense)" $
       checkLinSolveR GMRES_ aa0 b0 x0true `shouldBe` True
-    it "GMRES (3 x 3 sparse, s.p.d.)" $
+    it "GMRES (3 x 3 sparse, symmetric pos.def.)" $
       checkLinSolveR GMRES_ aa2 b2 x2 `shouldBe` True
     it "GMRES (4 x 4 sparse)" $
       checkLinSolveR GMRES_ aa1 b1 x1 `shouldBe` True
     it "BCG (2 x 2 dense)" $
       checkLinSolveR BCG_ aa0 b0 x0true `shouldBe` True
-    it "BCG (3 x 3 sparse, SPD)" $
+    it "BCG (3 x 3 sparse, symmetric pos.def.)" $
       checkLinSolveR BCG_ aa2 b2 x2 `shouldBe` True
     -- it "BiCGSTAB (2 x 2 dense)" $ 
     --   nearZero (normSq (linSolve BICGSTAB_ aa0 b0 ^-^ x0true)) `shouldBe` True
-    it "BiCGSTAB (3 x 3 sparse, SPD)" $ 
+    it "BiCGSTAB (3 x 3 sparse, symmetric pos.def.)" $ 
       checkLinSolveR BICGSTAB_ aa2 b2 x2 `shouldBe` True
     it "CGS (2 x 2 dense)" $ 
       checkLinSolveR CGS_ aa0 b0 x0true `shouldBe` True
@@ -124,7 +125,7 @@ spec = do
       checkLu tm6 `shouldBe` True
     it "lu (10 x 10 sparse)" $
       checkLu tm7 `shouldBe` True
-  describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, SPD)" $ 
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 `shouldBe` True
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration, early breakdown detection (Real)" $ do      
@@ -226,6 +227,17 @@ checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
   rhs = q #~# h
   lhs = aa #~# q'
 
+
+
+
+
+
+-- | QuickCheck properties
+
+-- | Positive semidefinite. 
+prop_psd :: (LinearVectorSpace v, InnerSpace v, Ord (Scalar v), Num (Scalar v)) =>
+     MatrixType v -> v -> Bool
+prop_psd mm v = (v <.> (mm #> v)) >= 0
 
 
 

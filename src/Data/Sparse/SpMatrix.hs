@@ -26,6 +26,8 @@ import Data.Maybe
 
 import Data.VectorSpace
 
+import qualified Test.QuickCheck as QC
+
 -- *
 
 -- instance IxContainer SpMatrix a where
@@ -63,6 +65,23 @@ instance Functor SpMatrix where
 
 -- instance Foldable SpMatrix where
 --   foldr f x (SM _ im) = foldr f x im
+
+-- instance QC.Arbitrary (SpMatrix Double) where
+--   arbitrary = QC.sized genf `QC.suchThat` any isNz where
+--     genf n = do
+--       let i_ = [0 .. n - 1]
+--       v_ <- QC.vector n
+--       return $ SV n (IM.fromList (zip i_ v_))
+
+
+newtype SpM2 a = SpM2 (SpMatrix a) deriving Eq
+
+-- instance QC.Arbitrary (SpM2 Double) where
+--   arbitrary = 
+
+
+
+
 
 instance Set SpMatrix where
   liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
