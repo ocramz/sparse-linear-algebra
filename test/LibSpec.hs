@@ -281,7 +281,7 @@ instance Arbitrary (SpVector Double) where
   arbitrary = sized genSpV `suchThat` any isNz 
 
 
--- | An arbitrary square SpMatrox
+-- | An arbitrary square SpMatrix
 newtype PropMat0 a = PropMat0 (SpMatrix a) deriving (Eq, Show)
 instance Arbitrary (PropMat0 Double) where
    arbitrary = sized (\n -> PropMat0 <$> genSpM n n) 
@@ -306,7 +306,6 @@ instance Arbitrary (PropMatMat Double) where
 
 -- | A square matrix and vector of compatible size
 data PropMatVec a = PropMatVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
-
 instance Arbitrary (PropMatVec Double) where
   arbitrary = sized genf where
     genf n = do
@@ -318,7 +317,6 @@ instance Arbitrary (PropMatVec Double) where
 
 -- | A symmetric positive definite matrix and vector of compatible size
 data PropSPD a = PropSPD (SpMatrix a) (SpVector a) deriving (Eq, Show)
-
 instance Arbitrary (PropSPD Double) where
   arbitrary = do
     PropMatVec m v <- arbitrary :: Gen (PropMatVec Double)
