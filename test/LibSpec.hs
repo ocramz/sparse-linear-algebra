@@ -250,43 +250,47 @@ checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
 
 -- * Arbitrary newtypes and instances for QuickCheck
 
+-- | helpers
 sized2 :: (Int -> Int -> Gen a) -> Gen a
 sized2 f = sized $ \i -> sized $ \j -> f i j
 
 sized3 :: (Int -> Int -> Int -> Gen a) -> Gen a
 sized3 f = sized $ \i -> sized $ \j -> sized $ \k -> f i j k
 
+-- | Generate a random sparse matrix
+genSpM :: Arbitrary a => Int -> Int -> Gen (SpMatrix a)
+genSpM m n = do
+      let d = floor (sqrt $ fromIntegral (m * n)) :: Int
+      i_ <- vectorOf d $ choose (0, m-1)
+      j_ <- vectorOf d $ choose (0, n-1)      
+      x_ <- vector d
+      return $ fromListSM (m,n) $ zip3 i_ j_ x_
+
+-- | Generate a random sparse vector
+genSpV :: Arbitrary a => Int -> Gen (SpVector a)
+genSpV n = do
+  let d = floor (sqrt $ fromIntegral n) :: Int
+  i_ <- vectorOf d  $ choose (0, n -1)
+  v_ <- vector d
+  return $ fromListSV n (zip i_ v_)
+
 
 
 -- | An Arbitrary SpVector such that at least one entry is nonzero
 instance Arbitrary (SpVector Double) where
-  arbitrary = sized genf `suchThat` any isNz where
-    genf n = do
-      v_ <- vector n
-      return $ fromListDenseSV n v_-- SV n (IM.fromList (zip i_ v_))
-
+  arbitrary = sized genSpV `suchThat` any isNz 
 
 
 -- | An arbitrary square SpMatrox
 newtype PropMat0 a = PropMat0 (SpMatrix a) deriving (Eq, Show)
 instance Arbitrary (PropMat0 Double) where
-   arbitrary = sized genf where
-    genf n = do
-      i_ <- vectorOf n (choose (0, n-1))
-      j_ <- vectorOf n (choose (0, n-1))      
-      x <- vector n
-      return $ PropMat0 $ fromListSM (n, n) $ zip3 i_ j_ x
+   arbitrary = sized (\n -> PropMat0 <$> genSpM n n) 
+
       
 -- | An arbitrary SpMatrix
 newtype PropMat a = PropMat (SpMatrix a) deriving (Eq, Show)
 instance Arbitrary (PropMat Double) where
-  arbitrary = sized2 genf where
-    genf m n = do
-      let d1 = floor (sqrt $ fromIntegral (m * n)) :: Int
-      i1_ <- vectorOf d1 (choose (0, m-1))
-      j1_ <- vectorOf d1 (choose (0, n-1))      
-      x1 <- vector d1
-      return $ PropMat $ fromListSM (m,n) $ zip3 i1_ j1_ x1
+  arbitrary = sized2 (\m n -> PropMat <$> genSpM m n)
 
 
 -- | A pair of arbitrary SpMatrix, having compliant dimensions
@@ -294,16 +298,8 @@ data PropMatMat a = PropMatMat (SpMatrix a) (SpMatrix a) deriving (Eq, Show)
 instance Arbitrary (PropMatMat Double) where
   arbitrary = sized3 genf where
     genf m n o = do
-      let d1 = 2 * m 
-          d2 = 2 * n
-      i1_ <- vectorOf d1 (choose (0, m-1))
-      j1_ <- vectorOf d1 (choose (0, n-1))      
-      x1 <- vector d1
-      i2_ <- vectorOf d2 (choose (0, n-1))
-      j2_ <- vectorOf d2 (choose (0, o-1))      
-      x2 <- vector d2
-      let mat1 = fromListSM (m,n) $ zip3 i1_ j1_ x1
-          mat2 = fromListSM (n,o) $ zip3 i2_ j2_ x2
+      mat1 <- genSpM m n
+      mat2 <- genSpM n o
       return $ PropMatMat mat1 mat2
 
 
@@ -314,22 +310,9 @@ data PropMatVec a = PropMatVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
 instance Arbitrary (PropMatVec Double) where
   arbitrary = sized genf where
     genf n = do
-      let d = floor (fromIntegral n**2 / fromIntegral 2) :: Int
-      i_ <- vectorOf d (choose (0, n-1))
-      j_ <- vectorOf d (choose (0, n-1))      
-      x <- vector d
-      let m = fromListSM (n,n) $ zip3 i_ j_ x
-      iv <- vectorOf d (choose (0, n-1))
-      xv <- vector d           
-      let v = fromListSV n $ zip iv xv 
-      return $ PropMatVec m v
-
-
-
-
-
-
-
+      mm <- genSpM n n
+      v <- genSpV n
+      return $ PropMatVec mm v
 
 
 
