@@ -303,7 +303,6 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
 -- * Householder vector 
 
 -- (Golub & Van Loan, Alg. 5.1.1, function `house`)
--- hhV :: (Epsilon a, Real a, Floating a) => SpVector a -> (SpVector a, a)
 hhV :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Ord t, Floating t) => SpVector t -> (SpVector t, t)
 hhV x = (v, beta) where
   tx = tailSV x
@@ -325,6 +324,30 @@ hhV x = (v, beta) where
 
 {- G & VL Alg. 5.4.2 -}
 
+-- hhBidiagStep
+--   :: (Scalar (SpVector t) ~ t, MatrixRing (SpMatrix t),
+--       InnerSpace (SpVector t), Epsilon t, Floating t) =>
+--      SpMatrix t -> IxCol -> a
+hhBidiagStep aa j = undefined where
+  (m,n) = dim aa
+  
+updL aa (m,n) j = undefined where
+  colj = extractSubCol aa j (j, m-1)   -- size m-j
+  (v, beta) = hhV colj
+  qMatJ = hhMat beta v -- Hh matrix wrt (v, beta)
+  aMatJ = extractSubmatrixRebalanceKeys aa (j, m-1) (j, n-1)
+  aMatJ' = qMatJ #~# aMatJ
+  aa' = fromListSM' (modifyKeysSM' (+ j) (+ j) aMatJ') aa   
+  -- aa'' = insertCol aa' (tailSV v) j   -- NB: needs insertSubCol
+
+updR aa (m,n) j = undefined where
+  rowj = extractSubRow aa j (j + 1, n - 1)  -- size n-j-1
+  (u, gamma) = hhV rowj
+  pMatJ = hhMat gamma u  -- Hh matrix wrt (u, gamma)
+  aMatJ = extractSubmatrixRebalanceKeys aa (j, m-1) (j + 1, n-1)
+  aMatJ' = aMatJ #~# pMatJ
+  aa' = fromListSM' (modifyKeysSM' (+ j) (+ (j + 1)) aMatJ') aa   
+  -- aa'' = insertRow aa' (tailSV u) j   -- NB: "
 
 
 

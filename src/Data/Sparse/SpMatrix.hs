@@ -22,6 +22,7 @@ import Data.Sparse.Internal.IntMap2
 import qualified Data.IntMap as IM
 
 import Data.Complex
+import Data.Foldable (foldl')
 import Data.Maybe
 
 import Data.VectorSpace
@@ -195,7 +196,7 @@ insertSpMatrix i j x s
 
 -- | Add to existing SpMatrix using data from list (row, col, value)
 fromListSM' :: Foldable t => t (IxRow, IxCol, a) -> SpMatrix a -> SpMatrix a
-fromListSM' iix sm = foldl ins sm iix where
+fromListSM' iix sm = foldl' ins sm iix where
   ins t (i,j,x) = insertSpMatrix i j x t
 
 -- | Create new SpMatrix using data from list (row, col, value)
@@ -222,12 +223,16 @@ fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
 
 -- ** toList
 
+-- | Populate list with SpMatrix contents
+toListSM :: SpMatrix t -> [(IxRow, IxCol, t)]
+toListSM = ifoldlSM buildf [] where
+  buildf i j x y = (i, j, x) : y 
+
+
 -- | Populate list with SpMatrix contents and populate missing entries with 0
 toDenseListSM :: Num t => SpMatrix t -> [(IxRow, IxCol, t)]
 toDenseListSM m =
   [(i, j, m @@ (i, j)) | i <- [0 .. nrows m - 1], j <- [0 .. ncols m- 1]]
-
-
 
 
 
@@ -562,16 +567,20 @@ horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
 
 -- ** Misc. SpMatrix operations
 
+-- | Indexed filter over SpMatrix
+{-# INLINE ifilterSM #-}
 ifilterSM :: (IM.Key -> IM.Key -> a -> Bool) -> SpMatrix a -> SpMatrix a
 ifilterSM f (SM d im) = SM d $ ifilterIM2 f im
 
  
 
 -- | Left fold over SpMatrix
+{-# INLINE foldlSM #-}
 foldlSM :: (a -> b -> b) -> b -> SpMatrix a -> b
 foldlSM f n (SM _ m)= foldlIM2 f n m
 
 -- | Indexed left fold over SpMatrix
+{-# INLINE ifoldlSM #-}
 ifoldlSM :: (IM.Key -> IM.Key -> a -> b -> b) -> b -> SpMatrix a -> b
 ifoldlSM f n (SM _ m) = ifoldlIM2' f n m
 
@@ -621,6 +630,25 @@ sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 -- | Round almost-0 and almost-1 to 0 and 1 respectively
 roundZeroOneSM :: Epsilon a => SpMatrix a -> SpMatrix a
 roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im  
+
+
+
+
+
+
+
+
+-- | Modify (row, column) keys, leaving data intact. Be careful when using this!
+-- modifyKeysSM' :: (IxRow -> IxRow) -> (IxCol -> IxCol) -> SpMatrix a -> SpMatrix a
+modifyKeysSM' :: (IxRow -> a) -> (IxCol -> b) -> SpMatrix c -> [(a, b, c)]
+modifyKeysSM' fi fj mm =  zip3 (fi <$> ii) (fj <$> jj) xx where
+  (ii, jj, xx) = unzip3 $ toListSM mm
+
+
+modifyKeysSM :: (IxRow -> IxRow) -> (IxCol -> IxCol) -> SpMatrix a -> SpMatrix a
+modifyKeysSM fi fj mm = fromListSM (dim mm) $ zip3 (fi <$> ii) (fj <$> jj) xx where
+  (ii, jj, xx) = unzip3 $ toListSM mm
+
 
 
 

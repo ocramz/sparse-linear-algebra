@@ -17,8 +17,6 @@ import Numeric.Eps
 
 
 
-
-
 -- | Lift a real number onto the complex plane
 toC :: Num a => a -> Complex a
 toC r = r :+ 0
