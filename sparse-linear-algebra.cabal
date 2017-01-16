@@ -48,7 +48,7 @@ library
                      , mwc-random
                      , vector
                      , vector-algorithms
-                     , QuickCheck == 2.8.2
+                     , QuickCheck >= 2.8.2
                      -- , monad-par
 
 
@@ -67,7 +67,7 @@ test-suite spec
   hs-source-dirs:      test
   other-modules:       LibSpec
   main-is:             Spec.hs
-  build-depends:       QuickCheck == 2.8.2
+  build-depends:       QuickCheck >= 2.8.2
                      , base
                      , containers
                      , criterion

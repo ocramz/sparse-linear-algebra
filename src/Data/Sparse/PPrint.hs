@@ -21,6 +21,8 @@ newline :: IO ()
 newline = putStrLn ""  
 
 
+
+
 printfDouble :: (PrintfArg t, PrintfType t1) => PPrintOptions -> t -> t1
 printfDouble opts x = printf pstr x where
   pstr = concat ["%" , show ni, ".", show nd, "f"]
@@ -36,6 +38,8 @@ pprintDefaults = PPrintOptions 5 2
 
 
 
+
+-- | Cleaner way to display Complex values
 
 newtype C a = C {unC :: Complex a} deriving Eq
 instance (Num a, Ord a, Show a) => Show (C a) where
