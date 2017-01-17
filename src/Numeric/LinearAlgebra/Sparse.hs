@@ -320,14 +320,14 @@ hhV x = (v, beta) where
 hhBidiag aa = undefined
 
 
-hhBidiagInit aa = (alpha1, beta0, p1n, q2n, bb') where
+hhBidiagInit aa aat = (alpha1, beta0, p1n, q2n, bb') where
   beta0 = 0
   (m, n) = dim aa
   q1 = oneHotSV n 0
   p1 = aa #> q1
   alpha1 = norm2 p1
   p1n = p1 ./ alpha1
-  q2 = transpose aa #> p1 - alpha1 `scale` q1
+  q2 = aat #> p1 - (alpha1 .* q1)
   beta1 = norm2 q2
   q2n = q2 ./ beta1
   bb' = [(0, 0, alpha1)]
