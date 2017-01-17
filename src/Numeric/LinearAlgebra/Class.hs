@@ -25,12 +25,17 @@ toC r = r :+ 0
 
 -- * Matrix and vector elements (possibly Complex)
 class (Eq e , Fractional e) => Elt e where
+  type EltMag e :: *
   conj :: e -> e
   conj = id
-instance Elt Double
-instance Elt Float
+  mag :: e -> EltMag e
+
+instance Elt Double where {type EltMag Double = Double ; mag = id}
+instance Elt Float where {type EltMag Float = Float; mag = id}
 instance RealFloat e => Elt (Complex e) where
+  type EltMag (Complex e) = e
   conj = conjugate
+  mag = magnitude
   
 
 -- * Additive group

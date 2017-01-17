@@ -42,8 +42,6 @@ module Numeric.LinearAlgebra.Sparse
          randMat, randVec, 
          -- ** Sparse "
          randSpMat, randSpVec,
-         -- * Sparsify data
-         sparsifySV,
          -- * Iteration combinators
          modifyInspectN, runAppendN', untilConverged,
          diffSqL
@@ -83,12 +81,6 @@ import qualified Data.Vector as V
 
 
   
--- * Sparsify : remove almost-0 elements (|x| < eps)
--- | Sparsify an SpVector
-sparsifySV :: Epsilon a => SpVector a -> SpVector a
-sparsifySV = filterSV isNz
-
-
 
 
 
@@ -305,15 +297,16 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
 -- * Householder vector 
 
 -- (Golub & Van Loan, Alg. 5.1.1, function `house`)
-hhV :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Ord t, Floating t) => SpVector t -> (SpVector t, t)
+-- hhV :: (InnerSpace (SpVector t), Epsilon t, Floating t) =>
+--    SpVector t -> (SpVector t, t)
 hhV x = (v, beta) where
   tx = tailSV x
-  sigma = tx <.> tx
+  sigma = norm2Sq tx --tx <.> tx 
   vtemp = singletonSV 1 `concatSV` tx
   (v, beta) | nearZero sigma = (vtemp, 0)
-            | otherwise = let mu = sqrt (headSV x**2 + sigma)
+            | otherwise = let mu = sqrt (norm2Sq (headSV x) + sigma)
                               xh = headSV x
-                              vh | xh <= 1 = xh - mu
+                              vh | mag xh <= 1 = xh - mu
                                  | otherwise = - sigma / (xh + mu)
                               vnew = (1 / vh) `scale` insertSpVector 0 vh vtemp     
                           in (vnew, 2 * xh**2 / (sigma + vh**2))
@@ -324,66 +317,39 @@ hhV x = (v, beta) where
 
 -- * Householder bidiagonalization
 
+hhBidiag aa = undefined
+
+
+-- hhBidiagInit aa = (alpha1, beta0, p1n, q2n) where
+--   beta0 = 0
+--   (m, n) = dim aa
+--   q1 = normalize2 (onesSV n)
+--   p1 = aa #> q1
+--   alpha1 = norm2 p1
+--   p1n = normalize2 p1
+--   q2 = transpose aa #> p1 - alpha1 `scale` q1
+--   beta1 = norm2 q2
+--   q2n = normalize2 q2
+
+
+
+
+
 {- G & VL Alg. 5.4.2 -}
 
-hhBidiagStep :: (Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon a) =>
-     SpMatrix a -> IxCol -> SpMatrix a
-hhBidiagStep aa j | j <= n-2 = hhBdR aa' (j + 1)
-                  | otherwise = aa' where
-  (m, n) = dim aa
-  aa' = hhBdL aa j
-  
-  hhBdL aa j = reflF c j #~^# aa
-    where
-     c = extractSubCol aa j (j, m-1)
-     
-  hhBdR aa i = aa #~# reflF r i 
-    where
-     r = extractSubRow_RK aa i (i + 1, n-1)
-     
-  reflF c j | j > 0 = fromBlocksDiag [eye j, rotm]
-            | otherwise = rotm
-    where
-     rotm = hhRefl (normalize2 c)
-
-
-
-hhBdL' aa (m,n) j = reflF' c j #~# aa where
-    c = extractSubCol aa j (j, m-1)
-hhBdR' aa (m,n) i = aa #~# reflF' r (i + 1) where
-    r = extractSubRow_RK aa i (i + 1, n-1)
-    
-reflF' c j | j > 0 = fromBlocksDiag [eye j, rotm]
-           | otherwise = rotm where
-    rotm = hhRefl (normalize2 c)
-
-
-
--- hhBidiagStep :: (Scalar (SpVector t) ~ t, MatrixRing (SpMatrix t),
---       InnerSpace (SpVector t), Epsilon t, Ord t, Floating t) =>
---      SpMatrix t -> IxRow -> SpMatrix t
--- hhBidiagStep aa j | j <= n-2 = updR aa' d j
+-- hhBidiagStep :: (Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon a) =>
+--      SpMatrix a -> IxCol -> SpMatrix a
+-- hhBidiagStep aa j | j <= n-2 = hhBdR aa' (j + 1)
 --                   | otherwise = aa' where
---   d@(m, n) = dim aa
---   aa' = updL aa d j
-  
--- updL aa (m,n) j = aa'' where
---   colj = extractSubCol aa j (j, m-1)   -- size m-j
---   (v, beta) = hhV colj
---   qMatJ = hhMat beta v -- Hh matrix wrt (v, beta)
---   aMatJ = extractSubmatrixRebalanceKeys aa (j, m-1) (j, n-1)
---   aMatJ' = qMatJ #~# aMatJ
---   aa' = fromListSM' (modifyKeysSM' (+ j) (+ j) aMatJ') aa   
---   aa'' = insertColWith (+ 1) aa' (rangeSV (1, m - j) v) j 
-
--- updR aa (m,n) j = aa'' where
---   rowj = extractSubRow aa j (j + 1, n - 1)  -- size n-j-1
---   (u, gamma) = hhV rowj
---   pMatJ = hhMat gamma u  -- Hh matrix wrt (u, gamma)
---   aMatJ = extractSubmatrixRebalanceKeys aa (j, m-1) (j + 1, n-1)
---   aMatJ' = aMatJ #~# pMatJ
---   aa' = fromListSM' (modifyKeysSM' (+ j) (+ (j + 1)) aMatJ') aa   
---   aa'' = insertRowWith (+ 2) aa' (tailSV u) j   -- NB: "
+--   (m, n) = dim aa
+--   aa' = hhBdL aa j  
+--   hhBdL aa j = reflF c j #~^# aa
+--     where c = extractSubCol aa j (j, m-1)
+--   hhBdR aa i = aa #~# reflF r i 
+--     where r = extractSubRow_RK aa i (i + 1, n-1)
+--   reflF c j | j > 0 = fromBlocksDiag [eye j, rotm]
+--             | otherwise = rotm
+--     where rotm = hhRefl (normalize2 c)
 
 
 

@@ -425,6 +425,12 @@ ifilterSV q sv = SV (dim sv) (IM.filterWithKey q (dat sv))
 
 
 
+-- * Sparsify : remove almost-0 elements (|x| < eps)
+-- | Sparsify an SpVector
+sparsifySV :: Epsilon a => SpVector a -> SpVector a
+sparsifySV = filterSV isNz
+
+
 
 
 
