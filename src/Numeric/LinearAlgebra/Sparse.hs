@@ -333,16 +333,19 @@ hhBidiagInit aa aat = (alpha1, beta0, p1n, q2n, bb') where
   bb' = [(0, 0, alpha1)]
 
 
-hhBidiagStep0 aa aat (qj_      , betajm, pjm_     , j     , bb ) =
-                     (qjp : qj_, betaj , pj : pjm_, succ j, bb') where
-  qj = head qj_
-  pjm = head pjm_
+hhBidiagStep0 aa aat (qq , betajm, pp , j     , bb ) =
+                     (qq', betaj , pp', succ j, bb') where
+  qj = head qq
+  pjm = head pp
   u = (aa #> qj) ^-^ (betajm .* pjm)
   alphaj = norm2 u
   pj = u ./ alphaj
   v = (aat #> pj) ^-^ (alphaj .* qj)
   betaj = norm2 v
   qjp = v ./ betaj
+  
+  qq' = qjp : qq
+  pp' = pj : pp
   bb' = [(j-1, j, betaj),
          (j ,j, alphaj)] ++ bb
 
