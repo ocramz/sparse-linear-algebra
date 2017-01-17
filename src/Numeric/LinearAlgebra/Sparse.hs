@@ -332,7 +332,13 @@ hhBidiagInit aa = (alpha1, beta0, p1n, q2n) where
   q2n = normalize2 q2
 
 
-
+hhBidiagStep0 aa aat (qj, betajm, pjm) = (qjp, betaj, pj) where
+  u = (aa #> qj) ^-^ (betajm .* pjm)
+  alphaj = norm2 u
+  pj = u ./ alphaj
+  v = (aat #> pj) ^-^ (alphaj .* qj)
+  betaj = norm2 v
+  qjp = v ./ betaj
 
 
 {- G & VL Alg. 5.4.2 -}
