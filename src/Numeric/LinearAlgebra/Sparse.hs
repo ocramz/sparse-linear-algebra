@@ -320,16 +320,16 @@ hhV x = (v, beta) where
 hhBidiag aa = undefined
 
 
--- hhBidiagInit aa = (alpha1, beta0, p1n, q2n) where
---   beta0 = 0
---   (m, n) = dim aa
---   q1 = normalize2 (onesSV n)
---   p1 = aa #> q1
---   alpha1 = norm2 p1
---   p1n = normalize2 p1
---   q2 = transpose aa #> p1 - alpha1 `scale` q1
---   beta1 = norm2 q2
---   q2n = normalize2 q2
+hhBidiagInit aa = (alpha1, beta0, p1n, q2n) where
+  beta0 = 0
+  (m, n) = dim aa
+  q1 = normalize2 (onesSV n)
+  p1 = aa #> q1
+  alpha1 = norm2 p1
+  p1n = normalize2 p1
+  q2 = transpose aa #> p1 - alpha1 `scale` q1
+  beta1 = norm2 q2
+  q2n = normalize2 q2
 
 
 
@@ -1130,6 +1130,5 @@ randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
   aav <- replicateM nsp (MWC.normal 0 1 g)
   ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
   return $ fromListSV n $ zip ii aav
-
 
 
