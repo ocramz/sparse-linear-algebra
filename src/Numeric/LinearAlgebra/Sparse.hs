@@ -320,25 +320,31 @@ hhV x = (v, beta) where
 hhBidiag aa = undefined
 
 
-hhBidiagInit aa = (alpha1, beta0, p1n, q2n) where
+hhBidiagInit aa = (alpha1, beta0, p1n, q2n, bb') where
   beta0 = 0
   (m, n) = dim aa
-  q1 = normalize2 (onesSV n)
+  q1 = oneHotSV n 0
   p1 = aa #> q1
   alpha1 = norm2 p1
-  p1n = normalize2 p1
+  p1n = p1 ./ alpha1
   q2 = transpose aa #> p1 - alpha1 `scale` q1
   beta1 = norm2 q2
-  q2n = normalize2 q2
+  q2n = q2 ./ beta1
+  bb' = [(0, 0, alpha1)]
 
 
-hhBidiagStep0 aa aat (qj, betajm, pjm) = (qjp, betaj, pj) where
+hhBidiagStep0 aa aat (qj_      , betajm, pjm_     , j     , bb ) =
+                     (qjp : qj_, betaj , pj : pjm_, succ j, bb') where
+  qj = head qj_
+  pjm = head pjm_
   u = (aa #> qj) ^-^ (betajm .* pjm)
   alphaj = norm2 u
   pj = u ./ alphaj
   v = (aat #> pj) ^-^ (alphaj .* qj)
   betaj = norm2 v
   qjp = v ./ betaj
+  bb' = [(j-1, j, betaj),
+         (j ,j, alphaj)] ++ bb
 
 
 {- G & VL Alg. 5.4.2 -}
