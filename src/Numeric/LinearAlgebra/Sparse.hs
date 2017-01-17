@@ -17,6 +17,8 @@ module Numeric.LinearAlgebra.Sparse
          conditionNumberSM,
          -- * Householder reflection
          hhMat, hhRefl,
+         -- * Householder bidiagonalization
+
          -- * Givens' rotation
          givens,
          -- * Arnoldi iteration
@@ -324,31 +326,73 @@ hhV x = (v, beta) where
 
 {- G & VL Alg. 5.4.2 -}
 
--- hhBidiagStep
---   :: (Scalar (SpVector t) ~ t, MatrixRing (SpMatrix t),
---       InnerSpace (SpVector t), Epsilon t, Floating t) =>
---      SpMatrix t -> IxCol -> a
-hhBidiagStep aa j = undefined where
-  (m,n) = dim aa
+hhBidiagStep :: (Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon a) =>
+     SpMatrix a -> IxCol -> SpMatrix a
+hhBidiagStep aa j | j <= n-2 = hhBdR aa' (j + 1)
+                  | otherwise = aa' where
+  (m, n) = dim aa
+  aa' = hhBdL aa j
   
-updL aa (m,n) j = undefined where
-  colj = extractSubCol aa j (j, m-1)   -- size m-j
-  (v, beta) = hhV colj
-  qMatJ = hhMat beta v -- Hh matrix wrt (v, beta)
-  aMatJ = extractSubmatrixRebalanceKeys aa (j, m-1) (j, n-1)
-  aMatJ' = qMatJ #~# aMatJ
-  aa' = fromListSM' (modifyKeysSM' (+ j) (+ j) aMatJ') aa   
-  -- aa'' = insertCol aa' (tailSV v) j   -- NB: needs insertSubCol
+  hhBdL aa j = reflF c j #~^# aa
+    where
+     c = extractSubCol aa j (j, m-1)
+     
+  hhBdR aa i = aa #~# reflF r i 
+    where
+     r = extractSubRow_RK aa i (i + 1, n-1)
+     
+  reflF c j | j > 0 = fromBlocksDiag [eye j, rotm]
+            | otherwise = rotm
+    where
+     rotm = hhRefl (normalize2 c)
 
-updR aa (m,n) j = undefined where
-  rowj = extractSubRow aa j (j + 1, n - 1)  -- size n-j-1
-  (u, gamma) = hhV rowj
-  pMatJ = hhMat gamma u  -- Hh matrix wrt (u, gamma)
-  aMatJ = extractSubmatrixRebalanceKeys aa (j, m-1) (j + 1, n-1)
-  aMatJ' = aMatJ #~# pMatJ
-  aa' = fromListSM' (modifyKeysSM' (+ j) (+ (j + 1)) aMatJ') aa   
-  -- aa'' = insertRow aa' (tailSV u) j   -- NB: "
 
+
+hhBdL' aa (m,n) j = reflF' c j #~# aa where
+    c = extractSubCol aa j (j, m-1)
+hhBdR' aa (m,n) i = aa #~# reflF' r (i + 1) where
+    r = extractSubRow_RK aa i (i + 1, n-1)
+    
+reflF' c j | j > 0 = fromBlocksDiag [eye j, rotm]
+           | otherwise = rotm where
+    rotm = hhRefl (normalize2 c)
+
+
+
+-- hhBidiagStep :: (Scalar (SpVector t) ~ t, MatrixRing (SpMatrix t),
+--       InnerSpace (SpVector t), Epsilon t, Ord t, Floating t) =>
+--      SpMatrix t -> IxRow -> SpMatrix t
+-- hhBidiagStep aa j | j <= n-2 = updR aa' d j
+--                   | otherwise = aa' where
+--   d@(m, n) = dim aa
+--   aa' = updL aa d j
+  
+-- updL aa (m,n) j = aa'' where
+--   colj = extractSubCol aa j (j, m-1)   -- size m-j
+--   (v, beta) = hhV colj
+--   qMatJ = hhMat beta v -- Hh matrix wrt (v, beta)
+--   aMatJ = extractSubmatrixRebalanceKeys aa (j, m-1) (j, n-1)
+--   aMatJ' = qMatJ #~# aMatJ
+--   aa' = fromListSM' (modifyKeysSM' (+ j) (+ j) aMatJ') aa   
+--   aa'' = insertColWith (+ 1) aa' (rangeSV (1, m - j) v) j 
+
+-- updR aa (m,n) j = aa'' where
+--   rowj = extractSubRow aa j (j + 1, n - 1)  -- size n-j-1
+--   (u, gamma) = hhV rowj
+--   pMatJ = hhMat gamma u  -- Hh matrix wrt (u, gamma)
+--   aMatJ = extractSubmatrixRebalanceKeys aa (j, m-1) (j + 1, n-1)
+--   aMatJ' = aMatJ #~# pMatJ
+--   aa' = fromListSM' (modifyKeysSM' (+ j) (+ (j + 1)) aMatJ') aa   
+--   aa'' = insertRowWith (+ 2) aa' (tailSV u) j   -- NB: "
+
+
+
+
+
+
+
+aa1 :: SpMatrix Double
+aa1 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
 
 
 

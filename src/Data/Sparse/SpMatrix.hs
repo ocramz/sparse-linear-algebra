@@ -551,12 +551,14 @@ horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
 
 
 
-
-
-
-
-
-
+-- | Assembles a square matrix from a list of square matrices, arranging these along the main diagonal
+fromBlocksDiag :: [SpMatrix a] -> SpMatrix a
+fromBlocksDiag mml = fromListSM (n, n) lstot where
+  dims = map nrows mml
+  n = sum dims
+  shifts = init $ scanl (+) 0 dims
+  lstot = concat $ zipWith shiftDims shifts $ map toListSM mml --lsts
+  shiftDims s = map (\(i,j,x) -> (i + s, j + s, x))
 
 
 

@@ -393,6 +393,16 @@ takeSV n (SV _ sv) = SV n $ IM.filterWithKey (\i _ -> i < n) sv
 dropSV n (SV n0 sv) = SV (n0 - n) $ IM.mapKeys (subtract n) $ IM.filterWithKey (\i _ -> i >= n) sv
 
 
+-- | Keep a range of entries 
+rangeSV :: (IM.Key, IM.Key) -> SpVector a -> SpVector a
+rangeSV (rmin, rmax) (SV n sv)
+  | len > 0 && len <= n = SV len sv'
+  | otherwise = error $ unwords ["rangeSV : invalid bounds", show (rmin, rmax) ] where
+  len = rmax - rmin
+  sv' = IM.mapKeys (subtract rmin) $ IM.filterWithKey (\i _ -> i >= rmin && i <= rmax) sv
+
+
+
 
 
 -- | Concatenate two sparse vectors
