@@ -316,15 +316,15 @@ hhV x = (v, beta) where
 -- * Bidiagonalization
 
 -- | Golub-Kahan-Lanczos bidiagonalization (see Restarted Lanczos Bidiagonalization for the SVD in SLEPc)
-bidiag aa q1nn | dim q1nn == n = (fromColsL pl, bb, fromColsL ql)
+bidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
                | otherwise = error "hhBidiag : dimension mismatch. Provide q1 compatible with aa #> q1"
   where
   (m,n) = dim aa
   aat = transpose aa
-  bb = fromListSM (m,n) bl
-  (ql, _, pl, _, bl) = execState (modifyUntil tf bidiagStep) bidiagInit
-  tf (_, _, _, i, _) = i == n 
-  bidiagInit = ([q2n], beta1, [p1n], 1 :: Int, bb')
+  bb = fromListSM (n,n) bl
+  (ql, _, pl, _, pp, bl, qq) = execState (modifyUntil tf bidiagStep) bidiagInit
+  tf (_, _, _, i, _, _, _) = i == n 
+  bidiagInit = (q2n, beta1, p1n, 1 :: Int, pp, bb', qq)
    where
     q1 = normalize2' q1nn
     p1 = aa #> q1
@@ -333,11 +333,12 @@ bidiag aa q1nn | dim q1nn == n = (fromColsL pl, bb, fromColsL ql)
     q2 = aat #> p1 ^-^ (alpha1 .* q1)
     beta1 = norm2' q2
     q2n = q2 ./ beta1
+    pp = insertCol (zeroSM m n) p1n 0
+    qq = insertCol (zeroSM n n) q2n 0
     bb' = [(0, 0, alpha1)]
-  bidiagStep (qq , betajm, pp , j     , bb ) =
-               (qq', betaj , pp', succ j, bb') where
-    qj = head qq
-    pjm = head pp
+  bidiagStep (qj , betajm, pjm , j   , pp,  bb, qq ) =
+             (qjp, betaj , pj, succ j, pp', bb', qq') where
+
     u = (aa #> qj) ^-^ (betajm .* pjm)
     alphaj = norm2' u
     pj = u ./ alphaj
@@ -345,14 +346,14 @@ bidiag aa q1nn | dim q1nn == n = (fromColsL pl, bb, fromColsL ql)
     betaj = norm2' v
     qjp = v ./ betaj
   
-    qq' = qjp : qq
-    pp' = pj : pp
+    pp' = insertCol pp pj j
     bb' = [(j-1, j, betaj),
            (j ,j, alphaj)] ++ bb
+    qq' = insertCol qq qjp j
 
 
-fromColsL :: [SpVector a] -> SpMatrix a
-fromColsL = fromCols . V.fromList
+-- fromColsL :: [SpVector a] -> SpMatrix a
+-- fromColsL = fromCols . V.fromList
 
 
 
