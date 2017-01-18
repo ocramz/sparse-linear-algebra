@@ -97,6 +97,8 @@ spec = do
       \p@(PropMatMat (_ :: SpMatrix Double) _) -> prop_matMat1 p
     prop "prop_matMat2 : M^T ##^ M == M #^# M^T" $
       \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
+    -- prop "prop_QR : Q R = A, Q is orthogonal, R is upper triangular" $
+    --   \p@(PropMatI (_ :: SpMatrix Double)) -> prop_QR p
     -- prop "prop_linSolve GMRES" $ prop_linSolve GMRES_
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
     -- it "TFQMR (2 x 2 dense)" $
@@ -257,14 +259,34 @@ sized2 f = sized $ \i -> sized $ \j -> f i j
 sized3 :: (Int -> Int -> Int -> Gen a) -> Gen a
 sized3 f = sized $ \i -> sized $ \j -> sized $ \k -> f i j k
 
--- | Generate a random sparse matrix
-genSpM :: Arbitrary a => Int -> Int -> Gen (SpMatrix a)
-genSpM m n = do
-      let d = floor (sqrt $ fromIntegral (m * n)) :: Int
+-- | Generate a random (m * n) sparse matrix having d elements
+genSpM0 :: Arbitrary a => Int -> Int -> Int -> Gen (SpMatrix a)
+genSpM0 m n d = do
+      -- let d = floor (sqrt $ fromIntegral (m * n)) :: Int
       i_ <- vectorOf d $ choose (0, m-1)
       j_ <- vectorOf d $ choose (0, n-1)      
       x_ <- vector d
       return $ fromListSM (m,n) $ zip3 i_ j_ x_
+
+-- | Generate a random (m * n) sparse matrix having sqrt(m * n) elements
+genSpM :: Arbitrary a => Int -> Int -> Gen (SpMatrix a)      
+genSpM m n = genSpM0 m n $ floor (sqrt $ fromIntegral (m * n))
+
+-- | Generate a DENSE (m * n) random matrix
+genSpMDense :: Arbitrary a => Int -> Int -> Gen (SpMatrix a)
+genSpMDense m n = genSpM0 m n (m * n)
+
+
+-- | Generate an arbitrary square sparse matrix with unit diagonal
+genSpMI :: (Num a, Arbitrary a) => Int -> Gen (SpMatrix a)
+genSpMI m = do
+  mm <- genSpM m m
+  let ii = eye m
+  return $ mm ^+^ ii
+
+
+
+
 
 -- | Generate a random sparse vector
 genSpV :: Arbitrary a => Int -> Gen (SpVector a)
@@ -273,6 +295,8 @@ genSpV n = do
   i_ <- vectorOf d  $ choose (0, n -1)
   v_ <- vector d
   return $ fromListSV n (zip i_ v_)
+
+
 
 
 
@@ -288,9 +312,27 @@ instance Arbitrary (PropMat0 Double) where
 
       
 -- | An arbitrary SpMatrix
-newtype PropMat a = PropMat (SpMatrix a) deriving (Eq, Show)
+newtype PropMat a = PropMat { unPropMat :: SpMatrix a} deriving (Eq, Show)
 instance Arbitrary (PropMat Double) where
-  arbitrary = sized2 (\m n -> PropMat <$> genSpM m n)
+  arbitrary = sized2 (\m n -> PropMat <$> genSpM m n) `suchThat` (nzDim . unPropMat)
+
+nzDim :: SpMatrix a -> Bool
+nzDim mm = let (m, n) = dim mm in m > 2 && n > 2
+
+
+-- | An arbitrary DENSE SpMatrix
+newtype PropMatDense a = PropMatDense {unPropMatDense :: SpMatrix a} deriving (Eq, Show)
+instance Arbitrary (PropMatDense Double) where
+  arbitrary = sized2 (\m n -> PropMatDense <$> genSpM m n) `suchThat` (nzDim . unPropMatDense)
+
+-- | An arbitrary SpMatrix with unit diagonal 
+newtype PropMatI a = PropMatI {unPropMatI :: SpMatrix a} deriving (Eq)
+instance Show a => Show (PropMatI a) where show = show . unPropMatI
+instance Arbitrary (PropMatI Double) where
+  arbitrary = sized (\m -> PropMatI <$> genSpMI m) `suchThat` (nzDim . unPropMatI)
+
+
+
 
 
 -- | A pair of arbitrary SpMatrix, having compliant dimensions
@@ -353,6 +395,12 @@ prop_matMat1 (PropMatMat a b) =
 -- | Implementation of transpose, (##), (##^) and (#^#) is consistent
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
+
+-- | QR decomposition
+prop_QR :: (Elt a, MatrixRing (SpMatrix a),
+      Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
+     PropMatI a -> Bool
+prop_QR (PropMatI m) = checkQr m
 
 
 -- | check a random linear system
