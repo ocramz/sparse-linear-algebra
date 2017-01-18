@@ -317,37 +317,50 @@ hhV x = (v, beta) where
 
 -- * Householder bidiagonalization
 
-hhBidiag aa = undefined
+-- hhBidiag :: (Normed (SpVector a),
+--              LinearVectorSpace (SpVector a),
+--              Floating (Scalar (SpVector a))) =>
+--             SpMatrix a -> [(Int, Int, Scalar (SpVector a))]
+-- hhBidiag :: SpMatrix Double -> [(Int, Int, Double)]
+hhBidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
+                 | otherwise = error "hhBidiag : dimension mismatch. Provide q1 compatible with aa #> q1"
+  where
+  (m,n) = dim aa
+  aat = transpose aa
+  qq = fromCols $ V.fromList ql
+  pp = fromCols $ V.fromList pl
+  bb = fromListSM (m,n) bl
+  (ql, _, pl, ifin, bl) = execState (modifyUntil tf hhBidiagStep) hhBidiagInit
+  tf (_, _, _, i, _) = i == n 
+  hhBidiagInit = (qq', beta1, pp', 1 :: Int, bb')
+   where
+    q1 = normalize2' q1nn
+    p1 = aa #> q1
+    alpha1 = norm2' p1
+    p1n = p1 ./ alpha1
+    q2 = aat #> p1 ^-^ (alpha1 .* q1)
+    beta1 = norm2' q2
+    q2n = q2 ./ beta1
 
-
-hhBidiagInit aa aat = (alpha1, beta0, p1n, q2n, bb') where
-  beta0 = 0
-  (m, n) = dim aa
-  q1 = oneHotSV n 0
-  p1 = aa #> q1
-  alpha1 = norm2 p1
-  p1n = p1 ./ alpha1
-  q2 = aat #> p1 - (alpha1 .* q1)
-  beta1 = norm2 q2
-  q2n = q2 ./ beta1
-  bb' = [(0, 0, alpha1)]
-
-
-hhBidiagStep0 aa aat (qq , betajm, pp , j     , bb ) =
-                     (qq', betaj , pp', succ j, bb') where
-  qj = head qq
-  pjm = head pp
-  u = (aa #> qj) ^-^ (betajm .* pjm)
-  alphaj = norm2 u
-  pj = u ./ alphaj
-  v = (aat #> pj) ^-^ (alphaj .* qj)
-  betaj = norm2 v
-  qjp = v ./ betaj
+    qq' = [q2n]
+    pp' = [p1n]
+    bb' = [(0, 0, alpha1)]
+  hhBidiagStep (qq , betajm, pp , j     , bb ) =
+               (qq', betaj , pp', succ j, bb') where
+    qj = head qq
+    pjm = head pp
   
-  qq' = qjp : qq
-  pp' = pj : pp
-  bb' = [(j-1, j, betaj),
-         (j ,j, alphaj)] ++ bb
+    u = (aa #> qj) ^-^ (betajm .* pjm)
+    alphaj = norm2' u
+    pj = u ./ alphaj
+    v = (aat #> pj) ^-^ (alphaj .* qj)
+    betaj = norm2' v
+    qjp = v ./ betaj
+  
+    qq' = qjp : qq
+    pp' = pj : pp
+    bb' = [(j-1, j, betaj),
+           (j ,j, alphaj)] ++ bb
 
 
 {- G & VL Alg. 5.4.2 -}
@@ -366,14 +379,14 @@ hhBidiagStep0 aa aat (qq , betajm, pp , j     , bb ) =
 --             | otherwise = rotm
 --     where rotm = hhRefl (normalize2 c)
 
-
-
-
-
-
-
+-- | Example 5.4.2 from G & VL
 aa1 :: SpMatrix Double
-aa1 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
+aa1 = transpose $ fromListDenseSM 3 [1..12]
+
+
+
+-- aa1 :: SpMatrix Double
+-- aa1 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
 
 
 
