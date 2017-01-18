@@ -315,8 +315,8 @@ hhV x = (v, beta) where
 
 -- * Bidiagonalization
 
--- | Golub-Kahan-Lanczos bidiagonalization (see Restarted Lanczos Bidiagonalization for the SVD in SLEPc)
-bidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
+-- | Golub-Kahan-Lanczos bidiagonalization (see "Restarted Lanczos Bidiagonalization for the SVD", SLEPc STR-8, http://slepc.upv.es/documentation/manual.htm )
+gklBidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
                | otherwise = error "hhBidiag : dimension mismatch. Provide q1 compatible with aa #> q1"
   where
   (m,n) = dim aa
@@ -327,12 +327,15 @@ bidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
   bidiagInit = (q2n, beta1, p1n, 1 :: Int, pp, bb', qq)
    where
     q1 = normalize2' q1nn
+    
     p1 = aa #> q1
     alpha1 = norm2' p1
     p1n = p1 ./ alpha1
-    q2 = aat #> p1 ^-^ (alpha1 .* q1)
+    
+    q2 = (aat #> p1) ^-^ (alpha1 .* q1)
     beta1 = norm2' q2
     q2n = q2 ./ beta1
+    
     pp = insertCol (zeroSM m n) p1n 0
     qq = insertCol (zeroSM n n) q2n 0
     bb' = [(0, 0, alpha1)]
@@ -342,6 +345,7 @@ bidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
     u = (aa #> qj) ^-^ (betajm .* pjm)
     alphaj = norm2' u
     pj = u ./ alphaj
+    
     v = (aat #> pj) ^-^ (alphaj .* qj)
     betaj = norm2' v
     qjp = v ./ betaj
@@ -355,6 +359,9 @@ bidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
 -- fromColsL :: [SpVector a] -> SpMatrix a
 -- fromColsL = fromCols . V.fromList
 
+toCols :: SpMatrix a -> [SpVector a]
+toCols aa = map (extractCol aa) [0 .. n-1] where
+  (m,n) = dim aa
 
 
 
