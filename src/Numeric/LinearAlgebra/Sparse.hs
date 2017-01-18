@@ -297,14 +297,12 @@ eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
 -- * Householder vector 
 
 -- (Golub & Van Loan, Alg. 5.1.1, function `house`)
--- hhV :: (InnerSpace (SpVector t), Epsilon t, Floating t) =>
---    SpVector t -> (SpVector t, t)
 hhV x = (v, beta) where
   tx = tailSV x
-  sigma = norm2Sq tx --tx <.> tx 
+  sigma = tx <.> tx 
   vtemp = singletonSV 1 `concatSV` tx
   (v, beta) | nearZero sigma = (vtemp, 0)
-            | otherwise = let mu = sqrt (norm2Sq (headSV x) + sigma)
+            | otherwise = let mu = sqrt (headSV x**2 + sigma)
                               xh = headSV x
                               vh | mag xh <= 1 = xh - mu
                                  | otherwise = - sigma / (xh + mu)
@@ -315,24 +313,18 @@ hhV x = (v, beta) where
 
 
 
--- * Householder bidiagonalization
+-- * Bidiagonalization
 
--- hhBidiag :: (Normed (SpVector a),
---              LinearVectorSpace (SpVector a),
---              Floating (Scalar (SpVector a))) =>
---             SpMatrix a -> [(Int, Int, Scalar (SpVector a))]
--- hhBidiag :: SpMatrix Double -> [(Int, Int, Double)]
-hhBidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
-                 | otherwise = error "hhBidiag : dimension mismatch. Provide q1 compatible with aa #> q1"
+-- | Golub-Kahan-Lanczos bidiagonalization (see Restarted Lanczos Bidiagonalization for the SVD in SLEPc)
+bidiag aa q1nn | dim q1nn == n = (fromColsL pl, bb, fromColsL ql)
+               | otherwise = error "hhBidiag : dimension mismatch. Provide q1 compatible with aa #> q1"
   where
   (m,n) = dim aa
   aat = transpose aa
-  qq = fromCols $ V.fromList ql
-  pp = fromCols $ V.fromList pl
   bb = fromListSM (m,n) bl
-  (ql, _, pl, ifin, bl) = execState (modifyUntil tf hhBidiagStep) hhBidiagInit
+  (ql, _, pl, _, bl) = execState (modifyUntil tf bidiagStep) bidiagInit
   tf (_, _, _, i, _) = i == n 
-  hhBidiagInit = (qq', beta1, pp', 1 :: Int, bb')
+  bidiagInit = ([q2n], beta1, [p1n], 1 :: Int, bb')
    where
     q1 = normalize2' q1nn
     p1 = aa #> q1
@@ -341,15 +333,11 @@ hhBidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
     q2 = aat #> p1 ^-^ (alpha1 .* q1)
     beta1 = norm2' q2
     q2n = q2 ./ beta1
-
-    qq' = [q2n]
-    pp' = [p1n]
     bb' = [(0, 0, alpha1)]
-  hhBidiagStep (qq , betajm, pp , j     , bb ) =
+  bidiagStep (qq , betajm, pp , j     , bb ) =
                (qq', betaj , pp', succ j, bb') where
     qj = head qq
     pjm = head pp
-  
     u = (aa #> qj) ^-^ (betajm .* pjm)
     alphaj = norm2' u
     pj = u ./ alphaj
@@ -363,21 +351,11 @@ hhBidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
            (j ,j, alphaj)] ++ bb
 
 
-{- G & VL Alg. 5.4.2 -}
+fromColsL :: [SpVector a] -> SpMatrix a
+fromColsL = fromCols . V.fromList
 
--- hhBidiagStep :: (Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon a) =>
---      SpMatrix a -> IxCol -> SpMatrix a
--- hhBidiagStep aa j | j <= n-2 = hhBdR aa' (j + 1)
---                   | otherwise = aa' where
---   (m, n) = dim aa
---   aa' = hhBdL aa j  
---   hhBdL aa j = reflF c j #~^# aa
---     where c = extractSubCol aa j (j, m-1)
---   hhBdR aa i = aa #~# reflF r i 
---     where r = extractSubRow_RK aa i (i + 1, n-1)
---   reflF c j | j > 0 = fromBlocksDiag [eye j, rotm]
---             | otherwise = rotm
---     where rotm = hhRefl (normalize2 c)
+
+
 
 -- | Example 5.4.2 from G & VL
 aa1 :: SpMatrix Double
