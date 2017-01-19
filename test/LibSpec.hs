@@ -274,9 +274,24 @@ genSpM0 m n d = do
 genSpM :: Arbitrary a => Int -> Int -> Gen (SpMatrix a)      
 genSpM m n = genSpM0 m n $ floor (sqrt $ fromIntegral (m * n))
 
+
+
+-- uniform lo hi n = do
+--   xs <- vectorOf n $ choose
+
 -- | Generate a DENSE (m * n) random matrix
-genSpMDense :: Arbitrary a => Int -> Int -> Gen (SpMatrix a)
-genSpMDense m n = genSpM0 m n (m * n)
+genSpMDense :: Arbitrary a => (a -> Bool) -> Int -> Int -> Gen (SpMatrix a)
+genSpMDense f m n = do
+  xs <- vector (m*n) `suchThat` all f
+  let ii = [0..m-1]
+      jj = [0..n-1]
+  return $ fromListSM (m,n) $ zip3 ii jj xs
+
+-- | SpMatrix with constant positive diagonal
+-- genSpMPosDiagonal :: (Arbitrary a, Ord a, Num a) => Int -> Gen (SpMatrix a)
+genSpMDiagonal f n = do
+  x <- arbitrary `suchThat` f
+  return $ mkDiagonal n (replicate n x)
 
 
 -- | Generate an arbitrary square sparse matrix with unit diagonal
