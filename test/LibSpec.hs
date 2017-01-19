@@ -89,8 +89,8 @@ spec = do
     -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
     --   prop_psd aa2 v
   describe "QuickCheck properties:" $ do
-    prop "prop_matSPD_vec : (m #^# m) is symmetric positive definite" $
-      \(PropMatSPDVec (m :: SpMatrix Double) v) -> prop_spd m v
+    -- prop "prop_matSPD_vec : (m #^# m) is symmetric positive definite" $
+    --   \(PropMatSPDVec (m :: SpMatrix Double) v) -> prop_spd m v
     prop "prop_dot : (v <.> v) ~= 1 if ||v|| == 1" $
       \(v :: SpVector Double) -> prop_dot v
     prop "prop_matMat1 : (A ## B)^T == (B^T ## A^T)" $
@@ -99,7 +99,7 @@ spec = do
       \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
     -- prop "prop_QR : Q R = A, Q is orthogonal, R is upper triangular" $
     --   \p@(PropMatI (_ :: SpMatrix Double)) -> prop_QR p
-    prop "prop_Cholesky" $ \p@(PropMat_SPD (_ :: SpMatrix Double)) -> prop_Cholesky p
+    -- prop "prop_Cholesky" $ \p@(PropMat_SPD (_ :: SpMatrix Double)) -> prop_Cholesky p
     -- prop "prop_linSolve GMRES" $ prop_linSolve GMRES_
     
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
@@ -330,16 +330,21 @@ instance Arbitrary (PropMat0 Double) where
 -- | An arbitrary SpMatrix
 newtype PropMat a = PropMat { unPropMat :: SpMatrix a} deriving (Eq, Show)
 instance Arbitrary (PropMat Double) where
-  arbitrary = sized2 (\m n -> PropMat <$> genSpM m n) `suchThat` (nzDim . unPropMat)
+  arbitrary = sized2 (\m n -> PropMat <$> genSpM m n) `suchThat` ((> 2) . nrows . unPropMat)
 
-nzDim :: SpMatrix a -> Bool
-nzDim mm = let (m, n) = dim mm in m > 2 && n > 2
+-- nzDim :: SpMatrix a -> Bool
+-- nzDim mm = let (m, n) = dim mm in m > 2 && n > 2
+
+-- sizedCon :: (a -> Bool) -> (Int -> Gen a) -> Gen a
+-- sizedCon f genf = sized genf `suchThat` f
+
+
 
 
 -- | An arbitrary DENSE SpMatrix
 newtype PropMatDense a = PropMatDense {unPropMatDense :: SpMatrix a} deriving (Eq, Show)
 instance Arbitrary (PropMatDense Double) where
-  arbitrary = sized2 (\m n -> PropMatDense <$> genSpM m n) `suchThat` (nzDim . unPropMatDense)
+  arbitrary = sized2 (\m n -> PropMatDense <$> genSpM m n) `suchThat` ((> 2) . nrows . unPropMatDense)
 
 
 
@@ -347,14 +352,16 @@ instance Arbitrary (PropMatDense Double) where
 newtype PropMatI a = PropMatI {unPropMatI :: SpMatrix a} deriving (Eq)
 instance Show a => Show (PropMatI a) where show = show . unPropMatI
 instance Arbitrary (PropMatI Double) where
-  arbitrary = sized (\m -> PropMatI <$> genSpMI m) `suchThat` (nzDim . unPropMatI)
+  arbitrary = sized (\m -> PropMatI <$> genSpMI m) `suchThat` ((> 2) . nrows . unPropMatI)
 
 
 -- | A symmetric, positive-definite matrix with identity diagonal
-data PropMat_SPD a = PropMat_SPD (SpMatrix a) deriving (Show)
+newtype PropMat_SPD a = PropMat_SPD {unPropMat_SPD :: SpMatrix a} deriving (Show)
 instance Arbitrary (PropMat_SPD Double) where
-  arbitrary = sized genf `suchThat` \(PropMat_SPD mm) -> nrows mm > 4 where
+  arbitrary = sized genf `suchThat` ((> 3) . nrows . unPropMat_SPD) where
    genf n = PropMat_SPD <$> genSpM_SPD n
+
+
 
 
 
@@ -381,12 +388,12 @@ instance Arbitrary (PropMatVec Double) where
 
 
 
--- | A symmetric positive definite matrix and vector of compatible size
-data PropMatSPDVec a = PropMatSPDVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
-instance Arbitrary (PropMatSPDVec Double) where
-  arbitrary = do
-    PropMatVec m v <- arbitrary -- :: Gen (PropMatVec Double)
-    return $ PropMatSPDVec (m #^# m) v
+-- -- | A symmetric positive definite matrix and vector of compatible size
+-- data PropMatSPDVec a = PropMatSPDVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
+-- instance Arbitrary (PropMatSPDVec Double) where
+--   arbitrary = do
+--     PropMatVec m v <- arbitrary -- :: Gen (PropMatVec Double)
+--     return $ PropMatSPDVec (m #^# m) v
 
 
     
@@ -407,13 +414,15 @@ instance Arbitrary (PropMatSPDVec Double) where
 prop_dot :: (Normed v, Epsilon (Scalar v)) => v -> Bool
 prop_dot v = let v' = normalize2 v in nearOne (v' <.> v')
 
--- | Positive semidefinite. 
+-- | Positive semidefinite matrix. 
 prop_spd :: (LinearVectorSpace v, InnerSpace v, Ord (Scalar v), Num (Scalar v)) =>
      MatrixType v -> v -> Bool
 prop_spd mm v = (v <.> (mm #> v)) >= 0
 
-prop_spd' :: PropMatSPDVec Double -> Bool
-prop_spd' (PropMatSPDVec m v) = prop_spd m v
+-- prop_spd' :: PropMatSPDVec Double -> Bool
+-- prop_spd' (PropMatSPDVec m v) = prop_spd m v
+
+
 
 -- | (A B)^T == (B^T A^T)
 prop_matMat1 :: (MatrixRing (SpMatrix t), Eq t) => PropMatMat t -> Bool
@@ -424,7 +433,8 @@ prop_matMat1 (PropMatMat a b) =
 prop_matMat2 :: (MatrixRing (SpMatrix t), Eq t) => PropMat t -> Bool
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
-
+-- | Cholesky factorization of a random SPD matrix 
+prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) => PropMat_SPD a -> Bool
 prop_Cholesky (PropMat_SPD m) = checkChol m
 
 
