@@ -53,29 +53,30 @@ The module `Numeric.LinearAlgebra.Sparse` contains the user interface.
 
 ### Creation of sparse data
 
-The `fromListSM` function creates a sparse matrix from a collection of its entries in (row, column, value) format:
+The `fromListSM` function creates a sparse matrix from a collection of its entries in (row, column, value) format. This is its type signature:
 
     fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
 
-e.g.
+and, in case you are following along in a GHCi session (denoted from now on by `λ>`), you can try it out like this:
 
-    > amat = fromListSM (3,3) [(0,0,2),(1,0,4),(1,1,3),(1,2,2),(2,2,5)]
+    λ> amat = fromListSM (3,3) [(0,0,2),(1,0,4),(1,1,3),(1,2,2),(2,2,5)]
 
-and, similarly,
+Similarly, `fromListSV` is used to create sparse vectors: 
 
     fromListSV :: Int -> [(Int, a)] -> SpVector a
+    
 
-can be used to create sparse vectors.
 Alternatively, the user can copy the contents of a list to a (dense) SpVector using
 
     fromListDenseSV :: Int -> [a] -> SpVector a
+
 
 
 ### Displaying sparse data
 
 Both sparse vectors and matrices can be pretty-printed using `prd`:
 
-    > prd amat
+    λ> prd amat
     ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )
 
     [2,0,0]
@@ -88,8 +89,8 @@ The zeros are just added at printing time; sparse vectors and matrices should on
 
 There are a few common matrix factorizations available; in the following example we compute the LU factorization of a matrix and verify it with the matrix-matrix product `##`  :
 
-    > (l, u) = lu amat
-    > prd $ l ## u
+    λ> (l, u) = lu amat
+    λ> prd $ l ## u
     ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
 
     [2.0,0.0,0.0]
@@ -99,7 +100,7 @@ There are a few common matrix factorizations available; in the following example
 Notice that the result is _dense_, i.e. certain entries are numerically zero but have been inserted into the result along with all the others (thus taking up memory!).
 To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, which filters out all the elements x for which `|x| <= eps`, where `eps` (defined in `Numeric.Eps`) depends on the numerical type used (e.g. it is 10^-6 for `Float`s and 10^-12 for `Double`s).
 
-    > prd $ l #~# u
+    λ> prd $ l #~# u
     ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )
 
     [2.0,0.0,0.0]
@@ -110,16 +111,16 @@ A matrix is transposed using `transposeSM`.
 
 Sometimes we need to compute matrix-matrix transpose products, which is why the library offers the infix operators `#^#` (M^T N) and `##^` (M N^T):
 
-    > amat' = amat #^# amat
-    > prd amat'
+    λ> amat' = amat #^# amat
+    λ> prd amat'
     ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
 
     [20.0,12.0,8.0]
     [12.0,9.0,6.0]
     [8.0,6.0,29.0]
 
-    > l = chol amat'
-    > prd $ l ##^ l
+    λ> l = chol amat'
+    λ> prd $ l ##^ l
     ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
 
     [20.000000000000004,12.0,8.0]
@@ -132,24 +133,24 @@ In the above example we have also shown the Cholesky decomposition (M = L L^T wh
 
 Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `linSolve` function, or alternatively `<\>` (which uses GMRES as default solver method) :
 
-    > b = fromListDenseSV 3 [3,2,5]
-    > x = amat <\> b
-    > prd x
+    λ> b = fromListDenseSV 3 [3,2,5]
+    λ> x = amat <\> b
+    λ> prd x
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
     [1.4999999999999998,-1.9999999999999998,0.9999999999999998]
 
 The result can be verified by computing the matrix-vector action `amat #> x`, which should (ideally) be very close to the right-hand side `b` :
 
-    > prd $ amat #> x
+    λ> prd $ amat #> x
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
     [2.9999999999999996,1.9999999999999996,4.999999999999999]
 
 The library also provides a forward-backward substitution solver (`luSolve`) based on a triangular factorization of the system matrix (usually LU). This should be the preferred for solving smaller, dense systems. Using the data defined above we can cross-verify the two solution methods:
 
-    > x' = luSolve l u b
-    > prd x'
+    λ> x' = luSolve l u b
+    λ> prd x'
 
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
