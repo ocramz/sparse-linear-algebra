@@ -252,6 +252,11 @@ checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
 
 
 
+
+
+
+
+
 -- * Arbitrary newtypes and instances for QuickCheck
 
 -- | helpers
@@ -261,7 +266,14 @@ sized2 f = sized $ \i -> sized $ \j -> f i j
 sized3 :: (Int -> Int -> Int -> Gen a) -> Gen a
 sized3 f = sized $ \i -> sized $ \j -> sized $ \k -> f i j k
 
--- | Generate a random (m * n) sparse matrix having d elements
+
+whenFail1 :: Testable prop => (t -> IO ()) -> (t -> prop) -> t -> Property
+whenFail1 io p x = whenFail (io x) (property $ p x)
+
+
+
+
+-- | Generate a (m * n) random sparse matrix having d elements
 genSpM0 :: Arbitrary a => Int -> Int -> Int -> Gen (SpMatrix a)
 genSpM0 m n d = do
       -- let d = floor (sqrt $ fromIntegral (m * n)) :: Int
@@ -276,22 +288,28 @@ genSpM m n = genSpM0 m n $ floor (sqrt $ fromIntegral (m * n))
 
 
 
--- uniform lo hi n = do
---   xs <- vectorOf n $ choose
 
--- | Generate a DENSE (m * n) random matrix
-genSpMDense :: Arbitrary a => (a -> Bool) -> Int -> Int -> Gen (SpMatrix a)
-genSpMDense f m n = do
-  xs <- vector (m*n) `suchThat` all f
-  let ii = [0..m-1]
-      jj = [0..n-1]
+-- | Generate a (m * n) random DENSE matrix
+genSpMDense :: (Arbitrary a, Num a) => Int -> Int -> Gen (SpMatrix a)
+genSpMDense m n = do
+  xs <- vector (m*n)
+  let ii = concatMap (replicate n) [0..m-1]
+      jj = concat $ replicate m [0..n-1]
   return $ fromListSM (m,n) $ zip3 ii jj xs
 
--- | SpMatrix with constant positive diagonal
--- genSpMPosDiagonal :: (Arbitrary a, Ord a, Num a) => Int -> Gen (SpMatrix a)
-genSpMDiagonal f n = do
+-- | SpMatrix with constant diagonal
+genSpMConstDiagonal ::
+  (Arbitrary a, Ord a, Num a) => (a -> Bool) -> Int -> Gen (SpMatrix a)
+genSpMConstDiagonal f n = do
   x <- arbitrary `suchThat` f
   return $ mkDiagonal n (replicate n x)
+
+genSpMDiagonal :: Arbitrary a => ([a] -> Bool) -> Int -> Gen (SpMatrix a)
+genSpMDiagonal f n = do
+  xs <- vector n `suchThat` f
+  return $ mkDiagonal n xs
+
+
 
 
 -- | Generate an arbitrary square sparse matrix with unit diagonal
@@ -302,30 +320,44 @@ genSpMI m = do
   return $ mm ^+^ ii
 
 
-genSpM_SPD :: (Arbitrary a, Ord a, Num a) => Int -> Gen (SpMatrix a)
-genSpM_SPD n = do
-  shift <- choose (1, n-2)
-  xdiag <- arbitrary `suchThat` (> 0)
-  x <- arbitrary `suchThat` (< 0) 
-  let diag = replicate n xdiag
-      sd = replicate (n - shift) x
-      mm1 = mkSubDiagonal n shift sd
-      mm2 = mkSubDiagonal n (negate shift) sd
-      mm0 = mkSubDiagonal n 0 diag      
-  return $ mm1 ^+^ (mm2 ^+^ mm0)
+-- genSpM_SPD :: (Arbitrary a, Ord a, Num a) => Int -> Gen (SpMatrix a)
+-- genSpM_SPD n = do
+--   shift <- choose (1, n-2)
+--   xdiag <- arbitrary `suchThat` (> 0)
+--   x <- arbitrary `suchThat` (< 0) 
+--   let diag = replicate n xdiag
+--       sd = replicate (n - shift) x
+--       mm1 = mkSubDiagonal n shift sd
+--       mm2 = mkSubDiagonal n (negate shift) sd
+--       mm0 = mkSubDiagonal n 0 diag      
+--   return $ mm1 ^+^ (mm2 ^+^ mm0)
 
 
 
+-- | Generate a random Householder reflection matrix
+genReflMatDense :: Int -> Gen (SpMatrix Double)
+genReflMatDense n = do
+  v <- normalize2 <$> (genSpVDense n :: Gen (SpVector Double))
+  return $ hhRefl v
 
 
 
 -- | Generate a random sparse vector
-genSpV :: Arbitrary a => Int -> Gen (SpVector a)
-genSpV n = do
-  let d = floor (sqrt $ fromIntegral n) :: Int
+genSpV0 :: Arbitrary a => Int -> Int -> Gen (SpVector a)
+genSpV0 d n = do
   i_ <- vectorOf d  $ choose (0, n -1)
   v_ <- vector d
   return $ fromListSV n (zip i_ v_)
+
+genSpV :: Arbitrary a => Int -> Gen (SpVector a)
+genSpV n = genSpV0 (floor (sqrt $ fromIntegral n) :: Int) n
+
+
+-- | Generate a random dense vector
+genSpVDense :: Arbitrary a => Int -> Gen (SpVector a)
+genSpVDense n = do
+  v <- vector n
+  return $ fromListDenseSV n v
 
 
 
@@ -372,9 +404,9 @@ instance Arbitrary (PropMatI Double) where
 
 -- | A symmetric, positive-definite matrix with identity diagonal
 newtype PropMat_SPD a = PropMat_SPD {unPropMat_SPD :: SpMatrix a} deriving (Show)
-instance Arbitrary (PropMat_SPD Double) where
-  arbitrary = sized genf `suchThat` ((> 3) . nrows . unPropMat_SPD) where
-   genf n = PropMat_SPD <$> genSpM_SPD n
+-- instance Arbitrary (PropMat_SPD Double) where
+--   arbitrary = sized genf `suchThat` ((> 3) . nrows . unPropMat_SPD) where
+--    genf n = PropMat_SPD <$> genSpM_SPD n
 
 
 
