@@ -16,6 +16,8 @@ import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CD
 -- import Data.Sparse.Utils
 -- import Data.Sparse.Types
 
+import Data.VectorSpace
+
 import Numeric.LinearAlgebra.Class
 
 
@@ -125,19 +127,19 @@ unionWithCV g z (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV n ixf vf where
 
 
 #define CVType(t) \
-  instance AdditiveGroup (CsrVector t) where {zero = CV 0 V.empty V.empty; (^+^) = unionWithCV (+) 0 ; negated = fmap negate};\
-  instance VectorSpace (CsrVector t) where {type Scalar (CsrVector t) = (t); n .* x = fmap (* n) x };\
-  instance Hilbert (CsrVector t) where {x `dot` y = sum $ intersectWithCV (*) x y };\
-  -- instance Normed (CsrVector t) where {norm p v = norm' p v}
+  instance AdditiveGroup (CsrVector t) where {zeroV = CV 0 V.empty V.empty; (^+^) = unionWithCV (+) 0 ; negateV = fmap negate};\
+  instance VectorSpace (CsrVector t) where {type Scalar (CsrVector t) = (t); n *^ x = fmap (* n) x };\
+  -- instance Hilbert (CsrVector t) where {x `dot` y = sum $ intersectWithCV (*) x y };\
+  -- -- instance Normed (CsrVector t) where {norm p v = norm' p v}
 
 #define CVTypeC(t) \
-  instance AdditiveGroup (CsrVector (Complex t)) where {zero = CV 0 V.empty V.empty; (^+^) = unionWithCV (+) (0 :+ 0) ; negated = fmap negate};\
-  instance VectorSpace (CsrVector (Complex t)) where {type Scalar (CsrVector (Complex t)) = (Complex t); n .* x = fmap (* n) x };\
-  instance Hilbert (CsrVector (Complex t)) where {x `dot` y = sum $ intersectWithCV (*) (fmap conjugate x) y};\
+  instance AdditiveGroup (CsrVector (Complex t)) where {zeroV = CV 0 V.empty V.empty; (^+^) = unionWithCV (+) (0 :+ 0) ; negateV = fmap negate};\
+  instance VectorSpace (CsrVector (Complex t)) where {type Scalar (CsrVector (Complex t)) = (Complex t); n *^ x = fmap (* n) x };\
+  -- instance Hilbert (CsrVector (Complex t)) where {x `dot` y = sum $ intersectWithCV (*) (fmap conjugate x) y};\
 
-#define NormedType(t) \
-  instance Normed (CsrVector t) where { norm p v | p==1 = norm1 v | otherwise = norm2 v ; normalize p v = v ./ norm p v};\
-  instance Normed (CsrVector (Complex t)) where { norm p v | p==1 = norm1 v | otherwise = norm2 v ; normalize p v = v ./ norm p v}
+-- #define NormedType(t) \
+--   instance Normed (CsrVector t) where { norm p v | p==1 = norm1 v | otherwise = norm2 v ; normalize p v = v ./ norm p v};\
+--   instance Normed (CsrVector (Complex t)) where { norm p v | p==1 = norm1 v | otherwise = norm2 v ; normalize p v = v ./ norm p v}
 
 
 CVType(Int)
@@ -158,7 +160,7 @@ CVTypeC(Double)
 CVTypeC(CFloat)
 CVTypeC(CDouble)
 
-NormedType(Float)
-NormedType(Double)
-NormedType(CFloat)
-NormedType(CDouble)    
+-- NormedType(Float)
+-- NormedType(Double)
+-- NormedType(CFloat)
+-- NormedType(CDouble)    

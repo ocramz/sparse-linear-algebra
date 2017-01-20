@@ -17,9 +17,7 @@ import Numeric.Eps
 
 
 
--- | Lift a real number onto the complex plane
-toC :: Num a => a -> Complex a
-toC r = r :+ 0
+
 
 
 
@@ -38,12 +36,7 @@ instance RealFloat e => Elt (Complex e) where
   mag = magnitude
   
 
--- * Additive group
 
-zero :: AdditiveGroup v => v
-zero = zeroV
-negated :: AdditiveGroup v => v -> v
-negated = negateV
 
 
 
@@ -365,6 +358,23 @@ class SpContainer m e => SparseMatrix m e where
 --   smvInsertCol :: m e -> v e -> IxCol -> m e
 --   smvExtractRow :: m e -> IxRow -> v e
 --   smvExtractCol :: m e -> IxCol -> v e  
+
+
+
+
+
+
+
+
+-- * Utilities
+
+
+-- | Lift a real number onto the complex plane
+toC :: Num a => a -> Complex a
+toC r = r :+ 0
+
+
+
 
 
 

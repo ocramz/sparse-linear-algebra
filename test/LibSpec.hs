@@ -46,7 +46,7 @@ spec :: Spec
 spec = do
   describe "Numeric.LinearAlgebra.Sparse : Library" $ do
     prop "Subtraction is cancellative" $ \(x :: SpVector Double) ->
-      norm2Sq (x ^-^ x) `shouldBe` zero
+      norm2Sq (x ^-^ x) `shouldBe` zeroV
     it "<.> : inner product (Real)" $
       tv0 <.> tv0 `shouldBe` 61
     it "<.> : inner product (Complex)" $
@@ -273,7 +273,9 @@ whenFail1 io p x = whenFail (io x) (property $ p x)
 
 
 
--- | Generate a (m * n) random sparse matrix having d elements
+
+
+-- | (m * n) random sparse matrix having d elements
 genSpM0 :: Arbitrary a => Int -> Int -> Int -> Gen (SpMatrix a)
 genSpM0 m n d = do
       -- let d = floor (sqrt $ fromIntegral (m * n)) :: Int
@@ -282,14 +284,14 @@ genSpM0 m n d = do
       x_ <- vector d
       return $ fromListSM (m,n) $ zip3 i_ j_ x_
 
--- | Generate a random (m * n) sparse matrix having sqrt(m * n) elements
+-- | Random (m * n) sparse matrix having sqrt(m * n) elements
 genSpM :: Arbitrary a => Int -> Int -> Gen (SpMatrix a)      
 genSpM m n = genSpM0 m n $ floor (sqrt $ fromIntegral (m * n))
 
 
 
 
--- | Generate a (m * n) random DENSE matrix
+-- | (m * n) random DENSE matrix
 genSpMDense :: (Arbitrary a, Num a) => Int -> Int -> Gen (SpMatrix a)
 genSpMDense m n = do
   xs <- vector (m*n)
@@ -297,13 +299,17 @@ genSpMDense m n = do
       jj = concat $ replicate m [0..n-1]
   return $ fromListSM (m,n) $ zip3 ii jj xs
 
--- | SpMatrix with constant diagonal
+
+
+-- | Order n diagonal SpMatrix with constant elements
 genSpMConstDiagonal ::
   (Arbitrary a, Ord a, Num a) => (a -> Bool) -> Int -> Gen (SpMatrix a)
 genSpMConstDiagonal f n = do
   x <- arbitrary `suchThat` f
   return $ mkDiagonal n (replicate n x)
 
+
+-- | Order-n diagonal SpMatrix
 genSpMDiagonal :: Arbitrary a => ([a] -> Bool) -> Int -> Gen (SpMatrix a)
 genSpMDiagonal f n = do
   xs <- vector n `suchThat` f
@@ -312,7 +318,7 @@ genSpMDiagonal f n = do
 
 
 
--- | Generate an arbitrary square sparse matrix with unit diagonal
+-- | Arbitrary square sparse matrix with unit diagonal
 genSpMI :: (Num a, Arbitrary a) => Int -> Gen (SpMatrix a)
 genSpMI m = do
   mm <- genSpM m m
@@ -320,21 +326,18 @@ genSpMI m = do
   return $ mm ^+^ ii
 
 
--- genSpM_SPD :: (Arbitrary a, Ord a, Num a) => Int -> Gen (SpMatrix a)
--- genSpM_SPD n = do
---   shift <- choose (1, n-2)
---   xdiag <- arbitrary `suchThat` (> 0)
---   x <- arbitrary `suchThat` (< 0) 
---   let diag = replicate n xdiag
---       sd = replicate (n - shift) x
---       mm1 = mkSubDiagonal n shift sd
---       mm2 = mkSubDiagonal n (negate shift) sd
---       mm0 = mkSubDiagonal n 0 diag      
---   return $ mm1 ^+^ (mm2 ^+^ mm0)
+
+-- | A random symmetric, positive-definite order n matrix
+genSpM_SPD :: Int -> Gen (SpMatrix Double)
+genSpM_SPD n = do
+  q <- genReflMatDense n             -- random Householder matrix
+  d <- genSpMDiagonal (all (> 0)) n  -- positive diagonal
+  return $ q ## (d ##^ q)
 
 
 
--- | Generate a random Householder reflection matrix
+
+-- | Random Householder reflection matrix
 genReflMatDense :: Int -> Gen (SpMatrix Double)
 genReflMatDense n = do
   v <- normalize2 <$> (genSpVDense n :: Gen (SpVector Double))
@@ -342,7 +345,11 @@ genReflMatDense n = do
 
 
 
--- | Generate a random sparse vector
+
+
+
+
+-- | Random sparse vector
 genSpV0 :: Arbitrary a => Int -> Int -> Gen (SpVector a)
 genSpV0 d n = do
   i_ <- vectorOf d  $ choose (0, n -1)
@@ -353,10 +360,10 @@ genSpV :: Arbitrary a => Int -> Gen (SpVector a)
 genSpV n = genSpV0 (floor (sqrt $ fromIntegral n) :: Int) n
 
 
--- | Generate a random dense vector
-genSpVDense :: Arbitrary a => Int -> Gen (SpVector a)
+-- | Random dense vector
+genSpVDense :: (Epsilon a, Arbitrary a) => Int -> Gen (SpVector a)
 genSpVDense n = do
-  v <- vector n
+  v <- vector n `suchThat` any isNz
   return $ fromListDenseSV n v
 
 
@@ -402,11 +409,12 @@ instance Arbitrary (PropMatI Double) where
   arbitrary = sized (\m -> PropMatI <$> genSpMI m) `suchThat` ((> 2) . nrows . unPropMatI)
 
 
--- | A symmetric, positive-definite matrix with identity diagonal
-newtype PropMat_SPD a = PropMat_SPD {unPropMat_SPD :: SpMatrix a} deriving (Show)
--- instance Arbitrary (PropMat_SPD Double) where
---   arbitrary = sized genf `suchThat` ((> 3) . nrows . unPropMat_SPD) where
---    genf n = PropMat_SPD <$> genSpM_SPD n
+
+-- | A symmetric, positive-definite matrix
+newtype PropMatSPD a = PropMatSPD {unPropMatSPD :: SpMatrix a} deriving (Show)
+instance Arbitrary (PropMatSPD Double) where
+  arbitrary = sized genf `suchThat` ((> 2) . nrows . unPropMatSPD) where
+   genf n = PropMatSPD <$> genSpM_SPD n
 
 
 
@@ -481,8 +489,8 @@ prop_matMat2 :: (MatrixRing (SpMatrix t), Eq t) => PropMat t -> Bool
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 -- | Cholesky factorization of a random SPD matrix 
-prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) => PropMat_SPD a -> Bool
-prop_Cholesky (PropMat_SPD m) = checkChol m
+prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) => PropMatSPD a -> Bool
+prop_Cholesky (PropMatSPD m) = checkChol m
 
 
 -- | QR decomposition
