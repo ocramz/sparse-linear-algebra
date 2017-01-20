@@ -318,30 +318,27 @@ genSpMDiagonal f n = do
 
 
 
--- | Arbitrary square sparse matrix with unit diagonal
-genSpMI :: (Num a, Arbitrary a) => Int -> Gen (SpMatrix a)
-genSpMI m = do
-  mm <- genSpM m m
-  let ii = eye m
-  return $ mm ^+^ ii
-
-
-
--- | A random symmetric, positive-definite order n matrix
-genSpM_SPD :: Int -> Gen (SpMatrix Double)
-genSpM_SPD n = do
-  q <- genReflMatDense n             -- random Householder matrix
-  d <- genSpMDiagonal (all (> 0)) n  -- positive diagonal
-  return $ q ## (d ##^ q)
 
 
 
 
--- | Random Householder reflection matrix
-genReflMatDense :: Int -> Gen (SpMatrix Double)
-genReflMatDense n = do
-  v <- normalize2 <$> (genSpVDense n :: Gen (SpVector Double))
-  return $ hhRefl v
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -395,6 +392,8 @@ instance Arbitrary (PropMat Double) where
 
 
 
+
+
 -- | An arbitrary DENSE SpMatrix
 newtype PropMatDense a = PropMatDense {unPropMatDense :: SpMatrix a} deriving (Eq, Show)
 instance Arbitrary (PropMatDense Double) where
@@ -408,13 +407,56 @@ instance Show a => Show (PropMatI a) where show = show . unPropMatI
 instance Arbitrary (PropMatI Double) where
   arbitrary = sized (\m -> PropMatI <$> genSpMI m) `suchThat` ((> 2) . nrows . unPropMatI)
 
+genSpMI :: (Num a, Arbitrary a) => Int -> Gen (SpMatrix a)
+genSpMI m = do
+  mm <- genSpM m m
+  return $ mm ^+^ eye m
+
+  
+
+
+
+
+-- | An arbitrary Householder reflection matrix 
+newtype PropHhReflMat a = PropHhReflMat { unHh :: SpMatrix a} deriving Show
+instance Arbitrary (PropHhReflMat Double) where
+  arbitrary = sized (\n -> PropHhReflMat <$> genReflMat n) `suchThat` ((> 2) . nrows . unHh)
+
+genReflMat :: Int -> Gen (SpMatrix Double)
+genReflMat n = do
+  v <- normalize2 <$> (genSpVDense n :: Gen (SpVector Double))
+  return $ hhRefl v
+
+
+
+
+-- a product of a "large" number of random Householder matrices
+newtype PropMatUnitary a = PropMatUnitary {unUnitary :: SpMatrix a} deriving Show
+instance Arbitrary (PropMatUnitary Double) where
+  arbitrary = sized (\n -> PropMatUnitary <$> genReflMat n) `suchThat` ((> 2) . nrows . unUnitary)
+  
+genUnitary :: Int -> Gen (SpMatrix Double)
+genUnitary n = do
+  q <- vectorOf (10 * n) $ genReflMat n  -- random Householder matrix
+  return $ foldr (##) (eye n) q 
+
+prop_unitary :: (MatrixRing (SpMatrix a), Epsilon a, Eq a) =>
+     PropMatUnitary a -> Bool
+prop_unitary (PropMatUnitary m) = isOrthogonalSM m
+
+
 
 
 -- | A symmetric, positive-definite matrix
 newtype PropMatSPD a = PropMatSPD {unPropMatSPD :: SpMatrix a} deriving (Show)
 instance Arbitrary (PropMatSPD Double) where
-  arbitrary = sized genf `suchThat` ((> 2) . nrows . unPropMatSPD) where
-   genf n = PropMatSPD <$> genSpM_SPD n
+  arbitrary = sized genSpM_SPD `suchThat` ((> 2) . nrows . unPropMatSPD)
+
+genSpM_SPD :: Int -> Gen (PropMatSPD Double)
+genSpM_SPD n = do
+  q <- genUnitary n 
+  d <- genSpMDiagonal (all (> 0)) n          -- positive diagonal
+  return $ PropMatSPD ( q ## (d ##^ q) )
 
 
 
@@ -487,6 +529,16 @@ prop_matMat1 (PropMatMat a b) =
 -- | Implementation of transpose, (##), (##^) and (#^#) is consistent
 prop_matMat2 :: (MatrixRing (SpMatrix t), Eq t) => PropMat t -> Bool
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
+
+
+
+-- -- | The composition of a large number of random Householder reflection operator is an orthogonal matrix
+-- prop_refl_orthog :: (MatrixRing (SpMatrix a), Epsilon a, Eq a) => PropHhReflMat a -> Bool
+-- prop_refl_orthog (PropMatSPD m) = isOrthogonalSM m
+
+
+
+
 
 -- | Cholesky factorization of a random SPD matrix 
 prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) => PropMatSPD a -> Bool

@@ -58,7 +58,8 @@ sizeStr sm =
   sy = spy sm :: Double
 
 instance Show a => Show (SpMatrix a) where
-  show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList x)
+  show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList $ IM.toList <$> x)
+  -- show sm@(SM _ x) = show x
 
 instance Functor SpMatrix where
   fmap f (SM d md) = SM d ((fmap . fmap) f md)

@@ -380,6 +380,11 @@ toC r = r :+ 0
 
 
 
+
+
+
+
+
 -- -- | Instances for AdditiveGroup
 -- instance Integral a => AdditiveGroup (Ratio a) where
 --   {zero=0; (^+^) = (+); negated = negate}
