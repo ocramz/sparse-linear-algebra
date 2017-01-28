@@ -798,7 +798,8 @@ bcg aa b x0 = execState (untilConverged _xBcg (bcgStep aa)) bcgInit where
   p0 = r0
   p0hat = r0
   bcgInit = BCG x0 r0 r0hat p0 p0hat
-  bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
+
+bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
     aap = aa #> p
     alpha = (r `dot` rhat) / (aap `dot` phat)
     x1 = x ^+^ (alpha .* p)
