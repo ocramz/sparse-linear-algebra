@@ -39,16 +39,16 @@ library
                        Data.Sparse.PPrint
                        Data.Sparse.Types
                        Numeric.Eps
+                       Control.Exception.Common
   build-depends:       base >= 4.7 && < 5
                      , vector-space
                      , containers
-                     , hspec
                      , primitive >= 0.6.1.0
                      , mtl >= 2.2.1
                      , mwc-random
                      , vector
                      , vector-algorithms
-                     , QuickCheck >= 2.8.2
+                     , exceptions
                      -- , monad-par
 
 
