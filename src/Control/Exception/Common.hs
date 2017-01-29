@@ -7,6 +7,16 @@ import Data.Typeable -- (TypeRep, Typeable, typeRep)
 
 import Data.Sparse.Utils
 
+
+-- | Input error
+
+data InputError = NonNegError String Int deriving (Eq, Typeable)
+instance Show InputError where
+  show (NonNegError s i) = unwords [s, ": parameter must be nonnegative, instead I got", show i]
+instance Exception InputError
+
+
+
 -- | Out of bounds index error
 data OutOfBoundsIndexError i = OOBIxError String i deriving (Eq, Typeable)
 instance Show i => Show (OutOfBoundsIndexError i) where
@@ -36,9 +46,19 @@ instance Show i => Show (MatrixException i) where
 instance (Show i, Typeable i) => Exception (MatrixException i)
 
 
+data MatrixShapeException = NonTriangularException String 
+                          deriving (Eq, Typeable)
+instance Show MatrixShapeException where
+  show (NonTriangularException s )= unwords [s, ": matrix must be triangular"]
+instance Exception MatrixShapeException
+
+
 
 -- | Numerical iteration errors
-data IterationException = NotConverged  -- ^ residual norm is greater than tolerance
-                        | Diverging     -- ^ residual norm increased
-                        deriving (Show, Eq, Typeable)
-instance Exception IterationException   
+data IterationException a = NotConverged String Int a 
+                          | Diverging String a a    
+                          deriving (Eq, Typeable)
+instance Show a => Show (IterationException a) where
+  show (NotConverged s niters x) = unwords [s, ": Could not converge within iteration budget", show niters, "; final state:", show x]
+  show (Diverging s x0 x1) = unwords [s, ": Diverging iterations", show x0, show x1]
+instance (Show a, Typeable a) => Exception (IterationException a)

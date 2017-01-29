@@ -45,11 +45,14 @@ library
                      , containers
                      , primitive >= 0.6.1.0
                      , mtl >= 2.2.1
-                     , mwc-random
+                     -- , mwc-random
                      , vector
                      , vector-algorithms
                      , exceptions
+                     , transformers
                      -- , monad-par
+                     , QuickCheck >= 2.8.2
+                     , hspec
 
 
 -- executable sparse-linear-algebra
@@ -73,6 +76,7 @@ test-suite spec
                      , criterion
                      , hspec
                      , mtl >= 2.2.1
+                     , exceptions
                      , mwc-random
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra

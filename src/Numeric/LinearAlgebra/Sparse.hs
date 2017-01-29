@@ -1,6 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
-{-# language NoMonomorphismRestriction #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
 {-|
 
@@ -29,7 +28,7 @@ module Numeric.LinearAlgebra.Sparse
          -- eigRayleigh,
          -- * Linear solvers
          -- ** Iterative methods
-         linSolve0, LinSolveMethod(..), (<\>),
+         -- linSolve0, LinSolveMethod(..), (<\>),
          -- pinv,
          -- ** Direct methods
          luSolve, triLowerSolve, triUpperSolve,
@@ -37,14 +36,15 @@ module Numeric.LinearAlgebra.Sparse
          ilu0, mSsor,
          -- * Matrix partitioning
          diagPartitions,
-         -- * Random arrays
-         randArray,
-         -- * Random matrices and vectors
-         randMat, randVec, 
-         -- ** Sparse "
-         randSpMat, randSpVec,
+         -- -- * Random arrays
+         -- randArray,
+         -- -- * Random matrices and vectors
+         -- randMat, randVec, 
+         -- -- ** Sparse "
+         -- randSpMat, randSpVec,
          -- * Iteration combinators
-         modifyInspectN, runAppendN', untilConverged,
+         modifyInspectN, modifyInspectN',
+         runAppendN', untilConverged,
          diffSqL
        )
        where
@@ -57,12 +57,13 @@ import Control.Exception
 import Control.Monad.Catch
 import Data.Typeable
 
+import Control.Applicative ((<|>))
 import Control.Monad.Primitive
 import Control.Monad (replicateM)
 import Control.Monad.State.Strict
 -- import Control.Monad.Writer
 -- import Control.Monad.Trans
--- import Control.Monad.Trans.State (runStateT)
+import qualified Control.Monad.Trans.State  as MTS -- (runStateT)
 -- import Control.Monad.Trans.Writer (runWriterT)
 import Data.Complex
 
@@ -71,8 +72,8 @@ import Data.VectorSpace hiding (magnitude)
 import qualified Data.IntMap.Strict as IM
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
 
-import qualified System.Random.MWC as MWC
-import qualified System.Random.MWC.Distributions as MWC
+-- import qualified System.Random.MWC as MWC
+-- import qualified System.Random.MWC.Distributions as MWC
 
 -- import Data.Monoid
 -- import qualified Data.Foldable as F
@@ -325,7 +326,7 @@ hhV x = (v, beta) where
 
 -- | Golub-Kahan-Lanczos bidiagonalization (see "Restarted Lanczos Bidiagonalization for the SVD", SLEPc STR-8, http://slepc.upv.es/documentation/manual.htm )
 gklBidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
-               | otherwise = error "hhBidiag : dimension mismatch. Provide q1 compatible with aa #> q1"
+                  | otherwise = error "hhBidiag : dimension mismatch. Provide q1 compatible with aa #> q1"
   where
   (m,n) = dim aa
   aat = transpose aa
@@ -422,8 +423,8 @@ chol aa = lfin where
     aij = aa@@(i, j)
     inn = contractSub ll ll i j (j - 1)
   cholDiag ll i | i == 0 = sqrt aai
-                | i > 0 = sqrt $ aai - sum (fmap (**2) lrow)
-                | otherwise = error "cholDiag : index must be nonnegative" where
+                | otherwise = sqrt $ aai - sum (fmap (**2) lrow) -- i > 0
+    where
         aai = aa@@(i,i)
         lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
 
@@ -629,13 +630,11 @@ mSsor aa omega = (l, r) where
 -- * Linear solver, LU-based
 
 -- | Direct solver based on a triangular factorization of the system matrix.
--- luSolve ::
---   (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpMatrix a -> SpVector a -> SpVector a
-luSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t), Epsilon t) =>
-     SpMatrix t -> SpMatrix t -> SpVector t -> SpVector t
+luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t), Epsilon t) =>
+     SpMatrix t -> SpMatrix t -> SpVector t -> m (SpVector t)
 luSolve ll uu b
-  | isLowerTriSM ll && isUpperTriSM uu = triUpperSolve uu (triLowerSolve ll b)
-  | otherwise = error "luSolve : factors must be triangular matrices" 
+  | isLowerTriSM ll && isUpperTriSM uu = return $ triUpperSolve uu (triLowerSolve ll b)
+  | otherwise = throwM (NonTriangularException "luSolve")-- error "luSolve : factors must be triangular matrices" 
 
 -- triLowerSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 triLowerSolve :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Elt t) => SpMatrix t -> SpVector t -> SpVector t
@@ -929,51 +928,32 @@ pinv aa b = aa #~^# aa <\> atb where
 
 data LinSolveMethod = GMRES_ | CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
--- -- | Linear solve with _random_ starting vector
--- linSolveM ::
---   PrimMonad m =>
---     LinSolveMethod -> SpMatrix Double -> SpVector Double -> m (SpVector Double)
--- linSolveM method aa b = do
---   let (m, n) = dim aa
+
+-- linSolve0 method aa b x0
+--   | n /= nb = error "linSolve : operand dimensions mismatch"
+--   | otherwise = solve aa b where
+--       solve aa' b' | isDiagonalSM aa' = Right $ reciprocal aa' #> b' -- diagonal solve
+--                    | otherwise = solnE
+--       solnE | nearZero (norm2 ((aa #> xHat) ^-^ b)) = Right xHat
+--             | otherwise = Left (NotConverged "linSolve0" nits xHat)
+--       xHat = case method of
+--         GMRES_ -> gmres aa b
+--         CGNE_ -> _xCgne (cgne aa b x0)
+--         TFQMR_ -> _xTfq (tfqmr aa b x0)
+--         BCG_ -> _xBcg (bcg aa b x0)
+--         BICGSTAB_ ->  _xBicgstab (bicgstab aa b x0 x0)
+--         CGS_ -> _x (cgs aa b x0 x0)
+--       (m, n) = dim aa
 --       nb     = dim b
---   if n /= nb then error "linSolve : operand dimensions mismatch" else do
---     x0 <- randVec nb
---     case method of CGS_ -> return $ _xBicgstab (bicgstab aa b x0 x0)
---                    BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
 
-linSolve0
-  :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, V (SpVector t), MatrixRing (SpMatrix t), Epsilon t) =>
-     LinSolveMethod
-     -> SpMatrix t
-     -> SpVector t
-     -> SpVector t
-     -> Either IterationException (SpVector t)
-linSolve0 method aa b x0
-  | n /= nb = error "linSolve : operand dimensions mismatch"
-  | otherwise = solve aa b where
-      solve aa' b' | isDiagonalSM aa' = Right $ reciprocal aa' #> b' -- diagonal solve
-                   | otherwise = solnE
-      solnE | nearZero (norm2 ((aa #> xHat) ^-^ b)) = Right xHat
-            | otherwise = Left NotConverged
-      xHat = case method of
-        GMRES_ -> gmres aa b
-        CGNE_ -> _xCgne (cgne aa b x0)
-        TFQMR_ -> _xTfq (tfqmr aa b x0)
-        BCG_ -> _xBcg (bcg aa b x0)
-        BICGSTAB_ ->  _xBicgstab (bicgstab aa b x0 x0)
-        CGS_ -> _x (cgs aa b x0 x0)
-      (m, n) = dim aa
-      nb     = dim b
+-- -- -- | linSolve using the GMRES method as default
+-- instance LinearSystem (SpVector Double) where
+--   aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
+--     where n = ncols aa
 
--- -- | linSolve using the GMRES method as default
-instance LinearSystem (SpVector Double) where
-  aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
-    where n = ncols aa
-
-instance LinearSystem (SpVector (Complex Double)) where
-  aa <\> b = linSolve0 GMRES_ aa b (mkSpVC n $ replicate n 0.1)
-    where n = ncols aa
+-- instance LinearSystem (SpVector (Complex Double)) where
+--   aa <\> b = linSolve0 GMRES_ aa b (mkSpVC n $ replicate n 0.1)
+--     where n = ncols aa
 
 
 
@@ -1068,6 +1048,45 @@ modifyInspectN nitermax q f
                        go (i + 1) (take 2 $ y : ll)
 
 
+modifyInspectN' nitermax q qfun f x0
+  | nitermax > 0 = go 0 []
+  | otherwise = throwM (NonNegError "modifyInspectN" nitermax)
+  where
+    -- xfinal = execState (go 0 []) x0
+    go i ll = do
+      x <- get
+      let y = f x
+      if length ll < 3
+      then do put y
+              go (i + 1) (y : ll)
+      else do
+         let inll = init ll
+             tll = tail ll
+             qi = q inll
+             qt = q tll
+         if nearZero qi || i == nitermax
+         then do put y
+                 return y
+         else do
+             if qfun qi qt
+             then throwM (Diverging "modifyInspectN" qi qt)
+             else do put y
+                     go (i + 1) (take 3 $ y : ll)
+
+
+-- | a moving-window computation
+
+-- data W a = W [a]
+-- movingWindow f = do
+--   (W xs) <- get
+--   let y = f xs
+--       w' = W y ()
+--   put w'
+--   return w'
+
+
+
+
 -- helper functions for estimating convergence
 -- meanl :: (Foldable t, Fractional a) => t a -> a
 -- meanl xx = 1/fromIntegral (length xx) * sum xx
@@ -1082,17 +1101,19 @@ diffSqL xx = (x1 - x2)**2 where [x1, x2] = [head xx, xx!!1]
 
 
 -- | Relative tolerance :
--- relTol a b := norm1 (a - b) / (1 + min (norm1 a) (norm1 b))
-relTol :: (Normed v, Ord (Magnitude v), Fractional (Magnitude v)) =>
+-- relTol a b := ||a - b|| / (1 + min (||norm2 a||, ||norm2 b||))
+relTol :: (Normed v, Ord (Magnitude v)) =>
      v -> v -> Magnitude v
-relTol a b = norm1 (a ^-^ b) / m where
-  m = 1 + min (norm1 a) (norm1 b)
+relTol a b = norm2 (a ^-^ b) / m where
+  m = 1 + min (norm2 a) (norm2 b)
 
 
 -- | convergence test
+normDiff :: Normed v => (t -> v) -> [t] -> Magnitude v
+normDiff fp [x1, x0] = norm2Sq (fp x0 ^-^ fp x1)
 
 normDiffConverged :: (Normed v, Epsilon (Magnitude v)) => (s -> v) -> [s] -> Bool
-normDiffConverged fp [x1,x0] = nearZero $ norm2Sq (fp x0 ^-^ fp x1)
+normDiffConverged fp ll = nearZero (normDiff fp ll)
 
 
 
@@ -1130,54 +1151,54 @@ runAppendN' ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
 
 
 
--- * Random arrays
+-- -- * Random arrays
 
-randArray :: PrimMonad m => Int -> Double -> Double -> m [Double]
-randArray n mu sig = do
-  g <- MWC.create
-  replicateM n (MWC.normal mu sig g)
+-- randArray :: PrimMonad m => Int -> Double -> Double -> m [Double]
+-- randArray n mu sig = do
+--   g <- MWC.create
+--   replicateM n (MWC.normal mu sig g)
   
 
 
 
--- * Random matrices and vectors
+-- -- * Random matrices and vectors
 
--- |Dense SpMatrix
-randMat :: PrimMonad m => Int -> m (SpMatrix Double)
-randMat n = do
-  g <- MWC.create
-  aav <- replicateM (n^2) (MWC.normal 0 1 g)
-  let ii_ = [0 .. n-1]
-      (ix_,iy_) = unzip $ concatMap (zip ii_ . replicate n) ii_
-  return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
+-- -- |Dense SpMatrix
+-- randMat :: PrimMonad m => Int -> m (SpMatrix Double)
+-- randMat n = do
+--   g <- MWC.create
+--   aav <- replicateM (n^2) (MWC.normal 0 1 g)
+--   let ii_ = [0 .. n-1]
+--       (ix_,iy_) = unzip $ concatMap (zip ii_ . replicate n) ii_
+--   return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
 
--- | Dense SpVector  
-randVec :: PrimMonad m => Int -> m (SpVector Double)
-randVec n = do
-  g <- MWC.create
-  bv <- replicateM n (MWC.normal 0 1 g)
-  let ii_ = [0..n-1]
-  return $ fromListSV n $ zip ii_ bv
+-- -- | Dense SpVector  
+-- randVec :: PrimMonad m => Int -> m (SpVector Double)
+-- randVec n = do
+--   g <- MWC.create
+--   bv <- replicateM n (MWC.normal 0 1 g)
+--   let ii_ = [0..n-1]
+--   return $ fromListSV n $ zip ii_ bv
 
 
 
--- | Sparse SpMatrix
-randSpMat :: Int -> Int -> IO (SpMatrix Double)
-randSpMat n nsp | nsp > n^2 = error "randSpMat : nsp must be < n^2 "
-                | otherwise = do
-  g <- MWC.create
-  aav <- replicateM nsp (MWC.normal 0 1 g)
-  ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
-  jj <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
-  return $ fromListSM (n,n) $ zip3 ii jj aav
+-- -- | Sparse SpMatrix
+-- randSpMat :: Int -> Int -> IO (SpMatrix Double)
+-- randSpMat n nsp | nsp > n^2 = error "randSpMat : nsp must be < n^2 "
+--                 | otherwise = do
+--   g <- MWC.create
+--   aav <- replicateM nsp (MWC.normal 0 1 g)
+--   ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
+--   jj <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
+--   return $ fromListSM (n,n) $ zip3 ii jj aav
 
--- | Sparse SpVector
-randSpVec :: Int -> Int -> IO (SpVector Double)
-randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
-                | otherwise = do
-  g <- MWC.create
-  aav <- replicateM nsp (MWC.normal 0 1 g)
-  ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
-  return $ fromListSV n $ zip ii aav
+-- -- | Sparse SpVector
+-- randSpVec :: Int -> Int -> IO (SpVector Double)
+-- randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
+--                 | otherwise = do
+--   g <- MWC.create
+--   aav <- replicateM nsp (MWC.normal 0 1 g)
+--   ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
+--   return $ fromListSV n $ zip ii aav
 
 

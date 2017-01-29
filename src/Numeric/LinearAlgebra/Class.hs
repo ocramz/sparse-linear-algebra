@@ -243,7 +243,7 @@ type V v = (LinearVectorSpace v, Normed v)
           
   
 class LinearVectorSpace v => LinearSystem v where
-  (<\>) :: MatrixType v -> v -> Either IterationException v
+  (<\>) :: MatrixType v -> v -> Either (IterationException v) v
 
 
 
