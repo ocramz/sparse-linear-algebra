@@ -1,4 +1,4 @@
-{-# language TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances #-}
+{-# language TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances, ConstraintKinds #-}
 {-# language AllowAmbiguousTypes #-}
 {-# language CPP #-}
 module Numeric.LinearAlgebra.Class where
@@ -7,6 +7,11 @@ module Numeric.LinearAlgebra.Class where
 import Data.Complex
 -- import Data.Ratio
 -- import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
+
+import Control.Exception
+import Control.Exception.Common
+
+import Data.Typeable (Typeable)
 
 import qualified Data.Vector as V (Vector)
 
@@ -86,7 +91,7 @@ hilbertDistSq x y = t <.> t where
 
 -- * Normed vector spaces
 
-class InnerSpace v => Normed v where
+class (InnerSpace v, Num (RealScalar v), Eq (RealScalar v), Epsilon (Magnitude v)) => Normed v where
   type Magnitude v :: *
   type RealScalar v :: *
   norm1 :: v -> Magnitude v      -- ^ L1 norm
@@ -134,20 +139,29 @@ instance Normed Double where
   norm1 = abs
   norm2Sq = abs
   normP _ = abs
+  normalize _ _ = 1
+  normalize2 _ = 1
 
 instance Normed (Complex Double) where
   type Magnitude (Complex Double) = Double
   type RealScalar (Complex Double) = Double
   norm1 (r :+ i) = abs r + abs i
   norm2Sq = (**2) . magnitude
-  -- normP p (r :+ i) = (r**p + i**p)**(1/p)
+  normP p (r :+ i) = (r**p + i**p)**(1/p)
+  normalize p c = c ./ normP p c
+  normalize2 c = c ./ magnitude c
   
 
 
   
+-- | Lp norm (p > 0)
+norm :: (Normed v, Floating (Magnitude v)) => RealScalar v -> v -> Magnitude v
+norm p v
+  | p == 1 = norm1 v
+  | p == 2 = norm2 v
+  | otherwise = normP p v
 
-
-
+    
 
 
 
@@ -174,26 +188,6 @@ scale n = fmap (* n)
 
 
 
--- * Linear vector space
-
-class VectorSpace v => LinearVectorSpace v where
-  type MatrixType v :: *
-  (#>) :: MatrixType v -> v -> v
-  (<#) :: v -> MatrixType v -> v
-
-
-
-
-
-
--- ** Linear systems
-
-data LinSysError = NotConverged  -- ^ residual norm is greater than tolerance
-                 | Diverging     -- ^ residual norm increased
-                 deriving (Show, Eq)
-  
-class LinearVectorSpace v => LinearSystem v where
-  (<\>) :: MatrixType v -> v -> Either LinSysError v 
 
 
 
@@ -219,6 +213,37 @@ class AdditiveGroup m => MatrixRing m where
 
 -- class MatrixRing m a => SparseMatrixRing m a where
 --   (#~#) :: Epsilon a => Matrix m a -> Matrix m a -> Matrix m a
+
+
+
+
+
+
+
+-- * Linear vector space
+
+class (VectorSpace v, MatrixRing (MatrixType v)) => LinearVectorSpace v where
+  type MatrixType v :: *
+  (#>) :: MatrixType v -> v -> v
+  (<#) :: v -> MatrixType v -> v
+
+
+
+
+
+-- ** LinearVectorSpace + Normed
+
+type V v = (LinearVectorSpace v, Normed v) 
+
+
+
+
+-- ** Linear systems
+
+          
+  
+class LinearVectorSpace v => LinearSystem v where
+  (<\>) :: MatrixType v -> v -> Either IterationException v
 
 
 
@@ -297,7 +322,7 @@ class Sparse c a => SpContainer c a where
   type ScIx c :: *
   scInsert :: ScIx c -> a -> c a -> c a
   scLookup :: c a -> ScIx c -> Maybe a
-  scToList :: c a -> [a]
+  scToList :: c a -> [(ScIx c, a)]
   -- -- | Lookup with default, infix form ("safe" : should throw an exception if lookup is outside matrix bounds)
   (@@) :: c a -> ScIx c -> a
 
@@ -325,7 +350,11 @@ class SpContainer v e => SparseVector v e where
   -- svZipWith :: (e -> e -> e) -> v e -> v e -> v e
 
 
-class (LinearVectorSpace v, Normed v) => Vector v 
+
+
+
+
+
 
 -- * SparseMatrix
 

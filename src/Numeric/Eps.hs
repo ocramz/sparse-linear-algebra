@@ -29,7 +29,7 @@ import Foreign.C.Types (CFloat, CDouble)
 --
 -- >>> nearZero (1e-7 :: Float)
 -- True
-class Num a => Epsilon a where
+class (Floating a, Num a) => Epsilon a where
   -- | Determine if a quantity is near zero.
   nearZero :: a -> Bool
 

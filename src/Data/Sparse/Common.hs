@@ -23,6 +23,10 @@ module Data.Sparse.Common
          extractSubRow_RK, extractSubCol_RK,
          fromCols) where
 
+import Control.Exception
+import Control.Exception.Common
+import Control.Monad.Catch
+
 import Data.Sparse.Utils as X
 import Data.Sparse.PPrint as X
 import Data.Sparse.Types as X
@@ -38,8 +42,8 @@ import qualified Data.IntMap as IM
 
 import Data.Complex
 
-import Control.Applicative
-import Data.Traversable
+-- import Control.Applicative
+-- import Data.Traversable
 
 import Data.Maybe (fromMaybe, maybe)
 import qualified Data.Vector as V

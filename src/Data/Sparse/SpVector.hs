@@ -13,6 +13,10 @@
 -----------------------------------------------------------------------------
 module Data.Sparse.SpVector where
 
+import Control.Exception
+import Control.Monad.Catch (MonadThrow (..))
+import Control.Exception.Common
+
 import Data.Sparse.Utils
 import Data.Sparse.Types
 import Data.Sparse.Internal.IntMap2
@@ -96,9 +100,11 @@ IntMapInstance(Double)
 
 
 
--- | Now we must pin data to a concrete type: 
-
+-- | list to IntMap
+mkIm :: [Double] -> IM.IntMap Double
 mkIm xs = IM.fromList $ indexed xs :: IM.IntMap Double
+
+mkImC :: [Complex Double] -> IM.IntMap (Complex Double)
 mkImC xs = IM.fromList $ indexed xs :: IM.IntMap (Complex Double)
 
 
@@ -109,6 +115,9 @@ mkImC xs = IM.fromList $ indexed xs :: IM.IntMap (Complex Double)
 
 data SpVector a = SV { svDim :: {-# UNPACK #-} !Int ,
                        svData :: !(IM.IntMap a)} deriving Eq
+
+instance Show a => Show (SpVector a) where
+  show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList x)
 
 -- | SpVector sparsity
 spySV :: Fractional b => SpVector a -> b
@@ -165,6 +174,7 @@ instance Elt a => SpContainer SpVector a where
   type ScIx SpVector = Int
   scInsert = insertSpVector
   scLookup v i = lookupSV i v
+  scToList = toListSV
   v @@ i = lookupDenseSV i v
 
 
@@ -198,10 +208,13 @@ SpVectorInstance(Double)
 dotS :: InnerSpace (IM.IntMap t) => SpVector t -> SpVector t -> Scalar (IM.IntMap t)
 (SV m a) `dotS` (SV n b)
   | n == m = a <.> b
-  | otherwise = error $ unwords ["<.> : Incompatible dimensions : ", show m, show n]
+  | otherwise = error $ unwords ["<.> : Incompatible dimensions:", show m, show n]
 
-
-
+dotSSafe :: (MonadThrow m, InnerSpace (IM.IntMap t)) =>
+     SpVector t -> SpVector t -> m (Scalar (IM.IntMap t))
+dotSSafe (SV m a) (SV n b)
+  | n == m = return $ a <.> b
+  | otherwise = throwM (DotSizeMismatch m n)
 
 
 
@@ -315,11 +328,16 @@ toVectorDense = V.fromList . toDenseListSV
 
 -- ** Element insertion
 
--- |insert element `x` at index `i` in a preexisting SpVector
-insertSpVector :: Int -> a -> SpVector a -> SpVector a
-insertSpVector i x (SV d xim)
-  | inBounds0 d i = SV d (IM.insert i x xim)
-  | otherwise = error "insertSpVector : index out of bounds"
+-- |insert element `x` at index `i` in a preexisting SpVector; discards out-of-bounds entries
+insertSpVector :: IM.Key -> a -> SpVector a -> SpVector a
+insertSpVector i x (SV d xim) | inBounds0 d i = SV d (IM.insert i x xim)
+
+insertSpVectorSafe :: MonadThrow m => Int -> a -> SpVector a -> m (SpVector a)
+insertSpVectorSafe i x (SV d xim)
+  | inBounds0 d i = return $ SV d (IM.insert i x xim)
+  | otherwise = throwM (OOBIxError "insertSpVector" i)
+
+
 
 
 
@@ -327,9 +345,6 @@ insertSpVector i x (SV d xim)
 fromListSV :: Int -> [(Int, a)] -> SpVector a
 fromListSV d iix = SV d (IM.fromList (filter (inBounds0 d . fst) iix ))
 
--- fromListSV' d iix = SV d (F.foldl' insf IM.empty iix') where
---   insf im (i, x) = IM.insert i x im
---   iix' = filter (inBounds0 d . fst) iix   -- filtering forces list as only instance
  
 -- ** toList
 toListSV :: SpVector a -> [(IM.Key, a)]
@@ -353,8 +368,7 @@ ifoldSV f e (SV d im) = IM.foldrWithKey f e im
 
 
   
-instance Show a => Show (SpVector a) where
-  show (SV d x) = "SV (" ++ show d ++ ") "++ show (IM.toList x)
+
 
 
 -- ** Lookup

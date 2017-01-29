@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
 {-# language NoMonomorphismRestriction #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
@@ -52,6 +53,9 @@ module Numeric.LinearAlgebra.Sparse
 import Control.Exception.Common
 import Data.Sparse.Common
 
+import Control.Exception
+import Control.Monad.Catch
+import Data.Typeable
 
 import Control.Monad.Primitive
 import Control.Monad (replicateM)
@@ -81,17 +85,20 @@ import qualified Data.Vector as V
 
 
 
-  
+-- | A lumped constraint for the numerical types  
+type Data x = (Epsilon x, Elt x, Show x, Ord x)
+
+
 
 
 
 -- * Matrix condition number
 
 -- |uses the R matrix from the QR factorization
-conditionNumberSM :: (Elt t, MatrixRing (SpMatrix t), Epsilon t, Ord t, Floating t) =>
-     SpMatrix t -> t
-conditionNumberSM m | nearZero lmin = error "Infinite condition number : rank-deficient system"
-                    | otherwise = kappa where
+conditionNumberSM :: (MonadThrow m, MatrixRing (SpMatrix a), Data a, Typeable a) =>
+     SpMatrix a -> m a
+conditionNumberSM m | nearZero lmin = throwM (HugeConditionNumber kappa)
+                    | otherwise = return kappa where
   kappa = lmax / lmin
   (_, r) = qr m
   u = extractDiagDense r  -- FIXME : need to extract with default element 0 
@@ -530,8 +537,8 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 
 -- arnoldi :: (Epsilon a, Elt a, Floating a) =>
 --      SpMatrix a -> SpVector a -> Int -> (SpMatrix a, SpMatrix a)
--- arnoldi :: SpMatrix ( Double) -> SpVector ( Double) -> Int ->
---   (SpMatrix (Double), SpMatrix (Double))
+-- arnoldi :: SpMatrix Double -> SpVector Double -> Int ->
+--   (SpMatrix Double, SpMatrix Double)  
 -- arnoldi :: SpMatrix (Complex Double) -> SpVector (Complex Double) -> Int ->
 --   (SpMatrix (Complex Double), SpMatrix (Complex Double))  
 arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
@@ -688,10 +695,14 @@ triUpperSolve uu w = sparsifySV x where
 -- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
 -- gmres :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
-gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
-      MatrixRing (SpMatrix t), Epsilon t, Floating t) =>
-     SpMatrix t -> SpVector t -> SpVector t
+-- gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+--       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
+--       MatrixRing (SpMatrix t), Epsilon t, Floating t) =>
+--      SpMatrix t -> SpVector t -> SpVector t
+-- gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+--       Elt t, Vector (SpVector t), MatrixRing (SpMatrix t), Epsilon t, Floating t) =>
+--      SpMatrix t -> SpVector t -> SpVector t
+-- gmres :: m t -> v t -> v t
 gmres aa b = qa' #> yhat where
   m = ncols aa
   (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
@@ -904,8 +915,9 @@ instance Show a => Show (BICGSTAB a) where
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equaitons. Uses <\\> for the linear solve
 -- pinv :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
--- pinv aa b = aa #~^# aa <\> atb where
---   atb = transposeSM aa #> b
+-- pinv :: Epsilon a => SpMatrix a -> SpVector a -> Either LinSysError (SpVector a)
+pinv aa b = aa #~^# aa <\> atb where
+  atb = transpose aa #> b
 
 
 
@@ -929,7 +941,14 @@ data LinSolveMethod = GMRES_ | CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving
 --     case method of CGS_ -> return $ _xBicgstab (bicgstab aa b x0 x0)
 --                    BICGSTAB_ -> return $ _x (cgs aa b x0 x0)
 
-
+linSolve0
+  :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, V (SpVector t), MatrixRing (SpMatrix t), Epsilon t) =>
+     LinSolveMethod
+     -> SpMatrix t
+     -> SpVector t
+     -> SpVector t
+     -> Either IterationException (SpVector t)
 linSolve0 method aa b x0
   | n /= nb = error "linSolve : operand dimensions mismatch"
   | otherwise = solve aa b where
@@ -1018,6 +1037,14 @@ loopUntilAcc nitermax q f x = go 0 [] x where
                            else go (i + 1) (take 2 $ y : ll) y
                 where y = f xx
 
+
+-- | iterate until convergence is verified or we run out of a fixed iteration budget
+-- untilConverged :: (MonadState s m, Epsilon a) => (s -> SpVector a) -> (s -> s) -> m s
+untilConverged :: (MonadState s m, Normed v, Epsilon (Magnitude v)) =>
+     (s -> v) -> (s -> s) -> m s
+untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
+
+
 -- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached (i.e. same thing as `loopUntilAcc` but this one runs in the State monad)
 modifyInspectN ::
   MonadState s m =>
@@ -1062,20 +1089,12 @@ relTol a b = norm1 (a ^-^ b) / m where
   m = 1 + min (norm1 a) (norm1 b)
 
 
-
-
-
-
--- | iterate until convergence is verified or we run out of a fixed iteration budget
--- untilConverged :: (MonadState s m, Epsilon a) => (s -> SpVector a) -> (s -> s) -> m s
-untilConverged :: (MonadState s m, Normed v, Epsilon (Magnitude v)) =>
-     (s -> v) -> (s -> s) -> m s
-untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
-
 -- | convergence test
 
 normDiffConverged :: (Normed v, Epsilon (Magnitude v)) => (s -> v) -> [s] -> Bool
 normDiffConverged fp [x1,x0] = nearZero $ norm2Sq (fp x0 ^-^ fp x1)
+
+
 
 
 
