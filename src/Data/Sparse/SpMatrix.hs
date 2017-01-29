@@ -10,6 +10,7 @@
 -----------------------------------------------------------------------------
 module Data.Sparse.SpMatrix where
 
+import Control.Exception.Common
 import Data.Sparse.SpVector
 import Data.Sparse.Utils
 import Data.Sparse.Types
@@ -19,7 +20,7 @@ import Numeric.LinearAlgebra.Class
 
 import Data.Sparse.Internal.IntMap2
 
-import qualified Data.IntMap as IM
+import qualified Data.IntMap.Strict as IM
 
 import Data.Complex
 import Data.Foldable (foldl')

@@ -49,6 +49,7 @@ module Numeric.LinearAlgebra.Sparse
        where
 
 
+import Control.Exception.Common
 import Data.Sparse.Common
 
 
@@ -647,6 +648,7 @@ triLowerSolve ll b = sparsifySV v where
     ww0 = insertSpVector 0 w0 $ zeroSV (dim b)  
 
 -- | NB in the computation of `xi` we must rebalance the subrow indices because `dropSV` does that too, in order to take the inner product with consistent index pairs
+
 triUpperSolve ::
   (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Elt t) =>
   SpMatrix t -> SpVector t -> SpVector t
@@ -686,6 +688,10 @@ triUpperSolve uu w = sparsifySV x where
 -- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
 -- gmres :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
+gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
+      MatrixRing (SpMatrix t), Epsilon t, Floating t) =>
+     SpMatrix t -> SpVector t -> SpVector t
 gmres aa b = qa' #> yhat where
   m = ncols aa
   (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
@@ -1042,9 +1048,18 @@ modifyInspectN nitermax q f
 -- norm2l :: (Foldable t, Functor t, Floating a) => t a -> a
 -- norm2l xx = sqrt $ sum (fmap (**2) xx)
 
+-- | Squared difference of a 2-element list.
+-- | NB: unsafe !
 diffSqL :: Floating a => [a] -> a
 diffSqL xx = (x1 - x2)**2 where [x1, x2] = [head xx, xx!!1]
 
+
+-- | Relative tolerance :
+-- relTol a b := norm1 (a - b) / (1 + min (norm1 a) (norm1 b))
+relTol :: (Normed v, Ord (Magnitude v), Fractional (Magnitude v)) =>
+     v -> v -> Magnitude v
+relTol a b = norm1 (a ^-^ b) / m where
+  m = 1 + min (norm1 a) (norm1 b)
 
 
 

@@ -51,8 +51,8 @@ spec = do
       tv0 <.> tv0 `shouldBe` 61
     it "<.> : inner product (Complex)" $
       tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
-    it "transposeSM : sparse matrix transpose" $
-      transposeSM m1 `shouldBe` m1t
+    it "transpose : sparse matrix transpose" $
+      transpose m1 `shouldBe` m1t
     it "(#>) : matrix-vector product (Real)" $
       nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
     it "(<#) : vector-matrix product (Real)" $

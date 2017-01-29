@@ -292,7 +292,7 @@ class Functor f => Set f where
 
 
 
-
+-- * SpContainer : sparse container datastructures. Insertion, lookup, toList, lookup with 0 default
 class Sparse c a => SpContainer c a where
   type ScIx c :: *
   scInsert :: ScIx c -> a -> c a -> c a
@@ -303,6 +303,12 @@ class Sparse c a => SpContainer c a where
 
 
 
+class SpContainer' c where
+  type ScIx' c :: *
+  scInsert' :: ScIx' c -> a -> c -> c
+  scLookup' :: c -> ScIx' c -> Maybe a
+  scToList' :: c -> [a]
+  -- (@@')
 
 
 
@@ -317,6 +323,9 @@ class SpContainer v e => SparseVector v e where
   svFromListDense :: Int -> [e] -> v e
   svConcat :: Foldable t => t (v e) -> v e
   -- svZipWith :: (e -> e -> e) -> v e -> v e -> v e
+
+
+class (LinearVectorSpace v, Normed v) => Vector v 
 
 -- * SparseMatrix
 

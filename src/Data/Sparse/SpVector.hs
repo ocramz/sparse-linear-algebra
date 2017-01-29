@@ -23,7 +23,7 @@ import Numeric.LinearAlgebra.Class
 import Data.Complex
 import Data.Maybe
 
-import qualified Data.IntMap as IM
+import qualified Data.IntMap.Strict as IM
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 
@@ -344,7 +344,7 @@ toDenseListSV (SV d im) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-1]
 
 -- | Indexed fold over SpVector
 ifoldSV :: (IM.Key -> a -> b -> b) -> b -> SpVector a -> b
-ifoldSV f e (SV d im) = IM.foldWithKey f e im
+ifoldSV f e (SV d im) = IM.foldrWithKey f e im
 
 
 
