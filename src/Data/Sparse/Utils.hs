@@ -84,3 +84,26 @@ head' = harness V.null V.head
 
 tail' :: V.Vector a -> Maybe (V.Vector a)
 tail' = harness V.null V.tail
+
+
+
+
+-- | a cons-based moving-window datatype of length at least 3
+
+data W3 a = W3 a a a [a] deriving (Eq, Show)
+initW3 :: a -> a -> a -> [a] -> W3 a
+initW3 = W3
+
+pushW3 :: a -> W3 a -> W3 a
+pushW3 i (W3 i0 i1 i2 is) = W3 i i0 i1 (i2 : initSafe is)
+
+fstW3 (W3 i _ _ _) = i
+sndW3 (W3 _ i _ _) = i
+thirdW3 (W3 _ _ i _) = i
+
+withInitW3, withTailW3 :: W3 t -> (t -> t -> t1) -> t1
+withInitW3 (W3 a b _ _) f = f a b
+withTailW3 (W3 _ b c _) f = f b c
+
+initSafe (x:xs) = x : initSafe xs
+initSafe [] = []

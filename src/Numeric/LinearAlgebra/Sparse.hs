@@ -1048,33 +1048,47 @@ modifyInspectN nitermax q f
                        go (i + 1) (take 2 $ y : ll)
 
 
--- | This function makes some default choices on the `modifyInspectGuarded` machinery: convergence is assessed using the squared 2-norm of the difference between consecutive states, and divergence is detected when this function is increasing between pairs of measurements.
-untilConvergedGuarded :: (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable t,
-      Show (Magnitude v), Show t, Ord (Magnitude v)) =>
-     Int ->
-     (t -> v) ->
-     (t -> Bool) ->
-     (t -> t) ->
-     t ->
-     m t
-untilConvergedGuarded nitermax fproj qfinal =
+-- | This function makes some default choices on the `modifyInspectGuarded` machinery: convergence is assessed using the squared L2 distance between consecutive states, and divergence is detected when this function is increasing between pairs of measurements.
+untilConvergedG :: (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable s,
+      Show (Magnitude v), Show s, Ord (Magnitude v)) =>
+     Int 
+     -> (s -> v) 
+     -> (s -> Bool) 
+     -> (s -> s) 
+     -> s 
+     -> m s
+untilConvergedG nitermax fproj qfinal =
   modifyInspectGuarded nitermax (convergf fproj) nearZero qdiverg qfinal
    where
      qdiverg latest prev = latest > prev
-     convergf fp [x1, x0] = norm2 (fp x0 ^-^ fp x1)
+     convergf fp [s1, s0] = norm2 (fp s0 ^-^ fp s1)
      convergf _ _ = 1/0
 
--- | This is a high-order abstraction of a numerical iterative process. It accumulates a rolling window of 3 states and compares a summary `q` of the latest 2 with that of the previous two in order to assess divergence (e.g. if `q latest2 > q prev2` then it). The process ends when either we hit an iteration budget or relative convergence is verified. The function then assesses the final state with a predicate `qfinal` (e.g. against a known solution; if this is not known, the user can just supply `const True`)
+-- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
+untilConvergedG0 ::
+  (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable s, Show (Magnitude v), Show s, Ord (Magnitude v)) =>
+     Int
+     -> (s -> v)
+     -> v        -- ^ Known solution
+     -> (s -> s)
+     -> s
+     -> m s
+untilConvergedG0 nitermax fproj xKnown =
+  untilConvergedG nitermax fproj (\s -> nearZero (norm2 $ fproj s ^-^ xKnown))
+
+
+
+-- | `modifyInspectGuarded` is a high-order abstraction of a numerical iterative process. It accumulates a rolling window of 3 states and compares a summary `q` of the latest 2 with that of the previous two in order to assess divergence (e.g. if `q latest2 > q prev2` then it). The process ends when either we hit an iteration budget or relative convergence is verified. The function then assesses the final state with a predicate `qfinal` (e.g. against a known solution; if this is not known, the user can just supply `const True`)
 modifyInspectGuarded ::
   (MonadThrow m, Typeable s, Typeable a, Show s, Show a) =>
-     Int ->                -- ^ Iteration budget
-     ([s] -> a) ->         -- ^ State array projection
-     (a -> Bool) ->        -- ^ Convergence check
-     (a -> a -> Bool) ->   -- ^ Divergence detection
-     (s -> Bool) ->        -- ^ Final state evaluation
-     (s -> s) ->           -- ^ State evolution
-     s ->                  -- ^ Initial state
-     m s                   -- ^ Final state
+     Int                   -- ^ Iteration budget
+     -> ([s] -> a)         -- ^ State array projection
+     -> (a -> Bool)        -- ^ Convergence criterion
+     -> (a -> a -> Bool)   -- ^ Divergence criterion
+     -> (s -> Bool)        -- ^ Final state evaluation
+     -> (s -> s)           -- ^ State evolution
+     -> s                  -- ^ Initial state
+     -> m s                -- ^ Final state
 modifyInspectGuarded nitermax q qconverg qdiverg qfinal f x0
   | nitermax > 0 = checkFinal 
   | otherwise = throwM (NonNegError fname nitermax)
@@ -1102,21 +1116,14 @@ modifyInspectGuarded nitermax q qconverg qdiverg qfinal f x0
                 MTS.put y
                 throwM (NotConverged fname nitermax y)
               else do
-                if qdiverg qi qt
+                if qdiverg qi qt  -- diverging
                 then throwM (Diverging fname i qi qt)
-                else do MTS.put y
+                else do MTS.put y -- not diverging, keep iterating
                         go (i + 1) (take 3 $ y : ll)
 
 
--- | a moving-window computation
 
--- data W a = W [a]
--- movingWindow f = do
---   (W xs) <- get
---   let y = f xs
---       w' = W y ()
---   put w'
---   return w'
+
 
 
 
