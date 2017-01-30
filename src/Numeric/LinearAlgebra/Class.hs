@@ -91,7 +91,7 @@ hilbertDistSq x y = t <.> t where
 
 -- * Normed vector spaces
 
-class (InnerSpace v, Num (RealScalar v), Eq (RealScalar v), Epsilon (Magnitude v)) => Normed v where
+class (InnerSpace v, Num (RealScalar v), Eq (RealScalar v), Epsilon (Magnitude v), Show (Magnitude v), Ord (Magnitude v)) => Normed v where
   type Magnitude v :: *
   type RealScalar v :: *
   norm1 :: v -> Magnitude v      -- ^ L1 norm

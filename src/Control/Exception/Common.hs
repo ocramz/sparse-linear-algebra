@@ -30,27 +30,27 @@ checkIxBound e i n ff
 
     
 
--- | Inner product <.> between vectors of mismatched dimension
-data DotSizeMismatch = DotSizeMismatch Int Int deriving (Eq, Typeable)
-instance Show DotSizeMismatch where
+-- | Operand size mismatch errors
+data OperandSizeMismatch = DotSizeMismatch Int Int
+                         | NonTriangularException String
+                         | MatVecSizeMismatchException String (Int, Int) Int deriving (Eq, Typeable)
+instance Show OperandSizeMismatch where
   show (DotSizeMismatch na nb) = unwords ["<.> : Incompatible dimensions : ", show na, show nb]
-instance Exception DotSizeMismatch
+  show (NonTriangularException s )= unwords [s, ": Matrix must be triangular"]
+  show (MatVecSizeMismatchException s dm o) = unwords [s, ": Matrix-vector dimensions are incompatible: Matrix is",show dm,", whereas vector is",show o]
+instance Exception OperandSizeMismatch
 
 
 
--- | Matrix-related errors
 
+-- | Matrix exceptions
 data MatrixException i = HugeConditionNumber i deriving (Eq, Typeable)
 instance Show i => Show (MatrixException i) where
   show (HugeConditionNumber x) = unwords ["Rank-deficient system: condition number", show x]
 instance (Show i, Typeable i) => Exception (MatrixException i)
 
 
-data MatrixShapeException = NonTriangularException String 
-                          deriving (Eq, Typeable)
-instance Show MatrixShapeException where
-  show (NonTriangularException s )= unwords [s, ": matrix must be triangular"]
-instance Exception MatrixShapeException
+
 
 
 

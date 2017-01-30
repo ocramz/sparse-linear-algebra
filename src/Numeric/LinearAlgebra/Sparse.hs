@@ -536,17 +536,16 @@ onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 -- | Given a matrix A, a vector b and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (as the columns of matrix Q), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 
--- arnoldi :: (Epsilon a, Elt a, Floating a) =>
---      SpMatrix a -> SpVector a -> Int -> (SpMatrix a, SpMatrix a)
--- arnoldi :: SpMatrix Double -> SpVector Double -> Int ->
---   (SpMatrix Double, SpMatrix Double)  
--- arnoldi :: SpMatrix (Complex Double) -> SpVector (Complex Double) -> Int ->
---   (SpMatrix (Complex Double), SpMatrix (Complex Double))  
+arnoldi :: (MatrixType (SpVector a) ~ SpMatrix a, V (SpVector a) , Scalar (SpVector a) ~ a, Floating a, Epsilon a) =>
+     SpMatrix a
+     -> SpVector a
+     -> Int
+     -> (SpMatrix a, SpMatrix a)
 arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
   where
   (qvfin, hhfin, nmax, _) = execState (modifyUntil tf arnoldiStep) arnInit 
   tf (_, _, ii, fbreak) = ii == kn || fbreak -- termination criterion
-  (m, n) = dim aa
+  (m, n) = (nrows aa, ncols aa)
   arnInit = (qv1, hh1, 1, False) where
       q0 = normalize2 b   -- starting basis vector
       aq0 = aa #> q0       -- A q0
@@ -693,15 +692,10 @@ triUpperSolve uu w = sparsifySV x where
 --
 -- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
--- gmres :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
--- gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
---       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
---       MatrixRing (SpMatrix t), Epsilon t, Floating t) =>
---      SpMatrix t -> SpVector t -> SpVector t
--- gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
---       Elt t, Vector (SpVector t), MatrixRing (SpMatrix t), Epsilon t, Floating t) =>
---      SpMatrix t -> SpVector t -> SpVector t
--- gmres :: m t -> v t -> v t
+gmres :: (Scalar (SpVector t) ~ t,
+          MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, V (SpVector t), MatrixRing (SpMatrix t), Epsilon t) =>
+     SpMatrix t -> SpVector t -> SpVector t
 gmres aa b = qa' #> yhat where
   m = ncols aa
   (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
@@ -710,7 +704,7 @@ gmres aa b = qa' #> yhat where
      where mp1 = nrows ha     -- = 1 + (# Arnoldi iterations)
   (qh, rh) = qr ha            -- QR factors of H
   yhat = triUpperSolve rh' rhs' where
-    rhs' = takeSV (dim b' - 1) (transposeSM qh #> b')
+    rhs' = takeSV (dim b' - 1) (transpose qh #> b')
     rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
   qa' = takeCols (ncols qa - 1) qa   -- we don't use last column of Krylov basis
 
@@ -808,6 +802,9 @@ data BCG a =
   BCG { _xBcg, _rBcg, _rHatBcg, _pBcg, _pHatBcg :: SpVector a } deriving Eq
 
 -- bcg :: (Epsilon a, Fractional a) => SpMatrix a -> SpVector a -> SpVector a -> BCG a
+bcg :: (V (SpVector a), MatrixType (SpVector a) ~ SpMatrix a, 
+      Fractional (Scalar (SpVector a))) =>
+     SpMatrix a -> SpVector a -> SpVector a -> BCG a
 bcg aa b x0 = execState (untilConverged _xBcg (bcgStep aa)) bcgInit where
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
   r0hat = r0
@@ -841,12 +838,14 @@ data CGS a = CGS { _x, _r, _p, _u :: SpVector a} deriving Eq
 -- cgs :: (Epsilon a, Fractional a) =>
 --   SpMatrix a -> SpVector a -> SpVector a -> SpVector a -> CGS a
 cgs aa b x0 rhat =
-  execState (untilConverged _x (cgsStep aa rhat)) cgsInit where
+  execState (untilConverged _x (cgsStep aa rhat)) (cgsInit aa b x0)
+  
+cgsInit aa b x0 = CGS x0 r0 r0 r0 where
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
-  p0 = r0
-  u0 = r0
-  cgsInit = CGS x0 r0 p0 u0
-  cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
+
+cgsStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
+     MatrixType (SpVector a) -> SpVector a -> CGS a -> CGS a
+cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
     where
     aap = aa #> p
     alphaj = (r `dot` rhat) / (aap `dot` rhat)
@@ -887,25 +886,34 @@ data BICGSTAB a =
 --   (Epsilon a, Fractional a) =>
 --      SpMatrix a -> SpVector a -> SpVector a -> SpVector a -> BICGSTAB a
 bicgstab aa b x0 r0hat =
-  execState (untilConverged _xBicgstab (bicgstabStep aa r0hat)) bicgsInit where
-   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
-   p0 = r0
-   bicgsInit = BICGSTAB x0 r0 p0
-   bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
+  execState (untilConverged _xBicgstab (bicgstabStep aa r0hat)) (bicgsInit aa b x0)
+
+bicgstabStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
+     MatrixType (SpVector a) -> SpVector a -> BICGSTAB a -> BICGSTAB a
+bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
      aap = aa #> p
-     alphaj = (r `dot` r0hat) / (aap `dot` r0hat)
+     alphaj = (r <.> r0hat) / (aap <.> r0hat)
      sj = r ^-^ (alphaj .* aap)
      aasj = aa #> sj
-     omegaj = (aasj `dot` sj) / (aasj `dot` aasj)
+     omegaj = (aasj <.> sj) / (aasj <.> aasj)
      xj1 = x ^+^ (alphaj .* p) ^+^ (omegaj .* sj)    -- updated solution
      rj1 = sj ^-^ (omegaj .* aasj)
-     betaj = (rj1 `dot` r0hat)/(r `dot` r0hat) * alphaj / omegaj
+     betaj = (rj1 <.> r0hat)/(r <.> r0hat) * alphaj / omegaj
      pj1 = rj1 ^+^ (betaj .* (p ^-^ (omegaj .* aap)))
 
 instance Show a => Show (BICGSTAB a) where
   show (BICGSTAB x r p) = "x = " ++ show x ++ "\n" ++
                           "r = " ++ show r ++ "\n" ++
                           "p = " ++ show p ++ "\n"
+
+bicgsInit aa b x0 = BICGSTAB x0 r0 r0 where
+  r0 = b ^-^ (aa #> x0)   -- residual of initial guess solution
+
+
+
+
+
+
 
 
 
@@ -921,8 +929,38 @@ pinv aa b = aa #~^# aa <\> atb where
 
 
 
+-- linSolve0
+--   :: (MonadThrow m,
+--       Typeable (Magnitude (SpVector a)), Typeable a,
+--       Show a, Fractional (Scalar (SpVector a))) =>
+--      LinSolveMethod
+--      -> MatrixType (SpVector a)
+--      -> SpVector a
+--      -> SpVector a
+--      -> SpVector a
+--      -> m (SpVector a)
+linSolve0 method aa b x0 r0hat
+  | n /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
+  | otherwise = solve aa b where
+     solve aa' b' | isDiagonalSM aa' = return $ reciprocal aa' #> b' -- diagonal solve
+                  | otherwise = xHat
+     xHat = case method of
+       BICGSTAB_ -> solver "BICGSTAB" nitermax _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
+       CGS_ -> solver "CGS" nitermax _x  (cgsStep aa r0hat) (cgsInit aa b x0)
+       -- GMRES_ -> return $ gmres aa b
+     nitermax = 200
+     dm@(m,n) = dim aa
+     nb = dim b
 
 
+solver :: (Normed b, MonadThrow m, Typeable (Magnitude b), Typeable a,
+      Show (Magnitude b), Show a, Ord (Magnitude b)) =>
+     String -> Int -> (a -> b) -> (a -> a) -> a -> m b
+solver fname nitermax fproj stepf initf = do
+  xf <- untilConvergedG fname nitermax fproj (const True) stepf initf
+  return $ fproj xf
+
+  
 
 -- * Linear solver interface
 
@@ -1051,14 +1089,15 @@ modifyInspectN nitermax q f
 -- | This function makes some default choices on the `modifyInspectGuarded` machinery: convergence is assessed using the squared L2 distance between consecutive states, and divergence is detected when this function is increasing between pairs of measurements.
 untilConvergedG :: (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable s,
       Show (Magnitude v), Show s, Ord (Magnitude v)) =>
-     Int 
+        String
+     -> Int 
      -> (s -> v) 
      -> (s -> Bool) 
      -> (s -> s) 
      -> s 
      -> m s
-untilConvergedG nitermax fproj qfinal =
-  modifyInspectGuarded nitermax (convergf fproj) nearZero qdiverg qfinal
+untilConvergedG fname nitermax fproj qfinal =
+  modifyInspectGuarded fname nitermax (convergf fproj) nearZero qdiverg qfinal
    where
      qdiverg latest prev = latest > prev
      convergf fp [s1, s0] = norm2 (fp s0 ^-^ fp s1)
@@ -1067,21 +1106,23 @@ untilConvergedG nitermax fproj qfinal =
 -- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
 untilConvergedG0 ::
   (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable s, Show (Magnitude v), Show s, Ord (Magnitude v)) =>
-     Int
+        String 
+     -> Int
      -> (s -> v)
      -> v        -- ^ Known solution
      -> (s -> s)
      -> s
      -> m s
-untilConvergedG0 nitermax fproj xKnown =
-  untilConvergedG nitermax fproj (\s -> nearZero (norm2 $ fproj s ^-^ xKnown))
+untilConvergedG0 fname nitermax fproj xKnown =
+  untilConvergedG fname nitermax fproj (\s -> nearZero (norm2 $ fproj s ^-^ xKnown))
 
 
 
 -- | `modifyInspectGuarded` is a high-order abstraction of a numerical iterative process. It accumulates a rolling window of 3 states and compares a summary `q` of the latest 2 with that of the previous two in order to assess divergence (e.g. if `q latest2 > q prev2` then it). The process ends when either we hit an iteration budget or relative convergence is verified. The function then assesses the final state with a predicate `qfinal` (e.g. against a known solution; if this is not known, the user can just supply `const True`)
 modifyInspectGuarded ::
   (MonadThrow m, Typeable s, Typeable a, Show s, Show a) =>
-     Int                   -- ^ Iteration budget
+        String             -- ^ Calling function name
+     -> Int                -- ^ Iteration budget
      -> ([s] -> a)         -- ^ State array projection
      -> (a -> Bool)        -- ^ Convergence criterion
      -> (a -> a -> Bool)   -- ^ Divergence criterion
@@ -1089,11 +1130,10 @@ modifyInspectGuarded ::
      -> (s -> s)           -- ^ State evolution
      -> s                  -- ^ Initial state
      -> m s                -- ^ Final state
-modifyInspectGuarded nitermax q qconverg qdiverg qfinal f x0
+modifyInspectGuarded fname nitermax q qconverg qdiverg qfinal f x0
   | nitermax > 0 = checkFinal 
   | otherwise = throwM (NonNegError fname nitermax)
   where
-    fname = "modifyInspectGuarded"
     checkFinal = do
       xfinal <- MTS.execStateT (go 0 []) x0
       if qfinal xfinal
