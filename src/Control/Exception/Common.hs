@@ -56,9 +56,9 @@ instance Exception MatrixShapeException
 
 -- | Numerical iteration errors
 data IterationException a = NotConverged String Int a 
-                          | Diverging String a a    
+                          | Diverging String Int a a    
                           deriving (Eq, Typeable)
 instance Show a => Show (IterationException a) where
   show (NotConverged s niters x) = unwords [s, ": Could not converge within iteration budget", show niters, "; final state:", show x]
-  show (Diverging s x0 x1) = unwords [s, ": Diverging iterations", show x0, show x1]
+  show (Diverging s niters x0 x1) = unwords [s, ": Diverging at iteration #", show niters, "; latest state:",show x0, "; previous state:",show x1]
 instance (Show a, Typeable a) => Exception (IterationException a)
