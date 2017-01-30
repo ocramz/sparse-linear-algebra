@@ -1048,23 +1048,34 @@ modifyInspectN nitermax q f
                        go (i + 1) (take 2 $ y : ll)
 
 
-
-untilConvergedGuarded fproj nitermax qfinal =
-  modifyInspectGuarded nitermax (normDiff fproj) qdiverg qfinal
+-- | This function makes some default choices on the `modifyInspectGuarded` machinery: convergence is assessed using the squared 2-norm of the difference between consecutive states, and divergence is detected when this function is increasing between pairs of measurements.
+untilConvergedGuarded :: (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable t,
+      Show (Magnitude v), Show t, Ord (Magnitude v)) =>
+     Int ->
+     (t -> v) ->
+     (t -> Bool) ->
+     (t -> t) ->
+     t ->
+     m t
+untilConvergedGuarded nitermax fproj qfinal =
+  modifyInspectGuarded nitermax (convergf fproj) nearZero qdiverg qfinal
    where
-     qdiverg normLatest normPrev = normLatest > normPrev
+     qdiverg latest prev = latest > prev
+     convergf fp [x1, x0] = norm2 (fp x0 ^-^ fp x1)
+     convergf _ _ = 1/0
 
--- | modifyInspectGuarded is a high-order abstraction of a numerical iterative process. It accumulates a rolling window of 3 states and compares a summary `q` of the latest 2 with that of the previous two in order to assess divergence (e.g. if `q latest2 > q prev2` then it). The process ends when either we hit an iteration budget or relative convergence is verified. The function then assesses the final state with a predicate `qfinal` (e.g. against a known solution; if this is not known, the user can just supply `const False`)
+-- | This is a high-order abstraction of a numerical iterative process. It accumulates a rolling window of 3 states and compares a summary `q` of the latest 2 with that of the previous two in order to assess divergence (e.g. if `q latest2 > q prev2` then it). The process ends when either we hit an iteration budget or relative convergence is verified. The function then assesses the final state with a predicate `qfinal` (e.g. against a known solution; if this is not known, the user can just supply `const True`)
 modifyInspectGuarded ::
-  (MonadThrow m, Epsilon a, Typeable s, Typeable a, Show s, Show a) =>
-     Int                   -- ^ Iteration budget
-     -> ([s] -> a)         -- ^ State array projection
-     -> (a -> a -> Bool)   -- ^ Divergence detection
-     -> (s -> Bool)        -- ^ Final state evaluation
-     -> (s -> s)           -- ^ State evolution
-     -> s                  -- ^ Initial state
-     -> m s                -- ^ Final state
-modifyInspectGuarded nitermax q qdiverg qfinal f x0
+  (MonadThrow m, Typeable s, Typeable a, Show s, Show a) =>
+     Int ->                -- ^ Iteration budget
+     ([s] -> a) ->         -- ^ State array projection
+     (a -> Bool) ->        -- ^ Convergence check
+     (a -> a -> Bool) ->   -- ^ Divergence detection
+     (s -> Bool) ->        -- ^ Final state evaluation
+     (s -> s) ->           -- ^ State evolution
+     s ->                  -- ^ Initial state
+     m s                   -- ^ Final state
+modifyInspectGuarded nitermax q qconverg qdiverg qfinal f x0
   | nitermax > 0 = checkFinal 
   | otherwise = throwM (NonNegError fname nitermax)
   where
@@ -1072,8 +1083,8 @@ modifyInspectGuarded nitermax q qdiverg qfinal f x0
     checkFinal = do
       xfinal <- MTS.execStateT (go 0 []) x0
       if qfinal xfinal
-        then throwM (NotConverged fname nitermax xfinal)
-        else return xfinal
+        then return xfinal
+        else throwM (NotConverged fname nitermax xfinal)
     go i ll = do
       x <- MTS.get
       let y = f x
@@ -1083,7 +1094,7 @@ modifyInspectGuarded nitermax q qdiverg qfinal f x0
       else do
          let qi = q (init ll)     -- summary of latest 2 states
              qt = q (tail ll)     -- "       "  previous 2 states
-         if nearZero qi           -- relative convergence  
+         if qconverg qi           -- relative convergence  
          then do MTS.put y
                  return ()
          else if i == nitermax    -- end of iterations w/o convergence
