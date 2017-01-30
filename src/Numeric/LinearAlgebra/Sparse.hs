@@ -1024,11 +1024,6 @@ untilConverged :: (MonadState s m, Normed v, Epsilon (Magnitude v)) =>
      (s -> v) -> (s -> s) -> m s
 untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
 
-untilConvergedGuarded fproj nitermax qfinal =
-  modifyInspectGuarded nitermax (normDiff fproj) qdiverg qfinal
-   where
-     qdiverg normLatest normPrev = normLatest > normPrev
-
 
 -- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached (i.e. same thing as `loopUntilAcc` but this one runs in the State monad)
 modifyInspectN ::
@@ -1051,6 +1046,13 @@ modifyInspectN nitermax q f
                        return y
                else do put y
                        go (i + 1) (take 2 $ y : ll)
+
+
+
+untilConvergedGuarded fproj nitermax qfinal =
+  modifyInspectGuarded nitermax (normDiff fproj) qdiverg qfinal
+   where
+     qdiverg normLatest normPrev = normLatest > normPrev
 
 -- | modifyInspectGuarded is a high-order abstraction of a numerical iterative process. It accumulates a rolling window of 3 states and compares a summary `q` of the latest 2 with that of the previous two in order to assess divergence (e.g. if `q latest2 > q prev2` then it). The process ends when either we hit an iteration budget or relative convergence is verified. The function then assesses the final state with a predicate `qfinal` (e.g. against a known solution; if this is not known, the user can just supply `const False`)
 modifyInspectGuarded ::
@@ -1081,14 +1083,18 @@ modifyInspectGuarded nitermax q qdiverg qfinal f x0
       else do
          let qi = q (init ll)     -- summary of latest 2 states
              qt = q (tail ll)     -- "       "  previous 2 states
-         if nearZero qi || i == nitermax -- relative convergence or end of iterations 
+         if nearZero qi           -- relative convergence  
          then do MTS.put y
-                 return y
-         else do
-             if qdiverg qi qt
-             then throwM (Diverging fname i qi qt)
-             else do MTS.put y
-                     go (i + 1) (take 3 $ y : ll)
+                 return ()
+         else if i == nitermax    -- end of iterations w/o convergence
+              then do
+                MTS.put y
+                throwM (NotConverged fname nitermax y)
+              else do
+                if qdiverg qi qt
+                then throwM (Diverging fname i qi qt)
+                else do MTS.put y
+                        go (i + 1) (take 3 $ y : ll)
 
 
 -- | a moving-window computation
