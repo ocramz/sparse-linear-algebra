@@ -131,21 +131,21 @@ In the last example we have also shown the Cholesky decomposition (M = L L^T whe
 
 ### Linear systems
 
-Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `linSolve` function, or alternatively `<\>` (which uses GMRES as default solver method) :
+Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `<\>` (inspired by Matlab's "backslash" function. Here we use GMRES as default solver method) :
 
     λ> b = fromListDenseSV 3 [3,2,5] :: SpVector Double
     λ> x = amat <\> b
     λ> prd x
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
-    [1.4999999999999998,-1.9999999999999998,0.9999999999999998]
+    1.4999999999999998 -1.9999999999999998 0.9999999999999998
 
 The result can be verified by computing the matrix-vector action `amat #> x`, which should (ideally) be very close to the right-hand side `b` :
 
     λ> prd $ amat #> x
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
-    [2.9999999999999996,1.9999999999999996,4.999999999999999]
+    2.9999999999999996 1.9999999999999996 4.999999999999999
 
 The library also provides a forward-backward substitution solver (`luSolve`) based on a triangular factorization of the system matrix (usually LU). This should be the preferred for solving smaller, dense systems. Using the data defined above we can cross-verify the two solution methods:
 
@@ -154,7 +154,7 @@ The library also provides a forward-backward substitution solver (`luSolve`) bas
 
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
-    [1.5,-2.0,1.0]
+    1.5 -2.0 1.0
 
 
 
