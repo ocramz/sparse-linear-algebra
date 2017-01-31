@@ -59,7 +59,7 @@ The `fromListSM` function creates a sparse matrix from a collection of its entri
 
 and, in case you are following along in a GHCi session (denoted from now on by `λ>`), you can try it out like this:
 
-    λ> amat = fromListSM (3,3) [(0,0,2),(1,0,4),(1,1,3),(1,2,2),(2,2,5)]
+    λ> amat = fromListSM (3,3) [(0,0,2),(1,0,4),(1,1,3),(1,2,2),(2,2,5)] :: SpMatrix Double
 
 Similarly, `fromListSV` is used to create sparse vectors: 
 
@@ -79,11 +79,11 @@ Both sparse vectors and matrices can be pretty-printed using `prd`:
     λ> prd amat
     ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )
 
-    [2,0,0]
-    [4,3,2]
-    [0,0,5]
+    2.0  _   _ 
+    4.0 3.0 2.0
+     _   _  5.0
 
-The zeros are just added at printing time; sparse vectors and matrices should only contain non-zero entries.
+Note: sparse data should only contain non-zero entries not to waste memory and computation.
 
 ### Matrix operations
 
@@ -93,9 +93,9 @@ There are a few common matrix factorizations available; in the following example
     λ> prd $ l ## u
     ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
 
-    [2.0,0.0,0.0]
-    [4.0,3.0,2.0]
-    [0.0,0.0,5.0]
+    2.0  _   _ 
+    4.0 3.0 2.0
+     _   _  5.0
 
 Notice that the result is _dense_, i.e. certain entries are numerically zero but have been inserted into the result along with all the others (thus taking up memory!).
 To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, which filters out all the elements x for which `|x| <= eps`, where `eps` (defined in `Numeric.Eps`) depends on the numerical type used (e.g. it is 10^-6 for `Float`s and 10^-12 for `Double`s).
@@ -103,37 +103,37 @@ To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, whic
     λ> prd $ l #~# u
     ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )
 
-    [2.0,0.0,0.0]
-    [4.0,3.0,2.0]
-    [0.0,0.0,5.0]
+    2.0  _   _ 
+    4.0 3.0 2.0
+     _   _  5.0    
 
-A matrix is transposed using `transposeSM`.
+A matrix is transposed using the `transpose` function.
 
-Sometimes we need to compute matrix-matrix transpose products, which is why the library offers the infix operators `#^#` (M^T N) and `##^` (M N^T):
+Sometimes we need to compute matrix-matrix transpose products, which is why the library offers the infix operators `#^#` (i.e. matrix transpose * matrix) and `##^` (matrix * matrix transpose):
 
     λ> amat' = amat #^# amat
     λ> prd amat'
     ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
 
-    [20.0,12.0,8.0]
-    [12.0,9.0,6.0]
-    [8.0,6.0,29.0]
-
+    20.0 12.0 8.0
+    12.0 9.0 6.0
+    8.0 6.0 29.0
+    
     λ> l = chol amat'
     λ> prd $ l ##^ l
     ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
 
-    [20.000000000000004,12.0,8.0]
-    [12.0,9.0,10.8]
-    [8.0,10.8,29.0]
+    20.000000000000004 12.0 8.0
+    12.0 9.0 10.8
+    8.0 10.8 29.0
 
-In the above example we have also shown the Cholesky decomposition (M = L L^T where L is a lower-triangular matrix), which is only possible for symmetric positive-definite matrices.
+In the last example we have also shown the Cholesky decomposition (M = L L^T where L is a lower-triangular matrix), which is only defined for symmetric positive-definite matrices.
 
 ### Linear systems
 
 Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `linSolve` function, or alternatively `<\>` (which uses GMRES as default solver method) :
 
-    λ> b = fromListDenseSV 3 [3,2,5]
+    λ> b = fromListDenseSV 3 [3,2,5] :: SpVector Double
     λ> x = amat <\> b
     λ> prd x
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
@@ -160,15 +160,7 @@ The library also provides a forward-backward substitution solver (`luSolve`) bas
 
 
 
-----------
 
-This is also an experiment in principled scientific programming :
-
-* set the stage by declaring typeclasses and some useful generic operations (normed linear vector spaces, i.e. finite-dimensional spaces equipped with an inner product that induces a distance function),
-
-* define appropriate data structures, and how they relate to those properties (sparse vectors and matrices, defined internally via `Data.IntMap`, are made instances of the VectorSpace and Additive classes respectively). This allows to decouple the algorithms from the actual implementation of the backend,
-
-* implement the algorithms, following 1:1 the textbook [1, 2] 
 
 
 ## License

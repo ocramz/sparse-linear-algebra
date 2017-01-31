@@ -325,7 +325,7 @@ fromCols qv = V.ifoldl' ins (zeroSM m n) qv where
 
 showNz :: (Epsilon a, Show a) => a -> String
 showNz x | nearZero x = " _ "
-        | otherwise = show x
+         | otherwise = show x
 
 -- toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
 toDenseRow sm irow =

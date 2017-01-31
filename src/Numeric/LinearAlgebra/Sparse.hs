@@ -57,9 +57,9 @@ import Control.Exception
 import Control.Monad.Catch
 import Data.Typeable
 
-import Control.Applicative ((<|>))
-import Control.Monad.Primitive
-import Control.Monad (replicateM)
+-- import Control.Applicative ((<|>))
+
+-- import Control.Monad (replicateM)
 import Control.Monad.State.Strict
 -- import Control.Monad.Writer
 -- import Control.Monad.Trans
