@@ -31,6 +31,8 @@ import Data.Sparse.Utils as X
 import Data.Sparse.PPrint as X
 import Data.Sparse.Types as X
 import Data.Sparse.Internal.IntMap2 -- as X
+import qualified Data.Sparse.Internal.IntM as I
+import Data.Sparse.Internal.IntM (IntM(..))
 import Data.Sparse.SpMatrix as X
 import Data.Sparse.SpVector as X
 -- import Data.Sparse.Internal.CSR as X
@@ -40,6 +42,7 @@ import Numeric.LinearAlgebra.Class as X
 
 import qualified Data.IntMap as IM
 
+import GHC.Exts
 import Data.Complex
 
 -- import Control.Applicative
@@ -59,7 +62,7 @@ resizeSV :: Int -> SpVector a -> SpVector a
 resizeSV d2 (SV _ sv) = SV d2 sv
 
 
-mapKeysSV fk (SV d sv) = SV d $ IM.mapKeys fk sv
+mapKeysSV fk (SV d sv) = SV d $ I.mapKeys fk sv
 
 -- * Insert row/column vector in matrix
 
@@ -67,10 +70,10 @@ mapKeysSV fk (SV d sv) = SV d $ IM.mapKeys fk sv
 insertRowWith :: (IxCol -> IxCol) -> SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
 insertRowWith fj (SM (m,n) im) (SV d sv) i
   | not (inBounds0 m i) = error "insertRowSM : index out of bounds"
-  | n >= d = SM (m,n) $ IM.insert i (insertOrUnion i sv' im) im
+  | n >= d = SM (m,n) $ I.insert i (insertOrUnion i sv' im) im
   | otherwise = error $ "insertRowSM : incompatible dimensions " ++ show (n, d)
-    where sv' = IM.mapKeys fj sv
-          insertOrUnion i sv im = maybe sv (IM.union sv) (IM.lookup i im)
+    where sv' = I.mapKeys fj sv
+          insertOrUnion i sv im = maybe sv (I.union sv) (I.lookup i im)
 
 -- | Insert row          
 insertRow :: SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
@@ -121,24 +124,28 @@ diagonalSM sv = ifoldSV iins (zeroSM n n) sv where
 
 -- | promote a SV to SM
 svToSM :: SpVector a -> SpMatrix a
-svToSM (SV n d) = SM (n, 1) $ IM.singleton 0 d
+svToSM (SV n d) = SM (n, 1) $ I.singleton 0 d
 
--- |Demote (n x 1) or (1 x n) SpMatrix to SpVector
-toSV :: SpMatrix a -> SpVector a
-toSV (SM (m,n) im) = SV d (ff im) where
-  ff | m > n = IM.map g  -- column case
-     | otherwise = g
-  g = snd . head . IM.toList
-  d | m==1 && n==1 = 1
-    | m==1 && n>1 = n 
-    | n==1 && m>1 = m
-    | otherwise = error $ "toSV : incompatible matrix dimension " ++ show (m,n)
+-- -- |Demote (n x 1) or (1 x n) SpMatrix to SpVector
+-- -- toSV :: SpMatrix a -> SpVector a
+-- toSV (SM (m,n) im) = SV d (ff im) where
+--   ff | m > n = fmap g  -- column case
+--      | otherwise = g
+--   g = snd . head . toList
+--   d | m==1 && n==1 = 1
+--     | m==1 && n>1 = n 
+--     | n==1 && m>1 = m
+--     | otherwise = error $ "toSV : incompatible matrix dimension " ++ show (m,n)
+
+
+toSV = undefined
+
 
 
 
 -- | Lookup a row in a SpMatrix; returns an SpVector with the row, if this is non-empty
 lookupRowSM :: SpMatrix a -> IxRow -> Maybe (SpVector a)
-lookupRowSM sm i = SV (ncols sm) <$> IM.lookup i (dat sm) 
+lookupRowSM sm i = SV (ncols sm) <$> I.lookup i (dat sm) 
 
 
 -- * Extract a SpVector from an SpMatrix
@@ -241,16 +248,16 @@ instance LinearVectorSpace (SpVector (Complex Double)) where
   (<#) = vecMatSD
 
 
-matVecSD :: (InnerSpace (IM.IntMap t), s ~ Scalar (IM.IntMap t)) =>
-    SpMatrix t -> SpVector t -> SpVector s
+-- matVecSD :: (InnerSpace (IM.IntMap t), s ~ Scalar (IM.IntMap t)) =>
+--     SpMatrix t -> SpVector t -> SpVector s
 matVecSD (SM (nr, nc) mdata) (SV n sv)
   | nc == n = SV nr $ fmap (`dot` sv) mdata
   | otherwise = error $ "matVec : mismatched dimensions " ++ show (nc, n)
 
 -- |Vector-on-matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
 -- vecMat, (<#) :: SpVector Double -> SpMatrix Double -> SpVector Double
-vecMatSD :: (InnerSpace (IM.IntMap t), s ~ Scalar(IM.IntMap t)) =>
-    SpVector t -> SpMatrix t -> SpVector s
+-- vecMatSD :: (InnerSpace (IM.IntMap t), s ~ Scalar(IM.IntMap t)) =>
+--     SpVector t -> SpMatrix t -> SpVector s
 vecMatSD (SV n sv) (SM (nr, nc) mdata)
   | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
   | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)

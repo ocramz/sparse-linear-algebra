@@ -18,6 +18,8 @@ import Data.Sparse.Types
 import Numeric.Eps
 import Numeric.LinearAlgebra.Class
 
+import Data.Sparse.Internal.IntM (IntM (..))
+import qualified Data.Sparse.Internal.IntM as I
 import Data.Sparse.Internal.IntMap2
 
 
@@ -77,7 +79,7 @@ instance Set SpMatrix where
 
 -- | 'SpMatrix'es form an additive group, in that they can have an invertible associtative operation (matrix sum)
 instance Num a => AdditiveGroup (SpMatrix a) where
-  zeroV = SM (0,0) empty
+  zeroV = SM (0,0) I.empty
   (^+^) = liftU2 (+)
   negateV = fmap negate
   (^-^) = liftU2 (-)
@@ -119,7 +121,7 @@ instance Num a => SpContainer SpMatrix a where
 
 -- | `zeroSM m n` : Empty SpMatrix of size (m, n)
 zeroSM :: Rows -> Cols -> SpMatrix a
-zeroSM m n = SM (m,n) empty
+zeroSM m n = SM (m,n) I.empty
 
 
 -- *** Diagonal matrix
@@ -254,7 +256,7 @@ toDenseListSM m =
 
 
 lookupSM :: SpMatrix a -> IxRow -> IxCol -> Maybe a
-lookupSM (SM _ im) i j = IM.lookup i im >>= IM.lookup j
+lookupSM (SM _ im) i j = I.lookup i im >>= I.lookup j
 
 -- | Looks up an element in the matrix with a default (if the element is not found, zero is returned)
 
@@ -309,7 +311,7 @@ extractSubmatrixSM fi gi (SM (r, c) im) (i1, i2) (j1, j2)
   | q = SM (m', n') imm'
   | otherwise = error $ "extractSubmatrixSM : invalid index " ++ show (i1, i2) ++ ", " ++ show (j1, j2) where
   imm' = mapKeysIM2 fi gi $                          -- rebalance keys
-          IM.filter (not . IM.null) $                -- remove all-null rows
+          I.filterI (not . null) $                -- remove all-null rows
           ifilterIM2 ff im                           -- keep `submatrix`
   ff i j _ = i1 <= i &&
              i <= i2 &&
@@ -390,10 +392,10 @@ isSquareSM m = nrows m == ncols m
 
 -- |Is the matrix diagonal?
 isDiagonalSM :: SpMatrix a -> Bool
-isDiagonalSM m = IM.size d == nrows m where
-  d = IM.filterWithKey ff (immSM m)
-  ff irow row = IM.size row == 1 &&
-                IM.size (IM.filterWithKey (\j _ -> j == irow) row) == 1
+isDiagonalSM m = I.size d == nrows m where
+  d = I.filterWithKey ff (immSM m)
+  ff irow row = I.size row == 1 &&
+                I.size (I.filterWithKey (\j _ -> j == irow) row) == 1
 
 -- | Is the matrix lower/upper triangular?
 isLowerTriSM, isUpperTriSM :: Eq a => SpMatrix a -> Bool
@@ -421,7 +423,7 @@ isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
 -- ** Matrix data and metadata
 
 -- | Data in internal representation (do not export)
-immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
+-- immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
 immSM (SM _ imm) = imm
 
 -- | (Number of rows, Number of columns)
@@ -447,7 +449,7 @@ infoSM :: SpMatrix a -> SMInfo
 infoSM s = SMInfo (nzSM s) (spySM s)
 
 nzSM :: SpMatrix a -> Int
-nzSM s = sum $ fmap IM.size (immSM s)
+nzSM s = sum $ fmap I.size (immSM s)
 
 spySM :: Fractional b => SpMatrix a -> b
 spySM s = fromIntegral (nzSM s) / fromIntegral (nelSM s)
@@ -460,7 +462,7 @@ nzRow :: SpMatrix a -> IM.Key -> Int
 nzRow s i | inBounds0 (nrows s) i = nzRowU s i
           | otherwise = error "nzRow : index out of bounds" where
               nzRowU :: SpMatrix a -> IM.Key -> Int
-              nzRowU s i = maybe 0 IM.size (IM.lookup i $ immSM s)
+              nzRowU s i = maybe 0 I.size (I.lookup i $ immSM s)
 
 
 
@@ -475,12 +477,12 @@ bwMaxSM = snd . bwBoundsSM
 
 bwBoundsSM :: SpMatrix a -> (Int, Int)
 bwBoundsSM s = -- b
-                (snd $ IM.findMin b,
-                snd $ IM.findMax b)
+                (snd $ I.findMin b,
+                snd $ I.findMax b)
   where
   ss = immSM s
-  fmi = fst . IM.findMin
-  fma = fst . IM.findMax
+  fmi = fst . I.findMin
+  fma = fst . I.findMax
   b = fmap (\x -> fma x - fmi x + 1:: Int) ss
 
 
@@ -538,12 +540,12 @@ bwBoundsSM s = -- b
 
 -- | Vertical stacking
 vertStackSM, (-=-) :: SpMatrix a -> SpMatrix a -> SpMatrix a
-vertStackSM mm1 mm2 = SM (m, n) $ IM.union u1 u2 where
+vertStackSM mm1 mm2 = SM (m, n) $ I.union u1 u2 where
   nro1 = nrows mm1
   m = nro1 + nrows mm2
   n = max (ncols mm1) (ncols mm2)
   u1 = immSM mm1
-  u2 = IM.mapKeys (+ nro1) (immSM mm2)
+  u2 = I.mapKeys (+ nro1) (immSM mm2)
 
 (-=-) = vertStackSM
 
@@ -623,7 +625,7 @@ subdiagIndicesSM (SM _ im) = subdiagIndices im
 
 -- ** Sparsify : remove almost-0 elements (|x| < eps)
 sparsifyIM2 ::
-  Epsilon a => IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+  Epsilon a => I.IntM (I.IntM a) -> I.IntM (I.IntM a)
 sparsifyIM2 = ifilterIM2 (\_ _ x -> isNz x)
 
 -- | Sparsify an SpMatrix
@@ -671,10 +673,10 @@ modifyKeysSM fi fj mm = fromListSM (dim mm) $ zip3 (fi <$> ii) (fj <$> jj) xx wh
 -- ** Matrix row swap
 -- | Swap two rows of a SpMatrix (bounds not checked)
 swapRows :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
-swapRows i1 i2 (SM d im) = SM d $ IM.insert i1 ro2 im' where
-  ro1 = im IM.! i1
-  ro2 = im IM.! i2
-  im' = IM.insert i2 ro1 im
+swapRows i1 i2 (SM d im) = SM d $ I.insert i1 ro2 im' where
+  ro1 = im I.! i1
+  ro2 = im I.! i2
+  im' = I.insert i2 ro1 im
 
 -- | Swap two rows of a SpMatrix (bounds checked)  
 swapRowsSafe :: IxRow -> IxRow -> SpMatrix a -> SpMatrix a
@@ -775,11 +777,11 @@ matMat_ pt mm1 mm2 =
 
 -- | Matrix product without dimension checks
 {-# INLINE matMatUnsafeWith #-}
-matMatUnsafeWith :: Num a =>
-   (IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)) ->
-   SpMatrix a ->
-   SpMatrix a ->
-   SpMatrix a
+-- matMatUnsafeWith :: Num a =>
+--    (IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)) ->
+--    SpMatrix a ->
+--    SpMatrix a ->
+--    SpMatrix a
 matMatUnsafeWith ff2 m1 m2 = SM (nrows m1, ncols m2) (overRows2 <$> immSM m1) where
           overRows2 vm1 = (`dott` vm1) <$> ff2 (immSM m2)
           dott x y = sum $ liftI2 (*) x y    -- NB !! no complex conjugation

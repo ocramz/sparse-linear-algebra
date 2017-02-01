@@ -70,6 +70,7 @@ import Data.Complex
 import Data.VectorSpace hiding (magnitude)
 
 import qualified Data.IntMap.Strict as IM
+import qualified Data.Sparse.Internal.IntM as I
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
 
 -- import qualified System.Random.MWC as MWC
@@ -210,17 +211,17 @@ givens mm i j
     b = mm @@ (i, j)   -- element to zero out
 
 -- |Returns a set of rows {k} that satisfy QR.C1
-candidateRows :: IM.IntMap (IM.IntMap a) -> IxRow -> IxCol -> Maybe [IM.Key]
-candidateRows mm i j | IM.null u = Nothing
-                     | otherwise = Just (IM.keys u) where
-  u = IM.filterWithKey (\irow row -> irow /= i &&
-                                     firstNonZeroColumn row j) mm
+-- candidateRows :: IM.IntMap (IM.IntMap a) -> IxRow -> IxCol -> Maybe [IM.Key]
+candidateRows mm i j | null u = Nothing
+                     | otherwise = Just (I.keys u) where
+  u = I.filterWithKey (\irow row -> irow /= i &&
+                                    firstNonZeroColumn row j) mm
 
 -- |Is the `k`th the first nonzero column in the row?
 {-# inline firstNonZeroColumn #-}
-firstNonZeroColumn :: IM.IntMap a -> IxRow -> Bool
-firstNonZeroColumn mm k = isJust (IM.lookup k mm) &&
-                          isNothing (IM.lookupLT k mm)
+-- firstNonZeroColumn :: IM.IntMap a -> IxRow -> Bool
+firstNonZeroColumn mm k = isJust (I.lookup k mm) &&
+                          isNothing (I.lookupLT k mm)
 
 
 

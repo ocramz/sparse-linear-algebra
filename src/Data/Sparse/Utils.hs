@@ -33,6 +33,11 @@ denseIxArray2 m xs = zip3 (concat $ replicate n ii_) jj_ xs where
   n = ln `div` m
 
 
+-- indexed :: [b] -> [(Int, b)]
+-- indexed x = zip [0 .. length x - 1] x
+
+
+
 -- folds
 
 -- | foldr over the results of a fmap
