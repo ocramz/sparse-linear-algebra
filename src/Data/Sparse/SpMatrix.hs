@@ -20,6 +20,9 @@ import Numeric.LinearAlgebra.Class
 
 import Data.Sparse.Internal.IntMap2
 
+
+import GHC.Exts
+
 import qualified Data.IntMap.Strict as IM
 
 import Data.Complex
@@ -46,7 +49,7 @@ import Data.VectorSpace
 -- * Sparse Matrix
 
 data SpMatrix a = SM {smDim :: {-# UNPACK #-} !(Rows, Cols),
-                      smData :: !(IM.IntMap (IM.IntMap a))}
+                      smData :: !(IntM (IntM a))}
                 deriving Eq
 
 
@@ -59,7 +62,7 @@ sizeStr sm =
   sy = spy sm :: Double
 
 instance Show a => Show (SpMatrix a) where
-  show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (IM.toList $ IM.toList <$> x)
+  show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (toList $ toList <$> x)
   -- show sm@(SM _ x) = show x
 
 instance Functor SpMatrix where
@@ -74,7 +77,7 @@ instance Set SpMatrix where
 
 -- | 'SpMatrix'es form an additive group, in that they can have an invertible associtative operation (matrix sum)
 instance Num a => AdditiveGroup (SpMatrix a) where
-  zeroV = SM (0,0) IM.empty
+  zeroV = SM (0,0) empty
   (^+^) = liftU2 (+)
   negateV = fmap negate
   (^-^) = liftU2 (-)
@@ -89,7 +92,7 @@ instance FiniteDim SpMatrix where
   dim = smDim
 
 instance HasData SpMatrix a where
-  type HDData SpMatrix a = IM.IntMap (IM.IntMap a)
+  type HDData SpMatrix a = IntM (IntM a)
   nnz = nzSM
   dat = smData
 
@@ -116,7 +119,7 @@ instance Num a => SpContainer SpMatrix a where
 
 -- | `zeroSM m n` : Empty SpMatrix of size (m, n)
 zeroSM :: Rows -> Cols -> SpMatrix a
-zeroSM m n = SM (m,n) IM.empty
+zeroSM m n = SM (m,n) empty
 
 
 -- *** Diagonal matrix
