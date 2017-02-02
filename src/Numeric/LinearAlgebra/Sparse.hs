@@ -69,7 +69,6 @@ import Data.Complex
 
 import Data.VectorSpace hiding (magnitude)
 
-import qualified Data.IntMap.Strict as IM
 import qualified Data.Sparse.Internal.IntM as I
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
 
@@ -228,9 +227,32 @@ firstNonZeroColumn mm k = isJust (I.lookup k mm) &&
 
 
 
+{-# inline givens' #-}
+givens' :: (Elt a, MonadThrow m) => SpMatrix a -> Int -> Int -> m (SpMatrix a)
+givens' mm i j 
+  | isValidIxSM mm (i,j) && nrows mm >= ncols mm = do
+      i' <- candidateRows' (immSM mm) i j
+      return $ givensMat mm i i' j
+  | otherwise = throwM (OOBIxsError "Givens" [i, j])
+  where
+  givensMat mm i i' j = fromListSM'
+           [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)] $ eye (nrows mm)
+           where
+             (c, s, _) = givensCoef a b
+             a = mm @@ (i', j)
+             b = mm @@ (i, j)   -- element to zero out
+  candidateRows' mm i j | null u = throwM (OOBNoCompatRows "Givens" (i,j))
+                        | otherwise = return $ head (I.keys u) where
+    u = I.filterWithKey (\irow row -> irow /= i &&
+                                      firstNZColumn row j) mm
+    firstNZColumn m k = isJust (I.lookup k m) &&
+                        isNothing (I.lookupLT k m)
+    
 
 
 
+
+                          
 
 
 
@@ -242,8 +264,8 @@ firstNonZeroColumn mm k = isJust (I.lookup k mm) &&
 qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, Floating a) =>
      SpMatrix a -> (SpMatrix a, SpMatrix a)
 qr mm = (transpose qt, r) where
-  (qt, r, _) = execState (modifyUntil qf stepf) gminit
-  qf (_, _, iis) = null iis
+  (qt, r, _) = execState (modifyUntil haltf stepf) gminit
+  haltf (_, _, iis) = null iis
   stepf (qmatt, m, iis) = (qmatt', m', tail iis) where
     (i, j) = head iis
     g = givens m i j
@@ -251,7 +273,25 @@ qr mm = (transpose qt, r) where
     m' = g #~# m          -- update R
   gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
 
-    
+
+
+qr' mm = undefined --  MTS.execStateT (modifyUntilT haltf stepf) gminit
+  where
+    gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
+    haltf (_, _, iis) = null iis
+
+
+qrstepf :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     (SpMatrix a, SpMatrix a, [(Int, Int)])
+     -> m (SpMatrix a, SpMatrix a, [(Int, Int)])
+qrstepf (qmatt, m, iis) = do
+      let (i, j) = head iis
+      g <- givens' m i j
+      let
+        qmatt' = g #~# qmatt  -- update Q'
+        m' = g #~# m          -- update R
+      return (qmatt', m', tail iis)
+
   
 
 
@@ -556,7 +596,7 @@ arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
         h21 = norm2' q1nn
       q1 = normalize2 q1nn       -- q1 `dot` q0 ~ 0
       qv1 = V.fromList [q0, q1]
-  arnoldiStep (qv, hh, i, _) = (qv', hh', i + 1, fb') where
+  arnoldiStep (qv, hh, i, _) = (qv', hh', i + 1, breakf) where
     qi = V.last qv
     aqi = aa #> qi
     hhcoli = fmap (`dot` aqi) qv -- H_{1, i}, H_{2, i}, .. , H_{m + 1, i}
@@ -570,8 +610,8 @@ arnoldi aa b kn = (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
       ii = V.fromList [0 .. n]    -- nth col of upper Hessenberg has `n+1` nz
       jj = V.replicate (n + 1) i  -- `n+1` replicas of `i`
     qv' = V.snoc qv qip        -- append q_{i+1} to Krylov basis Q_i
-    fb' | nearZero qipnorm = True  -- breakdown condition
-        | otherwise = False
+    breakf | nearZero qipnorm = True  -- breakdown condition
+           | otherwise = False
 
 
 
@@ -1045,7 +1085,14 @@ modifyUntil q f = do
   let y = f x
   put y
   if q y then return y
-         else modifyUntil q f     
+         else modifyUntil q f
+
+modifyUntilT q f = do
+  x <- MTS.get
+  let y = f x
+  MTS.put y
+  if q y then return y
+         else modifyUntilT q f     
 
 -- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached  
 loopUntilAcc :: Int -> ([t] -> Bool) -> (t -> t)  -> t -> t
@@ -1184,8 +1231,7 @@ diffSqL xx = (x1 - x2)**2 where [x1, x2] = [head xx, xx!!1]
 
 -- | Relative tolerance :
 -- relTol a b := ||a - b|| / (1 + min (||norm2 a||, ||norm2 b||))
-relTol :: (Normed v, Ord (Magnitude v)) =>
-     v -> v -> Magnitude v
+relTol :: (Normed v, Ord (Magnitude v)) => v -> v -> Magnitude v
 relTol a b = norm2 (a ^-^ b) / m where
   m = 1 + min (norm2 a) (norm2 b)
 

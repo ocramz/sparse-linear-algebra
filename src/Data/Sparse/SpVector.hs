@@ -75,12 +75,6 @@ instance Foldable SpVector where
 
 
 
-
-
-
-
-
-
 -- | 'SpVector's form a vector space because they can be multiplied by a scalar
 
 
@@ -140,6 +134,8 @@ dotS :: InnerSpace (IntM t) => SpVector t -> SpVector t -> Scalar (IntM t)
 
 -- dotSSafe :: (MonadThrow m, InnerSpace (IM.IntMap t)) =>
 --      SpVector t -> SpVector t -> m (Scalar (IM.IntMap t))
+dotSSafe :: (InnerSpace (IntM t), MonadThrow m) =>
+  SpVector t -> SpVector t -> m (Scalar (IntM t))
 dotSSafe (SV m a) (SV n b)
   | n == m = return $ a <.> b
   | otherwise = throwM (DotSizeMismatch m n)
@@ -166,18 +162,18 @@ singletonSV x = SV 1 (singleton 0 x)
 
 
 -- | Canonical basis vector in R^n
--- ei :: Num a => Int -> IM.Key -> SpVector a
+ei :: Num a => Int -> IM.Key -> SpVector a
 ei n i = SV n (insert (i - 1) 1 empty)
 
 
 
 -- | Sparse vector from an association list while discarding all zero entries
--- mkSpVector :: Epsilon a => Int -> IntM a -> SpVector a
+mkSpVector :: Epsilon a => Int -> IM.IntMap a -> SpVector a
 mkSpVector d im = SV d $ IntM $ IM.filterWithKey (\k v -> isNz v && inBounds0 d k) im
 
 
 -- ", don't filter zero elements
--- mkSpVector1 :: Int -> IM.IntMap a -> SpVector a
+mkSpVector1 :: Int -> IM.IntMap a -> SpVector a
 mkSpVector1 d ll = SV d $ IntM $ IM.filterWithKey (\ k _ -> inBounds0 d k) ll
 
 
@@ -257,7 +253,7 @@ toVectorDense = V.fromList . toDenseListSV
 -- ** Element insertion
 
 -- |insert element `x` at index `i` in a preexisting SpVector; discards out-of-bounds entries
--- insertSpVector :: IM.Key -> a -> SpVector a -> SpVector a
+insertSpVector :: IM.Key -> a -> SpVector a -> SpVector a
 insertSpVector i x (SV d xim) | inBounds0 d i = SV d (insert i x xim)
 
 insertSpVectorSafe :: MonadThrow m => Int -> a -> SpVector a -> m (SpVector a)
@@ -287,7 +283,7 @@ toDenseListSV (SV d (IntM im)) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-
 
 -- | Indexed fold over SpVector
 ifoldSV :: (IM.Key -> a -> b -> b) -> b -> SpVector a -> b
-ifoldSV f e (SV d (IntM im)) = IM.foldrWithKey f e im
+ifoldSV f e (SV _ (IntM im)) = IM.foldrWithKey f e im
 
 
 
@@ -382,7 +378,8 @@ sparsifySV = filterSV isNz
 -- * Orthogonal vector
 
 -- | Generate an arbitrary (not random) vector `u` such that `v dot u = 0`
--- orthogonalSV :: Fractional a => SpVector a -> SpVector a
+orthogonalSV :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Fractional t) =>
+     SpVector t -> SpVector t
 orthogonalSV v = u where
   (h, t) = (headSV v, tailSV v)
   n = dim v

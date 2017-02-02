@@ -27,7 +27,7 @@ import Numeric.Eps
 
 
 -- * Matrix and vector elements (possibly Complex)
-class (Eq e , Fractional e) => Elt e where
+class (Eq e , Fractional e, Floating e) => Elt e where
   type EltMag e :: *
   conj :: e -> e
   conj = id

@@ -18,9 +18,13 @@ instance Exception InputError
 
 
 -- | Out of bounds index error
-data OutOfBoundsIndexError i = OOBIxError String i deriving (Eq, Typeable)
+data OutOfBoundsIndexError i = OOBIxError String i
+                             | OOBIxsError String [i]
+                             | OOBNoCompatRows String (i,i) deriving (Eq, Typeable)
 instance Show i => Show (OutOfBoundsIndexError i) where
   show (OOBIxError e i) = unwords [e, ": index", show i,"out of bounds"]
+  show (OOBIxsError e ixs) = unwords [e, ":, indices", show ixs, "out of bounds"]
+  show (OOBNoCompatRows e ij) = unwords [e, ": no compatible rows for indices", show ij]
 instance (Show i, Typeable i) => Exception (OutOfBoundsIndexError i)
 
 checkIxBound :: MonadThrow m => String -> Int -> UB -> m a -> m a
