@@ -8,6 +8,13 @@ import Data.Typeable -- (TypeRep, Typeable, typeRep)
 import Data.Sparse.Utils
 
 
+
+data PartialFunctionError = EmptyList String deriving (Eq, Typeable)
+instance Show PartialFunctionError where
+  show (EmptyList s) = unwords [s, ": empty list"]
+instance Exception PartialFunctionError
+
+
 -- | Input error
 
 data InputError = NonNegError String Int deriving (Eq, Typeable)

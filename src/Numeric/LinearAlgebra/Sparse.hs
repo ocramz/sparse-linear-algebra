@@ -284,13 +284,16 @@ qr' mm = undefined --  MTS.execStateT (modifyUntilT haltf stepf) gminit
 qrstepf :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
      (SpMatrix a, SpMatrix a, [(Int, Int)])
      -> m (SpMatrix a, SpMatrix a, [(Int, Int)])
-qrstepf (qmatt, m, iis) = do
-      let (i, j) = head iis
-      g <- givens' m i j
-      let
-        qmatt' = g #~# qmatt  -- update Q'
-        m' = g #~# m          -- update R
-      return (qmatt', m', tail iis)
+qrstepf (qmatt, m, iis) = 
+      if null iis
+      then throwM (EmptyList "qrstep")
+      else do
+        let (i, j) = head iis
+        g <- givens' m i j
+        let
+          qmatt' = g #~# qmatt  -- update Q'
+          m' = g #~# m          -- update R
+        return (qmatt', m', tail iis)
 
   
 
