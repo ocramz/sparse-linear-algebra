@@ -129,14 +129,14 @@ spec = do
       checkLuSolve aa1 b1 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do    
     it "qr (4 x 4 sparse)" $
-      checkQr tm4 `shouldBe` True
+      checkQr tm4 >>= (`shouldBe` True)
     it "qr (3 x 3 dense)" $ 
-      checkQr tm2 `shouldBe` True
+      checkQr tm2 >>= (`shouldBe` True)
     it "qr (10 x 10 sparse)" $
-      checkQr tm7 `shouldBe` True
-  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
+      checkQr tm7 >>= (`shouldBe` True)
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $
     it "qr (2 x 2 dense)" $
-      checkQr aa3cx `shouldBe` True
+      checkQr aa3cx >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
     it "lu (4 x 4 dense)" $
       checkLu tm6 `shouldBe` True
@@ -185,24 +185,25 @@ spec = do
 
 
 
-{- Givens rotation-}
-checkGivens1 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, Floating a) =>
-     SpMatrix a -> IxRow -> IxCol -> (a, Bool)
-checkGivens1 tm i j = (rij, nearZero rij) where
-  g = givens tm i j
-  r = g ## tm
-  rij = r @@ (i, j)
+-- {- Givens rotation-}
+-- checkGivens1 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, Floating a) =>
+--      SpMatrix a -> IxRow -> IxCol -> (a, Bool)
+-- checkGivens1 tm i j = (rij, nearZero rij) where
+--   g = givens tm i j
+--   r = g ## tm
+--   rij = r @@ (i, j)
 
 
 {- QR-}
 
-checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
-     SpMatrix a -> Bool
-checkQr a = c1 && c2 && c3 where
-  (q, r) = qr a
-  c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
-  c2 = isOrthogonalSM q
-  c3 = isUpperTriSM r
+-- checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
+--      SpMatrix a -> Bool
+checkQr a = do
+  (q, r) <- qr a
+  let c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
+      c2 = isOrthogonalSM q
+      c3 = isUpperTriSM r
+  return $ c1 && c2 && c3
 
 
 
@@ -546,9 +547,9 @@ prop_Cholesky (PropMatSPD m) = checkChol m
 
 
 -- | QR decomposition
-prop_QR :: (Elt a, MatrixRing (SpMatrix a),
-      Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
-     PropMatI a -> Bool
+-- prop_QR :: (Elt a, MatrixRing (SpMatrix a),
+--       Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
+--      PropMatI a -> Bool
 prop_QR (PropMatI m) = checkQr m
 
 

@@ -24,7 +24,7 @@ module Numeric.LinearAlgebra.Sparse
          -- * Arnoldi iteration
          arnoldi, 
          -- * Eigensolvers
-         -- eigsQR,
+         eigsQR,
          -- eigRayleigh,
          -- * Linear solvers
          -- ** Iterative methods
@@ -98,15 +98,17 @@ type Data x = (Epsilon x, Elt x, Show x, Ord x)
 -- |uses the R matrix from the QR factorization
 conditionNumberSM :: (MonadThrow m, MatrixRing (SpMatrix a), Data a, Typeable a) =>
      SpMatrix a -> m a
-conditionNumberSM m | nearZero lmin = throwM (HugeConditionNumber kappa)
-                    | otherwise = return kappa where
-  kappa = lmax / lmin
-  (_, r) = qr m
-  u = extractDiagDense r  -- FIXME : need to extract with default element 0 
-  lmax = abs (maximum u)
-  lmin = abs (minimum u)
-
-
+conditionNumberSM m = do
+  (_, r) <- qr m
+  let
+   u = extractDiagDense r 
+   lmax = abs (maximum u)
+   lmin = abs (minimum u)
+   kappa = lmax / lmin                     
+  if nearZero lmin
+  then throwM (HugeConditionNumber kappa)
+  else return kappa 
+                          
 
 
 
@@ -136,17 +138,6 @@ hhRefl = hhMat (fromInteger 2)
 
 
 -- * Givens rotation matrix
-
-
-
-
--- class Signum x where
---   type SigFloat x :: *
---   signum' :: x -> SigFloat x
-
--- instance Signum Double where {type SigFloat Double = Double; signum' = signum}
--- instance Signum (Complex Double) where {type SigFloat (Complex Double) = Double; signum' = signum . magnitude}
-
 
 -- -- -- | Givens coefficients (using stable algorithm shown in  Anderson, Edward (4 December 2000). "Discontinuous Plane Rotations and the Symmetric Eigenvalue Problem". LAPACK Working Note)
 -- -- -- givensCoef0 :: (Ord b, Floating a, Eq a) => (a -> b) -> a -> a -> (a, a, a)
@@ -196,40 +187,8 @@ NB: the current version is quite inefficient in that:
 2. at each iteration `i` we multiply `G_i` by the previous partial result `M`. Since this corresponds to a rotation, and the `givensCoef` function already computes the value of the resulting non-zero component (output `r`), `G_i ## M` can be simplified by just changing two entries of `M` (i.e. zeroing one out and changing the other into `r`).
 -}
 {-# inline givens #-}
-givens :: (Elt a, Floating a) => SpMatrix a -> IxRow -> IxCol -> SpMatrix a
+givens :: (Elt a, MonadThrow m) => SpMatrix a -> Int -> Int -> m (SpMatrix a)
 givens mm i j 
-  | isValidIxSM mm (i,j) && nrows mm >= ncols mm =
-       -- fromListSM' [(i,i,c),(j,j,conj c),(j,i,- (conj s)),(i,j,s)] (eye (nrows mm))
-       fromListSM'
-         [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)] (eye (nrows mm))       
-  | otherwise = error "givens : indices out of bounds"      
-  where
-    (c, s, _) = givensCoef a b
-    i' = head $ fromMaybe (error $ "givens: no compatible rows for entry " ++ show (i,j)) (candidateRows (immSM mm) i j)
-    a = mm @@ (i', j)
-    b = mm @@ (i, j)   -- element to zero out
-
--- |Returns a set of rows {k} that satisfy QR.C1
--- candidateRows :: IM.IntMap (IM.IntMap a) -> IxRow -> IxCol -> Maybe [IM.Key]
-candidateRows mm i j | null u = Nothing
-                     | otherwise = Just (I.keys u) where
-  u = I.filterWithKey (\irow row -> irow /= i &&
-                                    firstNonZeroColumn row j) mm
-
--- |Is the `k`th the first nonzero column in the row?
-{-# inline firstNonZeroColumn #-}
--- firstNonZeroColumn :: IM.IntMap a -> IxRow -> Bool
-firstNonZeroColumn mm k = isJust (I.lookup k mm) &&
-                          isNothing (I.lookupLT k mm)
-
-
-
-
-
-
-{-# inline givens' #-}
-givens' :: (Elt a, MonadThrow m) => SpMatrix a -> Int -> Int -> m (SpMatrix a)
-givens' mm i j 
   | isValidIxSM mm (i,j) && nrows mm >= ncols mm = do
       i' <- candidateRows' (immSM mm) i j
       return $ givensMat mm i i' j
@@ -261,22 +220,9 @@ givens' mm i j
 
 
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
--- qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, Floating a) =>
---      SpMatrix a -> (SpMatrix a, SpMatrix a)
-qr mm = (transpose qt, r) where
-  (qt, r, _) = execState (modifyUntil haltf stepf) gminit
-  haltf (_, _, iis) = null iis
-  stepf (qmatt, m, iis) = (qmatt', m', tail iis) where
-    (i, j) = head iis
-    g = givens m i j
-    qmatt' = g #~# qmatt  -- update Q'
-    m' = g #~# m          -- update R
-  gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
-
-
-qr' :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
      SpMatrix a -> m (SpMatrix a, SpMatrix a)
-qr' mm = do 
+qr mm = do 
     (qt, r, _) <- MTS.execStateT (modifyUntilM haltf qrstepf) gminit
     return (transpose qt, r) 
   where
@@ -284,7 +230,7 @@ qr' mm = do
     haltf (_, _, iis) = null iis
     qrstepf (qmatt, m, iis) = do
         let (i, j) = head iis
-        g <- givens' m i j
+        g <- givens m i j
         let
           qmatt' = g #~# qmatt  -- update Q'
           m' = g #~# m          -- update R
@@ -303,49 +249,21 @@ qr' mm = do
 
 -- ** QR algorithm
 
--- -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
--- eigsQR :: (Elt a, Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon (Scalar (SpVector a)), Epsilon a, Floating (Scalar (SpVector a)), Floating a) =>
---      Int -> SpMatrix a -> SpVector a
--- eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
---   eigsStep mm = q #~^# (m ## q) -- r #~# q
---    where
---     (q, _) = qr mm
-
-
-eigsQRconvergtest nitermax g = modifyInspectN nitermax f g where
-      f [m1, m2] = let dm1 = extractDiagDense m1
-                       dm2 = extractDiagDense m2
-                   in nearZero $ norm2' (dm1 ^-^ dm2)
-      f _ = False
-
-
-eigsQR' nitermax m = untilConvergedGM "eigsQR" nitermax pf (const True) -- stepf
+-- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
+eigsQR :: (MonadThrow m, Elt a, Normed (SpVector a), MatrixRing (SpMatrix a),
+            Epsilon a, Typeable (Magnitude (SpVector a)), Typeable a, Show a) =>
+     Int               -- ^ Maximum number of iterations
+     -> SpMatrix a     -- ^ Operand matrix 
+     -> m (SpVector a) -- ^ Eigenvalues
+eigsQR nitermax m = pf <$> untilConvergedGM "eigsQR" nitermax pf (const True) stepf m
   where
-    pf = extractDiagDense
-    -- stepf mm = do
-    --   (q, _) <- qr mm
-    --   return $ q #~^# (m ## q) -- r #~# q
-    -- summf [m1, m2] = let dm1 = extractDiagDense m1
-    --                      dm2 = extractDiagDense m2
-    --                  in (dm1 ^-^ dm2)
-    -- -- summf _ = False    
+    pf = extractDiagDense  
+    stepf mm = do
+      (q, _) <- qr mm
+      return $ q #~^# (m ## q) -- r #~# q
+
       
 
-
-
-
--- eigsQR' nitermax m = do
---   vm <- MTS.execStateT (convergtest stepf) m
---   return $ extractDiagDense vm
---   where
---     stepf mm = do
---       (q, _) <- qr mm
---       return $ q #~^# (m ## q) -- r #~# q
---     convergtest g = modifyInspectN nitermax f g where
---       f [m1, m2] = let dm1 = extractDiagDense m1
---                        dm2 = extractDiagDense m2
---                    in nearZero $ norm2' (dm1 ^-^ dm2)
---       f _ = False
 
 
 
@@ -759,25 +677,38 @@ triUpperSolve uu w = sparsifySV x where
 --
 -- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
-gmres :: (Scalar (SpVector t) ~ t,
-          MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, V (SpVector t), MatrixRing (SpMatrix t), Epsilon t) =>
-     SpMatrix t -> SpVector t -> SpVector t
-gmres aa b = qa' #> yhat where
-  m = ncols aa
-  (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
-  -- b' = (transposeSe qa) #> b
-  b' = norm2' b .* (ei mp1 1)  -- b rotated back to canonical basis by Q^T
-     where mp1 = nrows ha     -- = 1 + (# Arnoldi iterations)
-  (qh, rh) = qr ha            -- QR factors of H
-  yhat = triUpperSolve rh' rhs' where
-    rhs' = takeSV (dim b' - 1) (transpose qh #> b')
-    rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
-  qa' = takeCols (ncols qa - 1) qa   -- we don't use last column of Krylov basis
+-- gmres :: (Scalar (SpVector t) ~ t,
+--           MatrixType (SpVector t) ~ SpMatrix t,
+--       Elt t, V (SpVector t), MatrixRing (SpMatrix t), Epsilon t) =>
+--      SpMatrix t -> SpVector t -> SpVector t
+-- gmres aa b = qa' #> yhat where
+--   m = ncols aa
+--   (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
+--   -- b' = (transposeSe qa) #> b
+--   b' = norm2' b .* (ei mp1 1)  -- b rotated back to canonical basis by Q^T
+--      where mp1 = nrows ha     -- = 1 + (# Arnoldi iterations)
+--   (qh, rh) = qr ha            -- QR factors of H
+--   yhat = triUpperSolve rh' rhs' where
+--     rhs' = takeSV (dim b' - 1) (transpose qh #> b')
+--     rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
+--   qa' = takeCols (ncols qa - 1) qa   -- we don't use last column of Krylov basis
 
 
 
-
+gmres' aa b = do
+  let
+    m = ncols aa
+    (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
+    -- b' = (transposeSe qa) #> b
+    b' = norm2' b .* (ei mp1 1)  -- b rotated back to canonical basis by Q^T
+       where mp1 = nrows ha     -- = 1 + (# Arnoldi iterations)
+  (qh, rh) <- qr ha
+  let
+    yhat = triUpperSolve rh' rhs' where
+      rhs' = takeSV (dim b' - 1) (transpose qh #> b')
+      rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
+    qa' = takeCols (ncols qa - 1) qa   -- we don't use last column of Krylov basis
+  return $ qa' #> yhat
 
 
 
@@ -1180,6 +1111,7 @@ untilConvergedG :: (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable s,
 untilConvergedG fname nitermax fproj qfinal =
   modifyInspectGuarded fname nitermax (convergf fproj) nearZero qdiverg qfinal
 
+-- | ", monadic version
 untilConvergedGM ::
   (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable t, Show t) =>
      String
