@@ -24,7 +24,7 @@ module Numeric.LinearAlgebra.Sparse
          -- * Arnoldi iteration
          arnoldi, 
          -- * Eigensolvers
-         eigsQR,
+         -- eigsQR,
          -- eigRayleigh,
          -- * Linear solvers
          -- ** Iterative methods
@@ -261,8 +261,8 @@ givens' mm i j
 
 
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
-qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, Floating a) =>
-     SpMatrix a -> (SpMatrix a, SpMatrix a)
+-- qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, Floating a) =>
+--      SpMatrix a -> (SpMatrix a, SpMatrix a)
 qr mm = (transpose qt, r) where
   (qt, r, _) = execState (modifyUntil haltf stepf) gminit
   haltf (_, _, iis) = null iis
@@ -274,20 +274,15 @@ qr mm = (transpose qt, r) where
   gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
 
 
-
-qr' mm = undefined --  MTS.execStateT (modifyUntilT haltf stepf) gminit
+qr' :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     SpMatrix a -> m (SpMatrix a, SpMatrix a)
+qr' mm = do 
+    (qt, r, _) <- MTS.execStateT (modifyUntilM haltf qrstepf) gminit
+    return (transpose qt, r) 
   where
     gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
     haltf (_, _, iis) = null iis
-
-
-qrstepf :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
-     (SpMatrix a, SpMatrix a, [(Int, Int)])
-     -> m (SpMatrix a, SpMatrix a, [(Int, Int)])
-qrstepf (qmatt, m, iis) = 
-      if null iis
-      then throwM (EmptyList "qrstep")
-      else do
+    qrstepf (qmatt, m, iis) = do
         let (i, j) = head iis
         g <- givens' m i j
         let
@@ -308,21 +303,49 @@ qrstepf (qmatt, m, iis) =
 
 -- ** QR algorithm
 
--- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
-eigsQR :: (Elt a, Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon (Scalar (SpVector a)), Epsilon a, Floating (Scalar (SpVector a)), Floating a) =>
-     Int -> SpMatrix a -> SpVector a
-eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
-  eigsStep mm = q #~^# (m ## q) -- r #~# q
-   where
-    (q, _) = qr mm
-  convergtest g = modifyInspectN nitermax f g where
-    f [m1, m2] = let dm1 = extractDiagDense m1
-                     dm2 = extractDiagDense m2
-                 in nearZero $ norm2' (dm1 ^-^ dm2)
-    f _ = False
+-- -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
+-- eigsQR :: (Elt a, Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon (Scalar (SpVector a)), Epsilon a, Floating (Scalar (SpVector a)), Floating a) =>
+--      Int -> SpMatrix a -> SpVector a
+-- eigsQR nitermax m = extractDiagDense $ execState (convergtest eigsStep) m where
+--   eigsStep mm = q #~^# (m ## q) -- r #~# q
+--    where
+--     (q, _) = qr mm
+
+
+eigsQRconvergtest nitermax g = modifyInspectN nitermax f g where
+      f [m1, m2] = let dm1 = extractDiagDense m1
+                       dm2 = extractDiagDense m2
+                   in nearZero $ norm2' (dm1 ^-^ dm2)
+      f _ = False
+
+
+eigsQR' nitermax m = untilConvergedGM "eigsQR" nitermax pf (const True) -- stepf
+  where
+    pf = extractDiagDense
+    -- stepf mm = do
+    --   (q, _) <- qr mm
+    --   return $ q #~^# (m ## q) -- r #~# q
+    -- summf [m1, m2] = let dm1 = extractDiagDense m1
+    --                      dm2 = extractDiagDense m2
+    --                  in (dm1 ^-^ dm2)
+    -- -- summf _ = False    
+      
 
 
 
+
+-- eigsQR' nitermax m = do
+--   vm <- MTS.execStateT (convergtest stepf) m
+--   return $ extractDiagDense vm
+--   where
+--     stepf mm = do
+--       (q, _) <- qr mm
+--       return $ q #~^# (m ## q) -- r #~# q
+--     convergtest g = modifyInspectN nitermax f g where
+--       f [m1, m2] = let dm1 = extractDiagDense m1
+--                        dm2 = extractDiagDense m2
+--                    in nearZero $ norm2' (dm1 ^-^ dm2)
+--       f _ = False
 
 
 
@@ -1097,6 +1120,13 @@ modifyUntilT q f = do
   if q y then return y
          else modifyUntilT q f     
 
+modifyUntilM q f = do
+  x <- get
+  y <- f x
+  put y
+  if q y then return y
+         else modifyUntilM q f   
+
 -- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached  
 loopUntilAcc :: Int -> ([t] -> Bool) -> (t -> t)  -> t -> t
 loopUntilAcc nitermax q f x = go 0 [] x where
@@ -1144,15 +1174,34 @@ untilConvergedG :: (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable s,
      -> Int 
      -> (s -> v) 
      -> (s -> Bool) 
-     -> (s -> s) 
+     -> (s -> s)               -- ^ state update _function_
      -> s 
      -> m s
 untilConvergedG fname nitermax fproj qfinal =
   modifyInspectGuarded fname nitermax (convergf fproj) nearZero qdiverg qfinal
-   where
-     qdiverg latest prev = latest > prev
-     convergf fp [s1, s0] = norm2 (fp s0 ^-^ fp s1)
-     convergf _ _ = 1/0
+
+untilConvergedGM ::
+  (Normed v, MonadThrow m, Typeable (Magnitude v), Typeable t, Show t) =>
+     String
+     -> Int
+     -> (t -> v)
+     -> (t -> Bool)
+     -> (t -> MTS.StateT t m t)  -- ^ state update _arrow_
+     -> t
+     -> m t
+untilConvergedGM fname nitermax fproj qfinal =
+  modifyInspectGuardedM fname nitermax (convergf fproj) nearZero qdiverg qfinal     
+
+qdiverg :: Ord a => a -> a -> Bool
+qdiverg = (>)
+
+convergf :: Normed v => (t -> v) -> [t] -> Magnitude v
+convergf fp [s1, s0] = norm2 (fp s1 ^-^ fp s0)
+convergf _ _ = 1/0
+
+
+
+
 
 -- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
 untilConvergedG0 ::
@@ -1213,6 +1262,48 @@ modifyInspectGuarded fname nitermax q qconverg qdiverg qfinal f x0
                         go (i + 1) (take 3 $ y : ll)
 
 
+-- | ", monadic version
+modifyInspectGuardedM
+  :: (MonadThrow m, Typeable s, Typeable a, Show s, Show a) =>
+     String
+     -> Int
+     -> ([s] -> a)
+     -> (a -> Bool)
+     -> (a -> a -> Bool)
+     -> (s -> Bool)
+     -> (s -> MTS.StateT s m s)
+     -> s
+     -> m s
+modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
+  | nitermax > 0 = checkFinal 
+  | otherwise = throwM (NonNegError fname nitermax)
+  where
+    checkFinal = do
+      xfinal <- MTS.execStateT (go 0 []) x0
+      if qfinal xfinal
+        then return xfinal
+        else throwM (NotConverged fname nitermax xfinal)
+    go i ll = do
+      x <- MTS.get
+      y <- f x
+      if length ll < 3
+      then do MTS.put y
+              go (i + 1) (y : ll) -- accumulate a l=3 rolling state window to observe
+      else do
+         let qi = q (init ll)     -- summary of latest 2 states
+             qt = q (tail ll)     -- "       "  previous 2 states
+         if qconverg qi           -- relative convergence  
+         then do MTS.put y
+                 return ()
+         else if i == nitermax    -- end of iterations w/o convergence
+              then do
+                MTS.put y
+                throwM (NotConverged fname nitermax y)
+              else do
+                if qdiverg qi qt  -- diverging
+                then throwM (Diverging fname i qi qt)
+                else do MTS.put y -- not diverging, keep iterating
+                        go (i + 1) (take 3 $ y : ll)
 
 
 
