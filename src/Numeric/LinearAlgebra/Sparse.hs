@@ -61,8 +61,8 @@ import Data.Typeable
 
 -- import Control.Monad (replicateM)
 import Control.Monad.State.Strict
--- import Control.Monad.Writer
--- import Control.Monad.Trans
+import Control.Monad.Writer
+import Control.Monad.Trans.Class
 import qualified Control.Monad.Trans.State  as MTS -- (runStateT)
 -- import Control.Monad.Trans.Writer (runWriterT)
 import Data.Complex
@@ -945,7 +945,7 @@ linSolve0 method aa b x0 r0hat
      xHat = case method of
        BICGSTAB_ -> solver "BICGSTAB" nitermax _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
        CGS_ -> solver "CGS" nitermax _x  (cgsStep aa r0hat) (cgsInit aa b x0)
-       -- GMRES_ -> return $ gmres aa b
+       GMRES_ -> gmres' aa b
      nitermax = 200
      dm@(m,n) = dim aa
      nb = dim b
@@ -1240,6 +1240,52 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
 
 
 
+modifyInspectGuardedM' fname nitermax q qconverg qdiverg qfinal f x0
+  | nitermax > 0 = runWriterT  checkFinal 
+  | otherwise = throwM (NonNegError fname nitermax)
+  where
+    checkFinal = do
+      xfinal <- MTS.execStateT (go 0 []) x0
+      if qfinal xfinal
+        then return xfinal
+        else throwM (NotConverged fname nitermax xfinal)
+    go i ll = do
+      x <- MTS.get
+      y <- f x
+      if length ll < 3
+      then do MTS.put y
+              go (i + 1) (y : ll) -- accumulate a l=3 rolling state window to observe
+      else do
+         let qi = q (init ll)     -- summary of latest 2 states
+             qt = q (tail ll)     -- "       "  previous 2 states
+         if qconverg qi           -- relative convergence  
+         then do MTS.put y
+                 return ()
+         else if i == nitermax    -- end of iterations w/o convergence
+              then do
+                MTS.put y
+                throwM (NotConverged fname nitermax y)
+              else do
+                if qdiverg qi qt  -- diverging
+                then throwM (Diverging fname i qi qt)
+                else do MTS.put y -- not diverging, keep iterating
+                        lift $ tell (qi, qt)
+                        go (i + 1) (take 3 $ y : ll)
+
+
+
+
+iter f wf qe x0 = runWriterT $ flip execStateT x0 $ do
+  x <- lift get
+  y <- lift $ lift $ f x
+  lift $ put y
+  if qe y then throwM (NotConverged "bla" 1 (qe y)) else return ()
+  tell (wf y)
+  -- return y
+
+
+newtype Buffer v m a =
+  Buffer {runBuffer :: ([v] -> a) -> (a -> Bool) -> m a}
 
 
 -- helper functions for estimating convergence
