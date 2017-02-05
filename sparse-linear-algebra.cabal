@@ -52,9 +52,10 @@ library
                      , vector-algorithms
                      , exceptions
                      , transformers
+                     , writer-cps-transformers
                      -- , monad-par
-                     , QuickCheck >= 2.8.2
-                     , hspec
+                     -- , QuickCheck >= 2.8.2
+                     -- , hspec
 
 
 -- executable sparse-linear-algebra

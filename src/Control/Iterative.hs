@@ -1,4 +1,4 @@
-{-# language FlexibleContexts #-}
+{-# language FlexibleContexts, GeneralizedNewtypeDeriving, DeriveFunctor #-}
 module Control.Iterative where
 
 import Control.Exception.Common
@@ -10,9 +10,9 @@ import Data.Typeable
 
 import Control.Monad (when)
 import Control.Monad.State.Strict
-import Control.Monad.Writer
+import Control.Monad.Trans.Writer.CPS
 import Control.Monad.Trans.Class (lift)
-import qualified Control.Monad.Trans.State  as MTS -- (runStateT)
+import qualified Control.Monad.Trans.State.Strict  as MTS -- (runStateT)
 -- import Control.Monad.Trans.Writer (runWriterT)
 
 import Data.VectorSpace
@@ -39,35 +39,36 @@ modifyUntilM q f = do
 
 
 
--- | iterate until convergence is verified or we run out of a fixed iteration budget
--- untilConverged :: (MonadState s m, Epsilon a) => (s -> SpVector a) -> (s -> s) -> m s
-untilConverged :: (MonadState s m, Normed v, Epsilon (Magnitude v)) =>
-     (s -> v) -> (s -> s) -> m s
-untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
+-- -- | iterate until convergence is verified or we run out of a fixed iteration budget
+-- -- untilConverged :: (MonadState s m, Epsilon a) => (s -> SpVector a) -> (s -> s) -> m s
+-- untilConverged :: (MonadState s m, Normed v, Epsilon (Magnitude v)) =>
+--      (s -> v) -> (s -> s) -> m s
+-- untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
 
 
 
--- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached (i.e. same thing as `loopUntilAcc` but this one runs in the State monad)
-modifyInspectN ::
-  MonadState s m =>
-    Int ->           -- iteration budget
-    ([s] -> Bool) -> -- convergence criterion
-    (s -> s) ->      -- state stepping function
-    m s
-modifyInspectN nitermax q f 
-  | nitermax > 0 = go 0 []
-  | otherwise = error "modifyInspectN : n must be > 0" where
-      go i ll = do
-        x <- get
-        let y = f x
-        if length ll < 2
-          then do put y
-                  go (i + 1) (y : ll)
-          else if q ll || i == nitermax
-               then do put y
-                       return y
-               else do put y
-                       go (i + 1) (take 2 $ y : ll)
+-- -- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached (i.e. same thing as `loopUntilAcc` but this one runs in the State monad)
+-- modifyInspectN ::
+--   MonadState s m =>
+--     Int ->           -- iteration budget
+--     ([s] -> Bool) -> -- convergence criterion
+--     (s -> s) ->      -- state stepping function
+--     m s
+-- modifyInspectN nitermax q f 
+--   | nitermax > 0 = go 0 []
+--   | otherwise = error "modifyInspectN : n must be > 0" where
+--       go i ll = do
+--         x <- get
+--         let y = f x
+--         if length ll < 2
+--           then do put y
+--                   go (i + 1) (y : ll)
+--           else if q ll || i == nitermax
+--                then do put y
+--                        return y
+--                else do put y
+--                        go (i + 1) (take 2 $ y : ll)
+
 
 
 
@@ -159,101 +160,76 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
   | otherwise = throwM (NonNegError fname nitermax)
   where
     checkFinal = do
-      xfinal <- MTS.execStateT (goB 0 $ Buffer []) x0
+      xfinal <- MTS.execStateT (go 0 []) x0
       if qfinal xfinal
         then return xfinal
         else throwM (NotConverged fname nitermax xfinal)
-    goB i ll = do
+    go i ll = do
       x <- MTS.get
       y <- lift $ f x
-      if not (bufferReady ll)
-      then do
-        MTS.put y
-        goB (i + 1) (consBuffer y ll) -- accumulate a rolling state window to observe
+      if length ll < 3
+      then do MTS.put y
+              go (i + 1) (y : ll) -- accumulate a l=3 rolling state window to observe
       else do
-        let qi = queryInitBuffer q ll -- summary of latest 2 states
-            qt = queryTailBuffer q ll -- "       "  previous 2 states
-        if qconverg qi                -- relative convergence  
-        then do
-          MTS.put y
-          return ()
-        else if i == nitermax         -- end of iterations w/o convergence
-             then do
-               MTS.put y
-               throwM (NotConverged fname nitermax y)
-             else
-               if qdiverg qi qt       -- diverging
-               then throwM (Diverging fname i qi qt)
-               else do MTS.put y      -- not diverging, keep iterating
-                       goB (i + 1) (consBuffer y ll)
+         let qi = q (init ll)     -- summary of latest 2 states
+             qt = q (tail ll)     -- "       "  previous 2 states
+         if qconverg qi           -- relative convergence  
+         then do MTS.put y
+                 return ()
+         else if i == nitermax    -- end of iterations w/o convergence
+              then do
+                MTS.put y
+                throwM (NotConverged fname nitermax y)
+              else
+                if qdiverg qi qt  -- diverging
+                then throwM (Diverging fname i qi qt)
+                else do MTS.put y -- not diverging, keep iterating
+                        go (i + 1) (take 3 $ y : ll)
+             
 
-    -- go i ll = do
-    --   x <- MTS.get
-    --   y <- lift $ f x
-    --   if length ll < 3
-    --   then do MTS.put y
-    --           go (i + 1) (y : ll) -- accumulate a l=3 rolling state window to observe
-    --   else do
-    --      let qi = q (init ll)     -- summary of latest 2 states
-    --          qt = q (tail ll)     -- "       "  previous 2 states
-    --      if qconverg qi           -- relative convergence  
-    --      then do MTS.put y
-    --              return ()
-    --      else if i == nitermax    -- end of iterations w/o convergence
-    --           then do
-    --             MTS.put y
-    --             throwM (NotConverged fname nitermax y)
-    --           else
-    --             if qdiverg qi qt  -- diverging
-    --             then throwM (Diverging fname i qi qt)
-    --             else do MTS.put y -- not diverging, keep iterating
-    --                     go (i + 1) (take 3 $ y : ll)
+-- withLog i y f q = do
+--   ll <- MTS.get
+--   if length ll < 3
+--     then do
+--       MTS.put (y : ll)
+--       withLog (i+1) f q
+--     else do
+--       let ll' = f ll
+--       if q ll'
+--         then do
+--           MTS.put
+          
+        
+
+
+
+          
 
 
 
 
-data Buffer a = Buffer { unBuffer :: [a] }
-consBuffer x (Buffer xs) = Buffer $ x : init xs
-queryBuffer q (Buffer xs) = q xs
-
-queryInitBuffer q = queryBuffer (q . init)
-queryTailBuffer q = queryBuffer (q . tail)
-lengthBuffer = queryBuffer length
-bufferReady = (> 3) . lengthBuffer
 
 
+-- -- iter :: (MonadState s m, MonadThrow m, Monoid w) =>
+-- --      (s -> m s) -> (s -> w) -> (s -> Bool) -> a -> m (a, w)
+-- iter f wf qe x0 = runWriterT $ flip execStateT x0 $ do
+--   x <- lift get
+--   y <- lift . lift $ f x
+--   lift $ put y
+--   tell $ wf y  
+--   when (qe y) $ throwM (NotConverged "bla" 1 (qe y)) 
 
+instance MonadThrow m => MonadThrow (WriterT w m) where
+  throwM = lift . throwM
 
-iter :: (MonadState s m, MonadThrow m, Monoid w) =>
-     (s -> m s) -> (s -> w) -> (s -> Bool) -> a -> m (a, w)
+iter :: (MonadThrow m, Monoid w) =>
+   (s -> m s) -> (s -> w) -> (s -> Bool) -> s -> m (s, w)
 iter f wf qe x0 = runWriterT $ flip execStateT x0 $ do
-  x <- lift get
+  x <- get
   y <- lift . lift $ f x
-  lift $ put y
-  tell $ wf y  
+  lift $ tell $ wf y
+  put y
   when (qe y) $ throwM (NotConverged "bla" 1 (qe y)) 
-
-
-
-
--- | run `niter` iterations and append the state `x` to a list `xs`, stop when either the `xs` satisfies a predicate `q` or when the counter reaches 0
-runAppendN :: ([t] -> Bool) -> (t -> t) -> Int -> t -> [t]
-runAppendN qq ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
-                          | otherwise = go qq ff niter x0 [] where
-  go q f n z xs = 
-    let x = f z in
-    if n <= 0 || q xs then xs
-                      else go q f (n-1) x (x : xs)
-
--- | ", NO convergence check 
-runAppendN' :: (t -> t) -> Int -> t -> [t]
-runAppendN' ff niter x0 | niter<0 = error "runAppendN : niter must be > 0"
-                        | otherwise = go ff niter x0 [] where
-  go f n z xs = 
-    let x = f z in
-    if n <= 0 then xs
-              else go f (n-1) x (x : xs)
-
 
 
 
@@ -279,7 +255,7 @@ diffSqL xx = (x1 - x2)**2 where [x1, x2] = [head xx, xx!!1]
 
 -- | Relative tolerance :
 -- relTol a b := ||a - b|| / (1 + min (||norm2 a||, ||norm2 b||))
-relTol :: (Normed v, Ord (Magnitude v)) => v -> v -> Magnitude v
+relTol :: Normed v => v -> v -> Magnitude v
 relTol a b = norm2 (a ^-^ b) / m where
   m = 1 + min (norm2 a) (norm2 b)
 

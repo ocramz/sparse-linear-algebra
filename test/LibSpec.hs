@@ -83,10 +83,12 @@ spec = do
       pm0 #~^# pm0 `shouldBe` eye 3
     it "isLowerTriSM : checks whether matrix is lower triangular" $
       isLowerTriSM tm8' && isUpperTriSM tm8 `shouldBe` True
-    it "modifyInspectN : early termination by iteration count" $
-      execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
-    it "modifyInspectN : termination by value convergence" $
-      nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True
+      
+    -- it "modifyInspectN : early termination by iteration count" $
+    --   execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
+    -- it "modifyInspectN : termination by value convergence" $
+    --   nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True 
+      
     -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
     --   prop_psd aa2 v
   describe "QuickCheck properties:" $ do

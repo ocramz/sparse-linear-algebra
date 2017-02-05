@@ -43,8 +43,7 @@ module Numeric.LinearAlgebra.Sparse
          -- -- ** Sparse "
          -- randSpMat, randSpVec,
          -- * Iteration combinators
-         modifyInspectN, modifyInspectGuarded,
-         runAppendN', untilConverged,
+         modifyInspectGuarded,
          diffSqL
        )
        where
@@ -87,7 +86,7 @@ import qualified Data.Vector as V
 
 
 
--- | A lumped constraint for the numerical types  
+-- | A lumped constraint for the numerical types
 type Data x = (Epsilon x, Elt x, Show x, Ord x)
 
 
@@ -696,7 +695,7 @@ triUpperSolve uu w = sparsifySV x where
 
 
 
-gmres' aa b = do
+gmres aa b = do
   let
     m = ncols aa
     (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
@@ -800,17 +799,12 @@ instance Show a => Show (TFQMR a) where
 data BCG a =
   BCG { _xBcg, _rBcg, _rHatBcg, _pBcg, _pHatBcg :: SpVector a } deriving Eq
 
--- bcg :: (Epsilon a, Fractional a) => SpMatrix a -> SpVector a -> SpVector a -> BCG a
-bcg :: (V (SpVector a), MatrixType (SpVector a) ~ SpMatrix a, 
-      Fractional (Scalar (SpVector a))) =>
-     SpMatrix a -> SpVector a -> SpVector a -> BCG a
-bcg aa b x0 = execState (untilConverged _xBcg (bcgStep aa)) bcgInit where
-  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+bcgInit aa b x0 = BCG x0 r0 r0hat p0 p0hat where
+  r0 = b ^-^ (aa #> x0)    
   r0hat = r0
   p0 = r0
   p0hat = r0
-  bcgInit = BCG x0 r0 r0hat p0 p0hat
-
+  
 bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
     aap = aa #> p
     alpha = (r `dot` rhat) / (aap `dot` phat)
@@ -833,12 +827,6 @@ instance Show a => Show (BCG a) where
 
 data CGS a = CGS { _x, _r, _p, _u :: SpVector a} deriving Eq
 
--- | iterate solver until convergence or until max # of iterations is reached
--- cgs :: (Epsilon a, Fractional a) =>
---   SpMatrix a -> SpVector a -> SpVector a -> SpVector a -> CGS a
-cgs aa b x0 rhat =
-  execState (untilConverged _x (cgsStep aa rhat)) (cgsInit aa b x0)
-  
 cgsInit aa b x0 = CGS x0 r0 r0 r0 where
   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
 
@@ -879,12 +867,6 @@ instance (Show a) => Show (CGS a) where
 
 data BICGSTAB a =
   BICGSTAB { _xBicgstab, _rBicgstab, _pBicgstab :: SpVector a} deriving Eq
-
--- -- | iterate solver until convergence or until max # of iterations is reached
--- bicgstab :: (Epsilon a, Fractional a) =>
---      SpMatrix a -> SpVector a -> SpVector a -> SpVector a -> BICGSTAB a
--- bicgstab aa b x0 r0hat =
---   execState (untilConverged _xBicgstab (bicgstabStep aa r0hat)) (bicgsInit aa b x0)
 
 bicgstabStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
      MatrixType (SpVector a) -> SpVector a -> BICGSTAB a -> BICGSTAB a
@@ -947,7 +929,7 @@ linSolve0 method aa b x0 r0hat
      xHat = case method of
        BICGSTAB_ -> solver "BICGSTAB" nitermax _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
        CGS_ -> solver "CGS" nitermax _x  (cgsStep aa r0hat) (cgsInit aa b x0)
-       GMRES_ -> gmres' aa b
+       GMRES_ -> gmres aa b
        CGNE_ -> solver "CGNE" nitermax _xCgne (cgneStep aa) (cgneInit aa b x0)
      nitermax = 200
      dm@(m,n) = dim aa
