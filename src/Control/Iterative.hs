@@ -230,7 +230,7 @@ iter1 f wf qe qx x0 = execStateT (go 0) x0 where
    unless (qe y) $ go (i + 1) 
 
 
--- | iter2 concatenates output with WriterT but does NOT show
+-- | iter2 concatenates output with WriterT but does NOT `tell` any output if an exception is raised before the end of the loop
 iter2 :: (MonadThrow m, Monoid w, Typeable t, Show t) => (t -> m t)
      -> (t -> w) -> (t -> Bool) -> (t -> Bool) -> t -> m (t, w)
 iter2 f wf qe qx x0 = runWriterT $ execStateT (go 0) x0 where
@@ -243,22 +243,20 @@ iter2 f wf qe qx x0 = runWriterT $ execStateT (go 0) x0 where
    unless (qe y) $ go (i + 1) 
 
 
-
--- test :: IO (Int, String)
-test :: IO Int
--- test :: IO ()
-test = do
-  -- (yt, w ) <- iter2 f wf qe qexc x0
-  -- putStrLn w
-  -- return yt
-  iter1 f wf qe qexc x0
-  -- iter2 f wf qe qexc x0
-  where
-    f = pure . (+ 1)
-    wf v = unwords ["state =", show v,"\n"]
-    qe = (== 5)
-    qexc = (== 6)
-    x0 = 0 :: Int
+-- -- test :: IO (Int, [String])
+-- test :: IO Int
+-- -- test :: IO ()
+-- test = do
+--   -- (yt, w ) <- iter2 f wf qe qexc x0
+--   -- putStrLn w
+--   -- return yt
+--   iter1 f wf qe qexc x0
+--   where
+--     f = pure . (+ 1)
+--     wf v = unwords ["state =", show v,"\n"]
+--     qe = (== 5)
+--     qexc = (== 3)
+--     x0 = 0 :: Int
 
     
 
