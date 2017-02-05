@@ -202,37 +202,14 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
                         go (i + 1) ll' 
              
 
--- withLog i y f q = do
---   ll <- MTS.get
---   if length ll < 3
---     then do
---       MTS.put (y : ll)
---       withLog (i+1) f q
---     else do
---       let ll' = f ll
---       if q ll'
---         then do
---           MTS.put
           
-        
-
-
+       
 
           
 
 
 
 
-
-
--- -- iter :: (MonadState s m, MonadThrow m, Monoid w) =>
--- --      (s -> m s) -> (s -> w) -> (s -> Bool) -> a -> m (a, w)
--- iter f wf qe x0 = runWriterT $ flip execStateT x0 $ do
---   x <- lift get
---   y <- lift . lift $ f x
---   lift $ put y
---   tell $ wf y  
---   when (qe y) $ throwM (NotConverged "bla" 1 (qe y)) 
 
 instance MonadThrow m => MonadThrow (WriterT w m) where
   throwM = lift . throwM
