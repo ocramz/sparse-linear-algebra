@@ -1,4 +1,17 @@
 {-# language FlexibleContexts, GeneralizedNewtypeDeriving, DeriveFunctor #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Control.Iterative
+-- Copyright   :  (c) Marco Zocca 2017
+-- License     :  GPL-style (see the file LICENSE)
+--
+-- Maintainer  :  zocca marco gmail
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Combinators and helper functions for iterative algorithms, with support for monitoring and exceptions.
+--
+-----------------------------------------------------------------------------
 module Control.Iterative where
 
 import Control.Exception.Common
@@ -8,7 +21,7 @@ import Numeric.Eps
 import Control.Monad.Catch
 import Data.Typeable
 
-import Control.Monad (when)
+import Control.Monad (unless)
 import Control.Monad.State.Strict
 import Control.Monad.Trans.Writer.CPS
 import Control.Monad.Trans.Class (lift)
@@ -159,6 +172,7 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
   | nitermax > 0 = checkFinal 
   | otherwise = throwM (NonNegError fname nitermax)
   where
+    lwindow = 3
     checkFinal = do
       xfinal <- MTS.execStateT (go 0 []) x0
       if qfinal xfinal
@@ -167,9 +181,9 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
     go i ll = do
       x <- MTS.get
       y <- lift $ f x
-      if length ll < 3
+      if length ll < lwindow
       then do MTS.put y
-              go (i + 1) (y : ll) -- accumulate a l=3 rolling state window to observe
+              go (i + 1) (y : ll) -- accumulate a rolling state window to observe
       else do
          let qi = q (init ll)     -- summary of latest 2 states
              qt = q (tail ll)     -- "       "  previous 2 states
@@ -184,7 +198,8 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
                 if qdiverg qi qt  -- diverging
                 then throwM (Diverging fname i qi qt)
                 else do MTS.put y -- not diverging, keep iterating
-                        go (i + 1) (take 3 $ y : ll)
+                        let ll' = take lwindow $ y : ll
+                        go (i + 1) ll' 
              
 
 -- withLog i y f q = do
@@ -222,19 +237,53 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
 instance MonadThrow m => MonadThrow (WriterT w m) where
   throwM = lift . throwM
 
-iter :: (MonadThrow m, Monoid w) =>
-   (s -> m s) -> (s -> w) -> (s -> Bool) -> s -> m (s, w)
-iter f wf qe x0 = runWriterT $ flip execStateT x0 $ do
-  x <- get
-  y <- lift . lift $ f x
-  lift $ tell $ wf y
-  put y
-  when (qe y) $ throwM (NotConverged "bla" 1 (qe y)) 
+
+ 
+
+-- | iter1 prints output at every iteration until the loop terminates OR is interrupted by an exception, whichever happens first
+iter1 :: (MonadThrow m, MonadIO m, Typeable t, Show t) =>
+     (t -> m t) -> (t -> String) -> (t -> Bool) -> (t -> Bool) -> t -> m t
+iter1 f wf qe qx x0 = execStateT (go 0) x0 where
+ go i = do
+   x <- get
+   y <- lift $ f x
+   liftIO $ putStrLn $ wf y
+   when (qx y) $ throwM (NotConverged "bla" (i+1)  y)
+   put y
+   unless (qe y) $ go (i + 1) 
+
+
+-- | iter2 concatenates output with WriterT but does NOT show
+iter2 :: (MonadThrow m, Monoid w, Typeable t, Show t) => (t -> m t)
+     -> (t -> w) -> (t -> Bool) -> (t -> Bool) -> t -> m (t, w)
+iter2 f wf qe qx x0 = runWriterT $ execStateT (go 0) x0 where
+ go i = do
+   x <- get
+   y <- lift . lift $ f x
+   lift $ tell $ wf y
+   when (qx y) $ throwM (NotConverged "bla" (i+1)  y)
+   put y
+   unless (qe y) $ go (i + 1) 
 
 
 
+-- test :: IO (Int, String)
+test :: IO Int
+-- test :: IO ()
+test = do
+  -- (yt, w ) <- iter2 f wf qe qexc x0
+  -- putStrLn w
+  -- return yt
+  iter1 f wf qe qexc x0
+  -- iter2 f wf qe qexc x0
+  where
+    f = pure . (+ 1)
+    wf v = unwords ["state =", show v,"\n"]
+    qe = (== 5)
+    qexc = (== 6)
+    x0 = 0 :: Int
 
-
+    
 
 
 
