@@ -45,17 +45,17 @@ library
   build-depends:       base >= 4.7 && < 5
                      , vector-space
                      , containers
-                     -- , primitive >= 0.6.1.0
-                     , mtl >= 2.2.1
-                     -- , mwc-random
                      , vector
                      , vector-algorithms
                      , exceptions
+                     , mtl >= 2.2.1                     
                      , transformers
                      , writer-cps-transformers
                      -- , monad-par
                      -- , QuickCheck >= 2.8.2
                      -- , hspec
+                     -- , primitive >= 0.6.1.0
+                     -- , mwc-random                     
 
 
 -- executable sparse-linear-algebra

@@ -22,6 +22,7 @@ import Control.Monad.Catch
 import Data.Typeable
 
 import Control.Monad (unless)
+import Control.Monad.Trans.Reader
 import Control.Monad.State.Strict
 import Control.Monad.Trans.Writer.CPS
 import Control.Monad.Trans.Class (lift)
@@ -33,15 +34,10 @@ import Data.VectorSpace
 
 -- * Control primitives for bounded iteration with convergence check
 
--- | transform state until a condition is met
+-- -- | transform state until a condition is met
 modifyUntil :: MonadState s m => (s -> Bool) -> (s -> s) -> m s
-modifyUntil q f = do
-  x <- get
-  let y = f x
-  put y
-  if q y then return y
-         else modifyUntil q f
-    
+modifyUntil q f = modifyUntilM q (pure . f)
+       
 modifyUntilM :: MonadState s m => (s -> Bool) -> (s -> m s) -> m s
 modifyUntilM q f = do
   x <- get
@@ -183,7 +179,8 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
       y <- lift $ f x
       if length ll < lwindow
       then do MTS.put y
-              go (i + 1) (y : ll) -- accumulate a rolling state window to observe
+              let ll' = y : ll
+              go (i + 1) ll'      -- accumulate a rolling state window to observe
       else do
          let qi = q (init ll)     -- summary of latest 2 states
              qt = q (tail ll)     -- "       "  previous 2 states
@@ -202,6 +199,7 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
                         go (i + 1) ll' 
              
 
+data IterationConfig = IterationConfig { printDebugInfo :: Bool } deriving (Eq, Show)
           
        
 
@@ -214,17 +212,27 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
 instance MonadThrow m => MonadThrow (WriterT w m) where
   throwM = lift . throwM
 
-
+iter0 :: MonadIO m =>
+     Int -> (s -> m s) -> (s -> String) -> IterationConfig -> s -> m s
+iter0 nmax f sf config x0 = flip runReaderT config $ execStateT (go (0 :: Int)) x0
+ where
+  go i = do
+    x <- get
+    c <- lift $ asks printDebugInfo
+    y <- lift $ lift $ f x
+    when c $ liftIO $ putStrLn $ sf y 
+    put y
+    unless (i==nmax) (go $ i + 1)
  
 
 -- | iter1 prints output at every iteration until the loop terminates OR is interrupted by an exception, whichever happens first
-iter1 :: (MonadThrow m, MonadIO m, Typeable t, Show t) =>
-     (t -> m t) -> (t -> String) -> (t -> Bool) -> (t -> Bool) -> t -> m t
+-- iter1 :: (MonadThrow m, MonadIO m, Typeable t, Show t) =>
+--      (t -> m t) -> (t -> String) -> (t -> Bool) -> (t -> Bool) -> t -> m t
 iter1 f wf qe qx x0 = execStateT (go 0) x0 where
  go i = do
    x <- get
    y <- lift $ f x
-   liftIO $ putStrLn $ wf y
+   _ <- liftIO $ wf y
    when (qx y) $ throwM (NotConverged "bla" (i+1)  y)
    put y
    unless (qe y) $ go (i + 1) 
@@ -243,20 +251,20 @@ iter2 f wf qe qx x0 = runWriterT $ execStateT (go 0) x0 where
    unless (qe y) $ go (i + 1) 
 
 
--- -- test :: IO (Int, [String])
--- test :: IO Int
--- -- test :: IO ()
--- test = do
---   -- (yt, w ) <- iter2 f wf qe qexc x0
---   -- putStrLn w
---   -- return yt
---   iter1 f wf qe qexc x0
---   where
---     f = pure . (+ 1)
---     wf v = unwords ["state =", show v,"\n"]
---     qe = (== 5)
---     qexc = (== 3)
---     x0 = 0 :: Int
+-- test :: IO (Int, [String])
+test :: IO Int
+-- test :: IO ()
+test = do
+  (yt, w ) <- iter2 f wf qe qexc x0
+  putStrLn w
+  return yt
+  -- iter1 f wf qe qexc x0
+  where
+    f = pure . (+ 1)
+    wf v = unwords ["state =", show v]
+    qe = (== 5)
+    qexc = (== 3)
+    x0 = 0 :: Int
 
     
 
