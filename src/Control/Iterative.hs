@@ -173,7 +173,7 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
       xfinal <- MTS.execStateT (go 0 []) x0
       if qfinal xfinal
         then return xfinal
-        else throwM (NotConverged fname nitermax xfinal)
+        else throwM (NotConvergedE fname nitermax xfinal)
     go i ll = do
       x <- MTS.get
       y <- lift $ f x
@@ -190,17 +190,56 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
          else if i == nitermax    -- end of iterations w/o convergence
               then do
                 MTS.put y
-                throwM (NotConverged fname nitermax y)
+                throwM (NotConvergedE fname nitermax y)
               else
                 if qdiverg qi qt  -- diverging
                 then do
                     MTS.put y
-                    throwM (Diverging fname i qi qt)
+                    throwM (DivergingE fname i qi qt)
                 else do MTS.put y -- not diverging, keep iterating
                         let ll' = take lwindow $ y : ll
-                        go (i + 1) ll' 
+                        go (i + 1) ll'
+
+
+modifyInspectGuardedM' fname nitermax q qconverg qdiverg f x0
+  | nitermax > 0 = MTS.execStateT (go 0 []) x0
+  | otherwise = throwM (NonNegError fname nitermax)
+  where
+    lwindow = 3
+    checkConvergStatus i ll
+      | length ll < lwindow = BufferNotReady
+      | qconverg qi = Converged qi
+      | qdiverg qi qt = Diverging qi qt
+      | i >= nitermax = NotConverged
+      | otherwise = Converging
+      where qi = q (init ll)     -- summary of latest 2 states
+            qt = q (tail ll)     -- "       "  previous 2 states
+    go i ll = do
+      x <- MTS.get
+      y <- lift . lift $ f x
+      case checkConvergStatus i ll of
+        BufferNotReady -> do  
+          MTS.put y
+          let ll' = y : ll 
+          go (i + 1) ll'
+        Converged qi -> MTS.put y
+        Diverging qi qt -> do
+          MTS.put y
+          throwM (DivergingE fname i qi qt)
+        Converging -> do
+          MTS.put y
+          let ll' = take lwindow (y : ll) -- rolling state window
+          go (i + 1) ll'
+        NotConverged -> do
+          MTS.put y
+          throwM (NotConvergedE fname nitermax y)
              
 
+data ConvergenceStatus a = BufferNotReady
+                         | Converging
+                         | Converged a
+                         | Diverging a a
+                         | NotConverged deriving (Eq, Show)
 
       
 
@@ -209,6 +248,9 @@ instance MonadThrow m => MonadThrow (WriterT w m) where
 
 
 data IterationConfig = IterationConfig { printDebugInfo :: Bool } deriving (Eq, Show)
+
+data DebugInfo a = DebugInfo { iterInfo :: a}
+
 -- | iter0 also accepts a configuration, e.g. for optional printing of debug info
 iter0 :: MonadIO m =>
      Int -> (s -> m s) -> (s -> String) -> IterationConfig -> s -> m s
@@ -231,7 +273,7 @@ iter1 f wf qe qx x0 = execStateT (go 0) x0 where
    x <- get
    y <- lift $ f x
    _ <- liftIO $ wf y
-   when (qx y) $ throwM (NotConverged "bla" (i+1)  y)
+   when (qx y) $ throwM (NotConvergedE "bla" (i+1)  y)
    put y
    unless (qe y) $ go (i + 1) 
 
@@ -244,7 +286,7 @@ iter2 f wf qe qx x0 = runWriterT $ execStateT (go 0) x0 where
    x <- get
    y <- lift . lift $ f x
    lift $ tell $ wf y
-   when (qx y) $ throwM (NotConverged "bla" (i+1)  y)
+   when (qx y) $ throwM (NotConvergedE "bla" (i+1)  y)
    put y
    unless (qe y) $ go (i + 1) 
 
@@ -297,3 +339,12 @@ normDiff _ _ = 1/0   --- ugggggh
 
 normDiffConverged :: Normed v => (s -> v) -> [s] -> Bool
 normDiffConverged fp ll = nearZero (normDiff fp ll)
+
+
+
+
+
+
+
+
+
