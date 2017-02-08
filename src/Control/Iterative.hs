@@ -193,36 +193,34 @@ modifyInspectGuardedM fname nitermax q qconverg qdiverg qfinal f x0
                 throwM (NotConverged fname nitermax y)
               else
                 if qdiverg qi qt  -- diverging
-                then throwM (Diverging fname i qi qt)
+                then do
+                    MTS.put y
+                    throwM (Diverging fname i qi qt)
                 else do MTS.put y -- not diverging, keep iterating
                         let ll' = take lwindow $ y : ll
                         go (i + 1) ll' 
              
 
-data IterationConfig = IterationConfig { printDebugInfo :: Bool } deriving (Eq, Show)
-          
-       
 
-          
-
-
-
-
+      
 
 instance MonadThrow m => MonadThrow (WriterT w m) where
   throwM = lift . throwM
 
+
+data IterationConfig = IterationConfig { printDebugInfo :: Bool } deriving (Eq, Show)
+-- | iter0 also accepts a configuration, e.g. for optional printing of debug info
 iter0 :: MonadIO m =>
      Int -> (s -> m s) -> (s -> String) -> IterationConfig -> s -> m s
-iter0 nmax f sf config x0 = flip runReaderT config $ execStateT (go (0 :: Int)) x0
+iter0 nmax f sf config x0 = flip runReaderT config $ MTS.execStateT (go (0 :: Int)) x0
  where
   go i = do
     x <- get
-    c <- lift $ asks printDebugInfo
-    y <- lift $ lift $ f x
+    c <- lift $ asks printDebugInfo  -- neat
+    y <- lift . lift $ f x           -- not neat
     when c $ liftIO $ putStrLn $ sf y 
     put y
-    unless (i==nmax) (go $ i + 1)
+    unless (i >= nmax) (go $ i + 1)
  
 
 -- | iter1 prints output at every iteration until the loop terminates OR is interrupted by an exception, whichever happens first
