@@ -250,14 +250,14 @@ qr mm = do
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
-eigsQR :: (MonadThrow m, Elt a, Normed (SpVector a), MatrixRing (SpMatrix a),
-            Epsilon a, Typeable (Magnitude (SpVector a)), Typeable a, Show a) =>
-     Int               -- ^ Maximum number of iterations
+eigsQR :: (MonadThrow m, MonadIO m, Elt a, Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon a, Typeable (Magnitude (SpVector a)), Typeable a, Show a) =>
+        Int
      -> SpMatrix a     -- ^ Operand matrix 
      -> m (SpVector a) -- ^ Eigenvalues
-eigsQR nitermax m = pf <$> untilConvergedGM "eigsQR" nitermax pf (const True) stepf m
+eigsQR nitermax m = pf <$> untilConvergedGM "eigsQR" c pf stepf m
   where
-    pf = extractDiagDense  
+    pf = extractDiagDense
+    c = IterationConfig nitermax True prd
     stepf mm = do
       (q, _) <- qr mm
       return $ q #~^# (m ## q) -- r #~# q
@@ -618,7 +618,7 @@ luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t
      SpMatrix t -> SpMatrix t -> SpVector t -> m (SpVector t)
 luSolve ll uu b
   | isLowerTriSM ll && isUpperTriSM uu = return $ triUpperSolve uu (triLowerSolve ll b)
-  | otherwise = throwM (NonTriangularException "luSolve")-- error "luSolve : factors must be triangular matrices" 
+  | otherwise = throwM (NonTriangularException "luSolve")
 
 -- triLowerSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
 triLowerSolve :: (Scalar (SpVector t) ~ t, InnerSpace (SpVector t), Epsilon t, Elt t) => SpMatrix t -> SpVector t -> SpVector t
@@ -856,15 +856,6 @@ instance (Show a) => Show (CGS a) where
 
 -- ** BiCGSTAB
 
--- _aa :: SpMatrix Double,    -- matrix
--- _b :: SpVector Double,     -- rhs
--- _r0 :: SpVector Double,    -- initial residual
--- _r0hat :: SpVector Double, -- candidate solution: r0hat `dot` r0 >= 0
-
--- | one step of BiCGSTAB
--- bicgstabStep :: Fractional a => SpMatrix a -> SpVector a -> BICGSTAB a -> BICGSTAB a
-
-
 data BICGSTAB a =
   BICGSTAB { _xBicgstab, _rBicgstab, _pBicgstab :: SpVector a} deriving Eq
 
@@ -927,22 +918,20 @@ linSolve0 method aa b x0 r0hat
      solve aa' b' | isDiagonalSM aa' = return $ reciprocal aa' #> b' -- diagonal solve
                   | otherwise = xHat
      xHat = case method of
-       BICGSTAB_ -> solver "BICGSTAB" nitermax _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
-       CGS_ -> solver "CGS" nitermax _x  (cgsStep aa r0hat) (cgsInit aa b x0)
+       BICGSTAB_ -> solver "BICGSTAB" nits _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
+       CGS_ -> solver "CGS" nits _x  (cgsStep aa r0hat) (cgsInit aa b x0)
        GMRES_ -> gmres aa b
-       CGNE_ -> solver "CGNE" nitermax _xCgne (cgneStep aa) (cgneInit aa b x0)
-     nitermax = 200
+       CGNE_ -> solver "CGNE" nits _xCgne (cgneStep aa) (cgneInit aa b x0)
+     nits = 200
+     -- conf = IterationConfig 200 True prd
      dm@(m,n) = dim aa
      nb = dim b
-
-
-solver :: (Normed b, MonadThrow m, Typeable (Magnitude b), Typeable a,
-      Show (Magnitude b), Show a, Ord (Magnitude b)) =>
-     String -> Int -> (a -> b) -> (a -> a) -> a -> m b
-solver fname nitermax fproj stepf initf = do
-  xf <- untilConvergedG fname nitermax fproj (const True) stepf initf
-  return $ fproj xf
-
+     solver :: (Normed b, MonadThrow m, MonadIO m, Typeable (Magnitude b), PrintDense b, Typeable a, Show a) => String -> Int -> (a -> b) -> (a -> a) -> a -> m b
+     solver fname nitermax fproj stepf initf = do
+      xf <- untilConvergedG fname config fproj stepf initf
+      return $ fproj xf
+      where
+        config = IterationConfig nitermax True (prd . fproj)
   
 
 -- * Linear solver interface
