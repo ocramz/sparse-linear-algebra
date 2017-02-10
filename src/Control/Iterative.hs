@@ -100,79 +100,74 @@ modifyUntilM q f = do
 
 
 
--- -- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
--- untilConvergedG0 ::
---   (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s) =>
---      String
---      -> IterationConfig s v
---      -> (s -> v)
---      -> v                    -- ^ Known value
---      -> (s -> s)
---      -> s
---      -> m s
--- untilConvergedG0 fname config fproj xKnown =
---   modifyInspectGuarded fname config (\(s:_) -> norm2 (fproj s ^-^ xKnown)) nearZero qdiverg
+-- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
+untilConvergedG0 ::
+  (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s) =>
+     String
+     -> IterationConfig s v
+     -> v                    -- ^ Known value
+     -> (s -> s)
+     -> s
+     -> m s
+untilConvergedG0 fname config xKnown =
+  modifyInspectGuarded fname config (\(s:_) -> norm2 (s ^-^ xKnown)) nearZero qdiverg
   
 
 
 -- | This function makes some default choices on the `modifyInspectGuarded` machinery: convergence is assessed using the squared L2 distance between consecutive states, and divergence is detected when this function is increasing between pairs of measurements.
--- untilConvergedG :: (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s) =>
---         String
---      -> IterationConfig s v
---      -> (s -> v) 
---      -> (s -> s)               -- ^ state update _function_
---      -> s 
---      -> m s
--- untilConvergedG fname config fproj =
---   modifyInspectGuarded fname config (norm2Diff fproj) nearZero qdiverg
+untilConvergedG :: (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s) =>
+        String
+     -> IterationConfig s v
+     -> (s -> s)               
+     -> s 
+     -> m s
+untilConvergedG fname config =
+  modifyInspectGuarded fname config norm2Diff nearZero qdiverg
 
 
--- -- | ", monadic version
--- untilConvergedGM ::
---   (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s) =>
---      String
---      -> IterationConfig s v
---      -> (s -> v)
---      -> (s -> m s)  -- ^ state update _arrow_
---      -> s
---      -> m s
--- untilConvergedGM fname config fproj =
---   modifyInspectGuardedM fname config (norm2Diff fproj) nearZero qdiverg
-
-
+-- | ", monadic version
+untilConvergedGM ::
+  (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s) =>
+     String
+     -> IterationConfig s v
+     -> (s -> m s)          
+     -> s
+     -> m s
+untilConvergedGM fname config =
+  modifyInspectGuardedM fname config norm2Diff nearZero qdiverg
 
 
 
 
 
 -- -- | `modifyInspectGuarded` is a high-order abstraction of a numerical iterative process. It accumulates a rolling window of 3 states and compares a summary `q` of the latest 2 with that of the previous two in order to assess divergence (e.g. if `q latest2 > q prev2` then it). The process ends when either we hit an iteration budget or relative convergence is verified. The function then assesses the final state with a predicate `qfinal` (e.g. against a known solution; if this is not known, the user can just supply `const True`)
--- modifyInspectGuarded ::
---   (MonadThrow m, MonadIO m, Typeable s, Typeable a, Show s, Show a) =>
---         String              -- ^ Calling function name
---      -> IterationConfig s v -- ^ Configuration
---      -> ([s] -> a)          -- ^ State array projection
---      -> (a -> Bool)         -- ^ Convergence criterion
---      -> (a -> a -> Bool)    -- ^ Divergence criterion
---      -> (s -> s)            -- ^ State evolution
---      -> s                   -- ^ Initial state
---      -> m s                 -- ^ Final state
--- modifyInspectGuarded fname config q qc qd f x0 =
---   modifyInspectGuardedM fname config q qc qd (pure . f) x0
+modifyInspectGuarded ::
+  (MonadThrow m, MonadIO m, Typeable s, Typeable a, Show s, Show a) =>
+        String              -- ^ Calling function name
+     -> IterationConfig s v -- ^ Configuration
+     -> ([v] -> a)          -- ^ State summary array projection
+     -> (a -> Bool)         -- ^ Convergence criterion
+     -> (a -> a -> Bool)    -- ^ Divergence criterion
+     -> (s -> s)            -- ^ State evolution
+     -> s                   -- ^ Initial state
+     -> m s                 -- ^ Final state
+modifyInspectGuarded fname config q qc qd f x0 =
+  modifyInspectGuardedM fname config q qc qd (pure . f) x0
 
   
 
 
 -- -- | ", monadic version
--- modifyInspectGuardedM
---   :: (MonadThrow m, MonadIO m, Typeable s, Typeable a, Show s, Show a) =>
---      String
---      -> IterationConfig s v
---      -> ([s] -> a)
---      -> (a -> Bool)
---      -> (a -> a -> Bool)
---      -> (s -> m s)
---      -> s
---      -> m s
+modifyInspectGuardedM ::
+  (MonadThrow m, MonadIO m, Typeable s, Show s, Typeable a, Show a) =>
+     String
+     -> IterationConfig s v
+     -> ([v] -> a)
+     -> (a -> Bool)
+     -> (a -> a -> Bool)
+     -> (s -> m s)
+     -> s
+     -> m s
 modifyInspectGuardedM fname config sf qconverg qdiverg f x0 
   | nitermax > 0 = MTS.execStateT (go 0 []) x0
   | otherwise = throwM (NonNegError fname nitermax)
@@ -245,9 +240,13 @@ relTol a b = norm2 (a ^-^ b) / m where
 qdiverg :: Ord a => a -> a -> Bool
 qdiverg = (>)
 
-norm2Diff :: Normed v => (t -> v) -> [t] -> Magnitude v
-norm2Diff fp [s1, s0] = norm2 (fp s1 ^-^ fp s0)
-norm2Diff _ _ = 1/0
+norm2Diff [s1, s0] = norm2 (s1 ^-^ s0)
+norm2Diff _ = 1/0
+
+
+-- norm2Diff :: Normed v => (t -> v) -> [t] -> Magnitude v
+-- norm2Diff fp [s1, s0] = norm2 (fp s1 ^-^ fp s0)
+-- norm2Diff _ _ = 1/0
 
 
 
