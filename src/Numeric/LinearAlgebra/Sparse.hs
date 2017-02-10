@@ -859,6 +859,11 @@ instance (Show a) => Show (CGS a) where
 data BICGSTAB a =
   BICGSTAB { _xBicgstab, _rBicgstab, _pBicgstab :: SpVector a} deriving Eq
 
+bicgsInit :: LinearVectorSpace (SpVector a) =>
+     MatrixType (SpVector a) -> SpVector a -> SpVector a -> BICGSTAB a
+bicgsInit aa b x0 = BICGSTAB x0 r0 r0 where
+  r0 = b ^-^ (aa #> x0)   -- residual of initial guess solution
+
 bicgstabStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
      MatrixType (SpVector a) -> SpVector a -> BICGSTAB a -> BICGSTAB a
 bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
@@ -877,16 +882,6 @@ instance Show a => Show (BICGSTAB a) where
                           "r = " ++ show r ++ "\n" ++
                           "p = " ++ show p ++ "\n"
 
-bicgsInit :: LinearVectorSpace (SpVector a) =>
-     MatrixType (SpVector a) -> SpVector a -> SpVector a -> BICGSTAB a
-bicgsInit aa b x0 = BICGSTAB x0 r0 r0 where
-  r0 = b ^-^ (aa #> x0)   -- residual of initial guess solution
-
-
-
-
-
-
 
 
 
@@ -894,25 +889,12 @@ bicgsInit aa b x0 = BICGSTAB x0 r0 r0 where
 
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equaitons. Uses <\\> for the linear solve
--- pinv :: (Epsilon a, RealFloat a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
--- pinv :: Epsilon a => SpMatrix a -> SpVector a -> Either LinSysError (SpVector a)
-pinv aa b = aa #~^# aa <\> atb where
-  atb = transpose aa #> b
+-- pinv aa b = aa #~^# aa <\> atb where
+--   atb = transpose aa #> b
 
 
 
-
--- linSolve0
---   :: (MonadThrow m,
---       Typeable (Magnitude (SpVector a)), Typeable a,
---       Show a, Fractional (Scalar (SpVector a))) =>
---      LinSolveMethod
---      -> MatrixType (SpVector a)
---      -> SpVector a
---      -> SpVector a
---      -> SpVector a
---      -> m (SpVector a)
-linSolve0 method aa b x0 r0hat
+linSolve0 method aa b x0
   | n /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
   | otherwise = solve aa b where
      solve aa' b' | isDiagonalSM aa' = return $ reciprocal aa' #> b' -- diagonal solve
@@ -922,6 +904,7 @@ linSolve0 method aa b x0 r0hat
        CGS_ -> solver "CGS" nits _x  (cgsStep aa r0hat) (cgsInit aa b x0)
        GMRES_ -> gmres aa b
        CGNE_ -> solver "CGNE" nits _xCgne (cgneStep aa) (cgneInit aa b x0)
+     r0hat = b ^-^ (aa #> x0)
      nits = 200
      dm@(m,n) = dim aa
      nb = dim b
@@ -937,31 +920,15 @@ linSolve0 method aa b x0 r0hat
 data LinSolveMethod = GMRES_ | CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
 
--- linSolve0 method aa b x0
---   | n /= nb = error "linSolve : operand dimensions mismatch"
---   | otherwise = solve aa b where
---       solve aa' b' | isDiagonalSM aa' = Right $ reciprocal aa' #> b' -- diagonal solve
---                    | otherwise = solnE
---       solnE | nearZero (norm2 ((aa #> xHat) ^-^ b)) = Right xHat
---             | otherwise = Left (NotConverged "linSolve0" nits xHat)
---       xHat = case method of
---         GMRES_ -> gmres aa b
---         CGNE_ -> _xCgne (cgne aa b x0)
---         TFQMR_ -> _xTfq (tfqmr aa b x0)
---         BCG_ -> _xBcg (bcg aa b x0)
---         BICGSTAB_ ->  _xBicgstab (bicgstab aa b x0 x0)
---         CGS_ -> _x (cgs aa b x0 x0)
---       (m, n) = dim aa
---       nb     = dim b
 
 -- -- -- | linSolve using the GMRES method as default
--- instance LinearSystem (SpVector Double) where
---   aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
---     where n = ncols aa
+instance LinearSystem (SpVector Double) where
+  aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
+    where n = ncols aa
 
--- instance LinearSystem (SpVector (Complex Double)) where
---   aa <\> b = linSolve0 GMRES_ aa b (mkSpVC n $ replicate n 0.1)
---     where n = ncols aa
+instance LinearSystem (SpVector (Complex Double)) where
+  aa <\> b = linSolve0 GMRES_ aa b (mkSpVC n $ replicate n 0.1)
+    where n = ncols aa
 
 
 

@@ -10,6 +10,8 @@ import Data.Complex
 
 import Control.Exception
 import Control.Exception.Common
+import Control.Monad.Catch
+import Control.Monad.IO.Class
 
 import Data.Typeable (Typeable)
 
@@ -243,7 +245,7 @@ type V v = (LinearVectorSpace v, Normed v)
           
   
 class LinearVectorSpace v => LinearSystem v where
-  (<\>) :: MatrixType v -> v -> Either (IterationException v) v
+  (<\>) :: (MonadIO m, MonadThrow m) => MatrixType v -> v -> m v
 
 
 
