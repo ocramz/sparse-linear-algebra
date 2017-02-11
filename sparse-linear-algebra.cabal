@@ -51,6 +51,7 @@ library
                      , mtl >= 2.2.1                     
                      , transformers
                      , writer-cps-transformers
+                     -- , monad-log == 0.1.1.0
                      -- , monad-par
                      -- , QuickCheck >= 2.8.2
                      -- , hspec

@@ -241,8 +241,6 @@ type V v = (LinearVectorSpace v, Normed v)
 
 
 -- ** Linear systems
-
-          
   
 class LinearVectorSpace v => LinearSystem v where
   (<\>) :: (MonadIO m, MonadThrow m) => MatrixType v -> v -> m v

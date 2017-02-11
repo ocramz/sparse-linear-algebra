@@ -86,8 +86,8 @@ import qualified Data.Vector as V
 
 
 
--- | A lumped constraint for the numerical types
-type Data x = (Epsilon x, Elt x, Show x, Ord x)
+-- | A lumped constraint for numerical types
+type Num' x = (Epsilon x, Elt x, Show x, Ord x)
 
 
 
@@ -96,7 +96,7 @@ type Data x = (Epsilon x, Elt x, Show x, Ord x)
 -- * Matrix condition number
 
 -- |uses the R matrix from the QR factorization
-conditionNumberSM :: (MonadThrow m, MatrixRing (SpMatrix a), Data a, Typeable a) =>
+conditionNumberSM :: (MonadThrow m, MatrixRing (SpMatrix a), Num' a, Typeable a) =>
      SpMatrix a -> m a
 conditionNumberSM m = do
   (_, r) <- qr m
@@ -106,7 +106,7 @@ conditionNumberSM m = do
    lmin = abs (minimum u)
    kappa = lmax / lmin                     
   if nearZero lmin
-  then throwM (HugeConditionNumber kappa)
+  then throwM (HugeConditionNumber "conditionNumberSM" kappa)
   else return kappa 
                           
 
@@ -434,8 +434,8 @@ chol aa = lfin where
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 -- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
-lu :: (VectorSpace (SpVector t), Epsilon t, Fractional t, Elt t) =>
-     SpMatrix t -> (SpMatrix t, SpMatrix t)
+-- lu :: (VectorSpace (SpVector t), Epsilon t, Fractional t, Elt t) =>
+--      SpMatrix t -> (SpMatrix t, SpMatrix t)
 lu aa = (lf, ufin) where
   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
   ufin = uUpdSparse (ixf, lf, uf) -- final U update
@@ -459,6 +459,7 @@ lu aa = (lf, ufin) where
     solveForLij i j
      | isNz ujj = (a - p)/ujj
      | otherwise =
+        -- throwM (NeedsPivoting "solveForLij" (concat ["U",show (j,j)]) )
         error $ unwords ["solveForLij : U",
                        show (j ,j),
                        "is close to 0. Permute rows in order to have a nonzero diagonal of U"]
@@ -617,7 +618,8 @@ mSsor aa omega = (l, r) where
 luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t), Epsilon t) =>
      SpMatrix t -> SpMatrix t -> SpVector t -> m (SpVector t)
 luSolve ll uu b
-  | isLowerTriSM ll && isUpperTriSM uu = return $ triUpperSolve uu (triLowerSolve ll b)
+  | isLowerTriSM ll && isUpperTriSM uu =
+       return $ triUpperSolve uu (triLowerSolve ll b)
   | otherwise = throwM (NonTriangularException "luSolve")
 
 -- triLowerSolve :: (Epsilon a, RealFrac a, Elt a, AdditiveGroup a) => SpMatrix a -> SpVector a -> SpVector a
@@ -920,6 +922,8 @@ linSolve0 method aa b x0
 data LinSolveMethod = GMRES_ | CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
 
+linSolve method aa b = linSolve0 method aa b (mkSpVR n $ replicate n 0.1) where n = ncols aa
+
 
 -- -- -- | linSolve using the GMRES method as default
 instance LinearSystem (SpVector Double) where
@@ -932,7 +936,7 @@ instance LinearSystem (SpVector (Complex Double)) where
 
 
 
-
+-- newtype LogT env m a = LogT { runLogT :: Logger env -> m a }
 
 
 

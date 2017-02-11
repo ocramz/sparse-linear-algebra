@@ -55,9 +55,11 @@ instance Exception OperandSizeMismatch
 
 
 -- | Matrix exceptions
-data MatrixException i = HugeConditionNumber i deriving (Eq, Typeable)
+data MatrixException i = HugeConditionNumber String i
+                       | NeedsPivoting String String deriving (Eq, Typeable)
 instance Show i => Show (MatrixException i) where
-  show (HugeConditionNumber x) = unwords ["Rank-deficient system: condition number", show x]
+  show (HugeConditionNumber s x) = unwords [s, ": Rank-deficient system: condition number", show x]
+  show (NeedsPivoting s1 s2) = unwords [s1, ":", s2, "is close to 0. Permute the rows to obtain a nonzero diagonal"]
 instance (Show i, Typeable i) => Exception (MatrixException i)
 
 
