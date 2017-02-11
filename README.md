@@ -8,7 +8,7 @@ This library provides common numerical analysis functionality, without requiring
 
 Contents :
 
-* Iterative linear solvers (`linSolve`)
+* Iterative linear solvers (`<\>`)
 
     * Generalized Minimal Residual (GMRES) (non-Hermitian systems) 
 
@@ -18,11 +18,13 @@ Contents :
 
     * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems)
 
-    * Transpose-Free Quasi-Minimal Residual (TFQMR)
-
 * Direct linear solvers
 
     * LU-based (`luSolve`)
+
+* "Rectangular" linear solvers
+
+    * Moore-Penrose pseudoinverse (`pinv`)
 
 * Matrix factorization algorithms
 
@@ -44,6 +46,19 @@ Contents :
 
 * Predicates : Matrix orthogonality test (A^T A ~= I)
 
+
+
+### Under development
+
+* Matrix factorization algorithms
+
+    * Golub-Kahan-Lanczos bidiagonalization
+   
+    * Singular value decomposition (SVD)
+
+* Iterative linear solvers
+
+    * Transpose-Free Quasi-Minimal Residual (TFQMR)
 
 ---------
 

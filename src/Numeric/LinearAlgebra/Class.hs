@@ -49,9 +49,12 @@ instance RealFloat e => Elt (Complex e) where
 
 
 -- * Vector space
+
+-- | Scale a vector 
 (.*) :: VectorSpace v => Scalar v -> v -> v
 (.*) = (*^)
 
+-- | Scale a vector by the reciprocal of a number (e.g. for normalization)
 (./) :: (VectorSpace v, Fractional (Scalar v)) => v -> Scalar v -> v
 v ./ n = recip n .* v
 
@@ -79,7 +82,8 @@ dot = (<.>)
 
 
 -- ** Hilbert-space distance function
--- |`hilbertDistSq x y = || x - y ||^2`
+
+-- |`hilbertDistSq x y = || x - y ||^2` computes the squared L2 distance between two vectors
 hilbertDistSq :: InnerSpace v => v -> v -> Scalar v
 hilbertDistSq x y = t <.> t where
   t = x ^-^ y
