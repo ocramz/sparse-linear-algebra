@@ -101,25 +101,17 @@ class (InnerSpace v, Num (RealScalar v), Eq (RealScalar v), Epsilon (Magnitude v
   normP :: RealScalar v -> v -> Magnitude v -- ^ Lp norm (p > 0)
   normalize :: RealScalar v -> v -> v  -- ^ Normalize w.r.t. Lp norm
   normalize2 :: v -> v     -- ^ Normalize w.r.t. L2 norm
-
-
-
--- ** Norms and related results
-
--- |Euclidean norm
-norm2 :: (Normed v, Floating (Magnitude v)) => v -> Magnitude v
-norm2 x = sqrt (norm2Sq x)
-
--- |Euclidean norm; returns a Complex (norm :+ 0) for containers of complex values
-norm2' :: (Normed v, Floating (Scalar v)) => v -> Scalar v
-norm2' x = sqrt $ x <.> x
-
-
--- |Normalize a vector using norm2' instead of norm2
-normalize2' :: (Normed v, Floating (Scalar v)) => v -> v
-normalize2' x = x ./ norm2' x
-
-
+  normalize2' :: Floating (Scalar v) => v -> v -- ^ Normalize w.r.t. norm2' instead of norm2
+  normalize2' x = x ./ norm2' x
+  norm2 :: Floating (Magnitude v) => v -> Magnitude v -- ^ Euclidean norm
+  norm2 x = sqrt (norm2Sq x)
+  norm2' :: Floating (Scalar v) => v -> Scalar v -- ^ Euclidean norm; returns a Complex (norm :+ 0) for containers of complex values
+  norm2' x = sqrt $ x <.> x
+  norm :: Floating (Magnitude v) => RealScalar v -> v -> Magnitude v -- ^ Lp norm (p > 0)
+  norm p v
+    | p == 1 = norm1 v
+    | p == 2 = norm2 v
+    | otherwise = normP p v
 
 
 
@@ -143,6 +135,8 @@ instance Normed Double where
   normP _ = abs
   normalize _ _ = 1
   normalize2 _ = 1
+  norm2 = abs
+  norm2' = abs
 
 instance Normed (Complex Double) where
   type Magnitude (Complex Double) = Double
@@ -152,16 +146,12 @@ instance Normed (Complex Double) where
   normP p (r :+ i) = (r**p + i**p)**(1/p)
   normalize p c = c ./ normP p c
   normalize2 c = c ./ magnitude c
+  norm2 = magnitude
+  norm2' = magnitude
   
 
 
-  
--- | Lp norm (p > 0)
-norm :: (Normed v, Floating (Magnitude v)) => RealScalar v -> v -> Magnitude v
-norm p v
-  | p == 1 = norm1 v
-  | p == 2 = norm2 v
-  | otherwise = normP p v
+
 
     
 
