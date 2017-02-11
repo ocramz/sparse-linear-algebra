@@ -810,6 +810,19 @@ tvc3 = fromListDenseSV 2 [3 :+ (-2), 1 :+ 1 ]
 
 
 
+--
+
+-- | Example 5.4.2 from G & VL
+-- aa1 :: SpMatrix Double
+-- aa1 = transpose $ fromListDenseSM 3 [1..12]
+
+-- aa1 :: SpMatrix Double
+-- aa1 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
+
+
+
+
+
 
 -- l0 = [1,2,4,5,8]
 -- l1 = [2,3,6]

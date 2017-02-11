@@ -10,33 +10,40 @@ This module exposes the high-level functionality of the library.
 
 module Numeric.LinearAlgebra.Sparse
        (
-         -- * Matrix factorizations
+         -- * Linear solvers
+         -- ** Iterative methods
+         linSolve0, LinSolveMethod(..), (<\>),
+         -- ** Moore-Penrose pseudoinverse
+         pinv,
+         -- * Preconditioners
+         ilu0, mSsor,         
+         -- ** Direct methods
+         luSolve,
+         -- ** Forward substitution
+         triLowerSolve,
+         -- ** Backward substitution
+         triUpperSolve,
+         -- * Eigensolvers
+         eigsQR,
+         eigRayleigh,
+         -- * Matrix factorization algorithms
+         -- ** QR
          qr,
+         -- ** LU
          lu,
+         -- ** Cholesky
          chol,
+         arnoldi,    
+         -- * Matrix partitioning
+         diagPartitions,
+         -- * Utilities
+         -- ** Givens' rotation
+         givens,
          -- * Condition number
          conditionNumberSM,
          -- * Householder reflection
          hhMat, hhRefl,
-         -- -- * Householder bidiagonalization
-
-         -- * Givens' rotation
-         givens,
-         -- * Arnoldi iteration
-         arnoldi, 
-         -- * Eigensolvers
-         eigsQR,
-         eigRayleigh,
-         -- * Linear solvers
-         -- ** Iterative methods
-         linSolve0, LinSolveMethod(..), (<\>),
-         pinv,
-         -- ** Direct methods
-         luSolve, triLowerSolve, triUpperSolve,
-         -- * Preconditioners
-         ilu0, mSsor,
-         -- * Matrix partitioning
-         diagPartitions,
+         -- -- * Householder bidiagonalization         
          -- -- * Random arrays
          -- randArray,
          -- -- * Random matrices and vectors
@@ -44,8 +51,6 @@ module Numeric.LinearAlgebra.Sparse
          -- -- ** Sparse "
          -- randSpMat, randSpVec,
          -- * Iteration combinators
-         -- modifyInspectGuarded,
-         -- diffSqL
          untilConvergedG0, untilConvergedG, untilConvergedGM,
          modifyInspectGuarded, modifyInspectGuardedM, IterationConfig (..)
        )
@@ -315,21 +320,6 @@ hhV x = (v, beta) where
 
 
 
-
-
-
--- | Example 5.4.2 from G & VL
-aa1 :: SpMatrix Double
-aa1 = transpose $ fromListDenseSM 3 [1..12]
-
-
-
--- aa1 :: SpMatrix Double
--- aa1 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
-
-
-
-
 -- -- * SVD
 
 {- Golub & Van Loan, sec 8.6.2 (p 452 segg.)
@@ -374,7 +364,11 @@ chol aa = lfin where
 
 
 
-
+-- cholSubDiag aa ll i j | isNz ljj = return $  1/ljj*(aij - inn)
+--                       | otherwise = throwM (NeedsPivoting "chol" (unwords ["L", show (j,j)]))  where
+--     ljj = ll @@! (j, j)
+--     aij = aa @@! (i, j)
+--     inn = contractSub ll ll i j (j - 1)
 
 
 
@@ -479,9 +473,6 @@ onRangeSparseA f ixs = do
 --   return $ filter (isNz . snd) ixs''
 
 
-insertIf q insf xc xs = f <$> xs where
-  f x | q x = insf x xc
-      | otherwise = pure () 
 
 
 

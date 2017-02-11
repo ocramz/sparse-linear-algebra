@@ -34,9 +34,9 @@ Contents :
 
     * Cholesky (`chol`)
 
-* Eigenvalue algorithms
-
     * Arnoldi iteration (`arnoldi`)
+
+* Eigenvalue algorithms
 
     * QR (`eigsQR`)
 
