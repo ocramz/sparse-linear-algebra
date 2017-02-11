@@ -21,7 +21,7 @@ module Data.Sparse.Common
          extractDiagDense,
          extractSubRow, extractSubCol,
          extractSubRow_RK, extractSubCol_RK,
-         fromCols) where
+         fromCols, fromColsL, toCols) where
 
 import Control.Exception
 import Control.Exception.Common
@@ -295,8 +295,14 @@ vecMatSD (SV n sv) (SM (nr, nc) mdata)
 
 
 
+-- | Pack a list of SpVectors into an SpMatrix
+fromColsL :: [SpVector a] -> SpMatrix a
+fromColsL = fromCols . V.fromList
 
-
+-- | Unpack an SpMatrix into a list of SpVectors
+toCols :: SpMatrix a -> [SpVector a]
+toCols aa = map (extractCol aa) [0 .. n-1] where
+  (m,n) = dim aa
 
 
 

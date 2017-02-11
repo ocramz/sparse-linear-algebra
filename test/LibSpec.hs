@@ -11,22 +11,24 @@
 -----------------------------------------------------------------------------
 module LibSpec where
 
+import Control.Exception.Common
 import Data.Sparse.Common
 import Numeric.LinearAlgebra.Sparse
 -- import Numeric.LinearAlgebra.Class
 
 -- import Control.Applicative (liftA2)
 -- import Control.Monad (replicateM)
-import Control.Monad.Catch (MonadThrow (..))
+import Control.Monad.Catch -- (MonadThrow (..))
+import Control.Monad.IO.Class
 -- import Control.Monad.Primitive
 -- import Data.Foldable (foldrM)
 
 import Data.Complex
-import Data.Either (either)
+-- import Data.Either (either)
 
 import Data.VectorSpace hiding (magnitude)
 
-import Control.Monad.State.Strict (execState)
+-- import Control.Monad.State.Strict (execState)
 
 -- import qualified System.Random.MWC as MWC
 -- import qualified System.Random.MWC.Distributions as MWC
@@ -84,13 +86,25 @@ spec = do
     it "isLowerTriSM : checks whether matrix is lower triangular" $
       isLowerTriSM tm8' && isUpperTriSM tm8 `shouldBe` True
       
-    -- it "modifyInspectN : early termination by iteration count" $
-    --   execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
-    -- it "modifyInspectN : termination by value convergence" $
-    --   nearZero (execState (modifyInspectN (2^16) (nearZero . head) (/2)) (1 :: Double)) `shouldBe` True 
+    it "untilConvergedG0 : early termination by iteration count and termination by convergence" $ 
+     let
+      n1 = 4
+      nexp1 = fromIntegral n1 / fromIntegral (2^n1) -- 0.25
+      f x = x/2
+      mm1 = untilConvergedG0 "blah"
+               (IterConf n1 False id print) (1/(2^n1)) f (fromIntegral n1 :: Double)
+      n2 = 2^16
+      mm2 = untilConvergedG0 "blah"
+               (IterConf n2 False id print) (1/(2^n2)) f (fromIntegral n1 :: Double)
+      eh (NotConvergedE _ _ x) = return x
+      in
+       do x1 <- mm1 `catch` eh
+          x1 `shouldBe` nexp1
+          x2 <- mm2 `catch` eh
+          nearZero x2 `shouldBe` True
       
-    -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
-    --   prop_psd aa2 v
+     
+
   describe "QuickCheck properties:" $ do
     -- prop "prop_matSPD_vec : (m #^# m) is symmetric positive definite" $
     --   \(PropMatSPDVec (m :: SpMatrix Double) v) -> prop_spd m v
@@ -104,6 +118,8 @@ spec = do
     --   \p@(PropMatI (_ :: SpMatrix Double)) -> prop_QR p
     -- prop "prop_Cholesky" $ \p@(PropMat_SPD (_ :: SpMatrix Double)) -> prop_Cholesky p
     -- prop "prop_linSolve GMRES" $ prop_linSolve GMRES_
+      -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
+    --   prop_psd aa2 v
     
   -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
   --   -- it "TFQMR (2 x 2 dense)" $
@@ -162,25 +178,31 @@ spec = do
 --     (\xhat -> nearZero (norm2Sq (x ^-^ xhat)))
 --     (linSolve0 method aa b x0r)
 
--- checkLinSolveR
---   :: LinSolveMethod ->
---      SpMatrix Double ->       -- ^ operator
---      SpVector Double ->       -- ^ r.h.s
---      SpVector Double ->       -- ^ candidate solution
---      Bool
--- checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
---   x0r = mkSpVR n $ replicate n 0.1
---   n = ncols aa
+checkLinSolve method aa b x x0r =
+  nearZero . norm2 <$> linSolve0 method aa b x0r `catch` eh where
+    eh (NotConvergedE _ i xhat) = return $ xhat ^-^ x
 
--- checkLinSolveC
---   :: LinSolveMethod
---      -> SpMatrix (Complex Double)
---      -> SpVector (Complex Double)
---      -> SpVector (Complex Double)
---      -> Bool
--- checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
---   x0r = mkSpVC n $ replicate n (0.1 :+ 0.1)
---   n = ncols aa
+checkLinSolveR
+  :: (MonadIO m, MonadCatch m) =>
+     LinSolveMethod 
+     -> SpMatrix Double        -- ^ operator
+     -> SpVector Double        -- ^ r.h.s
+     -> SpVector Double        -- ^ candidate solution
+     -> m Bool
+checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
+  x0r = mkSpVR n $ replicate n 0.1
+  n = ncols aa
+
+checkLinSolveC
+  :: (MonadIO m, MonadCatch m) =>
+     LinSolveMethod
+     -> SpMatrix (Complex Double)
+     -> SpVector (Complex Double)
+     -> SpVector (Complex Double)
+     -> m Bool
+checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
+  x0r = mkSpVC n $ replicate n (0.1 :+ 0.1)
+  n = ncols aa
 
 
 

@@ -42,6 +42,8 @@ library
                        Data.Sparse.Types
                        Control.Exception.Common
                        Control.Iterative
+                       Numeric.LinearAlgebra.LinearSolvers.Experimental
+                       Numeric.LinearAlgebra.EigenSolvers.Experimental
   build-depends:       base >= 4.7 && < 5
                      , vector-space
                      , containers
@@ -53,8 +55,8 @@ library
                      , writer-cps-transformers
                      -- , monad-log == 0.1.1.0
                      -- , monad-par
-                     -- , QuickCheck >= 2.8.2
-                     -- , hspec
+                     , QuickCheck >= 2.8.2
+                     , hspec
                      -- , primitive >= 0.6.1.0
                      -- , mwc-random                     
 

@@ -69,9 +69,11 @@ instance (Show i, Typeable i) => Exception (MatrixException i)
 
 -- | Numerical iteration errors
 data IterationException a = NotConvergedE String Int a 
-                          | DivergingE String Int a a    
+                          | DivergingE String Int a a
+                          -- | NotConvergedToExpectedE String Int a a 
                           deriving (Eq, Typeable)
 instance Show a => Show (IterationException a) where
   show (NotConvergedE s niters x) = unwords [s, ": Could not converge within",show niters, "iterations; final state:", show x]
   show (DivergingE s niters x0 x1) = unwords [s, ": Diverging at iteration #", show niters, "; latest state:",show x0, "; previous state:",show x1]
+  -- show (NotConvergedToExpectedE s niters x x0) = unwords [s, ": Could not converge within",show niters, "iterations; final state:", show x, "expected state:", show x0]
 instance (Show a, Typeable a) => Exception (IterationException a)

@@ -35,7 +35,8 @@ data ConvergenceStatus a = BufferNotReady
                          | Converging
                          | Converged a
                          | Diverging a a
-                         | NotConverged deriving (Eq, Show)
+                         | NotConverged
+                           deriving (Eq, Show)
 
      
 data IterationConfig a b =
@@ -64,57 +65,19 @@ modifyUntilM q f = do
 
 
 
--- -- | iterate until convergence is verified or we run out of a fixed iteration budget
--- -- untilConverged :: (MonadState s m, Epsilon a) => (s -> SpVector a) -> (s -> s) -> m s
--- untilConverged :: (MonadState s m, Normed v, Epsilon (Magnitude v)) =>
---      (s -> v) -> (s -> s) -> m s
--- untilConverged fproj = modifyInspectN 200 (normDiffConverged fproj)
-
--- execState (modifyInspectN 2 (nearZero . diffSqL) (/2)) (1 :: Double) `shouldBe` 1/8
-
-
--- -- | Keep a moving window buffer (length 2) of state `x` to assess convergence, stop when either a condition on that list is satisfied or when max # of iterations is reached (i.e. same thing as `loopUntilAcc` but this one runs in the State monad)
--- modifyInspectN ::
---   MonadState s m =>
---     Int ->           -- iteration budget
---     ([s] -> Bool) -> -- convergence criterion
---     (s -> s) ->      -- state stepping function
---     m s
--- modifyInspectN nitermax q f 
---   | nitermax > 0 = go 0 []
---   | otherwise = error "modifyInspectN : n must be > 0" where
---       go i ll = do
---         x <- get
---         let y = f x
---         if length ll < 2
---           then do put y
---                   go (i + 1) (y : ll)
---           else if q ll || i == nitermax
---                then do put y
---                        return y
---                else do put y
---                        go (i + 1) (take 2 $ y : ll)
-
-data S = S {unS1 :: Double, unS2 :: String} deriving (Eq, Show)
-liftS1 f (S x i) = S (f x) i
-s0 = S 1 "blah"
-ic1 = IterConf 2 True unS1 print
-
-
-
-
 
 -- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
 untilConvergedG0 ::
-  (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s) =>
+  (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s, Show v, Typeable v) =>
      String
      -> IterationConfig s v
      -> v                    -- ^ Known value
      -> (s -> s)
      -> s
      -> m s
-untilConvergedG0 fname config xKnown =
-  modifyInspectGuarded fname config norm2Diff nearZero qdiverg qfin where
+untilConvergedG0 fname config xKnown f x0 = 
+  modifyInspectGuarded fname config norm2Diff nearZero qdiverg qfin f x0
+   where
     qfin s = nearZero $ norm2 (xKnown ^-^ s)
   
 
@@ -159,8 +122,8 @@ modifyInspectGuarded ::
      -> (s -> s)            -- ^ State evolution
      -> s                   -- ^ Initial state
      -> m s                 -- ^ Final state
-modifyInspectGuarded fname config q qc qd qfin f x0 =
-  modifyInspectGuardedM fname config q qc qd qfin (pure . f) x0
+modifyInspectGuarded fname config sf qc qd qfin f x0 =
+  modifyInspectGuardedM fname config sf qc qd qfin (pure . f) x0
 
   
 
@@ -178,21 +141,17 @@ modifyInspectGuardedM ::
      -> s
      -> m s
 modifyInspectGuardedM fname config sf qconverg qdiverg qfinal f x0 
-  | nitermax > 0 = xout
+  | nitermax > 0 = MTS.execStateT (go 0 []) x0
   | otherwise = throwM (NonNegError fname nitermax)
   where
     lwindow = 3
     nitermax = numIterationsMax config
     pf = iterationView config
-    xout = do
-      x <- MTS.execStateT (go 0 []) x0
-      if qfinal (pf x) then return x
-                       else throwM (NotConvergedE fname nitermax x)
-    checkConvergStatus i ll
-      | i == nitermax - 1 && not (qconverg qi) = NotConverged    
+    checkConvergStatus y i ll
       | length ll < lwindow = BufferNotReady
       | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
-      | qconverg qi = Converged qi
+      | qconverg qi || qfinal (pf y) = Converged qi
+      | i == nitermax - 1 = NotConverged         
       | otherwise = Converging
       where llf = pf <$> ll
             qi = sf $ init llf         -- summary of latest 2 states
@@ -200,8 +159,10 @@ modifyInspectGuardedM fname config sf qconverg qdiverg qfinal f x0
     go i ll = do
       x <- MTS.get
       y <- lift $ f x
-      when (printDebugInfo config) $ liftIO $ printDebugIO config (pf y) 
-      case checkConvergStatus i ll of
+      when (printDebugInfo config) $ liftIO $ do
+        putStrLn $ unwords ["Iteration", show i]
+        printDebugIO config (pf y) 
+      case checkConvergStatus y i ll of
         BufferNotReady -> do  
           MTS.put y
           let ll' = y : ll    -- cons current state to buffer
@@ -212,7 +173,7 @@ modifyInspectGuardedM fname config sf qconverg qdiverg qfinal f x0
           throwM (DivergingE fname i qi qt)
         Converging -> do
           MTS.put y
-          let ll' = take lwindow (y : ll) -- rolling state window
+          let ll' = init (y : ll) -- rolling state window
           go (i + 1) ll'
         NotConverged -> do
           MTS.put y
@@ -222,8 +183,7 @@ modifyInspectGuardedM fname config sf qconverg qdiverg qfinal f x0
 
 
 
-
-
+          
     
 
 
@@ -257,11 +217,16 @@ norm2Diff [s1, s0] = norm2 (s1 ^-^ s0)
 norm2Diff _ = 1/0
 
 
--- norm2Diff :: Normed v => (t -> v) -> [t] -> Magnitude v
--- norm2Diff fp [s1, s0] = norm2 (fp s1 ^-^ fp s0)
--- norm2Diff _ _ = 1/0
 
 
+
+
+-- test data
+
+data S = S {unS1 :: Double, unS2 :: String} deriving (Eq, Show)
+liftS1 f (S x i) = S (f x) i
+s0 = S 1 "blah"
+ic1 = IterConf 2 True unS1 print
 
 
 

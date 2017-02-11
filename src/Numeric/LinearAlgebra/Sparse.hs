@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
+{-# language ApplicativeDo #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
 {-|
 
@@ -17,7 +18,7 @@ module Numeric.LinearAlgebra.Sparse
          conditionNumberSM,
          -- * Householder reflection
          hhMat, hhRefl,
-         -- * Householder bidiagonalization
+         -- -- * Householder bidiagonalization
 
          -- * Givens' rotation
          givens,
@@ -25,13 +26,13 @@ module Numeric.LinearAlgebra.Sparse
          arnoldi, 
          -- * Eigensolvers
          eigsQR,
-         -- eigRayleigh,
+         eigRayleigh,
          -- * Linear solvers
          -- ** Iterative methods
-         -- linSolve0, LinSolveMethod(..), (<\>),
-         -- pinv,
+         linSolve0, LinSolveMethod(..), (<\>),
+         pinv,
          -- ** Direct methods
-         luSolve, triLowerSolve, triUpperSolve,
+         -- luSolve, triLowerSolve, triUpperSolve,
          -- * Preconditioners
          ilu0, mSsor,
          -- * Matrix partitioning
@@ -43,8 +44,10 @@ module Numeric.LinearAlgebra.Sparse
          -- -- ** Sparse "
          -- randSpMat, randSpVec,
          -- * Iteration combinators
-         modifyInspectGuarded,
-         diffSqL
+         -- modifyInspectGuarded,
+         -- diffSqL
+         untilConvergedG0, untilConvergedG, untilConvergedGM,
+         modifyInspectGuarded, modifyInspectGuardedM, IterationConfig (..)
        )
        where
 
@@ -53,7 +56,6 @@ import Control.Exception.Common
 import Control.Iterative
 import Data.Sparse.Common
 
-import Control.Exception
 import Control.Monad.Catch
 import Data.Typeable
 
@@ -61,8 +63,8 @@ import Data.Typeable
 
 -- import Control.Monad (replicateM)
 import Control.Monad.State.Strict
-import Control.Monad.Writer
-import Control.Monad.Trans.Class
+-- import Control.Monad.Writer
+-- import Control.Monad.Trans.Class
 import qualified Control.Monad.Trans.State  as MTS -- (runStateT)
 -- import Control.Monad.Trans.Writer (runWriterT)
 import Data.Complex
@@ -252,12 +254,13 @@ qr mm = do
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
 eigsQR :: (MonadThrow m, MonadIO m, Elt a, Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon a, Typeable (Magnitude (SpVector a)), Typeable a, Show a) =>
         Int
-     -> SpMatrix a     -- ^ Operand matrix 
+     -> Bool           -- ^ Print debug information        
+     -> SpMatrix a     -- ^ Operand matrix
      -> m (SpVector a) -- ^ Eigenvalues
-eigsQR nitermax m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
+eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
   where
     pf = extractDiagDense
-    c = IterConf nitermax True pf prd
+    c = IterConf nitermax debq pf prd
     stepf mm = do
       (q, _) <- qr mm
       return $ q #~^# (m ## q) -- r #~# q
@@ -270,27 +273,28 @@ eigsQR nitermax m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
 -- ** Rayleigh iteration
 
 -- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair
--- eigRayleigh :: (Epsilon a, Floating a) => Int -- max # iterations
---      -> SpMatrix a           -- matrix
---      -> (SpVector a, a) -- initial guess of (eigenvector, eigenvalue)
---      -> (SpVector a, a) -- final estimate of (eigenvector, eigenvalue)
--- eigRayleigh :: Int -> SpMatrix Double -> (SpVector Double, Double) -> (SpVector Double, Double)
--- eigRayleigh :: Int -> SpMatrix (Complex Double) -> (SpVector (Complex Double), (Complex Double)) -> (SpVector (Complex Double), (Complex Double))
--- eigRayleigh nitermax m = execState (convergtest (rayleighStep m)) where
---   convergtest g = modifyInspectN nitermax f g where
---     f [(b1, _), (b2, _)] = nearZero $ norm2' (b2 ^-^ b1)
---   rayleighStep aa (b, mu) = (b', mu') where
---       ii = eye (nrows aa)
---       nom = (aa ^-^ (mu `matScale` ii)) <\> b
---       b' = normalize2' nom
---       mu' = (b' <.> (aa #> b')) / (b' <.> b')
-
+eigRayleigh :: (MonadThrow m, MonadIO m, MatrixType v ~ SpMatrix (Scalar v),
+                 Normed v, LinearSystem v, PrintDense v, Typeable (Magnitude v),
+                 Typeable (Scalar v), Typeable v, Show (Scalar v), Show v,
+                 Floating (Scalar v)) =>
+     Int -> Bool -> SpMatrix (Scalar v) -> (v, Scalar v) -> m (v, Scalar v)
+eigRayleigh nitermax debq m = untilConvergedGM "eigRayleigh" config (const True) (rayStep m)
+  where
+    ii = eye (nrows m)
+    config = IterConf nitermax debq fst prd
+    rayStep aa (b, mu) = do
+      nom <- (m ^-^ (mu `matScale` ii)) <\> b
+      let b' = normalize2' nom
+          mu' = (b' <.> (aa #> b')) / (b' <.> b')
+      return (b', mu')
 
 
 
 -- * Householder vector 
 
 -- (Golub & Van Loan, Alg. 5.1.1, function `house`)
+hhV :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t), Epsilon t) =>
+     SpVector t -> (SpVector t, t)
 hhV x = (v, beta) where
   tx = tailSV x
   sigma = tx <.> tx 
@@ -307,55 +311,10 @@ hhV x = (v, beta) where
 
 
 
--- * Bidiagonalization
-
--- | Golub-Kahan-Lanczos bidiagonalization (see "Restarted Lanczos Bidiagonalization for the SVD", SLEPc STR-8, http://slepc.upv.es/documentation/manual.htm )
-gklBidiag aa q1nn | dim q1nn == n = (pp, bb, qq)
-                  | otherwise = error "hhBidiag : dimension mismatch. Provide q1 compatible with aa #> q1"
-  where
-  (m,n) = (nrows aa, ncols aa)
-  aat = transpose aa
-  bb = fromListSM (n,n) bl
-  (ql, _, pl, _, pp, bl, qq) = execState (modifyUntil tf bidiagStep) bidiagInit
-  tf (_, _, _, i, _, _, _) = i == n 
-  bidiagInit = (q2n, beta1, p1n, 1 :: Int, pp, bb', qq)
-   where
-    q1 = normalize2' q1nn
-    
-    p1 = aa #> q1
-    alpha1 = norm2' p1
-    p1n = p1 ./ alpha1
-    
-    q2 = (aat #> p1) ^-^ (alpha1 .* q1)
-    beta1 = norm2' q2
-    q2n = q2 ./ beta1
-    
-    pp = insertCol (zeroSM m n) p1n 0
-    qq = insertCol (zeroSM n n) q2n 0
-    bb' = [(0, 0, alpha1)]
-  bidiagStep (qj , betajm, pjm , j   , pp,  bb, qq ) =
-             (qjp, betaj , pj, succ j, pp', bb', qq') where
-
-    u = (aa #> qj) ^-^ (betajm .* pjm)
-    alphaj = norm2' u
-    pj = u ./ alphaj
-    
-    v = (aat #> pj) ^-^ (alphaj .* qj)
-    betaj = norm2' v
-    qjp = v ./ betaj
-  
-    pp' = insertCol pp pj j
-    bb' = [(j-1, j, betaj),
-           (j ,j, alphaj)] ++ bb
-    qq' = insertCol qq qjp j
+-- -- * Bidiagonalization
 
 
--- fromColsL :: [SpVector a] -> SpMatrix a
--- fromColsL = fromCols . V.fromList
 
-toCols :: SpMatrix a -> [SpVector a]
-toCols aa = map (extractCol aa) [0 .. n-1] where
-  (m,n) = dim aa
 
 
 
@@ -371,7 +330,7 @@ aa1 = transpose $ fromListDenseSM 3 [1..12]
 
 
 
--- * SVD
+-- -- * SVD
 
 {- Golub & Van Loan, sec 8.6.2 (p 452 segg.)
 
@@ -392,7 +351,7 @@ SVD of A, Golub-Kahan method
 -- * Cholesky factorization
 
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
-chol :: (Epsilon a, Floating a, Elt a) => SpMatrix a -> SpMatrix a
+chol :: (Epsilon a, Elt a) => SpMatrix a -> SpMatrix a
 chol aa = lfin where
   (_, lfin) = execState (modifyUntil q cholUpd) cholInit
   q (i, _) = i == nrows aa              -- stopping criterion
@@ -404,8 +363,8 @@ chol aa = lfin where
        lrs = fromListSV (i + 1) $ onRangeSparse (cholSubDiag ll i) [0 .. i-1]
     cholDiagUpd ll_ = insertSpMatrix i i (cholDiag ll_ i) ll_ 
   cholSubDiag ll i j = 1/ljj*(aij - inn) where
-    ljj = ll@@(j, j)
-    aij = aa@@(i, j)
+    ljj = ll @@! (j, j)
+    aij = aa @@! (i, j)
     inn = contractSub ll ll i j (j - 1)
   cholDiag ll i | i == 0 = sqrt aai
                 | otherwise = sqrt $ aai - sum (fmap (**2) lrow) -- i > 0
@@ -470,14 +429,54 @@ lu aa = (lf, ufin) where
 
 
 
+
+-- lu' aa = (lf, ufin) where
+--   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
+--   ufin = uUpdSparse (ixf, lf, uf) -- final U update
+--   q (i, _, _) = i == (nrows aa - 1)
+--   n = nrows aa
+--   luInit = (1, l0, u0) where
+-- --  l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
+--     l0 = insertCol (eye n) (scale (1/u00) (extractSubCol aa 0 (1, n-1))) 0
+--     u0 = insertRow (zeroSM n n) (extractRow aa 0) 0                     -- initial U
+--     u00 = u0 @@! (0,0)  -- make sure this is non-zero by applying permutation
+--   luUpd (i, l, u) = (i + 1, l', u') where
+--     u' = uUpdSparse (i, l, u)  -- update U
+--     l' = lUpdSparse (i, l, u') -- update L
+--   uUpdSparse (ix, lmat, umat) = insertRow umat (fromListSV n us) ix where
+--     us = onRangeSparse (solveForUij ix) [ix .. n - 1]
+--     solveForUij i j = a - p where
+--       a = aa @@! (i, j)
+--       p = contractSub lmat umat i j (i - 1)
+
+-- lUpdSparse aa n (ix, lmat, umat) = ls -- insertCol lmat (fromListSV n ls) ix
+--   where
+--     ls = onRangeSparse (`solveForLij` ix) [ix + 1 .. n - 1]
+--     solveForLij i j
+--       | isNz ujj = pure $ (a - p)/ujj
+--       | otherwise =
+--          throwM (NeedsPivoting "solveForLij" (concat ["U", show (j, j)]) )
+--       where
+--        a = aa @@! (i, j)
+--        ujj = umat @@! (j , j)   -- NB this must be /= 0
+--        p = contractSub lmat umat i j (i - 1)
+
+
+
 -- | Apply a function over a range of integer indices, zip the result with it and filter out the almost-zero entries
 onRangeSparse :: Epsilon b => (Int -> b) -> [Int] -> [(Int, b)]
 onRangeSparse f ixs = filter (isNz . snd) $ zip ixs $ map f ixs
 
+onRangeSparseA :: (Epsilon a, Applicative f) => (Int -> a) -> [Int] -> f [(Int, a)]
+onRangeSparseA f ixs = do
+  let ixy = zip ixs (f <$> ixs)
+  pure $ filter (isNz . snd) ixy
 
-
-
-
+-- onRangeSparseM :: (Epsilon a, Applicative f) => (a -> f b) -> [a] -> f [(a, b)]
+-- onRangeSparseM f ixs = do
+--   ixs' <- f =<< ixs
+--   let ixs'' = zip ixs ixs'
+--   return $ filter (isNz . snd) ixs''
 
 
 
@@ -578,13 +577,13 @@ diagPartitions aa = (e,d,f) where
 
 -- -- | Returns the reciprocal of the diagonal 
 -- jacobiPreconditioner :: SpMatrix Double -> SpMatrix Double
--- jacobiPreconditioner = reciprocal . extractDiag
+jacobiPreconditioner = reciprocal . extractDiag
 
 
 -- ** Incomplete LU
 
 -- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
-ilu0 :: (Elt a, VectorSpace (SpVector a), Epsilon a) =>
+ilu0 :: (Elt a, Epsilon a, VectorSpace (SpVector a)) =>
    SpMatrix a -> (SpMatrix a, SpMatrix a)
 ilu0 aa = (lh, uh) where
   (l, u) = lu aa
@@ -679,24 +678,10 @@ triUpperSolve uu w = sparsifySV x where
 --
 -- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
--- gmres :: (Scalar (SpVector t) ~ t,
---           MatrixType (SpVector t) ~ SpMatrix t,
---       Elt t, V (SpVector t), MatrixRing (SpMatrix t), Epsilon t) =>
---      SpMatrix t -> SpVector t -> SpVector t
--- gmres aa b = qa' #> yhat where
---   m = ncols aa
---   (qa, ha) = arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
---   -- b' = (transposeSe qa) #> b
---   b' = norm2' b .* (ei mp1 1)  -- b rotated back to canonical basis by Q^T
---      where mp1 = nrows ha     -- = 1 + (# Arnoldi iterations)
---   (qh, rh) = qr ha            -- QR factors of H
---   yhat = triUpperSolve rh' rhs' where
---     rhs' = takeSV (dim b' - 1) (transpose qh #> b')
---     rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
---   qa' = takeCols (ncols qa - 1) qa   -- we don't use last column of Krylov basis
-
-
-
+gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, Normed (SpVector t), MatrixRing (SpMatrix t),
+      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
+     SpMatrix t -> SpVector t -> m (SpVector t)
 gmres aa b = do
   let
     m = ncols aa
@@ -711,12 +696,6 @@ gmres aa b = do
       rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
     qa' = takeCols (ncols qa - 1) qa   -- we don't use last column of Krylov basis
   return $ qa' #> yhat
-
-
-
-
-
-
 
 
 
@@ -743,55 +722,6 @@ cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
     beta = (r1 `dot` r1) / (r `dot` r)
     p1 = transposeSM aa #> r ^+^ (beta .* p)
 
-
-
--- ** TFQMR
-
-tfqmrInit aa b x0 = TFQMR x0 w0 u0 v0 d0 m tau0 theta0 eta0 rho0 alpha0 where
-  n = dim b
-  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
-  w0 = r0
-  u0 = r0
-  v0 = aa #> u0
-  d0 = zeroSV n
-  r0hat = r0
-  rho0 = r0hat `dot` r0
-  alpha0 = rho0 / (v0 `dot` r0hat)
-  m = 0
-  tau0 = norm2' r0
-  theta0 = 0
-  eta0 = 0
-
-tfqmrStep aa r0hat (TFQMR x w u v d m tau theta eta rho alpha) =
-    TFQMR x1 w1 u1 v1 d1 (m+1) tau1 theta1 eta1 rho1 alpha1
-    where
-    w1 = w ^-^ (alpha .* (aa #> u))
-    d1 = u ^+^ ((theta**2/alpha*eta) .* d)
-    theta1 = norm2' w1 / tau
-    c = recip $ sqrt (1 + theta1**2)
-    tau1 = tau * theta1 * c
-    eta1 = c**2 * alpha
-    x1 = x^+^ (eta1 .* d1)
-    (alpha1, u1, rho1, v1)
-      | even m = let
-                     alpha' = rho / (v `dot` r0hat)
-                     u' = u ^-^ (alpha' .* v)
-                 in
-                     (alpha', u', rho, v)
-      | otherwise = let
-                     rho' = w1 `dot` r0hat
-                     beta = rho'/rho
-                     u' = w1 ^+^ (beta .* u)
-                     v' = (aa #> u') ^+^ (beta .* (aa #> u ^+^ (beta .* v)) )
-                    in (alpha, u', rho', v')
-
-data TFQMR a =
-  TFQMR { _xTfq, _wTfq, _uTfq, _vTfq, _dTfq :: SpVector a,
-          _mTfq :: Int,
-          _tauTfq, _thetaTfq, _etaTfq, _rhoTfq, _alphaTfq :: a}
-  deriving Eq
-instance Show a => Show (TFQMR a) where
-    show (TFQMR x _ _ _ _ _ _ _ _ _ _) = "x = " ++ show x ++ "\n"
 
 
 
@@ -891,8 +821,11 @@ instance Show a => Show (BICGSTAB a) where
 
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equaitons. Uses <\\> for the linear solve
--- pinv aa b = aa #~^# aa <\> atb where
---   atb = transpose aa #> b
+pinv :: (MatrixType v ~ SpMatrix a, MatrixRing (SpMatrix a),
+      LinearSystem v, Epsilon a, MonadThrow m, MonadIO m) =>
+     SpMatrix a -> v -> m v
+pinv aa b = aa #~^# aa <\> atb where
+  atb = transpose aa #> b
 
 
 
@@ -903,6 +836,7 @@ linSolve0 method aa b x0
                   | otherwise = xHat
      xHat = case method of
        BICGSTAB_ -> solver "BICGSTAB" nits _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
+       BCG_ -> solver "BCG" nits _xBcg (bcgStep aa) (bcgInit aa b x0)
        CGS_ -> solver "CGS" nits _x  (cgsStep aa r0hat) (cgsInit aa b x0)
        GMRES_ -> gmres aa b
        CGNE_ -> solver "CGNE" nits _xCgne (cgneStep aa) (cgneInit aa b x0)
@@ -922,7 +856,6 @@ linSolve0 method aa b x0
 data LinSolveMethod = GMRES_ | CGNE_ | TFQMR_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
 
 
-linSolve method aa b = linSolve0 method aa b (mkSpVR n $ replicate n 0.1) where n = ncols aa
 
 
 -- -- -- | linSolve using the GMRES method as default
@@ -936,7 +869,6 @@ instance LinearSystem (SpVector (Complex Double)) where
 
 
 
--- newtype LogT env m a = LogT { runLogT :: Logger env -> m a }
 
 
 

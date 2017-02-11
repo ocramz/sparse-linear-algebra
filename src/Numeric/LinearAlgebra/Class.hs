@@ -8,12 +8,12 @@ import Data.Complex
 -- import Data.Ratio
 -- import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 
-import Control.Exception
-import Control.Exception.Common
+-- import Control.Exception
+-- import Control.Exception.Common
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 
-import Data.Typeable (Typeable)
+-- import Data.Typeable (Typeable)
 
 import qualified Data.Vector as V (Vector)
 
@@ -29,7 +29,7 @@ import Numeric.Eps
 
 
 -- * Matrix and vector elements (possibly Complex)
-class (Eq e , Fractional e, Floating e) => Elt e where
+class (Eq e , Fractional e, Floating e, Num (EltMag e), Ord (EltMag e)) => Elt e where
   type EltMag e :: *
   conj :: e -> e
   conj = id
