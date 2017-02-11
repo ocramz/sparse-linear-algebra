@@ -254,10 +254,10 @@ eigsQR :: (MonadThrow m, MonadIO m, Elt a, Normed (SpVector a), MatrixRing (SpMa
         Int
      -> SpMatrix a     -- ^ Operand matrix 
      -> m (SpVector a) -- ^ Eigenvalues
-eigsQR nitermax m = pf <$> untilConvergedGM "eigsQR" c stepf m
+eigsQR nitermax m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
   where
     pf = extractDiagDense
-    c = IterationConfig nitermax True pf prd
+    c = IterConf nitermax True pf prd
     stepf mm = do
       (q, _) <- qr mm
       return $ q #~^# (m ## q) -- r #~# q
@@ -911,10 +911,10 @@ linSolve0 method aa b x0
      dm@(m,n) = dim aa
      nb = dim b
      solver fname nitermax fproj stepf initf = do
-      xf <- untilConvergedG fname config stepf initf
+      xf <- untilConvergedG fname config (const True) stepf initf
       return $ fproj xf
       where
-        config = IterationConfig nitermax True fproj prd
+        config = IterConf nitermax True fproj prd
   
 
 -- * Linear solver interface
