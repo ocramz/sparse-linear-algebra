@@ -32,7 +32,7 @@ module Numeric.LinearAlgebra.Sparse
          linSolve0, LinSolveMethod(..), (<\>),
          pinv,
          -- ** Direct methods
-         -- luSolve, triLowerSolve, triUpperSolve,
+         luSolve, triLowerSolve, triUpperSolve,
          -- * Preconditioners
          ilu0, mSsor,
          -- * Matrix partitioning
@@ -393,8 +393,8 @@ chol aa = lfin where
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 -- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
--- lu :: (VectorSpace (SpVector t), Epsilon t, Fractional t, Elt t) =>
---      SpMatrix t -> (SpMatrix t, SpMatrix t)
+lu :: (VectorSpace (SpVector t), Epsilon t, Fractional t, Elt t) =>
+     SpMatrix t -> (SpMatrix t, SpMatrix t)
 lu aa = (lf, ufin) where
   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
   ufin = uUpdSparse (ixf, lf, uf) -- final U update
@@ -479,7 +479,9 @@ onRangeSparseA f ixs = do
 --   return $ filter (isNz . snd) ixs''
 
 
-
+insertIf q insf xc xs = f <$> xs where
+  f x | q x = insf x xc
+      | otherwise = pure () 
 
 
 

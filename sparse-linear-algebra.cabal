@@ -34,13 +34,13 @@ library
                        Data.Sparse.SpVector
                        Data.Sparse.SpMatrix
                        Data.Sparse.Common
+                       Control.Exception.Common                       
   other-modules:       Data.Sparse.Internal.IntMap2
                        Data.Sparse.Internal.IntM
                        Data.Sparse.Internal.Utils
                        Data.Sparse.Utils
                        Data.Sparse.PPrint
                        Data.Sparse.Types
-                       Control.Exception.Common
                        Control.Iterative
                        Numeric.LinearAlgebra.LinearSolvers.Experimental
                        Numeric.LinearAlgebra.EigenSolvers.Experimental
