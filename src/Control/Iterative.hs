@@ -65,6 +65,10 @@ modifyUntilM q f = do
          else modifyUntilM q f   
 
 
+execUntilM q f x0 = MTS.execStateT (lift $ modifyUntilM q f) x0
+
+
+
 
 
 -- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`

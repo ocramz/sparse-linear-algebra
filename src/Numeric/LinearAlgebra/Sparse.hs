@@ -446,53 +446,55 @@ lu aa = (lf, ufin) where
 
 
 
--- lu' aa = (lf, ufin) where
---   (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
---   ufin = uUpdSparse (ixf, lf, uf) -- final U update
---   q (i, _, _) = i == (nrows aa - 1)
---   n = nrows aa
 
 
-lu' aa = do -- undefined
-  s0 <- luInit
-  (ixf, lf, uf) <- MTS.execStateT (modifyUntilM q luUpd) s0
-  -- ufin <- uUpdSparse (ixf, lf, uf)   -- final U update
-  return uf
-  -- return (lf, ufin)
-  where
-  n = nrows aa
-  q (i, _, _) = i == n - 1
-  luInit | isNz u00 = return (1, l0, u0)
-         | otherwise = throwM (NeedsPivoting "luInit" "U(0, 0)" :: MatrixException Double) where
-             -- l0 = insertCol (eye n) (scale (1/u00) (extractSubCol aa 0 (1, n-1))) 0
-             l0 = insertCol (eye n) ((extractSubCol aa 0 (1, n-1)) ./ u00 ) 0
-             u0 = insertRow (zeroSM n n) (extractRow aa 0) 0   -- initial U
-             u00 = u0 @@! (0,0)  -- make sure this is non-zero by applying permutation
-  luUpd (i, l, u) = do -- (i + 1, l', u') where
-    u' <- uUpdSparse (i, l, u)  -- update U
-    l' <- lUpdSparse (i, l, u') -- update L
-    return (i + 1, l', u')
-  uUpdSparse (ix, lmat, umat) = return $ insertRow umat (fromListSV n us) ix where
-    us = onRangeSparse (solveForUij ix) [ix .. n - 1]
-    solveForUij i j = a - p where
-      a = aa @@! (i, j)
-      p = contractSub lmat umat i j (i - 1)
-  lUpdSparse (ix, lmat, umat) = do -- insertCol lmat (fromListSV n ls) ix
-    ls <- lsm
-    return $ insertCol lmat (fromListSV n ls) ix
-    where
-      lsm = onRangeSparseM (`solveForLij` ix) [ix + 1 .. n - 1]
-      solveForLij i j
-        | isNz ujj = return $ (a - p)/ujj
-        | otherwise =
-           throwM (NeedsPivoting "solveForLij" (concat ["U", show (j, j)]) :: MatrixException Double)
+
+luM :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t), Epsilon t,
+        MonadThrow m) =>
+     SpMatrix t -> m (SpMatrix t, SpMatrix t)
+luM aa = do
+  let n = nrows aa
+      q (i, _, _) = i == n - 1
+      luInit | isNz u00 = return (1, l0, u0)
+             | otherwise = throwM (NeedsPivoting "luInit" "U(0, 0)" :: MatrixException Double) where
+          l0 = insertCol (eye n) ((extractSubCol aa 0 (1, n-1)) ./ u00 ) 0
+          u0 = insertRow (zeroSM n n) (extractRow aa 0) 0   -- initial U
+          u00 = u0 @@! (0,0)  -- make sure this is non-zero by applying permutation
+      luUpd aa n (i, l, u) = do -- (i + 1, l', u') 
+        u' <- uUpd aa n (i, l, u)  -- update U
+        l' <- lUpd aa n (i, l, u') -- update L
+        return (i + 1, l', u')
+      uUpd aa n (ix, lmat, umat) = do
+        let us = onRangeSparse (solveForUij ix) [ix .. n - 1]
+            solveForUij i j = a - p where
+              a = aa @@! (i, j)
+              p = contractSub lmat umat i j (i - 1)
+        return $ insertRow umat (fromListSV n us) ix
+      lUpd aa n (ix, lmat, umat) = do -- insertCol lmat (fromListSV n ls) ix
+        ls <- lsm
+        return $ insertCol lmat (fromListSV n ls) ix
         where
-         a = aa @@! (i, j)
-         ujj = umat @@! (j , j)   -- NB this must be /= 0
-         p = contractSub lmat umat i j (i - 1)
+          lsm = onRangeSparseM (`solveForLij` ix) [ix + 1 .. n - 1]
+          solveForLij i j
+            | isNz ujj = return $ (a - p)/ujj
+            | otherwise =
+               throwM (NeedsPivoting "solveForLij" (concat ["U", show (j, j)]) :: MatrixException Double)
+            where
+             a = aa @@! (i, j)
+             ujj = umat @@! (j , j)   -- NB this must be /= 0
+             p = contractSub lmat umat i j (i - 1)    
+  s0 <- luInit
+  (ixf, lf, uf) <- MTS.execStateT (modifyUntilM q (luUpd aa n)) s0
+  ufin <- uUpd aa n (ixf, lf, uf)   -- final U update
+  return (lf, ufin)
+    
 
 
 
+
+
+
+         
 
 
 
