@@ -177,8 +177,9 @@ spec = do
 --     (linSolve0 method aa b x0r)
 
 checkLinSolve method aa b x x0r =
-  nearZero . norm2 <$> linSolve0 method aa b x0r `catch` eh where
-    eh (NotConvergedE _ i xhat) = return $ xhat ^-^ x
+  nearZero . norm2 <$> linSolve0 method aa b x0r -- `catch` eh
+  -- where
+  --   eh (NotConvergedE _ i xhat) = return $ xhat ^-^ x
 
 checkLinSolveR
   :: (MonadIO m, MonadCatch m) =>

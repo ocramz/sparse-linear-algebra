@@ -65,7 +65,7 @@ modifyUntilM q f = do
          else modifyUntilM q f   
 
 
-execUntilM q f x0 = MTS.execStateT (lift $ modifyUntilM q f) x0
+execUntilM q f x0 = execState (modifyUntilM q f) x0
 
 
 

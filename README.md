@@ -72,7 +72,7 @@ The `fromListSM` function creates a sparse matrix from a collection of its entri
 
     fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
 
-and, in case you are following along in a GHCi session (denoted from now on by `λ>`), you can try it out like this:
+and, in case you have a running GHCi session (the terminal is denoted from now on by `λ>`), you can try something like this:
 
     λ> amat = fromListSM (3,3) [(0,0,2),(1,0,4),(1,1,3),(1,2,2),(2,2,5)] :: SpMatrix Double
 
@@ -102,9 +102,9 @@ Note: sparse data should only contain non-zero entries not to waste memory and c
 
 ### Matrix operations
 
-There are a few common matrix factorizations available; in the following example we compute the LU factorization of a matrix and verify it with the matrix-matrix product `##`  :
+There are a few common matrix factorizations available; in the following example we compute the LU factorization of matrix `amat` and verify it with the matrix-matrix product `##` of its factors :
 
-    λ> (l, u) = lu amat
+    λ> (l, u) <- lu amat
     λ> prd $ l ## u
     ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
 
@@ -134,7 +134,7 @@ Sometimes we need to compute matrix-matrix transpose products, which is why the 
     12.0 9.0 6.0
     8.0 6.0 29.0
     
-    λ> l = chol amat'
+    λ> l <- chol amat'
     λ> prd $ l ##^ l
     ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
 
@@ -149,7 +149,7 @@ In the last example we have also shown the Cholesky decomposition (M = L L^T whe
 Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `<\>` (inspired by Matlab's "backslash" function. Here we use GMRES as default solver method) :
 
     λ> b = fromListDenseSV 3 [3,2,5] :: SpVector Double
-    λ> x = amat <\> b
+    λ> x <- amat <\> b
     λ> prd x
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
@@ -164,7 +164,7 @@ The result can be verified by computing the matrix-vector action `amat #> x`, wh
 
 The library also provides a forward-backward substitution solver (`luSolve`) based on a triangular factorization of the system matrix (usually LU). This should be the preferred for solving smaller, dense systems. Using the data defined above we can cross-verify the two solution methods:
 
-    λ> x' = luSolve l u b
+    λ> x' <- luSolve l u b
     λ> prd x'
 
     ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
