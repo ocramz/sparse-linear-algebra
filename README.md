@@ -18,14 +18,12 @@ Contents :
 
     * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems)
 
+    * Moore-Penrose pseudoinverse (`pinv`) (rectangular systems)
+
 * Direct linear solvers
 
     * LU-based (`luSolve`)
-
-* "Rectangular" linear solvers
-
-    * Moore-Penrose pseudoinverse (`pinv`)
-
+    
 * Matrix factorization algorithms
 
     * QR (`qr`)
