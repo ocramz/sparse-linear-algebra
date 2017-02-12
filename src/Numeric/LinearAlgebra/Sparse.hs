@@ -409,50 +409,10 @@ cholDiag aa ll i | i == 0 = sqrt <$> aai
 {- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
 -- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
-lu :: (VectorSpace (SpVector t), Epsilon t, Fractional t, Elt t) =>
-     SpMatrix t -> (SpMatrix t, SpMatrix t)
-lu aa = (lf, ufin) where
-  (ixf, lf, uf) = execState (modifyUntil q luUpd) luInit
-  ufin = uUpdSparse (ixf, lf, uf) -- final U update
-  q (i, _, _) = i == (nrows aa - 1)
-  n = nrows aa
-  luInit = (1, l0, u0) where
---  l0 = insertCol (eye n) ((1/u00) .* extractSubCol aa 0 (1,n - 1)) 0  -- initial L
-    l0 = insertCol (eye n) (scale (1/u00) (extractSubCol aa 0 (1, n-1))) 0
-    u0 = insertRow (zeroSM n n) (extractRow aa 0) 0                     -- initial U
-    u00 = u0 @@ (0,0)  -- make sure this is non-zero by applying permutation
-  luUpd (i, l, u) = (i + 1, l', u') where
-    u' = uUpdSparse (i, l, u)  -- update U
-    l' = lUpdSparse (i, l, u') -- update L
-  uUpdSparse (ix, lmat, umat) = insertRow umat (fromListSV n us) ix where
-    us = onRangeSparse (solveForUij ix) [ix .. n - 1]
-    solveForUij i j = a - p where
-      a = aa @@! (i, j)
-      p = contractSub lmat umat i j (i - 1)
-  lUpdSparse (ix, lmat, umat) = insertCol lmat (fromListSV n ls) ix where
-    ls = onRangeSparse (`solveForLij` ix) [ix + 1 .. n - 1]
-    solveForLij i j
-     | isNz ujj = (a - p)/ujj
-     | otherwise =
-        -- throwM (NeedsPivoting "solveForLij" (concat ["U",show (j,j)]) )
-        error $ unwords ["solveForLij : U",
-                       show (j ,j),
-                       "is close to 0. Permute rows in order to have a nonzero diagonal of U"]
-      where
-       a = aa @@! (i, j)
-       ujj = umat @@! (j , j)   -- NB this must be /= 0
-       p = contractSub lmat umat i j (i - 1)
-
-
-
-
-
-
-
-luM :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t), Epsilon t,
+lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t), Epsilon t,
         MonadThrow m) =>
      SpMatrix t -> m (SpMatrix t, SpMatrix t)
-luM aa = do
+lu aa = do
   let n = nrows aa
       q (i, _, _) = i == n - 1
       luInit | isNz u00 = return (1, l0, u0)
@@ -593,14 +553,16 @@ jacobiPreconditioner = reciprocal . extractDiag
 -- ** Incomplete LU
 
 -- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
-ilu0 :: (Elt a, Epsilon a, VectorSpace (SpVector a)) =>
-   SpMatrix a -> (SpMatrix a, SpMatrix a)
-ilu0 aa = (lh, uh) where
-  (l, u) = lu aa
-  lh = sparsifyLU l aa
-  uh = sparsifyLU u aa
-  sparsifyLU m m2 = ifilterSM f m where
-    f i j _ = isJust (lookupSM m2 i j)
+ilu0 :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
+      Epsilon t, MonadThrow m) =>
+     SpMatrix t -> m (SpMatrix t, SpMatrix t)
+ilu0 aa = do
+  (l, u) <- lu aa
+  let lh = sparsifyLU l aa
+      uh = sparsifyLU u aa
+      sparsifyLU m m2 = ifilterSM f m where
+        f i j _ = isJust (lookupSM m2 i j)
+  return (lh, uh)
 
 
 -- ** SSOR

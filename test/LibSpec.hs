@@ -38,8 +38,6 @@ import Test.Hspec.QuickCheck
 import Test.QuickCheck
 
 
-
-
 main :: IO ()
 main = hspec spec
 
@@ -157,9 +155,9 @@ spec = do
       checkQr aa3cx >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
     it "lu (4 x 4 dense)" $
-      checkLu tm6 `shouldBe` True
+      checkLu tm6 >>= (`shouldBe` True)
     it "lu (10 x 10 sparse)" $
-      checkLu tm7 `shouldBe` True
+      checkLu tm7 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 `shouldBe` True
@@ -232,12 +230,13 @@ checkQr a = do
 
 
 {- LU -}
-checkLu :: (Elt a, MatrixRing (SpMatrix a), VectorSpace (SpVector a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a) =>
-     SpMatrix a -> Bool
-checkLu a = c1 && c2 where
-  (l, u) = lu a
-  c1 = nearZero (normFrobenius ((l #~# u) ^-^ a))
-  c2 = isUpperTriSM u && isLowerTriSM l
+-- checkLu :: (Elt a, MatrixRing (SpMatrix a), VectorSpace (SpVector a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a) =>
+--      SpMatrix a -> Bool
+checkLu a = do -- c1 && c2 where
+  (l, u) <- lu a
+  let c1 = nearZero (normFrobenius ((l #~# u) ^-^ a))
+      c2 = isUpperTriSM u && isLowerTriSM l
+  return (c1 && c2)
 
 
 
@@ -253,10 +252,10 @@ checkChol a = c1 && c2 where
 
 {- direct linear solver -}
 
-checkLuSolve :: (MonadThrow m, Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t, Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon (Magnitude (SpVector t)), Epsilon t) =>
-     SpMatrix t -> SpVector t -> m Bool
+-- checkLuSolve :: (MonadThrow m, Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t, Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon (Magnitude (SpVector t)), Epsilon t) =>
+--      SpMatrix t -> SpVector t -> m Bool
 checkLuSolve amat rhs = do
-  let (lmat, umat) = lu amat
+  (lmat, umat) <- lu amat
   xlu <- luSolve lmat umat rhs
   return $ nearZero (norm2Sq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
        
