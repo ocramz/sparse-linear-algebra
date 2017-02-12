@@ -193,7 +193,7 @@ scale n = fmap (* n)
 
 -- | A matrix ring is any collection of matrices over some ring R that form a ring under matrix addition and matrix multiplication
 
-class AdditiveGroup m => MatrixRing m where
+class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
   type MatrixNorm m :: *
   (##) :: m -> m -> m
   (##^) :: m -> m -> m   -- ^ A B^T
@@ -254,29 +254,33 @@ class Functor f => FiniteDim f where
   type FDSize f :: *
   dim :: f a -> FDSize f
 
+class FiniteDim' f where
+  type FDSize' f :: *
+  dim' :: f -> FDSize' f
 
--- | unary dimension-checking bracket
-withDim :: (FiniteDim f, Show s) =>
-     f e
-     -> (FDSize f -> f e -> Bool)
-     -> (f e -> c)
-     -> String
-     -> (f e -> s)
-     -> c
-withDim x p f e ef | p (dim x) x = f x
-                   | otherwise = error e' where e' = e ++ show (ef x)
 
--- | binary dimension-checking bracket
-withDim2 :: (FiniteDim f, FiniteDim g, Show s) =>
-     f e
-     -> g e
-     -> (FDSize f -> FDSize g -> f e -> g e -> Bool)
-     -> (f e -> g e -> c)
-     -> String
-     -> (f e -> g e -> s)
-     -> c
-withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
-                      | otherwise = error e' where e' = e ++ show (ef x y)
+-- -- | unary dimension-checking bracket
+-- withDim :: (FiniteDim f, Show s) =>
+--      f e
+--      -> (FDSize f -> f e -> Bool)
+--      -> (f e -> c)
+--      -> String
+--      -> (f e -> s)
+--      -> c
+-- withDim x p f e ef | p (dim x) x = f x
+--                    | otherwise = error e' where e' = e ++ show (ef x)
+
+-- -- | binary dimension-checking bracket
+-- withDim2 :: (FiniteDim f, FiniteDim g, Show s) =>
+--      f e
+--      -> g e
+--      -> (FDSize f -> FDSize g -> f e -> g e -> Bool)
+--      -> (f e -> g e -> c)
+--      -> String
+--      -> (f e -> g e -> s)
+--      -> c
+-- withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
+--                       | otherwise = error e' where e' = e ++ show (ef x y)
 
 
 
@@ -290,12 +294,19 @@ class HasData f a where
   nnz :: f a -> Int
   dat :: f a -> HDData f a
 
+class HasData' f where
+  type HDD f :: *
+  nnz' :: f -> Int
+  dat' :: f -> HDD f
+
 
 -- * Sparse : sparse datastructures
 
 class (FiniteDim f, HasData f a) => Sparse f a where
   spy :: Fractional b => f a -> b
 
+class (FiniteDim' f, HasData' f) => Sparse' f where
+  spy' :: Fractional b => f -> b
 
 
 

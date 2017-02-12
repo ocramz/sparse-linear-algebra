@@ -122,9 +122,9 @@ spec = do
   -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
   --   -- it "TFQMR (2 x 2 dense)" $
   --   it "GMRES (2 x 2 dense)" $
-  --     checkLinSolveR GMRES_ aa0 b0 x0true `shouldBe` True
+  --     checkLinSolveR GMRES_ aa0 b0 x0true >>= (`shouldBe` True)
   --   it "GMRES (3 x 3 sparse, symmetric pos.def.)" $
-  --     checkLinSolveR GMRES_ aa2 b2 x2 `shouldBe` True
+  --     checkLinSolveR GMRES_ aa2 b2 x2 >>= (`shouldBe` True)
   --   it "GMRES (4 x 4 sparse)" $
   --     checkLinSolveR GMRES_ aa1 b1 x1 `shouldBe` True
   --   it "BCG (2 x 2 dense)" $
@@ -160,12 +160,12 @@ spec = do
       checkLu tm7 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
-      checkChol tm7 `shouldBe` True
+      checkChol tm7 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration, early breakdown detection (Real)" $ do      
     it "arnoldi (4 x 4 dense)" $
-      checkArnoldi tm6 4 `shouldBe` True
+      checkArnoldi tm6 4 >>= (`shouldBe` True)
     it "arnoldi (5 x 5 sparse)" $
-      checkArnoldi tm7 5 `shouldBe` True    
+      checkArnoldi tm7 5 >>= (`shouldBe` True)
 
 
 {- linear systems -}
@@ -220,6 +220,8 @@ checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
 
 -- checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
 --      SpMatrix a -> Bool
+checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     SpMatrix a -> m Bool
 checkQr a = do
   (q, r) <- qr a
   let c1 = nearZero $ normFrobenius ((q #~# r) ^-^ a)
@@ -242,12 +244,13 @@ checkLu a = do -- c1 && c2 where
 
 {- Cholesky -}
 
-checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
-     SpMatrix a -> Bool
-checkChol a = c1 && c2 where
-  l = chol a
-  c1 = nearZero $ normFrobenius ((l ##^ l) ^-^ a)
-  c2 = isLowerTriSM l
+-- checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
+--      SpMatrix a -> Bool
+checkChol a = do -- c1 && c2 where
+  l <- chol a
+  let c1 = nearZero $ normFrobenius ((l ##^ l) ^-^ a)
+      c2 = isLowerTriSM l
+  return $ c1 && c2
 
 
 {- direct linear solver -}
@@ -262,13 +265,14 @@ checkLuSolve amat rhs = do
   
 {- Arnoldi iteration -}
 -- checkArnoldi :: (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> Bool
-checkArnoldi aa kn = nearZero (normFrobenius $ lhs ^-^ rhs) where
-  b = onesSV (nrows aa)
-  (q, h) = arnoldi aa b kn
-  (m, n) = dim q
-  q' = extractSubmatrix q (0, m - 1) (0, n - 2) -- q' = all but one column of q
-  rhs = q #~# h
-  lhs = aa #~# q'
+checkArnoldi aa kn = do -- nearZero (normFrobenius $ lhs ^-^ rhs) where
+  let b = onesSV (nrows aa)
+  (q, h) <- arnoldi aa b kn
+  let (m, n) = dim q
+      q' = extractSubmatrix q (0, m - 1) (0, n - 2) -- q' = all but one column of q
+      rhs = q #~# h
+      lhs = aa #~# q'
+  return $ nearZero (normFrobenius $ lhs ^-^ rhs)
 
 
 
@@ -565,14 +569,14 @@ prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 
 -- | Cholesky factorization of a random SPD matrix 
-prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) => PropMatSPD a -> Bool
+prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     PropMatSPD a -> m Bool
 prop_Cholesky (PropMatSPD m) = checkChol m
 
 
 -- | QR decomposition
--- prop_QR :: (Elt a, MatrixRing (SpMatrix a),
---       Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
---      PropMatI a -> Bool
+prop_QR :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     PropMatI a -> m Bool
 prop_QR (PropMatI m) = checkQr m
 
 
