@@ -25,6 +25,7 @@ import Control.Monad.IO.Class
 
 import Data.Complex
 -- import Data.Either (either)
+import Data.Typeable
 
 import Data.VectorSpace hiding (magnitude)
 
@@ -119,26 +120,26 @@ spec = do
       -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
     --   prop_psd aa2 v
     
-  -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
-  --   -- it "TFQMR (2 x 2 dense)" $
-  --   it "GMRES (2 x 2 dense)" $
-  --     checkLinSolveR GMRES_ aa0 b0 x0true >>= (`shouldBe` True)
-  --   it "GMRES (3 x 3 sparse, symmetric pos.def.)" $
-  --     checkLinSolveR GMRES_ aa2 b2 x2 >>= (`shouldBe` True)
-  --   it "GMRES (4 x 4 sparse)" $
-  --     checkLinSolveR GMRES_ aa1 b1 x1 `shouldBe` True
-  --   it "BCG (2 x 2 dense)" $
-  --     checkLinSolveR BCG_ aa0 b0 x0true `shouldBe` True
-  --   it "BCG (3 x 3 sparse, symmetric pos.def.)" $
-  --     checkLinSolveR BCG_ aa2 b2 x2 `shouldBe` True
-  --   -- it "BiCGSTAB (2 x 2 dense)" $ 
-  --   --   nearZero (normSq (linSolve BICGSTAB_ aa0 b0 ^-^ x0true)) `shouldBe` True
-  --   it "BiCGSTAB (3 x 3 sparse, symmetric pos.def.)" $ 
-  --     checkLinSolveR BICGSTAB_ aa2 b2 x2 `shouldBe` True
-  --   it "CGS (2 x 2 dense)" $ 
-  --     checkLinSolveR CGS_ aa0 b0 x0true `shouldBe` True
-  --   it "CGS (3 x 3 sparse, SPD)" $ 
-  --     checkLinSolveR CGS_ aa2 b2 x2 `shouldBe` True
+  describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
+    -- it "TFQMR (2 x 2 dense)" $
+    it "GMRES (2 x 2 dense)" $
+      checkLinSolveR GMRES_ aa0 b0 x0true >>= (`shouldBe` True)
+    it "GMRES (3 x 3 sparse, symmetric pos.def.)" $
+      checkLinSolveR GMRES_ aa2 b2 x2 >>= (`shouldBe` True)
+    it "GMRES (4 x 4 sparse)" $
+      checkLinSolveR GMRES_ aa1 b1 x1 >>= (`shouldBe` True)
+    it "BCG (2 x 2 dense)" $
+      checkLinSolveR BCG_ aa0 b0 x0true >>= (`shouldBe` True)
+    it "BCG (3 x 3 sparse, symmetric pos.def.)" $
+      checkLinSolveR BCG_ aa2 b2 x2 >>= (`shouldBe` True)
+    -- it "BiCGSTAB (2 x 2 dense)" $ 
+    --   nearZero (normSq (linSolve BICGSTAB_ aa0 b0 ^-^ x0true)) `shouldBe` True
+    it "BiCGSTAB (3 x 3 sparse, symmetric pos.def.)" $ 
+      checkLinSolveR BICGSTAB_ aa2 b2 x2 >>= (`shouldBe` True)
+    it "CGS (2 x 2 dense)" $ 
+      checkLinSolveR CGS_ aa0 b0 x0true >>= (`shouldBe` True)
+    it "CGS (3 x 3 sparse, SPD)" $ 
+      checkLinSolveR CGS_ aa2 b2 x2 >>= (`shouldBe` True)
   
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
     it "luSolve (4 x 4 sparse)" $ 
@@ -176,10 +177,14 @@ spec = do
 --     (\xhat -> nearZero (norm2Sq (x ^-^ xhat)))
 --     (linSolve0 method aa b x0r)
 
-checkLinSolve method aa b x x0r =
+checkLinSolve' method aa b x x0r =
   nearZero . norm2 <$> linSolve0 method aa b x0r -- `catch` eh
   -- where
   --   eh (NotConvergedE _ i xhat) = return $ xhat ^-^ x
+
+checkLinSolve method aa b x x0r = do
+  xhat <- linSolve0 method aa b x0r
+  return $ nearZero $ norm2 (x ^-^ xhat)
 
 checkLinSolveR
   :: (MonadIO m, MonadCatch m) =>
@@ -219,8 +224,6 @@ checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
 
 {- QR-}
 
--- checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
---      SpMatrix a -> Bool
 checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
      SpMatrix a -> m Bool
 checkQr a = do
@@ -233,9 +236,11 @@ checkQr a = do
 
 
 {- LU -}
--- checkLu :: (Elt a, MatrixRing (SpMatrix a), VectorSpace (SpVector a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a) =>
---      SpMatrix a -> Bool
-checkLu a = do -- c1 && c2 where
+
+checkLu :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
+      VectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
+     SpMatrix t -> m Bool
+checkLu a = do 
   (l, u) <- lu a
   let c1 = nearZero (normFrobenius ((l #~# u) ^-^ a))
       c2 = isUpperTriSM u && isLowerTriSM l
@@ -245,8 +250,8 @@ checkLu a = do -- c1 && c2 where
 
 {- Cholesky -}
 
--- checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon (MatrixNorm (SpMatrix a)), Epsilon a, Floating a) =>
---      SpMatrix a -> Bool
+checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     SpMatrix a -> m Bool
 checkChol a = do -- c1 && c2 where
   l <- chol a
   let c1 = nearZero $ normFrobenius ((l ##^ l) ^-^ a)
@@ -256,8 +261,10 @@ checkChol a = do -- c1 && c2 where
 
 {- direct linear solver -}
 
--- checkLuSolve :: (MonadThrow m, Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t, Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon (Magnitude (SpVector t)), Epsilon t) =>
---      SpMatrix t -> SpVector t -> m Bool
+checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
+      Epsilon t, MonadThrow m) =>
+     SpMatrix t -> SpVector t -> m Bool
 checkLuSolve amat rhs = do
   (lmat, umat) <- lu amat
   xlu <- luSolve lmat umat rhs
@@ -265,7 +272,11 @@ checkLuSolve amat rhs = do
        
   
 {- Arnoldi iteration -}
--- checkArnoldi :: (Epsilon a, Floating a, Eq a) => SpMatrix a -> Int -> Bool
+
+checkArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Normed (SpVector t), MatrixRing (SpMatrix t),
+      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
+     SpMatrix t -> Int -> m Bool
 checkArnoldi aa kn = do -- nearZero (normFrobenius $ lhs ^-^ rhs) where
   let b = onesSV (nrows aa)
   (q, h) <- arnoldi aa b kn

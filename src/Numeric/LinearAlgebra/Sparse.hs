@@ -590,10 +590,10 @@ luSolve ll uu b
       triUpperSolve uu w
   | otherwise = throwM (NonTriangularException "luSolve")
 
-
-
-
-
+-- | Forward substitution
+triLowerSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+      Epsilon t, MonadThrow m) =>
+     SpMatrix t -> SpVector t -> m (SpVector t)
 triLowerSolve ll b = do
   let q (_, i) = i == nb
       nb = svDim b
@@ -621,8 +621,11 @@ triLowerSolve ll b = do
 
 
 
--- | NB in the computation of `xi` we must rebalance the subrow indices because `dropSV` does that too, in order to take the inner product with consistent index pairs
-
+-- NB in the computation of `xi` we must rebalance the subrow indices (extractSubRow_RK) because `dropSV` does that too, in order to take the inner product with consistent index pairs
+-- | Backward substitution
+triUpperSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+      Epsilon t, MonadThrow m) =>
+     SpMatrix t -> SpVector t -> m (SpVector t)
 triUpperSolve uu w = do 
   let q (_, i) = i == (- 1)
       nw = svDim w

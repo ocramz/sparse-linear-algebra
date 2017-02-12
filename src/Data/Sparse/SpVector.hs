@@ -86,6 +86,7 @@ instance FiniteDim SpVector where
 instance HasData SpVector a where
   type HDData SpVector a = IntM a
   dat = svData
+  -- nnz (SV _ x) = length (filterI isNz x)
 
 instance Sparse SpVector a where
   spy = spySV

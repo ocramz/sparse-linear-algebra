@@ -23,9 +23,9 @@ module Data.Sparse.Common
          extractSubRow_RK, extractSubCol_RK,
          fromCols, fromColsL, toCols) where
 
-import Control.Exception
-import Control.Exception.Common
-import Control.Monad.Catch
+-- import Control.Exception
+-- import Control.Exception.Common
+-- import Control.Monad.Catch
 
 import Data.Sparse.Utils as X
 import Data.Sparse.PPrint as X
