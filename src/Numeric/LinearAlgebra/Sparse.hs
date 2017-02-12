@@ -501,7 +501,7 @@ arnoldi aa b kn | n == nb = return (fromCols qvfin, fromListSM (nmax + 1, nmax) 
       q0 = normalize2 b   -- starting basis vector
       aq0 = aa #> q0       -- A q0
       h11 = q0 `dot` aq0          
-      q1nn = (aq0 ^-^ (h11 .* q0))
+      q1nn = aq0 ^-^ (h11 .* q0)
       hh1 = V.fromList [(0, 0, h11), (1, 0, h21)] where        
         h21 = norm2' q1nn
       q1 = normalize2 q1nn       -- q1 `dot` q0 ~ 0
@@ -512,7 +512,7 @@ arnoldi aa b kn | n == nb = return (fromCols qvfin, fromListSM (nmax + 1, nmax) 
     hhcoli = fmap (`dot` aqi) qv -- H_{1, i}, H_{2, i}, .. , H_{m + 1, i}
     zv = zeroSV m
     qipnn =
-      aqi ^-^ (V.foldl' (^+^) zv (V.zipWith (.*) hhcoli qv)) -- unnormalized q_{i+1}
+      aqi ^-^ V.foldl' (^+^) zv (V.zipWith (.*) hhcoli qv) -- unnormalized q_{i+1}
     qipnorm = norm2' qipnn      -- normalization factor H_{i+1, i}
     qip = normalize2 qipnn              -- q_{i + 1}
     hh' = (V.++) hh (indexed2 $ V.snoc hhcoli qipnorm) where -- update H
@@ -681,7 +681,6 @@ gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
 gmres aa b = do
   let m = ncols aa
   (qa, ha) <- arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
-  
     -- b' = (transposeSe qa) #> b
   let b' = norm2' b .* ei mp1 1  -- b rotated back to canonical basis by Q^T
         where mp1 = nrows ha     -- = 1 + (# Arnoldi iterations)
@@ -720,7 +719,7 @@ cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
     x1 = x ^+^ (alphai .* p)
     r1 = r ^-^ (alphai .* (aa #> p))
     beta = (r1 `dot` r1) / (r `dot` r)
-    p1 = transposeSM aa #> r ^+^ (beta .* p)
+    p1 = transpose aa #> r ^+^ (beta .* p)
 
 
 
@@ -748,7 +747,7 @@ bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
     alpha = (r `dot` rhat) / (aap `dot` phat)
     x1 = x ^+^ (alpha .* p)
     r1 = r ^-^ (alpha .* aap)
-    rhat1 = rhat ^-^ (alpha .* (transposeSM aa #> phat))
+    rhat1 = rhat ^-^ (alpha .* (transpose aa #> phat))
     beta = (r1 `dot` rhat1) / (r `dot` rhat)
     p1 = r1 ^+^ (beta .* p)
     phat1 = rhat1 ^+^ (beta .* phat)
