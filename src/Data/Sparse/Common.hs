@@ -367,7 +367,7 @@ printDenseSM sm = do
 
 
 
-toDenseListClip :: (Show a, Num a, Epsilon a) => SpVector a -> Int -> String
+toDenseListClip :: (Show a, Epsilon a) => SpVector a -> Int -> String
 toDenseListClip sv ncomax
   | dim sv > ncomax = unwords (map showNz h) ++  " ... " ++ showNz t
   | otherwise = unwords $ showNz <$> dr
@@ -375,7 +375,7 @@ toDenseListClip sv ncomax
            h = take (ncomax - 2) dr
            t = last dr
 
-printDenseSV :: (Show t, Num t, Epsilon t) => SpVector t -> IO ()
+printDenseSV :: (Show t, Epsilon t) => SpVector t -> IO ()
 printDenseSV sv = do
   newline
   putStrLn $ sizeStrSV sv

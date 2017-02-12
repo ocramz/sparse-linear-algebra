@@ -27,6 +27,7 @@ import Control.Monad.State.Strict
 -- import Control.Monad.Trans.Writer.CPS
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.State.Strict  as MTS -- (runStateT)
+import Data.Foldable (foldrM)
 
 import Data.VectorSpace
 
@@ -68,7 +69,7 @@ modifyUntilM q f = do
 
 -- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
 untilConvergedG0 ::
-  (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s, Show v, Typeable v) =>
+  (Normed v, MonadThrow m, MonadIO m, Typeable (Magnitude v), Typeable s, Show s) =>
      String
      -> IterationConfig s v
      -> v                    -- ^ Known value
@@ -181,6 +182,42 @@ modifyInspectGuardedM fname config sf qconverg qdiverg qfinal f x0
              
 
 
+-- | Some useful combinators
+
+
+-- | Apply a function over a range of integer indices, zip the result with it and filter out the almost-zero entries
+onRangeSparse :: Epsilon b => (Int -> b) -> [Int] -> [(Int, b)]
+onRangeSparse f ixs = foldr ins [] ixs where
+  ins x xr | isNz (f x) = (x, f x) : xr
+           | otherwise = xr
+
+-- | ", monadic version
+onRangeSparseM :: (Epsilon b, Foldable t, Monad m) =>
+     (a -> m b) -> t a -> m [(a, b)]
+onRangeSparseM f ixs = unfoldZipM mf f ixs where
+  mf x = isNz <$> f x
+  
+
+
+unfoldZipM0 :: (Foldable t, Monad m) =>
+     (a -> Bool) -> (a -> b) -> t a -> m [(a, b)]
+unfoldZipM0 q f = unfoldZipM (pure . q) (pure . f)
+
+
+unfoldZipM :: (Foldable t, Monad m) =>
+     (a -> m Bool) -> (a -> m b) -> t a -> m [(a, b)]
+unfoldZipM q f ixs = foldrM insf [] ixs where
+  insf x xr = do
+    qx <- q x
+    if qx
+    then do
+      y <- f x
+      pure $ (x, y) : xr
+    else pure xr
+
+-- | A combinator I don't know how to call
+combx :: Functor f => (a -> b) -> (t -> f a) -> t -> f b
+combx g f x = g <$> f x 
 
 
           
