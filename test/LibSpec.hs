@@ -20,7 +20,7 @@ import Numeric.LinearAlgebra.Sparse
 -- import Control.Monad (replicateM)
 import Control.Monad.Catch -- (MonadThrow (..))
 import Control.Monad.IO.Class
--- import Control.Monad.Primitive
+import Control.Monad.State
 -- import Data.Foldable (foldrM)
 
 import Data.Complex
@@ -128,6 +128,8 @@ spec = do
       checkLinSolveR GMRES_ aa2 b2 x2 >>= (`shouldBe` True)
     it "GMRES (4 x 4 sparse)" $
       checkLinSolveR GMRES_ aa1 b1 x1 >>= (`shouldBe` True)
+    it "GMRES (5 x 5 sparse)" $
+      checkLinSolveR GMRES_ tm7 tvb7 tvx7 >>= (`shouldBe` True)  
     it "BCG (2 x 2 dense)" $
       checkLinSolveR BCG_ aa0 b0 x0true >>= (`shouldBe` True)
     it "BCG (3 x 3 sparse, symmetric pos.def.)" $
@@ -144,20 +146,24 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
     it "luSolve (4 x 4 sparse)" $ 
       checkLuSolve aa1 b1 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do    
-    it "qr (4 x 4 sparse)" $
-      checkQr tm4 >>= (`shouldBe` True)
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
     it "qr (3 x 3 dense)" $ 
       checkQr tm2 >>= (`shouldBe` True)
-    it "qr (10 x 10 sparse)" $
+    it "qr (4 x 4 sparse)" $
+      checkQr tm4 >>= (`shouldBe` True)
+    it "qr (5 x 5 sparse)" $
       checkQr tm7 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
     it "qr (2 x 2 dense)" $
       checkQr aa3cx >>= (`shouldBe` True)
+    it "qr (3 x 3 dense)" $
+      checkQr aa4c >>= (`shouldBe` True)  
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
+    it "lu (3 x 3 dense)" $
+      checkLu tm2 >>= (`shouldBe` True)
     it "lu (4 x 4 dense)" $
       checkLu tm6 >>= (`shouldBe` True)
-    it "lu (10 x 10 sparse)" $
+    it "lu (5 x 5 sparse)" $
       checkLu tm7 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
@@ -214,12 +220,13 @@ checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
 
 
 -- {- Givens rotation-}
--- checkGivens1 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, Floating a) =>
---      SpMatrix a -> IxRow -> IxCol -> (a, Bool)
--- checkGivens1 tm i j = (rij, nearZero rij) where
---   g = givens tm i j
---   r = g ## tm
---   rij = r @@ (i, j)
+checkGivens1 :: (MonadThrow m, Elt a, MatrixRing (SpMatrix a), Epsilon a) =>
+     SpMatrix a -> IxRow -> IxCol -> m (a, Bool)
+checkGivens1 tm i j = do -- (rij, nearZero rij) where
+  g <- givens tm i j
+  let r = g ## tm
+      rij = r @@ (i, j)
+  return (rij, nearZero rij)
 
 
 {- QR-}
@@ -233,6 +240,15 @@ checkQr a = do
       c3 = isUpperTriSM r
   return $ c1 && c2 && c3
 
+
+stepQR a = do
+  (q, r) <- qr a
+  return $ r #~# q
+
+stepQRix (i, a) = do
+  a' <- stepQR a
+  return (i + 1, a')
+  
 
 
 {- LU -}
@@ -311,7 +327,13 @@ whenFail1 :: Testable prop => (t -> IO ()) -> (t -> prop) -> t -> Property
 whenFail1 io p x = whenFail (io x) (property $ p x)
 
 
+sampleWith :: (a -> IO b) -> Gen a -> IO ()
+sampleWith pf g = do
+  cases <- sample' g
+  mapM_ pf cases
 
+sampleSp :: PrintDense a => Gen a -> IO ()
+sampleSp = sampleWith prd
 
 
 
@@ -754,6 +776,13 @@ b4 = fromListDenseSV 3 [-3,-3,-3] :: SpVector Double
 
 
 
+aa5c :: SpMatrix (Complex Double)
+aa5c = fromListDenseSM 4 cv where
+  cv = zipWith (:+) [1..16] [16,15..1]
+
+
+
+
 
 
 tm0, tm1, tm2, tm3, tm4, tm5, tm6 :: SpMatrix Double
@@ -792,6 +821,10 @@ tm7 = a ^+^ b ^+^ c where
   a = mkSubDiagonal n 1 $ replicate n (-1)
   b = mkSubDiagonal n 0 $ replicate n 2
   c = mkSubDiagonal n (-1) $ replicate n (-1)
+
+tvx7 = mkSpVR 5 [3,8,-12,4,9]
+
+tvb7 = tm7 #> tvx7
 
 
 

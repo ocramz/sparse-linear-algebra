@@ -1,4 +1,5 @@
 {-# language FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, TypeFamilies #-}
+{-# language DeriveFunctor, DeriveFoldable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -52,7 +53,7 @@ import Data.VectorSpace
 
 data SpMatrix a = SM {smDim :: {-# UNPACK #-} !(Rows, Cols),
                       smData :: !(IntM (IntM a))}
-                deriving Eq
+                deriving (Eq, Functor, Foldable)
 
 
 
@@ -64,14 +65,14 @@ sizeStr sm =
   sy = spy sm :: Double
 
 instance Show a => Show (SpMatrix a) where
-  show sm@(SM _ x) = "SM " ++ sizeStr sm ++ " "++ show (toList $ toList <$> x)
+  show sm@(SM _ x) = unwords ["SM",sizeStr sm,show (toList $ toList <$> x)]
   -- show sm@(SM _ x) = show x
 
-instance Functor SpMatrix where
-  fmap f (SM d md) = SM d ((fmap . fmap) f md)
+-- instance Functor SpMatrix where
+--   fmap f (SM d md) = SM d ((fmap . fmap) f md)
 
--- instance Foldable SpMatrix where
---   foldr f x (SM _ im) = foldr f x im
+
+    
 
 instance Set SpMatrix where
   liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)

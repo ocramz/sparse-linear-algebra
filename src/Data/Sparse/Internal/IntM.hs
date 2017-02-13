@@ -1,4 +1,4 @@
-{-# language GeneralizedNewtypeDeriving, DeriveFunctor, CPP, TypeFamilies, FlexibleInstances #-}
+{-# language GeneralizedNewtypeDeriving, DeriveFunctor, DeriveFoldable, CPP, TypeFamilies, FlexibleInstances #-}
 module Data.Sparse.Internal.IntM where
 
 import Data.Sparse.Utils
@@ -15,6 +15,7 @@ import qualified Data.IntMap as IM
 
 -- | A synonym for IntMap 
 newtype IntM a = IntM {unIM :: IM.IntMap a} deriving (Eq, Show, Functor, Foldable)
+
 
 empty = IntM IM.empty
 

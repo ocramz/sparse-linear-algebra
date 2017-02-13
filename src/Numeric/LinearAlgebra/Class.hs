@@ -59,20 +59,21 @@ instance RealFloat e => Elt (Complex e) where
 v ./ n = recip n .* v
 
 -- | Convex combination of two vectors (NB: 0 <= `a` <= 1). 
--- lerp :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
--- lerp a u v = a .* u ^+^ ((1-a) .* v)
+lerp :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
+lerp a u v = a .* u ^+^ ((1-a) .* v)
 
 
 -- linearCombination :: (VectorSpace v , Foldable t) => t (Scalar v, v) -> v
 -- linearCombination  =  foldr (\(a, x) (b, y) -> (a .* x) ^+^ (b .* y)) 
 
-
+-- linComb a v = a .* v
 
 
 
 
 -- * Hilbert space (inner product)
 
+-- | Inner product
 dot :: InnerSpace v => v -> v -> Scalar v
 dot = (<.>)
   

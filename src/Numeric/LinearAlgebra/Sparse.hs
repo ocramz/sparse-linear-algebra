@@ -53,7 +53,8 @@ module Numeric.LinearAlgebra.Sparse
          -- randSpMat, randSpVec,
          -- * Iteration combinators
          untilConvergedG0, untilConvergedG, untilConvergedGM,
-         modifyInspectGuarded, modifyInspectGuardedM, IterationConfig (..)
+         modifyInspectGuarded, modifyInspectGuardedM, IterationConfig (..),
+         modifyUntil, modifyUntilM
        )
        where
 
@@ -170,16 +171,7 @@ hhRefl = hhMat (fromInteger 2)
 -- givensCoefC :: RealFloat a => Complex a -> Complex a -> (Complex a, Complex a, Complex a)
 -- givensCoefC = givensCoef0 magnitude
 
--- | Givens coefficients and norm of associated vector
-givensCoef :: Elt t => t -> t -> (t, t, t)
-givensCoef a b = (c0/d, s0/d, d) where
-  c0 = conj a
-  s0 = - conj b
-  d = hypot c0 s0 -- sqrt $ (norm1 c0)**2 + (norm1 s0)**2
 
--- | Stable hypotenuse calculation
-hypot :: Floating a => a -> a -> a
-hypot x y = abs x * (sqrt (1 + (y/x)**2))
 
                   
 {- |
@@ -202,8 +194,10 @@ givens aa i j
       return $ givensMat aa i i' j
   | otherwise = throwM (OOBIxsError "Givens" [i, j])
   where
-  givensMat mm i i' j = fromListSM'
-           [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)] $ eye (nrows mm)
+  givensMat mm i i' j =
+    fromListSM'
+      [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)]
+      (eye (nrows mm))
            where
              (c, s, _) = givensCoef a b
              a = mm @@ (i', j)
@@ -214,9 +208,29 @@ givens aa i j
                                       firstNZColumn row j) mm
     firstNZColumn m k = isJust (I.lookup k m) &&
                         isNothing (I.lookupLT k m)
+
+rotMat :: Elt e => e -> e -> IxRow -> IxRow -> Int -> SpMatrix e
+rotMat a b i j n =
+  fromListSM' [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)] (eye n)
+    where
+      (c, s, _) = givensCoef a b
     
 
+-- | Givens coefficients and norm of associated vector
+givensCoef :: Elt t => t -> t -> (t, t, t)
+givensCoef a b = (c0/r, s0/r, r) where
+  c0 = conj a
+  s0 = - conj b
+  r = hypot c0 s0  
+  hypot x y = abs x * sqrt (1 + (y/x)**2)
 
+{-
+
+   ( c    s )
+G =(        )
+   ( -s*  c*)
+
+-}
 
 
                           
@@ -226,14 +240,13 @@ givens aa i j
 
 -- * QR decomposition
 
-
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
 {-# inline qr #-}
 qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
      SpMatrix a -> m (SpMatrix a, SpMatrix a)
 qr mm = do 
-    (qt, r, _) <- MTS.execStateT (modifyUntilM haltf qrstepf) gminit
-    return (transpose qt, r) 
+     (qt, r, _) <- MTS.execStateT (modifyUntilM haltf qrstepf) gminit
+     return (transpose qt, r) 
   where
     gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
     haltf (_, _, iis) = null iis
@@ -272,7 +285,9 @@ eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
       (q, _) <- qr mm
       return $ q #~^# (m ## q) -- r #~# q
 
-      
+
+
+  
 
 
 
@@ -904,6 +919,15 @@ instance LinearSystem (SpVector (Complex Double)) where
 
 
 
+
+-- test data
+
+-- aa4 : eigenvalues 1 (mult.=2) and -1
+aa4 :: SpMatrix Double
+aa4 = fromListDenseSM 3 [3,2,-2,2,2,-1,6,5,-4] 
+
+aa4c :: SpMatrix (Complex Double)
+aa4c = toC <$> aa4
 
 
 
