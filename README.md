@@ -22,7 +22,7 @@ Contents :
 
 * Direct linear solvers
 
-    * LU-based (`luSolve`)
+    * LU-based (`luSolve`); forward and backward substitution (`triLowerSolve`, `triUpperSolve`)
     
 * Matrix factorization algorithms
 
