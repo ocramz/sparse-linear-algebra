@@ -16,7 +16,7 @@ module Numeric.LinearAlgebra.Sparse
          -- ** Moore-Penrose pseudoinverse
          pinv,
          -- ** Preconditioners
-         ilu0, mSsor,         
+         jacobiPre, ilu0, mSsor,         
          -- ** Direct methods
          luSolve,
          -- *** Forward substitution
@@ -295,11 +295,7 @@ eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
 -- ** Rayleigh iteration
 
 -- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair.
--- eigRayleigh :: (MonadThrow m, MonadIO m, MatrixType v ~ SpMatrix (Scalar v),
---                  Normed v, LinearSystem v, PrintDense v, Typeable (Magnitude v),
---                  Typeable (Scalar v), Typeable v, Show (Scalar v), Show v,
---                  Floating (Scalar v)) =>
---      Int -> Bool -> SpMatrix (Scalar v) -> (v, Scalar v) -> m (v, Scalar v)
+
 eigRayleigh nitermax debq prntf m = untilConvergedGM "eigRayleigh" config (const True) (rayStep m)
   where
     ii = eye (nrows m)
@@ -438,7 +434,7 @@ lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t), Epsilon t,
      SpMatrix t
      -> m (SpMatrix t, SpMatrix t) -- ^ L, U
 lu aa = do
-  let oops j = throwM (NeedsPivoting "solveForLij" (concat ["U", show (j, j)]) :: MatrixException Double)
+  let oops j = throwM (NeedsPivoting "solveForLij" ("U" ++ show (j, j)) :: MatrixException Double)
       n = nrows aa
       q (i, _, _) = i == n - 1
       luInit | isNz u00 = return (1, l0, u0)
@@ -574,9 +570,9 @@ diagPartitions aa = (e,d,f) where
 
 -- -- ** Jacobi preconditioner
 
--- -- | Returns the reciprocal of the diagonal 
--- jacobiPreconditioner :: SpMatrix Double -> SpMatrix Double
-jacobiPreconditioner = reciprocal . extractDiag
+-- | The Jacobi preconditioner is just the reciprocal of the diagonal 
+jacobiPre :: Fractional a => SpMatrix a -> SpMatrix a
+jacobiPre x = recip <$> extractDiag x
 
 
 -- ** Incomplete LU
