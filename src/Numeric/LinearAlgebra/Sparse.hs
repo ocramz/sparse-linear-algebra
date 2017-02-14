@@ -295,20 +295,35 @@ eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
 -- ** Rayleigh iteration
 
 -- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair.
-eigRayleigh :: (MonadThrow m, MonadIO m, MatrixType v ~ SpMatrix (Scalar v),
-                 Normed v, LinearSystem v, PrintDense v, Typeable (Magnitude v),
-                 Typeable (Scalar v), Typeable v, Show (Scalar v), Show v,
-                 Floating (Scalar v)) =>
-     Int -> Bool -> SpMatrix (Scalar v) -> (v, Scalar v) -> m (v, Scalar v)
-eigRayleigh nitermax debq m = untilConvergedGM "eigRayleigh" config (const True) (rayStep m)
+-- eigRayleigh :: (MonadThrow m, MonadIO m, MatrixType v ~ SpMatrix (Scalar v),
+--                  Normed v, LinearSystem v, PrintDense v, Typeable (Magnitude v),
+--                  Typeable (Scalar v), Typeable v, Show (Scalar v), Show v,
+--                  Floating (Scalar v)) =>
+--      Int -> Bool -> SpMatrix (Scalar v) -> (v, Scalar v) -> m (v, Scalar v)
+eigRayleigh nitermax debq prntf m = untilConvergedGM "eigRayleigh" config (const True) (rayStep m)
   where
     ii = eye (nrows m)
-    config = IterConf nitermax debq fst prd
+    config = IterConf nitermax debq fst prntf
     rayStep aa (b, mu) = do
       nom <- (m ^-^ (mu `matScale` ii)) <\> b
       let b' = normalize2' nom
           mu' = (b' <.> (aa #> b')) / (b' <.> b')
       return (b', mu')
+
+
+-- | `eigArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, and the eigenvalues of A are listed on the diagonal of the R factor.
+eigArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, Normed (SpVector t), MatrixRing (SpMatrix t),
+      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
+     Int
+     -> SpMatrix t
+     -> SpVector t
+     -> m (SpMatrix t, SpMatrix t, SpVector t) -- ^ Q, O, R
+eigArnoldi nitermax aa b = do
+  (q, h) <- arnoldi aa b nitermax
+  (o, r) <- qr h
+  return (q, o, extractDiagDense r)
+  
 
 
 
@@ -358,7 +373,9 @@ SVD of A, Golub-Kahan method
 -- * Cholesky factorization
 
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
-chol :: (Elt a, Epsilon a, MonadThrow m) => SpMatrix a -> m (SpMatrix a)
+chol :: (Elt a, Epsilon a, MonadThrow m) =>
+        SpMatrix a
+     -> m (SpMatrix a)  -- ^ L
 chol aa = do
   let n = nrows aa
       q (i, _) = i == n
@@ -418,7 +435,8 @@ chol aa = do
 -- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
 lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t), Epsilon t,
         MonadThrow m) =>
-     SpMatrix t -> m (SpMatrix t, SpMatrix t)
+     SpMatrix t
+     -> m (SpMatrix t, SpMatrix t) -- ^ L, U
 lu aa = do
   let oops j = throwM (NeedsPivoting "solveForLij" (concat ["U", show (j, j)]) :: MatrixException Double)
       n = nrows aa
@@ -498,13 +516,12 @@ lu aa = do
 
 -- | Given a matrix A, a vector b and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (as the columns of matrix Q), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
-
 arnoldi :: (MatrixType (SpVector a) ~ SpMatrix a, V (SpVector a) ,
             Scalar (SpVector a) ~ a, Epsilon a, MonadThrow m) =>
-     SpMatrix a
-     -> SpVector a
-     -> Int
-     -> m (SpMatrix a, SpMatrix a)
+     SpMatrix a                    -- ^ System matrix
+     -> SpVector a                 -- ^ r.h.s.
+     -> Int                        -- ^ Max. # of iterations
+     -> m (SpMatrix a, SpMatrix a) -- ^ Q, H
 arnoldi aa b kn | n == nb = return (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
                 | otherwise = throwM (MatVecSizeMismatchException "arnoldi" (m,n) nb)
   where
@@ -547,7 +564,8 @@ arnoldi aa b kn | n == nb = return (fromCols qvfin, fromListSM (nmax + 1, nmax) 
 -- * Preconditioning
 
 -- | Partition a matrix into strictly subdiagonal, diagonal and strictly superdiagonal parts
-diagPartitions :: SpMatrix a -> (SpMatrix a, SpMatrix a, SpMatrix a)
+diagPartitions :: SpMatrix a
+               -> (SpMatrix a, SpMatrix a, SpMatrix a) -- ^ Subdiagonal, diagonal, superdiagonal partitions
 diagPartitions aa = (e,d,f) where
   e = extractSubDiag aa
   d = extractDiag aa
@@ -563,10 +581,11 @@ jacobiPreconditioner = reciprocal . extractDiag
 
 -- ** Incomplete LU
 
--- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2`
+-- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2` (called ILU(0) in the preconditioner literature)
 ilu0 :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
-     SpMatrix t -> m (SpMatrix t, SpMatrix t)
+     SpMatrix t
+     -> m (SpMatrix t, SpMatrix t) -- ^ L, U (with holes)
 ilu0 aa = do
   (l, u) <- lu aa
   let lh = sparsifyLU l aa
@@ -580,7 +599,9 @@ ilu0 aa = do
 
 -- | `mSsor aa omega` : if `omega = 1` it returns the symmetric Gauss-Seidel preconditioner. When ω = 1, the SOR reduces to Gauss-Seidel; when ω > 1 and ω < 1, it corresponds to over-relaxation and under-relaxation, respectively.
 mSsor :: (MatrixRing (SpMatrix b), Fractional b) =>
-     SpMatrix b -> b -> (SpMatrix b, SpMatrix b)
+     SpMatrix b
+     -> b  -- ^ relaxation factor
+     -> (SpMatrix b, SpMatrix b) -- ^ Left, right factors
 mSsor aa omega = (l, r) where
   (e, d, f) = diagPartitions aa
   n = nrows e
@@ -598,17 +619,22 @@ mSsor aa omega = (l, r) where
 
 -- | Direct solver based on a triangular factorization of the system matrix.
 luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t), Epsilon t) =>
-     SpMatrix t -> SpMatrix t -> SpVector t -> m (SpVector t)
+     SpMatrix t    -- ^ Lower triangular
+     -> SpMatrix t -- ^ Upper triangular
+     -> SpVector t -- ^ r.h.s.
+     -> m (SpVector t)
 luSolve ll uu b
   | isLowerTriSM ll && isUpperTriSM uu = do
       w <- triLowerSolve ll b
       triUpperSolve uu w
   | otherwise = throwM (NonTriangularException "luSolve")
 
--- | Forward substitution
+-- | Forward substitution solver
 triLowerSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
-     SpMatrix t -> SpVector t -> m (SpVector t)
+     SpMatrix t    -- ^ Lower triangular
+     -> SpVector t
+     -> m (SpVector t)
 triLowerSolve ll b = do
   let q (_, i) = i == nb
       nb = svDim b
@@ -637,10 +663,12 @@ triLowerSolve ll b = do
 
 
 -- NB in the computation of `xi` we must rebalance the subrow indices (extractSubRow_RK) because `dropSV` does that too, in order to take the inner product with consistent index pairs
--- | Backward substitution
+-- | Backward substitution solver
 triUpperSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
-     SpMatrix t -> SpVector t -> m (SpVector t)
+     SpMatrix t    -- ^ Upper triangular
+     -> SpVector t
+     -> m (SpVector t)
 triUpperSolve uu w = do 
   let q (_, i) = i == (- 1)
       nw = svDim w
@@ -851,6 +879,8 @@ pinv aa b = aa #~^# aa <\> atb where
 
 
 
+
+-- | Interface method to individual linear solvers
 linSolve0 method aa b x0
   | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
   | otherwise = solve aa b where
