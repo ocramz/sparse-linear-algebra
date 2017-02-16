@@ -21,7 +21,7 @@ module Data.Sparse.Common
          extractDiagDense,
          extractSubRow, extractSubCol,
          extractSubRow_RK, extractSubCol_RK,
-         fromCols, fromColsL, toCols) where
+         fromRowsL, fromRowsV, fromColsV, fromColsL, toRowsL, toColsL) where
 
 -- import Control.Exception
 -- import Control.Exception.Common
@@ -293,34 +293,41 @@ vecMatSD (SV n sv) (SM (nr, nc) mdata)
 
 
 
+-- | Pack a list of SpVectors as rows of an SpMatrix
+fromRowsL :: [SpVector a] -> SpMatrix a
+fromRowsL = fromRowsV . V.fromList
 
-
--- | Pack a list of SpVectors into an SpMatrix
+-- | Pack a list of SpVectors as columns an SpMatrix
 fromColsL :: [SpVector a] -> SpMatrix a
-fromColsL = fromCols . V.fromList
+fromColsL = fromColsV . V.fromList
 
--- | Unpack an SpMatrix into a list of SpVectors
-toCols :: SpMatrix a -> [SpVector a]
-toCols aa = map (extractCol aa) [0 .. n-1] where
+-- | Unpack the rows of an SpMatrix into a list of SpVectors
+toRowsL :: SpMatrix a -> [SpVector a]
+toRowsL aa = map (extractRow aa) [0 .. m-1] where
+  (m,n) = dim aa
+
+-- | Unpack the columns of an SpMatrix into a list of SpVectors
+toColsL :: SpMatrix a -> [SpVector a]
+toColsL aa = map (extractCol aa) [0 .. n-1] where
   (m,n) = dim aa
 
 
 
 
-
-
-
-
 -- | Pack a V.Vector of SpVectors as columns of an SpMatrix
-fromCols :: V.Vector (SpVector a) -> SpMatrix a
-fromCols qv = V.ifoldl' ins (zeroSM m n) qv where
+fromColsV :: V.Vector (SpVector a) -> SpMatrix a
+fromColsV qv = V.ifoldl' ins (zeroSM m n) qv where
   n = V.length qv
   m = dim $ V.head qv
   ins mm i c = insertCol mm c i
 
 
-
-
+-- | Pack a V.Vector of SpVectors as rows of an SpMatrix
+fromRowsV :: V.Vector (SpVector a) -> SpMatrix a
+fromRowsV qv = V.ifoldl' ins (zeroSM m n) qv where
+  n = V.length qv
+  m = svDim $ V.head qv
+  ins mm i c = insertRow mm c i
 
 
 

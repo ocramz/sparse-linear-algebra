@@ -38,7 +38,9 @@ Contents :
 
     * QR (`eigsQR`)
 
-    * Rayleigh quotient iteration (`eigRayleigh`)
+    * QR-Arnoldi (`eigsArnoldi`) 
+
+
 
 * Utilities : Vector and matrix norms, matrix condition number, Givens rotation, Householder reflection
 
@@ -47,6 +49,10 @@ Contents :
 
 
 ### Under development
+
+* Eigenvalue algorithms
+
+    * Rayleigh quotient iteration (`eigRayleigh`)
 
 * Matrix factorization algorithms
 

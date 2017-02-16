@@ -57,7 +57,14 @@ module Numeric.LinearAlgebra.Sparse
          fromListSV, toListSV,
          -- ** From/to SpMatrix
          fromListSM, toListSM,
+         -- ** Packing/unpacking rows/columns
+         -- *** ", using lists as container
+         fromRowsL, toRowsL,
+         fromColsL, toColsL,
+         -- *** ", using Vector as container
+         fromRowsV, fromColsV,
          -- * Operators
+         (.*), (./), 
          -- ** Inner product
          (<.>),
          -- ** Matrix-vector products
@@ -71,7 +78,8 @@ module Numeric.LinearAlgebra.Sparse
          -- * Common operations
          dim, nnz, spy,
          -- ** Vector-related
-         (.*), (./), cvx,
+         cvx,
+         -- *** Norms and normalization
          norm, norm2, norm2', normalize, normalize2, normalize2',
          norm1, hilbertDistSq,
          -- ** Matrix-related
