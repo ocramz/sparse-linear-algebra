@@ -91,7 +91,11 @@ module Numeric.LinearAlgebra.Sparse
          modifyInspectGuarded, modifyInspectGuardedM, IterationConfig (..),
          modifyUntil, modifyUntilM,
          -- * Internal
-         linSolve0, LinSolveMethod(..)
+         linSolve0, LinSolveMethod(..),
+         -- * Exceptions
+         PartialFunctionError,InputError, OutOfBoundsIndexError,
+         OperandSizeMismatch, MatrixException, IterationException
+             
        )
        where
 
