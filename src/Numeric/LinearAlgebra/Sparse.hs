@@ -57,7 +57,7 @@ module Numeric.LinearAlgebra.Sparse
          fromListSV, toListSV,
          -- ** From/to SpMatrix
          fromListSM, toListSM,
-         -- ** Packing/unpacking rows/columns of a sparse matrix
+         -- ** Packing and unpacking, rows or columns of a sparse matrix
          -- *** ", using lists as container
          fromRowsL, toRowsL,
          fromColsL, toColsL,
@@ -313,7 +313,7 @@ eigsQR :: (MonadThrow m, MonadIO m, Num' a, Normed (SpVector a), MatrixRing (SpM
         Int
      -> Bool           -- ^ Print debug information        
      -> SpMatrix a     -- ^ Operand matrix
-     -> m (SpVector a) -- ^ Eigenvalues
+     -> m (SpVector a) -- ^ Eigenvalues {λ_i}
 eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
   where
     pf = extractDiagDense
@@ -344,13 +344,13 @@ eigRayleigh nitermax debq prntf m = untilConvergedGM "eigRayleigh" config (const
       return (b', mu')
 
 
--- | `eigsArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues of A are listed on the diagonal of the R factor.
+-- | `eigsArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
 eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, V (SpVector t), MatrixRing (SpMatrix t), Epsilon t, MonadThrow m) =>
      Int
      -> SpMatrix t
      -> SpVector t
-     -> m (SpMatrix t, SpMatrix t, SpVector t) -- ^ Q, O, R
+     -> m (SpMatrix t, SpMatrix t, SpVector t) -- ^ Q, O, {λ_i}
 eigsArnoldi nitermax aa b = do
   (q, h) <- arnoldi aa b nitermax
   (o, r) <- qr h
@@ -404,7 +404,8 @@ SVD of A, Golub-Kahan method
 
 -- * Cholesky factorization
 
--- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner and initializing the diagonal of the L matrix to ones.
+-- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
+-- | NB: The algorithm throws an exception if some diagonal element of A is zero.
 chol :: (Elt a, Epsilon a, MonadThrow m) =>
         SpMatrix a
      -> m (SpMatrix a)  -- ^ L
@@ -462,7 +463,7 @@ chol aa = do
 
 -- * LU factorization
 
--- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A . Implements the Doolittle algorithm, which expects all diagonal entries of A to be nonzero. Apply pivoting (row or column permutation) otherwise.
+-- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A . Implements the Doolittle algorithm, which sets the diagonal of the L matrix to ones and expects all diagonal entries of A to be nonzero. Apply pivoting (row or column permutation) to enforce a nonzero diagonal of the A matrix (the algorithm throws an appropriate exception otherwise).
 lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t), Epsilon t,
         MonadThrow m) =>
      SpMatrix t
@@ -663,7 +664,7 @@ luSolve ll uu b
 triLowerSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
      SpMatrix t    -- ^ Lower triangular
-     -> SpVector t
+     -> SpVector t -- ^ r.h.s
      -> m (SpVector t)
 triLowerSolve ll b = do
   let q (_, i) = i == nb
@@ -697,7 +698,7 @@ triLowerSolve ll b = do
 triUpperSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
      SpMatrix t    -- ^ Upper triangular
-     -> SpVector t
+     -> SpVector t -- ^ r.h.s
      -> m (SpVector t)
 triUpperSolve uu w = do 
   let q (_, i) = i == (- 1)
@@ -900,7 +901,7 @@ instance Show a => Show (BICGSTAB a) where
 
 
 -- * Moore-Penrose pseudoinverse
--- | Least-squares approximation of a rectangular system of equaitons. Uses `(<\>)` for the linear solve
+-- | Least-squares approximation of a rectangular system of equaitons. Uses `(<\\>)` for the linear solve
 pinv :: (MatrixType v ~ SpMatrix a, LinearSystem v, Epsilon a,
          MonadThrow m, MonadIO m) =>
      SpMatrix a -> v -> m v
