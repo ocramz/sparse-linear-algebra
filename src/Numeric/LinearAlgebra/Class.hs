@@ -265,7 +265,7 @@ type V v = (LinearVectorSpace v, Normed v)
 -- ** Linear systems
   
 class LinearVectorSpace v => LinearSystem v where
-  -- | Solve a linear system; uses GMRES internally
+  -- | Solve a linear system; uses GMRES internally as default method
   (<\>) :: (MonadIO m, MonadThrow m) =>
            MatrixType v   -- ^ System matrix
         -> v              -- ^ Right-hand side

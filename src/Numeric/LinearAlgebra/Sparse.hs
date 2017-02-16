@@ -57,7 +57,7 @@ module Numeric.LinearAlgebra.Sparse
          fromListSV, toListSV,
          -- ** From/to SpMatrix
          fromListSM, toListSM,
-         -- ** Packing/unpacking rows/columns
+         -- ** Packing/unpacking rows/columns of a sparse matrix
          -- *** ", using lists as container
          fromRowsL, toRowsL,
          fromColsL, toColsL,
@@ -67,11 +67,11 @@ module Numeric.LinearAlgebra.Sparse
          (.*), (./), 
          -- ** Inner product
          (<.>),
-         -- ** Matrix-vector products
+         -- ** Matrix-vector product
          (#>), (<#),
-         -- ** Matrix-matrix products
+         -- ** Matrix-matrix product
          (##), (#^#), (##^),
-         -- *** Sparsifying matrix-matrix products
+         -- *** Sparsifying matrix-matrix product
          (#~#), (#~^#), (#~#^),
          -- ** Vector outer product
          (><),
@@ -83,7 +83,9 @@ module Numeric.LinearAlgebra.Sparse
          norm, norm2, norm2', normalize, normalize2, normalize2',
          norm1, hilbertDistSq,
          -- ** Matrix-related
-         transpose, normFrobenius, 
+         transpose, normFrobenius,
+         -- * Pretty-printing
+         prd, prd0,
          -- * Iteration combinators
          untilConvergedG0, untilConvergedG, untilConvergedGM,
          modifyInspectGuarded, modifyInspectGuardedM, IterationConfig (..),
