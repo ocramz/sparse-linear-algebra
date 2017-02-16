@@ -12,7 +12,7 @@ module Numeric.LinearAlgebra.Sparse
        (
          -- * Linear solvers
          -- ** Iterative methods
-         linSolve0, LinSolveMethod(..), (<\>),
+         (<\>),
          -- ** Moore-Penrose pseudoinverse
          pinv,
          -- ** Preconditioners
@@ -43,7 +43,7 @@ module Numeric.LinearAlgebra.Sparse
          -- ** Condition number
          conditionNumberSM,
          -- ** Householder reflection
-         hhMat, hhRefl,
+         hhRefl,
          -- -- * Householder bidiagonalization         
          -- -- * Random arrays
          -- randArray,
@@ -51,14 +51,32 @@ module Numeric.LinearAlgebra.Sparse
          -- randMat, randVec, 
          -- -- ** Sparse "
          -- randSpMat, randSpVec,
-         -- * From/to SpVector
+         -- * Creation and conversion of sparse data
+         -- ** From/to SpVector
          fromListSV, toListSV,
-         -- * From/to SpMatrix
+         -- ** From/to SpMatrix
          fromListSM, toListSM,
+         -- * Operators
+         -- ** Inner product
+         (<.>),
+         -- ** Matrix-vector products
+         (#>), (<#),
+         -- ** Matrix-matrix products
+         (##), (#^#), (##^),
+         -- *** Sparsifying matrix-matrix products
+         (#~#), (#~^#), (#~#^),
+         -- ** Vector outer product
+         (><),
+         -- * Common operations
+         -- ** Vector-related
+         -- ** Matrix-related
+         transpose, normFrobenius, 
          -- * Iteration combinators
          untilConvergedG0, untilConvergedG, untilConvergedGM,
          modifyInspectGuarded, modifyInspectGuardedM, IterationConfig (..),
-         modifyUntil, modifyUntilM
+         modifyUntil, modifyUntilM,
+         -- * Internal
+         linSolve0, LinSolveMethod(..)
        )
        where
 
@@ -101,7 +119,7 @@ import qualified Data.Vector as V
 
 
 -- | A lumped constraint for numerical types
-type Num' x = (Epsilon x, Elt x, Show x, Ord x)
+type Num' x = (Epsilon x, Elt x, Show x, Ord x, Typeable x)
 
 
 
@@ -109,7 +127,7 @@ type Num' x = (Epsilon x, Elt x, Show x, Ord x)
 
 -- * Matrix condition number
 
--- |uses the R matrix from the QR factorization
+-- | Matrix condition number: computes the QR factorization and extracts the extremal eigenvalues from the R factor
 conditionNumberSM :: (MonadThrow m, MatrixRing (SpMatrix a), Num' a, Typeable a) =>
      SpMatrix a -> m a
 conditionNumberSM m = do
@@ -135,10 +153,9 @@ hhMat beta x = eye n ^-^ beta `scale` (x >< x) where
   n = dim x
 
 
--- | Householder reflection: a vector `x` uniquely defines an orthogonal plane; the Householder operator reflects any point `v` with respect to this plane:
--- v' = (I - 2 x >< x) v
+-- | Householder reflection: a vector `x` uniquely defines an orthogonal (hyper)plane, i.e. an orthogonal subspace; the Householder operator reflects any point `v` through this subspace: v' = (I - 2 x >< x) v
 hhRefl :: Num a => SpVector a -> SpMatrix a
-hhRefl = hhMat (fromInteger 2)
+hhRefl = hhMat 2
 
 
 
@@ -247,7 +264,8 @@ G =(        )
 -- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
 {-# inline qr #-}
 qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
-     SpMatrix a -> m (SpMatrix a, SpMatrix a)
+     SpMatrix a
+     -> m (SpMatrix a, SpMatrix a)  -- ^ Q, R
 qr mm = do 
      (qt, r, _) <- MTS.execStateT (modifyUntilM haltf qrstepf) gminit
      return (transpose qt, r) 
@@ -276,7 +294,7 @@ qr mm = do
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
-eigsQR :: (MonadThrow m, MonadIO m, Elt a, Normed (SpVector a), MatrixRing (SpMatrix a), Epsilon a, Typeable (Magnitude (SpVector a)), Typeable a, Show a) =>
+eigsQR :: (MonadThrow m, MonadIO m, Num' a, Normed (SpVector a), MatrixRing (SpMatrix a), Typeable (Magnitude (SpVector a))) =>
         Int
      -> Bool           -- ^ Print debug information        
      -> SpMatrix a     -- ^ Operand matrix
@@ -429,10 +447,8 @@ chol aa = do
 
 
 -- * LU factorization
--- ** Doolittle algorithm
-{- Doolittle algorithm for factoring A' = P A, where P is a permutation matrix such that A' has a nonzero as its (0, 0) entry -}
 
--- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A
+-- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A . Implements the Doolittle algorithm, which expects all diagonal entries of A to be nonzero. Apply pivoting (row or column permutation) otherwise.
 lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t), Epsilon t,
         MonadThrow m) =>
      SpMatrix t

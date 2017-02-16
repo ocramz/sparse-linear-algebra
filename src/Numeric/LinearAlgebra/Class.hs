@@ -37,11 +37,13 @@ import Numeric.Eps
 
 
 
--- * Matrix and vector elements (possibly Complex)
+-- * Matrix and vector elements (optionally Complex)
 class (Eq e , Fractional e, Floating e, Num (EltMag e), Ord (EltMag e)) => Elt e where
   type EltMag e :: *
+  -- | Complex conjugate, or identity function if its input is real-valued
   conj :: e -> e
   conj = id
+  -- | Magnitude
   mag :: e -> EltMag e
 
 instance Elt Double where {type EltMag Double = Double ; mag = id}
@@ -110,18 +112,27 @@ hilbertDistSq x y = t <.> t where
 class (InnerSpace v, Num (RealScalar v), Eq (RealScalar v), Epsilon (Magnitude v), Show (Magnitude v), Ord (Magnitude v)) => Normed v where
   type Magnitude v :: *
   type RealScalar v :: *
-  norm1 :: v -> Magnitude v      -- ^ L1 norm
-  norm2Sq :: v -> Magnitude v    -- ^ Euclidean (L2) norm
-  normP :: RealScalar v -> v -> Magnitude v -- ^ Lp norm (p > 0)
-  normalize :: RealScalar v -> v -> v  -- ^ Normalize w.r.t. Lp norm
-  normalize2 :: v -> v     -- ^ Normalize w.r.t. L2 norm
-  normalize2' :: Floating (Scalar v) => v -> v -- ^ Normalize w.r.t. norm2' instead of norm2
+  -- | L1 norm
+  norm1 :: v -> Magnitude v
+  -- | Euclidean (L2) norm squared
+  norm2Sq :: v -> Magnitude v
+  -- | Lp norm (p > 0)
+  normP :: RealScalar v -> v -> Magnitude v
+  -- | Normalize w.r.t. Lp norm
+  normalize :: RealScalar v -> v -> v
+  -- | Normalize w.r.t. L2 norm
+  normalize2 :: v -> v
+  -- | Normalize w.r.t. norm2' instead of norm2
+  normalize2' :: Floating (Scalar v) => v -> v 
   normalize2' x = x ./ norm2' x
-  norm2 :: Floating (Magnitude v) => v -> Magnitude v -- ^ Euclidean norm
+  -- | Euclidean (L2) norm
+  norm2 :: Floating (Magnitude v) => v -> Magnitude v 
   norm2 x = sqrt (norm2Sq x)
-  norm2' :: Floating (Scalar v) => v -> Scalar v -- ^ Euclidean norm; returns a Complex (norm :+ 0) for containers of complex values
+  -- | Euclidean (L2) norm; returns a Complex (norm :+ 0) for containers of complex values
+  norm2' :: Floating (Scalar v) => v -> Scalar v 
   norm2' x = sqrt $ x <.> x
-  norm :: Floating (Magnitude v) => RealScalar v -> v -> Magnitude v -- ^ Lp norm (p > 0)
+  -- | Lp norm (p > 0)
+  norm :: Floating (Magnitude v) => RealScalar v -> v -> Magnitude v 
   norm p v
     | p == 1 = norm1 v
     | p == 2 = norm2 v
@@ -205,11 +216,16 @@ scale n = fmap (* n)
 
 class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
   type MatrixNorm m :: *
+  -- | Matrix-matrix product
   (##) :: m -> m -> m
-  (##^) :: m -> m -> m   -- ^ A B^T
-  (#^#) :: m -> m -> m   -- ^ A^T B
+  -- | A B^T
+  (##^) :: m -> m -> m
+  -- | A^T B
+  (#^#) :: m -> m -> m
   a #^# b = transpose a ## b
+  -- | Matrix transpose
   transpose :: m -> m
+  -- | Frobenius norm
   normFrobenius :: m -> MatrixNorm m
 
 
@@ -230,7 +246,9 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
 
 class (VectorSpace v, MatrixRing (MatrixType v)) => LinearVectorSpace v where
   type MatrixType v :: *
+  -- | Matrix-vector action
   (#>) :: MatrixType v -> v -> v
+  -- | Dual matrix-vector action
   (<#) :: v -> MatrixType v -> v
 
 
@@ -247,6 +265,7 @@ type V v = (LinearVectorSpace v, Normed v)
 -- ** Linear systems
   
 class LinearVectorSpace v => LinearSystem v where
+  -- | Solve a linear system
   (<\>) :: (MonadIO m, MonadThrow m) => MatrixType v -> v -> m v
 
 
@@ -262,6 +281,7 @@ class LinearVectorSpace v => LinearSystem v where
 
 class Functor f => FiniteDim f where
   type FDSize f :: *
+  -- | Dimension (i.e. Int for SpVector, (Int, Int) for SpMatrix)
   dim :: f a -> FDSize f
 
 class FiniteDim' f where
@@ -301,6 +321,7 @@ class FiniteDim' f where
 
 class HasData f a where
   type HDData f a :: *
+  -- | Number of nonzeros
   nnz :: f a -> Int
   dat :: f a -> HDData f a
 
@@ -313,6 +334,7 @@ class HasData' f where
 -- * Sparse : sparse datastructures
 
 class (FiniteDim f, HasData f a) => Sparse f a where
+  -- | Sparsity (fraction of nonzero elements)
   spy :: Fractional b => f a -> b
 
 class (FiniteDim' f, HasData' f) => Sparse' f where
@@ -323,10 +345,10 @@ class (FiniteDim' f, HasData' f) => Sparse' f where
 -- * Set : types that behave as sets
 
 class Functor f => Set f where
-  -- |union binary lift : apply function on _union_ of two "sets"
+  -- | Union binary lift : apply function on _union_ of two "sets"
   liftU2 :: (a -> a -> a) -> f a -> f a -> f a
 
-  -- |intersection binary lift : apply function on _intersection_ of two "sets"
+  -- | Intersection binary lift : apply function on _intersection_ of two "sets"
   liftI2 :: (a -> a -> b) -> f a -> f a -> f b
 
 
