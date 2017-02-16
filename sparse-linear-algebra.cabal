@@ -1,6 +1,6 @@
 name:                sparse-linear-algebra
-version:             0.2.9
-synopsis:            Sparse linear algebra algorithms and datastructures for scientific computation, in native Haskell. Iterative linear solvers, matrix factorizations, linear eigensolvers and related utilities.
+version:             0.2.9.1
+synopsis:            Sparse linear algebra in native Haskell.
 description:
   /Overview/
   .
@@ -52,11 +52,11 @@ library
                      , exceptions
                      , mtl >= 2.2.1                     
                      , transformers
-                     , writer-cps-transformers
+                     -- , writer-cps-transformers
                      -- , monad-log == 0.1.1.0
                      -- , monad-par
-                     , QuickCheck >= 2.8.2
-                     , hspec
+                     -- , QuickCheck >= 2.8.2
+                     -- , hspec
                      -- , primitive >= 0.6.1.0
                      -- , mwc-random                     
 
