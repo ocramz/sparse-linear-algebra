@@ -70,8 +70,8 @@ instance RealFloat e => Elt (Complex e) where
 v ./ n = recip n .* v
 
 -- | Convex combination of two vectors (NB: 0 <= `a` <= 1). 
-lerp :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
-lerp a u v = a .* u ^+^ ((1-a) .* v)
+cvx :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
+cvx a u v = a .* u ^+^ ((1-a) .* v)
 
 
 -- linearCombination :: (VectorSpace v , Foldable t) => t (Scalar v, v) -> v
@@ -128,7 +128,7 @@ class (InnerSpace v, Num (RealScalar v), Eq (RealScalar v), Epsilon (Magnitude v
   -- | Euclidean (L2) norm
   norm2 :: Floating (Magnitude v) => v -> Magnitude v 
   norm2 x = sqrt (norm2Sq x)
-  -- | Euclidean (L2) norm; returns a Complex (norm :+ 0) for containers of complex values
+  -- | Euclidean (L2) norm; returns a Complex (norm :+ 0) for Complex-valued vectors
   norm2' :: Floating (Scalar v) => v -> Scalar v 
   norm2' x = sqrt $ x <.> x
   -- | Lp norm (p > 0)
@@ -266,7 +266,10 @@ type V v = (LinearVectorSpace v, Normed v)
   
 class LinearVectorSpace v => LinearSystem v where
   -- | Solve a linear system
-  (<\>) :: (MonadIO m, MonadThrow m) => MatrixType v -> v -> m v
+  (<\>) :: (MonadIO m, MonadThrow m) =>
+           MatrixType v   -- ^ System matrix
+        -> v              -- ^ Right-hand side
+        -> m v            -- ^ Result
 
 
 

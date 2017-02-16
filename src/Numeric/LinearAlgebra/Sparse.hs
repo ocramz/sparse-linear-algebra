@@ -69,7 +69,11 @@ module Numeric.LinearAlgebra.Sparse
          -- ** Vector outer product
          (><),
          -- * Common operations
+         dim, nnz, spy,
          -- ** Vector-related
+         (.*), (./), cvx,
+         norm, norm2, norm2', normalize, normalize2, normalize2',
+         norm1, hilbertDistSq,
          -- ** Matrix-related
          transpose, normFrobenius, 
          -- * Iteration combinators
