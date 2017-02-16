@@ -86,7 +86,7 @@ instance FiniteDim SpVector where
 instance HasData SpVector a where
   type HDData SpVector a = IntM a
   dat = svData
-  -- nnz (SV _ x) = length (filterI isNz x)
+  nnz (SV _ x) = length x 
 
 instance Sparse SpVector a where
   spy = spySV
@@ -267,8 +267,10 @@ insertSpVectorSafe i x (SV d xim)
 
 
 -- ** fromList
-fromListSV :: Int -> [(Int, a)] -> SpVector a
-fromListSV d iix = SV d (fromList (filter (inBounds0 d . fst) iix ))
+fromListSV :: Foldable t => Int -> t (Int, a) -> SpVector a
+fromListSV d iix = SV d $ foldr insf empty iix where
+  insf (i, x) xacc | inBounds0 d i = insert i x xacc
+                   | otherwise = xacc 
 
  
 -- ** toList

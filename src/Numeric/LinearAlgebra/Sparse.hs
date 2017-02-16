@@ -51,6 +51,10 @@ module Numeric.LinearAlgebra.Sparse
          -- randMat, randVec, 
          -- -- ** Sparse "
          -- randSpMat, randSpVec,
+         -- * From/to SpVector
+         fromListSV, toListSV,
+         -- * From/to SpMatrix
+         fromListSM, toListSM,
          -- * Iteration combinators
          untilConvergedG0, untilConvergedG, untilConvergedGM,
          modifyInspectGuarded, modifyInspectGuardedM, IterationConfig (..),
@@ -568,7 +572,7 @@ diagPartitions aa = (e,d,f) where
   f = extractSuperDiag aa
 
 
--- -- ** Jacobi preconditioner
+-- ** Jacobi preconditioner
 
 -- | The Jacobi preconditioner is just the reciprocal of the diagonal 
 jacobiPre :: Fractional a => SpMatrix a -> SpMatrix a
@@ -577,7 +581,7 @@ jacobiPre x = recip <$> extractDiag x
 
 -- ** Incomplete LU
 
--- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2` (called ILU(0) in the preconditioner literature)
+-- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2` (this is called ILU(0) in the preconditioner literature)
 ilu0 :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
      SpMatrix t
@@ -593,7 +597,7 @@ ilu0 aa = do
 
 -- ** SSOR
 
--- | `mSsor aa omega` : if `omega = 1` it returns the symmetric Gauss-Seidel preconditioner. When ω = 1, the SOR reduces to Gauss-Seidel; when ω > 1 and ω < 1, it corresponds to over-relaxation and under-relaxation, respectively.
+-- | Symmetric Successive Over-Relaxation. `mSsor aa omega` : if `omega = 1` it returns the symmetric Gauss-Seidel preconditioner. When ω = 1, the SOR reduces to Gauss-Seidel; when ω > 1 and ω < 1, it corresponds to over-relaxation and under-relaxation, respectively.
 mSsor :: (MatrixRing (SpMatrix b), Fractional b) =>
      SpMatrix b
      -> b  -- ^ relaxation factor

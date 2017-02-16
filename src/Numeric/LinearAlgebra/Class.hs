@@ -1,6 +1,19 @@
 {-# language TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances, ConstraintKinds #-}
 {-# language AllowAmbiguousTypes #-}
 {-# language CPP #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Numeric.LinearAlgebra.Class
+-- Copyright   :  (c) Marco Zocca 2017
+-- License     :  GPL-style (see the file LICENSE)
+--
+-- Maintainer  :  zocca marco gmail
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Typeclasses for linear algebra and related concepts
+--
+-----------------------------------------------------------------------------
 module Numeric.LinearAlgebra.Class where
 
 -- import Control.Applicative
@@ -21,10 +34,6 @@ import Data.VectorSpace hiding (magnitude)
 
 import Data.Sparse.Types
 import Numeric.Eps
-
-
-
-
 
 
 

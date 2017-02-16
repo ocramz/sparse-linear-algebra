@@ -168,7 +168,7 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration, early breakdown detection (Real)" $ do      
+  describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
     it "arnoldi (4 x 4 dense)" $
       checkArnoldi tm6 4 >>= (`shouldBe` True)
     it "arnoldi (5 x 5 sparse)" $
