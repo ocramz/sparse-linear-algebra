@@ -1,5 +1,5 @@
 name:                sparse-linear-algebra
-version:             0.3.0.1
+version:             0.2.9
 synopsis:            Sparse linear algebra algorithms and datastructures for scientific computation, in native Haskell. Iterative linear solvers, matrix factorizations, linear eigensolvers and related utilities.
 description:
   /Overview/
