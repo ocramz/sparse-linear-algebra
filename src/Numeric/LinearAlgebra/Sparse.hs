@@ -550,7 +550,7 @@ arnoldi :: (MatrixType (SpVector a) ~ SpMatrix a, V (SpVector a) ,
      -> SpVector a                 -- ^ r.h.s.
      -> Int                        -- ^ Max. # of iterations
      -> m (SpMatrix a, SpMatrix a) -- ^ Q, H
-arnoldi aa b kn | n == nb = return (fromCols qvfin, fromListSM (nmax + 1, nmax) hhfin)
+arnoldi aa b kn | n == nb = return (fromColsV qvfin, fromListSM (nmax + 1, nmax) hhfin)
                 | otherwise = throwM (MatVecSizeMismatchException "arnoldi" (m,n) nb)
   where
   (qvfin, hhfin, nmax, _) = execState (modifyUntil tf arnoldiStep) arnInit 
@@ -898,7 +898,7 @@ instance Show a => Show (BICGSTAB a) where
 
 
 -- * Moore-Penrose pseudoinverse
--- | Least-squares approximation of a rectangular system of equaitons. Uses (<\>) for the linear solve
+-- | Least-squares approximation of a rectangular system of equaitons. Uses `(<\>)` for the linear solve
 pinv :: (MatrixType v ~ SpMatrix a, LinearSystem v, Epsilon a,
          MonadThrow m, MonadIO m) =>
      SpMatrix a -> v -> m v
@@ -908,7 +908,7 @@ pinv aa b = aa #~^# aa <\> atb where
 
 
 
--- | Interface method to individual linear solvers
+-- | Interface method to individual linear solvers, do not use directly
 linSolve0 method aa b x0
   | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
   | otherwise = solve aa b where
@@ -928,7 +928,7 @@ linSolve0 method aa b x0
       xf <- untilConvergedG fname config (const True) stepf initf
       return $ fproj xf
       where
-        config = IterConf nitermax True fproj prd
+        config = IterConf nitermax True fproj prd0
   
 
 -- * Linear solver interface

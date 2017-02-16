@@ -17,7 +17,10 @@ import Numeric.Eps
 
 
 class PrintDense a where
+  -- | Pretty-print with a descriptive header
   prd :: a -> IO ()
+  -- | Pretty-print with no header
+  prd0 :: a -> IO ()
 
 newline :: IO ()
 newline = putStrLn ""  

@@ -340,13 +340,13 @@ showNz :: (Epsilon a, Show a) => a -> String
 showNz x | nearZero x = " _ "
          | otherwise = show x
 
--- toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
+toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
 toDenseRow sm irow =
-  fmap (\icol -> sm @@ (irow,icol)) [0..ncol-1] where (_, ncol) = dim sm
+  fmap (\icol -> sm @@ (irow,icol)) [0..ncol-1] where (_, ncol) = (nrows sm, ncols sm)
 
 
 
--- toDenseRowClip :: (Show a, Num a) => SpMatrix a -> IM.Key -> Int -> String
+toDenseRowClip :: (Show a, Num a, Epsilon a) => SpMatrix a -> IM.Key -> Int -> String
 toDenseRowClip sm irow ncomax
   | nco > ncomax = unwords (map showNz h) ++  " ... " ++ showNz t
   | otherwise = unwords $ showNz <$> dr
@@ -357,9 +357,14 @@ toDenseRowClip sm irow ncomax
 
 
 -- printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
-printDenseSM :: (ScIx c ~ (Int, Int), FDSize c ~ (Int, Int), SpContainer c a, Show a, Epsilon a) => c a -> IO ()
+-- printDenseSM :: (ScIx c ~ (Int, Int), FDSize c ~ (Int, Int), SpContainer c a, Show a, Epsilon a) => c a -> IO ()
 printDenseSM sm = do
   newline
+  putStrLn $ sizeStr sm
+  newline
+  printDenseSM0 sm
+
+printDenseSM0 sm = do
   putStrLn $ sizeStr sm
   newline
   printDenseSM' sm 5 5
@@ -367,7 +372,7 @@ printDenseSM sm = do
   where    
     -- printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
     printDenseSM' sm' nromax ncomax = mapM_ putStrLn rr_' where
-      (nr, _) = dim sm'
+      (nr, _) = (nrows sm, ncols sm)
       rr_ = map (\i -> toDenseRowClip sm' i ncomax) [0..nr - 1]
       rr_' | nr > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
            | otherwise = rr_
@@ -387,6 +392,10 @@ printDenseSV sv = do
   newline
   putStrLn $ sizeStrSV sv
   newline
+  printDenseSV0 sv
+
+printDenseSV0 :: (Show t, Epsilon t) => SpVector t -> IO ()
+printDenseSV0 sv = do
   printDenseSV' sv 5
   newline where
     printDenseSV' v nco = putStrLn rr_' where
@@ -399,9 +408,11 @@ printDenseSV sv = do
 
 instance (Show a, Num a, Epsilon a) => PrintDense (SpVector a) where
   prd = printDenseSV
+  prd0 = printDenseSV0
 
 instance (Show a, Num a, Epsilon a) => PrintDense (SpMatrix a) where
   prd = printDenseSM
+  prd0 = printDenseSM0
 
 
 
