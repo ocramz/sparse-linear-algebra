@@ -25,7 +25,8 @@ module Numeric.LinearAlgebra.Sparse
          triUpperSolve,
          -- * Eigensolvers
          eigsQR,
-         eigRayleigh,
+         -- eigRayleigh,
+         eigsArnoldi,
          -- * Matrix factorization algorithms
          -- ** QR
          qr,
@@ -329,15 +330,14 @@ eigRayleigh nitermax debq prntf m = untilConvergedGM "eigRayleigh" config (const
       return (b', mu')
 
 
--- | `eigArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, and the eigenvalues of A are listed on the diagonal of the R factor.
-eigArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, Normed (SpVector t), MatrixRing (SpMatrix t),
-      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
+-- | `eigsArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues of A are listed on the diagonal of the R factor.
+eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, V (SpVector t), MatrixRing (SpMatrix t), Epsilon t, MonadThrow m) =>
      Int
      -> SpMatrix t
      -> SpVector t
      -> m (SpMatrix t, SpMatrix t, SpVector t) -- ^ Q, O, R
-eigArnoldi nitermax aa b = do
+eigsArnoldi nitermax aa b = do
   (q, h) <- arnoldi aa b nitermax
   (o, r) <- qr h
   return (q, o, extractDiagDense r)
@@ -390,7 +390,7 @@ SVD of A, Golub-Kahan method
 
 -- * Cholesky factorization
 
--- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
+-- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner and initializing the diagonal of the L matrix to ones.
 chol :: (Elt a, Epsilon a, MonadThrow m) =>
         SpMatrix a
      -> m (SpMatrix a)  -- ^ L
@@ -597,7 +597,7 @@ jacobiPre x = recip <$> extractDiag x
 
 -- ** Incomplete LU
 
--- | Used for Incomplete LU : remove entries in `m` corresponding to zero entries in `m2` (this is called ILU(0) in the preconditioner literature)
+-- | Used for Incomplete LU : remove entries in the output matrix corresponding to zero entries in the input matrix (this is called ILU(0) in the preconditioner literature)
 ilu0 :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
      SpMatrix t
@@ -886,7 +886,7 @@ instance Show a => Show (BICGSTAB a) where
 
 
 -- * Moore-Penrose pseudoinverse
--- | Least-squares approximation of a rectangular system of equaitons. Uses <\\> for the linear solve
+-- | Least-squares approximation of a rectangular system of equaitons. Uses (<\>) for the linear solve
 pinv :: (MatrixType v ~ SpMatrix a, LinearSystem v, Epsilon a,
          MonadThrow m, MonadIO m) =>
      SpMatrix a -> v -> m v
