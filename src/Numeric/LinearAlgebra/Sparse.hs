@@ -901,7 +901,7 @@ instance Show a => Show (BICGSTAB a) where
 
 
 -- * Moore-Penrose pseudoinverse
--- | Least-squares approximation of a rectangular system of equaitons. Uses `(<\\>)` for the linear solve
+-- | Least-squares approximation of a rectangular system of equations.
 pinv :: (MatrixType v ~ SpMatrix a, LinearSystem v, Epsilon a,
          MonadThrow m, MonadIO m) =>
      SpMatrix a -> v -> m v
