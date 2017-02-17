@@ -365,8 +365,6 @@ printDenseSM sm = do
   printDenseSM0 sm
 
 printDenseSM0 sm = do
-  putStrLn $ sizeStr sm
-  newline
   printDenseSM' sm 5 5
   newline
   where    
