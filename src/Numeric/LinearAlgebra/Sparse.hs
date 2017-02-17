@@ -229,7 +229,7 @@ non-zero but A has zeros in row k for all column indices < j.
 The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation in R^n)
 -}
 {-# inline givens #-}
--- givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
+givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
 givens aa i j 
   | isValidIxSM aa (i,j) && nrows aa >= ncols aa = do
       i' <- candidateRows' (immSM aa) i j
@@ -260,28 +260,10 @@ givensCoef u v = (c0/r, s0/r, r) where
   c0 = conj u
   s0 = conj v
   r = hypot u v
-  hypot x y = abs x * sqrt (1 + (y/x)**2)
-  -- hypot x y = sqrt (magnitude x**2 + magnitude y**2)
-
-hypot1 x y = abs x * sqrt (1 + (y/x)**2)
-
-hypot1' x y = magn x * sqrt (1 + (magn2 x/magn2 y)) where
-  magn2 a = a * conj a
-  magn = sqrt . magn2
-
-hypot2 x y = sqrt (magnitude x**2 + magnitude y**2)
-
-hypot2' x y = sqrt (magn2 x + magn2 y) where
-  magn2 i = i * conj i
+  hypot x y = sqrt (magn2 x + magn2 y) where
+    magn2 i = i * conj i
 
 
-
-givensCoef' u v = (c0/r, s0/r, r) where
-  c0 = conj u
-  s0 = conj v
-  r = hypot2' u v
-  -- hypot x y = sqrt (mag2 x + mag2 y)
-  -- mag2 i = i * conj i
 
 {-
 
@@ -292,7 +274,7 @@ G =(        )
 -}
 testG1, testG2 :: Complex Double -> Complex Double -> SpMatrix (Complex Double)
 testG1 u v = fromListDenseSM 2 [c, -conj s, s, conj c] where
-  (c, s, _) = givensCoef' u v
+  (c, s, _) = givensCoef u v
                          
 -- this is correct:
 testG2 u v = scale (recip r :+ 0) (fromListDenseSM 2 [conj u, -v, conj v, u]) where

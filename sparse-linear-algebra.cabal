@@ -56,8 +56,8 @@ library
                      -- , writer-cps-transformers
                      -- , monad-log == 0.1.1.0
                      -- , monad-par
-                     -- , QuickCheck >= 2.8.2
-                     -- , hspec
+                     , QuickCheck >= 2.8.2
+                     , hspec
                      -- , primitive >= 0.6.1.0
                      -- , mwc-random                     
 
