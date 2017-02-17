@@ -41,10 +41,10 @@ data ConvergenceStatus a = BufferNotReady
 
      
 data IterationConfig a b =
-  IterConf { numIterationsMax :: Int,
-             printDebugInfo :: Bool,
-             iterationView :: a -> b, 
-             printDebugIO :: b -> IO ()}
+  IterConf { numIterationsMax :: Int     -- ^ Max.# of iterations
+           , printDebugInfo :: Bool      -- ^ Print iteration info to stdout 
+           , iterationView :: a -> b     -- ^ Project state to a type `b`
+           , printDebugIO :: b -> IO ()} -- ^ print function for type `b`
 instance Show (IterationConfig a b) where
   show (IterConf n qd _ _) = unwords ["Max. # of iterations:",show n,", print debug information:", show qd]
   

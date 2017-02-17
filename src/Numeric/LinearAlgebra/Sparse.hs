@@ -4,7 +4,7 @@
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
 {-|
 
-This module exposes the high-level functionality of the library.
+This module exposes the user interface to the library.
 
 -}
 
@@ -13,10 +13,10 @@ module Numeric.LinearAlgebra.Sparse
          -- * Linear solvers
          -- ** Iterative methods
          (<\>),
+         -- ** Preconditioners
+         jacobiPre, ilu0Pre, mSsorPre,   
          -- ** Moore-Penrose pseudoinverse
          pinv,
-         -- ** Preconditioners
-         jacobiPre, ilu0, mSsor,         
          -- ** Direct methods
          luSolve,
          -- *** Forward substitution
@@ -55,7 +55,7 @@ module Numeric.LinearAlgebra.Sparse
          -- * Creation and conversion of sparse data
          -- ** SpVector
          fromListSV, toListSV,
-         -- *** Creation of /dense/ real or complex vector
+         -- *** Creation of /dense/ real or complex SpVector
          vr, vc,
          -- ** SpMatrix
          fromListSM, toListSM,
@@ -629,11 +629,11 @@ jacobiPre x = recip <$> extractDiag x
 -- ** Incomplete LU
 
 -- | Used for Incomplete LU : remove entries in the output matrix corresponding to zero entries in the input matrix (this is called ILU(0) in the preconditioner literature)
-ilu0 :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
+ilu0Pre :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
      SpMatrix t
      -> m (SpMatrix t, SpMatrix t) -- ^ L, U (with holes)
-ilu0 aa = do
+ilu0Pre aa = do
   (l, u) <- lu aa
   let lh = sparsifyLU l aa
       uh = sparsifyLU u aa
@@ -645,11 +645,11 @@ ilu0 aa = do
 -- ** SSOR
 
 -- | Symmetric Successive Over-Relaxation. `mSsor aa omega` : if `omega = 1` it returns the symmetric Gauss-Seidel preconditioner. When ω = 1, the SOR reduces to Gauss-Seidel; when ω > 1 and ω < 1, it corresponds to over-relaxation and under-relaxation, respectively.
-mSsor :: (MatrixRing (SpMatrix b), Fractional b) =>
+mSsorPre :: (MatrixRing (SpMatrix b), Fractional b) =>
      SpMatrix b
      -> b  -- ^ relaxation factor
      -> (SpMatrix b, SpMatrix b) -- ^ Left, right factors
-mSsor aa omega = (l, r) where
+mSsorPre aa omega = (l, r) where
   (e, d, f) = diagPartitions aa
   n = nrows e
   l = (eye n ^-^ scale omega e) ## reciprocal d
