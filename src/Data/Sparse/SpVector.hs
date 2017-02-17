@@ -267,15 +267,30 @@ insertSpVectorSafe i x (SV d xim)
 
 
 -- ** fromList
+-- | Create new SpVector using data from a Foldable (e.g. a list) in (index, value) form
 fromListSV :: Foldable t => Int -> t (Int, a) -> SpVector a
 fromListSV d iix = SV d $ foldr insf empty iix where
   insf (i, x) xacc | inBounds0 d i = insert i x xacc
                    | otherwise = xacc 
 
- 
+
+createv :: [a] -> SpVector a
+createv ll = fromListSV n $ zip ii ll where
+  n = length ll
+  ii = [0..n-1]
+  
+vr :: [Double] -> SpVector Double 
+vr = createv
+vc :: [Complex Double] -> SpVector (Complex Double)
+vc = createv
+
+  
 -- ** toList
-toListSV :: SpVector a -> [(IM.Key, a)]
+-- | Populate a list with SpVector contents
+toListSV :: SpVector a -> [(Int, a)]
 toListSV sv = toList (dat sv)
+
+
 
 -- |To dense list (default = 0)
 toDenseListSV :: Num b => SpVector b -> [b]

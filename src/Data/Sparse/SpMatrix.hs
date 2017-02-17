@@ -207,7 +207,7 @@ fromListSM' :: Foldable t => t (IxRow, IxCol, a) -> SpMatrix a -> SpMatrix a
 fromListSM' iix sm = foldl' ins sm iix where
   ins t (i,j,x) = insertSpMatrix i j x t
 
--- | Create new SpMatrix using data from list (row, col, value)
+-- | Create new SpMatrix using data from a Foldable (e.g. a list) in (row, col, value) form
 fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
 fromListSM (m,n) iix = fromListSM' iix (zeroSM m n)
 

@@ -53,9 +53,11 @@ module Numeric.LinearAlgebra.Sparse
          -- -- ** Sparse "
          -- randSpMat, randSpVec,
          -- * Creation and conversion of sparse data
-         -- ** From/to SpVector
+         -- ** SpVector
          fromListSV, toListSV,
-         -- ** From/to SpMatrix
+         -- *** Creation of /dense/ real or complex vector
+         vr, vc,
+         -- ** SpMatrix
          fromListSM, toListSM,
          -- ** Packing and unpacking, rows or columns of a sparse matrix
          -- *** ", using lists as container
@@ -215,19 +217,23 @@ hhRefl = hhMat 2
 
                   
 {- |
-Givens method, row version: choose other row index i' s.t. i' is :
+Givens' method, row version: choose a distinct row index i' such that i' is :
+
 * below the diagonal
+
 * corresponding element is nonzero
 
-QR.C1 ) To zero out entry A(i, j) we must find row k such that A(k, j) is
-non-zero but A has zeros in row k for all columns less than j.
+Requirement: To zero out entry A(i, j) we must find row k such that A(k, j) is
+non-zero but A has zeros in row k for all column indices < j.
 
-NB: the current version is quite inefficient in that:
-1. the Givens' matrix `G_i` is different from Identity only in 4 entries
-2. at each iteration `i` we multiply `G_i` by the previous partial result `M`. Since this corresponds to a rotation, and the `givensCoef` function already computes the value of the resulting non-zero component (output `r`), `G_i ## M` can be simplified by just changing two entries of `M` (i.e. zeroing one out and changing the other into `r`).
+The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation in R^n)
+
+
+
+
 -}
 {-# inline givens #-}
-givens :: (Elt a, MonadThrow m) => SpMatrix a -> Int -> Int -> m (SpMatrix a)
+givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
 givens aa i j 
   | isValidIxSM aa (i,j) && nrows aa >= ncols aa = do
       i' <- candidateRows' (immSM aa) i j
@@ -280,7 +286,13 @@ G =(        )
 
 -- * QR decomposition
 
--- | Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
+{-|
+Given a matrix A, returns a pair of matrices (Q, R) such that Q R = A, where Q is orthogonal and R is upper triangular. Applies Givens rotation iteratively to zero out sub-diagonal elements.
+
+NB: at each iteration `i` we multiply the Givens matrix `G_i` by the previous partial result `M`. Since this corresponds to a rotation, and the `givensCoef` function already computes the value of the resulting non-zero component (output `r`), `G_i ## M` can be simplified by just updating two entries of `M` (i.e. zeroing one out and changing the other into `r`).
+
+However, we must also accumulate the `G_i` in order to build `Q`, and the present formulation follows this definition closely.
+-}
 {-# inline qr #-}
 qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
      SpMatrix a
@@ -312,9 +324,9 @@ qr mm = do
 
 -- ** QR algorithm
 
--- | `eigsQR n mm` performs `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues
+-- | `eigsQR n mm` performs at most `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues.
 eigsQR :: (MonadThrow m, MonadIO m, Num' a, Normed (SpVector a), MatrixRing (SpMatrix a), Typeable (Magnitude (SpVector a))) =>
-        Int
+        Int            -- ^ Max. # of iterations
      -> Bool           -- ^ Print debug information        
      -> SpMatrix a     -- ^ Operand matrix
      -> m (SpVector a) -- ^ Eigenvalues {λ_i}
@@ -750,7 +762,7 @@ triUpperSolve uu w = do
 -- 3) the Krylov-subspace solution `yhat` is found by backsubstitution (since R is upper-triangular)
 -- 4) the approximate solution in the original space `xhat` is computed using the Krylov basis, `xhat = Q_n yhat`
 --
--- Many optimizations are possible, for example interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
+-- A common optimization involves interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
 gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
@@ -870,7 +882,6 @@ instance (Show a) => Show (CGS a) where
 
 
 
-
 -- ** BiCGSTAB
 
 data BICGSTAB a =
@@ -915,6 +926,11 @@ pinv aa b = aa #~^# aa <\> atb where
 
 
 
+-- * Linear solver interface
+
+-- -- TFQMR is in LinearSolvers.Experimental for now
+data LinSolveMethod = GMRES_ | CGNE_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show)
+
 -- | Interface method to individual linear solvers, do not use directly
 linSolve0 method aa b x0
   | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
@@ -937,12 +953,6 @@ linSolve0 method aa b x0
       where
         config = IterConf nitermax True fproj prd0
   
-
--- * Linear solver interface
-
--- -- TFQMR is in LinearSolvers.Experimental for now
-data LinSolveMethod = GMRES_ | CGNE_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show) 
-
 
 
 
