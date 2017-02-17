@@ -223,7 +223,7 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
   -- | A^T B
   (#^#) :: m -> m -> m
   a #^# b = transpose a ## b
-  -- | Matrix transpose
+  -- | Matrix transpose (Hermitian conjugate in the Complex case)
   transpose :: m -> m
   -- | Frobenius norm
   normFrobenius :: m -> MatrixNorm m

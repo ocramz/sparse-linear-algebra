@@ -85,7 +85,7 @@ module Numeric.LinearAlgebra.Sparse
          norm, norm2, norm2', normalize, normalize2, normalize2',
          norm1, hilbertDistSq,
          -- ** Matrix-related
-         transpose, normFrobenius,
+         transpose, trace, normFrobenius,
          -- * Pretty-printing
          prd, prd0,
          -- * Iteration combinators
@@ -227,13 +227,9 @@ Requirement: To zero out entry A(i, j) we must find row k such that A(k, j) is
 non-zero but A has zeros in row k for all column indices < j.
 
 The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation in R^n)
-
-
-
-
 -}
 {-# inline givens #-}
-givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
+-- givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
 givens aa i j 
   | isValidIxSM aa (i,j) && nrows aa >= ncols aa = do
       i' <- candidateRows' (immSM aa) i j
@@ -242,7 +238,9 @@ givens aa i j
   where
   givensMat mm i i' j =
     fromListSM'
-      [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)]
+      -- [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)]
+      [(i,i, c),        (i,j, s),
+       (j,i, - conj s), (j,j, conj c)]
       (eye (nrows mm))
            where
              (c, s, _) = givensCoef a b
@@ -254,21 +252,36 @@ givens aa i j
                                       firstNZColumn row j) mm
     firstNZColumn m k = isJust (I.lookup k m) &&
                         isNothing (I.lookupLT k m)
-
-rotMat :: Elt e => e -> e -> IxRow -> IxRow -> Int -> SpMatrix e
-rotMat a b i j n =
-  fromListSM' [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)] (eye n)
-    where
-      (c, s, _) = givensCoef a b
     
 
 -- | Givens coefficients and norm of associated vector
 givensCoef :: Elt t => t -> t -> (t, t, t)
-givensCoef a b = (c0/r, s0/r, r) where
-  c0 = conj a
-  s0 = - conj b
-  r = hypot c0 s0  
+givensCoef u v = (c0/r, s0/r, r) where
+  c0 = conj u
+  s0 = conj v
+  r = hypot u v
   hypot x y = abs x * sqrt (1 + (y/x)**2)
+  -- hypot x y = sqrt (magnitude x**2 + magnitude y**2)
+
+hypot1 x y = abs x * sqrt (1 + (y/x)**2)
+
+hypot1' x y = magn x * sqrt (1 + (magn2 x/magn2 y)) where
+  magn2 a = a * conj a
+  magn = sqrt . magn2
+
+hypot2 x y = sqrt (magnitude x**2 + magnitude y**2)
+
+hypot2' x y = sqrt (magn2 x + magn2 y) where
+  magn2 i = i * conj i
+
+
+
+givensCoef' u v = (c0/r, s0/r, r) where
+  c0 = conj u
+  s0 = conj v
+  r = hypot2' u v
+  -- hypot x y = sqrt (mag2 x + mag2 y)
+  -- mag2 i = i * conj i
 
 {-
 
@@ -277,14 +290,32 @@ G =(        )
    ( -s*  c*)
 
 -}
+testG1, testG2 :: Complex Double -> Complex Double -> SpMatrix (Complex Double)
+testG1 u v = fromListDenseSM 2 [c, -conj s, s, conj c] where
+  (c, s, _) = givensCoef' u v
+                         
+-- this is correct:
+testG2 u v = scale (recip r :+ 0) (fromListDenseSM 2 [conj u, -v, conj v, u]) where
+  r = sqrt $ (magnitude u)**2 + (magnitude v)**2
+  -- ll = [conj ]
 
 
-                          
-m0 :: SpMatrix (Complex Double)
-m0 = fromListSM (2,2) [(0,0, 1:+2), (1,0,2:+3.5), (0,1, 2:+(-4)), (1,1,2:+(-3))]
 
 
 
+mc0 :: SpMatrix (Complex Double)
+mc0 = fromListSM (2,2) [(0,0, 2:+1), (0,1,1:+1),
+                        (1,0, 1:+1), (1,1,1:+1)]
+
+mr0 :: SpMatrix Double
+mr0 = fromListDenseSM 2 [1,2,3,4]
+
+-- test = do
+--   gr <- givens mr0 1 0
+--   prd $ gr ## mr0
+--   gc <- givens mc0 1 0
+--   prd $ gc ## mc0
+  
 
 
 -- * QR decomposition

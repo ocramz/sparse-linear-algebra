@@ -719,6 +719,7 @@ matScale a = fmap (* a)
 
 -- ** Trace
 
+-- | Matrix trace
 trace :: Num b => SpMatrix b -> b
 trace m = foldlSM (+) 0 $ extractDiag m
 
