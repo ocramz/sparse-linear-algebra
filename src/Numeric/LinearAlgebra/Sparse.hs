@@ -217,16 +217,15 @@ hhRefl = hhMat 2
 
                   
 {- |
-Givens' method, row version: choose a distinct row index i' such that i' is :
+Givens' method, row version: given a row, column pair (i,j), choose a row index i' distinct from i such that :
 
-* below the diagonal
+* i' is below the diagonal
 
-* corresponding element is nonzero
+* the corresponding element is nonzero
 
-Requirement: To zero out entry A(i, j) we must find row k such that A(k, j) is
-non-zero but A has zeros in row k for all column indices < j.
+To zero out entry A(i, j) we must find row k such that A(k, j) is non-zero but A has zeros in row k for all column indices < j.
 
-The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation in R^n)
+NB: The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation embedded in R^n)
 -}
 {-# inline givens #-}
 givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
@@ -239,8 +238,10 @@ givens aa i j
   givensMat mm i i' j =
     fromListSM'
       -- [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)]
-      [(i,i, c),        (i,j, s),
-       (j,i, - conj s), (j,j, conj c)]
+      -- [(i,i, c),        (i,j, s),
+      --  (j,i, - conj s), (j,j, conj c)]
+      [(i,i, conj c),   (i,j, - conj s),
+       (j,i, s), (j,j, c)]
       (eye (nrows mm))
            where
              (c, s, _) = givensCoef a b
@@ -260,8 +261,10 @@ givensCoef u v = (c0/r, s0/r, r) where
   c0 = conj u
   s0 = conj v
   r = hypot u v
-  hypot x y = sqrt (magn2 x + magn2 y) where
-    magn2 i = i * conj i
+
+hypot :: Elt a => a -> a -> a
+hypot x y = sqrt (mag2 x + mag2 y) where
+    mag2 i = i * conj i
 
 
 
@@ -272,31 +275,36 @@ G =(        )
    ( -s*  c*)
 
 -}
-testG1, testG2 :: Complex Double -> Complex Double -> SpMatrix (Complex Double)
+
+-- both testG1 and testG2 are correct:
+testG1, testG2, testG1' :: Elt e => e -> e -> SpMatrix e
 testG1 u v = fromListDenseSM 2 [c, -conj s, s, conj c] where
   (c, s, _) = givensCoef u v
                          
--- this is correct:
-testG2 u v = scale (recip r :+ 0) (fromListDenseSM 2 [conj u, -v, conj v, u]) where
-  r = sqrt $ (magnitude u)**2 + (magnitude v)**2
-  -- ll = [conj ]
+testG2 u v = scale (recip r) (fromListDenseSM 2 [conj u, -v, conj v, u]) where
+  r = hypot u v
+
+testG1' u v = fromListSM (2,2) [(0,0,c), (1,0,-conj s), (0,1,s), (1,1,conj c)] where
+  (c, s, _) = givensCoef u v
 
 
-
-
-
-mc0 :: SpMatrix (Complex Double)
-mc0 = fromListSM (2,2) [(0,0, 2:+1), (0,1,1:+1),
+mc :: SpMatrix (Complex Double)
+mc = fromListSM (2,2) [(0,0, 2:+1), (0,1,1:+1),
                         (1,0, 1:+1), (1,1,1:+1)]
 
-mr0 :: SpMatrix Double
-mr0 = fromListDenseSM 2 [1,2,3,4]
+mr :: SpMatrix Double
+mr = fromListDenseSM 2 [1,2,3,4]
 
--- test = do
---   gr <- givens mr0 1 0
---   prd $ gr ## mr0
---   gc <- givens mc0 1 0
---   prd $ gc ## mc0
+test = do
+  let
+    gr0 = testG1' 1 2 :: SpMatrix Double
+    gc0 = testG1' (2:+1) (1:+1)
+  prd $ gr0 #~# mr
+  prd $ gc0 #~# mc
+  gr <- givens mr 1 0
+  prd $ gr #~# mr
+  gc <- givens mc 1 0
+  prd $ gc #~# mc
   
 
 
