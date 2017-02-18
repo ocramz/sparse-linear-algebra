@@ -226,6 +226,11 @@ Givens' method, row version: given a row, column pair (i,j), choose a row index 
 To zero out entry A(i, j) we must find row k such that A(k, j) is non-zero but A has zeros in row k for all column indices < j.
 
 NB: The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation embedded in R^n)
+
+   ( c    s )
+G =(        )
+   ( -s*  c*)
+
 -}
 {-# inline givens #-}
 givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
@@ -237,11 +242,8 @@ givens aa i j
   where
   givensMat mm i i' j =
     fromListSM'
-      -- [(i,i, c), (j,j, conj c), (j,i, - conj s), (i,j, s)]
-      -- [(i,i, c),        (i,j, s),
-      --  (j,i, - conj s), (j,j, conj c)]
-      [(i,i, conj c),   (i,j, - conj s),
-       (j,i, s), (j,j, c)]
+      [(i,i, conj c), (i,j, - conj s),
+       (j,i, s),      (j,j, c)]
       (eye (nrows mm))
            where
              (c, s, _) = givensCoef a b
@@ -268,43 +270,7 @@ hypot x y = sqrt (mag2 x + mag2 y) where
 
 
 
-{-
 
-   ( c    s )
-G =(        )
-   ( -s*  c*)
-
--}
-
--- both testG1 and testG2 are correct:
-testG1, testG2, testG1' :: Elt e => e -> e -> SpMatrix e
-testG1 u v = fromListDenseSM 2 [c, -conj s, s, conj c] where
-  (c, s, _) = givensCoef u v
-                         
-testG2 u v = scale (recip r) (fromListDenseSM 2 [conj u, -v, conj v, u]) where
-  r = hypot u v
-
-testG1' u v = fromListSM (2,2) [(0,0,c), (1,0,-conj s), (0,1,s), (1,1,conj c)] where
-  (c, s, _) = givensCoef u v
-
-
-mc :: SpMatrix (Complex Double)
-mc = fromListSM (2,2) [(0,0, 2:+1), (0,1,1:+1),
-                        (1,0, 1:+1), (1,1,1:+1)]
-
-mr :: SpMatrix Double
-mr = fromListDenseSM 2 [1,2,3,4]
-
-test = do
-  let
-    gr0 = testG1' 1 2 :: SpMatrix Double
-    gc0 = testG1' (2:+1) (1:+1)
-  prd $ gr0 #~# mr
-  prd $ gc0 #~# mc
-  gr <- givens mr 1 0
-  prd $ gr #~# mr
-  gc <- givens mc 1 0
-  prd $ gc #~# mc
   
 
 
@@ -975,7 +941,7 @@ linSolve0 method aa b x0
       xf <- untilConvergedG fname config (const True) stepf initf
       return $ fproj xf
       where
-        config = IterConf nitermax True fproj prd0
+        config = IterConf nitermax False fproj prd0
   
 
 
