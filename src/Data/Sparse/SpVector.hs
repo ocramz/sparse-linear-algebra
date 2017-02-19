@@ -278,9 +278,11 @@ createv :: [a] -> SpVector a
 createv ll = fromListSV n $ zip ii ll where
   n = length ll
   ii = [0..n-1]
-  
+
+-- | Create a /dense/ SpVector from a list of Double's
 vr :: [Double] -> SpVector Double 
 vr = createv
+-- | Create a /dense/ SpVector from a list of Complex Double's
 vc :: [Complex Double] -> SpVector (Complex Double)
 vc = createv
 

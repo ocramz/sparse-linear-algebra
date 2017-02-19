@@ -12,11 +12,11 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Algorithms.Merge as VA
 
-import Data.Ix
-import Data.Maybe
+-- import Data.Ix
+-- import Data.Maybe
 
-import Data.Sparse.Types
-import Numeric.LinearAlgebra.Class
+-- import Data.Sparse.Types
+-- import Numeric.LinearAlgebra.Class
 
 
 

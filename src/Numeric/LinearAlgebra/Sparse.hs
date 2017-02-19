@@ -907,10 +907,9 @@ instance Show a => Show (BICGSTAB a) where
 
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equations.
-pinv :: (MatrixType v ~ SpMatrix a, LinearSystem v, Epsilon a,
-         MonadThrow m, MonadIO m) =>
-     SpMatrix a -> v -> m v
-pinv aa b = aa #~^# aa <\> atb where
+pinv :: (LinearSystem v, MonadThrow m, MonadIO m) =>
+     MatrixType v -> v -> m v
+pinv aa b = (aa #^# aa) <\> atb where
   atb = transpose aa #> b
 
 
@@ -919,6 +918,7 @@ pinv aa b = aa #~^# aa <\> atb where
 -- * Linear solver interface
 
 -- -- TFQMR is in LinearSolvers.Experimental for now
+-- | Iterative methods for linear systems
 data LinSolveMethod = GMRES_ | CGNE_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show)
 
 -- | Interface method to individual linear solvers, do not use directly
