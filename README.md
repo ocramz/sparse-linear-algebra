@@ -56,7 +56,7 @@ Contents :
 
 * Matrix factorization algorithms
 
-    * Golub-Kahan-Lanczos bidiagonalization
+    * Golub-Kahan-Lanczos bidiagonalization (`gklBidiag`)
    
     * Singular value decomposition (SVD)
 
@@ -150,7 +150,7 @@ In the last example we have also shown the Cholesky decomposition (M = L L^T whe
 
 ### Linear systems
 
-Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `<\>` (inspired by Matlab's "backslash" function. Here we use GMRES as default solver method) :
+Large sparse linear systems are best solved with iterative methods. `sparse-linear-algebra` provides a selection of these via the `<\>` (inspired by Matlab's "backslash" function. Currently this method uses GMRES as default) :
 
     λ> b = fromListDenseSV 3 [3,2,5] :: SpVector Double
     λ> x <- amat <\> b

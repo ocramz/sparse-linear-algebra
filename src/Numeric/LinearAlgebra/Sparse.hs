@@ -330,25 +330,9 @@ eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
 
 
 
-  
 
 
-
-
--- ** Rayleigh iteration
-
--- | `eigsRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair.
-
-eigRayleigh nitermax debq prntf m = untilConvergedGM "eigRayleigh" config (const True) (rayStep m)
-  where
-    ii = eye (nrows m)
-    config = IterConf nitermax debq fst prntf
-    rayStep aa (b, mu) = do
-      nom <- (m ^-^ (mu `matScale` ii)) <\> b
-      let b' = normalize2' nom
-          mu' = (b' <.> (aa #> b')) / (b' <.> b')
-      return (b', mu')
-
+-- ** Arnoldi-QR
 
 -- | `eigsArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
 eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
