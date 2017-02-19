@@ -186,15 +186,19 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Complex, symmetric pos.def.)" $ 
-    it "chol (4 x 4 dense)" $
-      checkChol (tmc5 ##^ tmc5) >>= (`shouldBe` True)  
+  -- describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Complex, symmetric pos.def.)" $ 
+  --   it "chol (4 x 4 dense)" $
+  --     checkChol (tmc5 ##^ tmc5) >>= (`shouldBe` True) 
+  
       
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
     it "arnoldi (4 x 4 dense)" $
       checkArnoldi tm6 4 >>= (`shouldBe` True)
     it "arnoldi (5 x 5 sparse)" $
       checkArnoldi tm7 5 >>= (`shouldBe` True)
+  -- describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Complex)" $ do      
+  --   it "arnoldi (4 x 4 dense)" $
+  --     checkArnoldi tmc4 4 >>= (`shouldBe` True)      
 
 
 {- linear systems -}
