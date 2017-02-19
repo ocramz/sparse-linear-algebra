@@ -311,9 +311,9 @@ checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
      SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
 checkLuSolve amat rhs = do
   (lmat, umat) <- lu amat
-  (what, c1) <- checkTriUpperSolve umat rhs
-  (xhat, c2) <- checkTriLowerSolve lmat what
-  let r  = (amat #> xhat) ^-^ rhs
+  (w, c1) <- checkTriLowerSolve lmat rhs -- U x = L^-1 b = w
+  (x, c2) <- checkTriUpperSolve umat w   -- x = U^-1 w
+  let r  = (amat #> x) ^-^ rhs
       c3 = nearZero $ norm2 r
   return (c1, c2, c3)
   
@@ -321,6 +321,17 @@ checkLuSolve amat rhs = do
 --   (lmat, umat) <- lu amat
 --   xlu <- luSolve lmat umat rhs
 --   return $ nearZero (norm2Sq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
+
+
+
+checkLuSolve' amat rhs = do
+  (lmat, umat) <- lu amat
+  (w, c1) <- checkTriLowerSolve lmat rhs
+  (x, c2) <- checkTriUpperSolve umat w
+  let r  = (amat #> x) ^-^ rhs
+      c3 = nearZero $ norm2 r
+  return (w, x, c1, c2, c3)
+
 
 
 
