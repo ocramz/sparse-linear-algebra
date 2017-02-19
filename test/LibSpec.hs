@@ -313,7 +313,32 @@ checkLuSolve amat rhs = do
   (lmat, umat) <- lu amat
   xlu <- luSolve lmat umat rhs
   return $ nearZero (norm2Sq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
-       
+
+
+{- triangular solvers -}
+checkTriUpperSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
+      MonadThrow m) =>
+     SpMatrix t -> SpVector t -> m Bool
+checkTriUpperSolve umat x = do
+  let rhs = umat #> x
+  xhat <- triUpperSolve umat rhs
+  let r = (umat #> xhat) ^-^ rhs
+  return $ nearZero $ norm2 r
+
+checkTriLowerSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
+      MonadThrow m) =>
+     SpMatrix t -> SpVector t -> m Bool
+checkTriLowerSolve lmat x = do
+  let rhs = lmat #> x
+  xhat <- triLowerSolve lmat rhs
+  let r = (lmat #> xhat) ^-^ rhs
+  return $ nearZero $ norm2 r
+
+
+
+    
   
 {- Arnoldi iteration -}
 
