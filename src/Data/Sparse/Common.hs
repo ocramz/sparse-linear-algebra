@@ -99,7 +99,7 @@ insertCol = insertColWith id
 
 -- * Outer vector product
 
--- | Outer product (all-with-all matrix)
+-- | Outer product
 outerProdSV, (><) :: Num a => SpVector a -> SpVector a -> SpMatrix a
 outerProdSV v1 v2 = fromListSM (m, n) ixy where
   m = dim v1
