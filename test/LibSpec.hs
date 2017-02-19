@@ -153,10 +153,10 @@ spec = do
       
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
     it "luSolve (4 x 4 sparse)" $ 
-      checkLuSolve aa1 b1 >>= (`shouldBe` (True, True))
+      checkLuSolve aa1 b1 >>= (`shouldBe` (True, True, True))
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Complex)" $ 
     it "luSolve (3 x 3 dense)" $ 
-      checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True)) 
+      checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True, True)) 
       
   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
     it "qr (3 x 3 dense)" $ 
@@ -308,12 +308,14 @@ checkChol a = do -- c1 && c2 where
 checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
-     SpMatrix t -> SpVector t -> m (Bool, Bool)
+     SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
 checkLuSolve amat rhs = do
   (lmat, umat) <- lu amat
   (what, c1) <- checkTriUpperSolve umat rhs
   (xhat, c2) <- checkTriLowerSolve lmat what
-  return (c1, c2)
+  let r  = (amat #> xhat) ^-^ rhs
+      c3 = nearZero $ norm2 r
+  return (c1, c2, c3)
   
 -- checkLuSolve amat rhs = do
 --   (lmat, umat) <- lu amat
