@@ -32,7 +32,7 @@ import Data.Complex
 import Data.Foldable (foldl')
 import Data.Maybe
 
-import Data.VectorSpace
+import Data.VectorSpace hiding (magnitude)
 
 
 -- *
@@ -733,7 +733,7 @@ normFrobeniusSM m = sqrt $ trace (m ##^ m)
 
 normFrobeniusSMC ::
   (MatrixRing (SpMatrix (Complex a)), RealFloat a) => SpMatrix (Complex a) -> a
-normFrobeniusSMC m = sqrt $ realPart $ trace (m ##^ m)
+normFrobeniusSMC m = sqrt $ magnitude $ trace (m ##^ m)
 
 
 

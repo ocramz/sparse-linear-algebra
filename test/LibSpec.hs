@@ -179,13 +179,16 @@ spec = do
       checkLu tm7 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ do
     it "lu (3 x 3 dense)" $
-      checkLu tmc4 >>= (`shouldBe` True)  
+      checkLu tmc4 >>= (`shouldBe` True)
+    -- it "lu (4 x 4 dense)" $
+    --   checkLu tmc5 >>= (`shouldBe` True)   
+  
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 >>= (`shouldBe` True)
-  -- describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Complex, symmetric pos.def.)" $ 
-  --   it "chol (3 x 3 dense)" $
-  --     checkChol (tmc4 #^# tmc4) >>= (`shouldBe` True)  
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Complex, symmetric pos.def.)" $ 
+    it "chol (3 x 3 dense)" $
+      checkChol (tmc5 ##^ tmc5) >>= (`shouldBe` True)  
       
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
     it "arnoldi (4 x 4 dense)" $
@@ -317,11 +320,6 @@ checkLuSolve amat rhs = do
       c3 = nearZero $ norm2 r
   return (c1, c2, c3)
   
--- checkLuSolve amat rhs = do
---   (lmat, umat) <- lu amat
---   xlu <- luSolve lmat umat rhs
---   return $ nearZero (norm2Sq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
-
 
 
 checkLuSolve' amat rhs = do
@@ -961,13 +959,15 @@ tvc3 = fromListDenseSV 2 [3 :+ (-2), 1 :+ 1 ]
 
 -- Complex linear system
 
-tmc4 :: SpMatrix (Complex Double)
+tmc4,tmc5 :: SpMatrix (Complex Double)
 tmc4 = fromListDenseSM 3 [3:+1, 4:+(-1), (-5):+3, 2:+2, 3:+(-2), 5:+0.2, 7:+(-2), 9:+(-1), 2:+3]
 
 tvc4 = vc [1:+3,2:+2,1:+9]
 
 bc4 = tmc4 #> tvc4
 
+
+tmc5 = fromListDenseSM 4 $ zipWith (:+) [16..31] [15,14..0]
 
 
 
