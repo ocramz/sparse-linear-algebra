@@ -346,7 +346,7 @@ toDenseRow sm irow =
 
 
 
-toDenseRowClip :: (Show a, Num a, Epsilon a) => SpMatrix a -> IM.Key -> Int -> String
+toDenseRowClip :: (Show a, Epsilon a) => SpMatrix a -> IM.Key -> Int -> String
 toDenseRowClip sm irow ncomax
   | nco > ncomax = unwords (map showNz h) ++  " ... " ++ showNz t
   | otherwise = unwords $ showNz <$> dr
@@ -404,11 +404,11 @@ printDenseSV0 sv = do
 -- ** Pretty printer typeclass
 
 
-instance (Show a, Num a, Epsilon a) => PrintDense (SpVector a) where
+instance (Show a, Epsilon a) => PrintDense (SpVector a) where
   prd = printDenseSV
   prd0 = printDenseSV0
 
-instance (Show a, Num a, Epsilon a) => PrintDense (SpMatrix a) where
+instance (Show a, Epsilon a) => PrintDense (SpMatrix a) where
   prd = printDenseSM
   prd0 = printDenseSM0
 

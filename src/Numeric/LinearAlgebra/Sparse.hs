@@ -149,7 +149,7 @@ type Num' x = (Epsilon x, Elt x, Show x, Ord x, Typeable x)
 -- * Matrix condition number
 
 -- | Matrix condition number: computes the QR factorization and extracts the extremal eigenvalues from the R factor
-conditionNumberSM :: (MonadThrow m, MatrixRing (SpMatrix a), Num' a, Typeable a) =>
+conditionNumberSM :: (MonadThrow m, MatrixRing (SpMatrix a), Num' a) =>
      SpMatrix a -> m a
 conditionNumberSM m = do
   (_, r) <- qr m
@@ -352,7 +352,7 @@ eigRayleigh nitermax debq prntf m = untilConvergedGM "eigRayleigh" config (const
 
 -- | `eigsArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
 eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, V (SpVector t), MatrixRing (SpMatrix t), Epsilon t, MonadThrow m) =>
+      Elt t, V (SpVector t), Epsilon t, MonadThrow m) =>
      Int
      -> SpMatrix t
      -> SpVector t
