@@ -80,7 +80,7 @@ test-suite spec
   build-depends:       QuickCheck >= 2.8.2
                      , base
                      , containers
-                     , criterion
+                     -- , criterion == 1.1.4.0
                      , hspec
                      , mtl >= 2.2.1
                      , exceptions
