@@ -153,10 +153,10 @@ spec = do
       
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
     it "luSolve (4 x 4 sparse)" $ 
-      checkLuSolve aa1 b1 >>= (`shouldBe` True)
-  -- describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Complex)" $ 
-  --   it "luSolve (3 x 3 dense)" $ 
-  --     checkLuSolve tmc4 tvc4 >>= (`shouldBe` True) 
+      checkLuSolve aa1 b1 >>= (`shouldBe` (True, True))
+  describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Complex)" $ 
+    it "luSolve (3 x 3 dense)" $ 
+      checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True)) 
       
   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
     it "qr (3 x 3 dense)" $ 
@@ -269,13 +269,13 @@ checkQr a = do
   return $ c1 && c2 && c3
 
 
-stepQR a = do
-  (q, r) <- qr a
-  return $ r #~# q
+-- stepQR a = do
+--   (q, r) <- qr a
+--   return $ r #~# q
 
-stepQRix (i, a) = do
-  a' <- stepQR a
-  return (i + 1, a')
+-- stepQRix (i, a) = do
+--   a' <- stepQR a
+--   return (i + 1, a')
   
 
 
@@ -308,31 +308,40 @@ checkChol a = do -- c1 && c2 where
 checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
       Epsilon t, MonadThrow m) =>
-     SpMatrix t -> SpVector t -> m Bool
+     SpMatrix t -> SpVector t -> m (Bool, Bool)
 checkLuSolve amat rhs = do
   (lmat, umat) <- lu amat
-  xlu <- luSolve lmat umat rhs
-  return $ nearZero (norm2Sq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
+  (what, c1) <- checkTriUpperSolve umat rhs
+  (xhat, c2) <- checkTriLowerSolve lmat what
+  return (c1, c2)
+  
+-- checkLuSolve amat rhs = do
+--   (lmat, umat) <- lu amat
+--   xlu <- luSolve lmat umat rhs
+--   return $ nearZero (norm2Sq ( (lmat #> (umat #> xlu)) ^-^ rhs ))
+
 
 
 {- triangular solvers -}
 checkTriUpperSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
       MonadThrow m) =>
-     SpMatrix t -> SpVector t -> m Bool
+     SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 checkTriUpperSolve umat rhs = do
   xhat <- triUpperSolve umat rhs
   let r = (umat #> xhat) ^-^ rhs
-  return $ nearZero $ norm2 r
+      flag = nearZero $ norm2 r
+  return (xhat, flag)
 
 checkTriLowerSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
       MonadThrow m) =>
-     SpMatrix t -> SpVector t -> m Bool
+     SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 checkTriLowerSolve lmat rhs = do
   xhat <- triLowerSolve lmat rhs
   let r = (lmat #> xhat) ^-^ rhs
-  return $ nearZero $ norm2 r
+      flag = nearZero $ norm2 r
+  return (xhat, flag)
 
 
 
