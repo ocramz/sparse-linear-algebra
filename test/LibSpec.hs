@@ -320,8 +320,7 @@ checkTriUpperSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatr
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
       MonadThrow m) =>
      SpMatrix t -> SpVector t -> m Bool
-checkTriUpperSolve umat x = do
-  let rhs = umat #> x
+checkTriUpperSolve umat rhs = do
   xhat <- triUpperSolve umat rhs
   let r = (umat #> xhat) ^-^ rhs
   return $ nearZero $ norm2 r
@@ -330,8 +329,7 @@ checkTriLowerSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatr
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
       MonadThrow m) =>
      SpMatrix t -> SpVector t -> m Bool
-checkTriLowerSolve lmat x = do
-  let rhs = lmat #> x
+checkTriLowerSolve lmat rhs = do
   xhat <- triLowerSolve lmat rhs
   let r = (lmat #> xhat) ^-^ rhs
   return $ nearZero $ norm2 r
