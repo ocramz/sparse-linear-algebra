@@ -216,22 +216,16 @@ hhRefl = hhMat 2
 
 
                   
-{- |
-Givens' method, row version: given a row, column pair (i,j), choose a row index i' distinct from i such that :
 
-* i' is below the diagonal
-
-* the corresponding element is nonzero
-
-To zero out entry A(i, j) we must find row k such that A(k, j) is non-zero but A has zeros in row k for all column indices < j.
-
-NB: The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation embedded in R^n)
-
-   ( c    s )
-G =(        )
-   ( -s*  c*)
-
--}
+-- | Givens' method, row version: given a row, column pair (i,j), choose a row index i' distinct from i such that :
+-- * i' is below the diagonal
+-- * the corresponding element is nonzero
+-- To zero out entry A(i, j) we must find row k such that A(k, j) is non-zero but A has zeros in row k for all column indices < j.
+-- NB: The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation embedded in R^n)
+-- NB2: The form of a Complex rotation matrix is as follows (`*` indicates complex conjugation):
+--    ( c    s )
+-- G =(        )
+--    ( -s*  c*)
 {-# inline givens #-}
 givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
 givens aa i j 
