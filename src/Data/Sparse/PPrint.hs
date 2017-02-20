@@ -61,7 +61,9 @@ prepC opts (r :+ i) = prepD opts r ++ oi where
     i' = abs i
 
 
-
+-- | printf for a list of values
+--
+-- > printN prepD (PPOpts 1 3) [1,pi]
 printN prepf opts xl
   | null xl = printf "\n"
   | null xs = printf (prepf opts x) x
