@@ -64,8 +64,24 @@ modifyUntilM q f = do
   if q y then return y
          else modifyUntilM q f   
 
+-- | modifyUntil with optional iteration logging to stdout
+modifyUntil' :: (MonadState a m, MonadIO m) =>
+     (a -> Bool) -> (a -> a) -> IterationConfig a b -> m a
+modifyUntil' q f = modifyUntilM' q (pure . f)
 
-
+modifyUntilM' :: (MonadState b m, MonadIO m) =>
+     (b -> Bool) -> (b -> m b) -> IterationConfig b b1 -> m b
+modifyUntilM' q f config = go 0 where
+  go i = do
+   x <- get
+   y <- f x
+   let pf = iterationView config
+   when (printDebugInfo config) $ liftIO $ do
+     putStrLn $ unwords ["Iteration", show i]
+     printDebugIO config (pf y) 
+   put y
+   if q y then return y
+          else go (i + 1)
 
 
 
