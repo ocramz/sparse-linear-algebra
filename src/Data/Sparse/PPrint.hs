@@ -27,22 +27,34 @@ newline = putStrLn ""
 
 
 
-
-printfDouble :: (PrintfArg t, PrintfType t1) => PPrintOptions -> t -> t1
-printfDouble opts x = printf pstr x where
-  pstr = concat ["%" , show ni, ".", show nd, "f"]
-  nd = pprintDecimals opts
-  ni = pprintDigits opts - nd
-
 data PPrintOptions =
-  PPrintOptions {
+  PPOpts {
      pprintDigits :: Int,
      pprintDecimals :: Int } deriving (Eq, Show)
 
-pprintDefaults = PPrintOptions 5 2
+pprintDefaults = PPOpts 1 3
 
 
 
+prepD opts x = pstr -- printf pstr x
+  where
+  pstr | abs x > 10 || abs x < 0.5 = s ++ "e"
+       | otherwise = s ++ "f"
+    where
+      s = concat ["%" , show ni, ".", show nd]
+  nd = pprintDecimals opts
+  ni = pprintDigits opts
+
+
+
+-- printfComplex :: (PrintfArg t, Epsilon t, Ord t) =>
+--      PPrintOptions -> Complex t -> String
+prepC opts (r :+ i) = prepD opts r ++ oi where
+    oi | isNz i = concat [s, "i ", prepD opts i']
+       | otherwise = []
+    s | signum i >= 0 = " + "
+      | otherwise = " - "
+    i' = abs i
 
 -- | Cleaner way to display Complex values
 
