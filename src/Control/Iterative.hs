@@ -69,13 +69,15 @@ modifyUntil' :: (MonadState a m, MonadIO m) =>
      (a -> Bool) -> (a -> a) -> IterationConfig a b -> m a
 modifyUntil' q f = modifyUntilM' q (pure . f)
 
+
 modifyUntilM' :: (MonadState b m, MonadIO m) =>
      (b -> Bool) -> (b -> m b) -> IterationConfig b b1 -> m b
 modifyUntilM' q f config = go 0 where
+  pf = iterationView config
+  nitermax = numIterationsMax config
   go i = do
    x <- get
    y <- f x
-   let pf = iterationView config
    when (printDebugInfo config) $ liftIO $ do
      putStrLn $ unwords ["Iteration", show i]
      printDebugIO config (pf y) 

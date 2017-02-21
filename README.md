@@ -196,6 +196,8 @@ Inspired by
 
 ## References
 
-[1] : Y. Saad, Iterative Methods for Sparse Linear Systems, 2nd ed., 2000
+[1] Y. Saad, Iterative Methods for Sparse Linear Systems, 2nd ed., 2000
 
-[2] : L. N. Trefethen, D. Bau, Numerical Linear Algebra, SIAM, 1997
+[2] L. N. Trefethen, D. Bau, Numerical Linear Algebra, SIAM, 1997
+
+[3] W. H. Press, S. A. Teukolsky, W. T. Vetterling, B. P. Flannery, Numerical Recipes in Fortran 77, 2nd ed., 1992 
