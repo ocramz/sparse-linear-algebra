@@ -74,7 +74,7 @@ modifyUntilM' :: MonadIO m =>
    IterationConfig a b -> (a -> Bool) -> (a -> m a) -> a -> m a
 modifyUntilM' config q f x0 = MTS.execStateT (go 0) x0 where
   pf = iterationView config
-  nitermax = numIterationsMax config
+  -- nitermax = numIterationsMax config
   go i = do
    x <- get
    y <- lift $ f x
@@ -82,7 +82,7 @@ modifyUntilM' config q f x0 = MTS.execStateT (go 0) x0 where
      putStrLn $ unwords ["Iteration", show i]
      printDebugIO config (pf y) 
    put y
-   if q y || i == nitermax
+   if q y -- || i == nitermax
      then return y
      else go (i + 1)
 
