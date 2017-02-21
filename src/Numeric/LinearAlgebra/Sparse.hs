@@ -295,10 +295,29 @@ qr mm = do
           m' = g #~# m          -- update R
         return (qmatt', m', tail iis)
 
-  
 
 
+qr' mm = do 
+     (qt, r, _) <- modifyUntilM' config haltf qrstepf gminit
+     return (transpose qt, r) 
+  where
+    gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
+    haltf (_, _, iis) = null iis
+    config = IterConf 0 True thd prd2 where
+      thd (x,y,_) = (x,y)
+      prd2 (x,y) = do
+        prd0 x
+        prd0 y
+    qrstepf (qmatt, m, iis) = do
+        let (i, j) = head iis
+        g <- givens m i j
+        let
+          qmatt' = g #~# qmatt  -- update Q'
+          m' = g #~# m          -- update R
+        return (qmatt', m', tail iis)    
 
+tm2 :: SpMatrix Double
+tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
 
 
 

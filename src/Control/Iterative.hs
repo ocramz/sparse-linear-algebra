@@ -65,25 +65,26 @@ modifyUntilM q f = do
          else modifyUntilM q f   
 
 -- | modifyUntil with optional iteration logging to stdout
-modifyUntil' :: (MonadState a m, MonadIO m) =>
-     (a -> Bool) -> (a -> a) -> IterationConfig a b -> m a
-modifyUntil' q f = modifyUntilM' q (pure . f)
+modifyUntil' :: MonadIO m =>
+   IterationConfig a b -> (a -> Bool) -> (a -> a) -> a -> m a
+modifyUntil' config q f x0 = modifyUntilM' config q (pure . f) x0
 
 
-modifyUntilM' :: (MonadState b m, MonadIO m) =>
-     (b -> Bool) -> (b -> m b) -> IterationConfig b b1 -> m b
-modifyUntilM' q f config = go 0 where
+modifyUntilM' :: MonadIO m =>
+   IterationConfig a b -> (a -> Bool) -> (a -> m a) -> a -> m a
+modifyUntilM' config q f x0 = MTS.execStateT (go 0) x0 where
   pf = iterationView config
   nitermax = numIterationsMax config
   go i = do
    x <- get
-   y <- f x
+   y <- lift $ f x
    when (printDebugInfo config) $ liftIO $ do
      putStrLn $ unwords ["Iteration", show i]
      printDebugIO config (pf y) 
    put y
-   if q y then return y
-          else go (i + 1)
+   if q y || i == nitermax
+     then return y
+     else go (i + 1)
 
 
 
