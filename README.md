@@ -198,6 +198,8 @@ Inspired by
 
 [1] Y. Saad, Iterative Methods for Sparse Linear Systems, 2nd ed., 2000
 
-[2] L. N. Trefethen, D. Bau, Numerical Linear Algebra, SIAM, 1997
+[2] G.H. Golub and C.F. Van Loan, Matrix Computations, 3rd ed., 1996
 
-[3] W. H. Press, S. A. Teukolsky, W. T. Vetterling, B. P. Flannery, Numerical Recipes in Fortran 77, 2nd ed., 1992 
+[3] L.N. Trefethen, D. Bau, Numerical Linear Algebra, SIAM, 1997
+
+[4] W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery, Numerical Recipes in Fortran 77, 2nd ed., 1992 
