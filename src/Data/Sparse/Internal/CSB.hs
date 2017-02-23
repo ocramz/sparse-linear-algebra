@@ -1,3 +1,4 @@
+{-# language DeriveFunctor #-}
 module Data.Sparse.Internal.CSB where
 
 import Control.Applicative
@@ -63,7 +64,7 @@ data CsbMatrix a = CSB {
   csbNrows, csbNcols :: {-# UNPACK #-} !Int,
   csbVal :: V.Vector a,
   csbRowPtr, csbRowIx, csbColIx :: V.Vector Int
-                       } deriving (Eq)
+                       } deriving (Eq, Functor)
 
 
 {- |
