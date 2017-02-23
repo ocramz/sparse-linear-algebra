@@ -27,7 +27,7 @@ import Control.Concurrent
 
 import Data.Sparse.Utils
 import Data.Sparse.Types
-import Data.Sparse.Internal.CSRVector
+-- import Data.Sparse.Internal.CSRVector
 import Data.Sparse.Internal.Utils
 
 import Numeric.LinearAlgebra.Class
@@ -64,6 +64,21 @@ data CsbMatrix a = CSB {
   csbVal :: V.Vector a,
   csbRowPtr, csbRowIx, csbColIx :: V.Vector Int
                        } deriving (Eq)
+
+
+{- |
+encode:
+
+Given:
+* Block size
+* Matrix size (#rows, #cols)
+* (row, column) index pair
+
+Compute:
+* Block index
+* (Row, column) index (relative to block)
+-}
+
 
 
 -- data Block a = Block {
