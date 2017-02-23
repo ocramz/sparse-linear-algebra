@@ -18,6 +18,9 @@ clean:
 build:
 	stack build
 
+test:
+	stack test
+
 build-threaded:
 	stack build --ghc-options "-threaded -O2"
 
@@ -34,11 +37,14 @@ test-profile:
 test-threaded:
 	stack test --ghc-options "+RTS -N${NTHREADS} -s -RTS"
 
-
 all:
-	make clean
 	make build
 	make test
+
+
+rebuild:
+	make clean
+	make all
 
 profile:
 	make clean
