@@ -35,7 +35,7 @@ data PPrintOptions =
      } deriving (Eq, Show)
 
 prdef :: PPrintOptions
-prdef = PPOpts 1 3
+prdef = PPOpts 1 2
 
 
 
