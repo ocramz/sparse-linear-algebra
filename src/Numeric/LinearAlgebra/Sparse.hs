@@ -566,6 +566,8 @@ tmc5 = fromListDenseSM 4 $ zipWith (:+) [16..31] [15,14..0]
 
 
 
+
+
 -- -- Produces the permutation matrix necessary to have a nonzero in position (iref, jref). This is used in the LU factorization
 -- permutAA :: Num b => IxRow -> IxCol -> SpMatrix a -> Maybe (SpMatrix b)
 -- permutAA iref jref (SM (nro,_) mm) 

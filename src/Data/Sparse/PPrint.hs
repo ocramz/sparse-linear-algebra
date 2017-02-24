@@ -7,7 +7,7 @@
 -- Portability :  portable
 --
 -----------------------------------------------------------------------------
-module Data.Sparse.PPrint (prd, prd0, PPrintOptions, prdef, prepD, prepC, printDN, printCN) where
+module Data.Sparse.PPrint (prd, prd0, PrintDense, newline, PPrintOptions, prdef, prepD, prepC, printDN, printCN) where
 
 import Data.Complex
 import Data.List
@@ -27,7 +27,7 @@ newline :: IO ()
 newline = putStrLn ""  
 
 
-
+-- | Pretty printing options: # of integer digits, # of decimal digits
 data PPrintOptions =
   PPOpts {
      pprintInt :: Int,
