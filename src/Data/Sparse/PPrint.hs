@@ -34,8 +34,8 @@ data PPrintOptions =
      pprintDec :: Int
      } deriving (Eq, Show)
 
-pprintDefaults :: PPrintOptions
-pprintDefaults = PPOpts 1 3
+pdef :: PPrintOptions
+pdef = PPOpts 1 3
 
 
 
@@ -54,7 +54,7 @@ prepD opts x = pstr -- printf pstr x
 -- | printf format string for a Complex Fractional
 prepC :: (Epsilon t, Ord t) => PPrintOptions -> Complex t -> String
 prepC opts (r :+ i) = prepD opts r ++ oi where
-    oi | isNz i = concat [s, "i ", prepD opts i']
+    oi | isNz i = concat [s, prepD opts i', "i"]
        | otherwise = []
     s | signum i >= 0 = " + "
       | otherwise = " - "
@@ -64,9 +64,9 @@ prepC opts (r :+ i) = prepD opts r ++ oi where
 -- | printf for a list of values
 --
 -- > printN prepD (PPOpts 1 3) [1,pi]
-printN prepf opts xl
+printDN opts xl
   | null xl = printf "\n"
-  | null xs = printf (prepf opts x) x
+  | null xs = printf (prepD opts x) x
   | n==1 = let [x1]=xs in printf s x x1
   | n==2 = let [x1,x2]=xs in printf s x x1 x2
   | n==3 = let [x1,x2,x3]=xs in printf s x x1 x2 x3
@@ -76,9 +76,30 @@ printN prepf opts xl
   where
     (x:xs) = xl
     n = length xs
-    s = unwords (replicate (n+1) (prepf opts x)) ++ "\n"
-    s'= unwords [unwords (replicate n (prepf opts x)), "...", prepf opts x] ++ "\n"
-  -- case length ll of 1 -> printf (prepf opts x) x where
-  --                     x = head ll
-  --                   2 -> printf (prepf opts )
-  
+    s = intercalate ", " (replicate (n+1) (prepD opts x)) ++ "\n"
+    s'= intercalate ", " [unwords (replicate n (prepD opts x)), "...", prepD opts x] ++ "\n"
+
+
+-- > printCN pdef [(1:+pi), (3.5:+4.3), (pi:+(-3.4))]     
+printCN opts xl
+  | null xl = printf "\n"
+  | null xs = printf (pr x) (re x) (aim x)
+  | n==1 = let [x1]=xs in printf (commas [pr x,pr x1]) (re x) (aim x) (re x1) (aim x1)
+  | n==2 = let [x1,x2]=xs in printf (commas [pr x,pr x1,pr x2]) (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2)
+  -- | n==3 = let [x1,x2,x3]=xs in printf s x x1 x2 x3
+  -- | n==4 = let [x1,x2,x3,x4]=xs in printf s x x1 x2 x3 x4
+  -- | otherwise = let [x1,x2,x3,x4,_]=xs
+  --                   xfin=last xs in printf s' x x1 x2 x3 x4 xfin
+  where
+    (x@(r1:+i1):xs) = xl
+    pr = prepC opts
+    commas = intercalate ", "
+    n = length xs
+    s x = intercalate ", " (replicate (n+1) (prepC opts x)) ++ "\n"
+    -- s'= unwords [unwords (replicate n (prepD opts x)), "...", prepD opts x] ++ "\n"
+
+
+re :: Complex a -> a
+re = realPart
+aim :: Num a => Complex a -> a
+aim = abs . imagPart

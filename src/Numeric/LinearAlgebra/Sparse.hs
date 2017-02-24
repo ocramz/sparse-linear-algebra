@@ -303,8 +303,8 @@ qr' mm = do
   where
     gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
     haltf (_, _, iis) = null iis
-    config = IterConf 0 True thd prd2 where
-      thd (x,y,_) = (x,y)
+    config = IterConf 0 True fst2 prd2 where
+      fst2 (x,y,_) = (x,y)
       prd2 (x,y) = do
         prd0 x
         prd0 y
@@ -513,12 +513,56 @@ lu aa = do
 
 
 
-
+lu' aa = do
+  let oops j = throwM (NeedsPivoting "solveForLij" ("U" ++ show (j, j)) :: MatrixException Double)
+      n = nrows aa
+      q (i, _, _) = i == n - 1
+      luInit | isNz u00 = return (1, l0, u0)
+             | otherwise = oops (0 :: Int)
+        where
+          l0 = insertCol (eye n) ((extractSubCol aa 0 (1, n-1)) ./ u00 ) 0
+          u0 = insertRow (zeroSM n n) (extractRow aa 0) 0   -- initial U
+          u00 = u0 @@! (0,0)  -- make sure this is non-zero by applying permutation
+      luUpd (i, l, u) = do -- (i + 1, l', u') 
+        u' <- uUpd aa n (i, l, u)  -- update U
+        l' <- lUpd (i, l, u') -- update L
+        return (i + 1, l', u')
+      uUpd aa n (ix, lmat, umat) = do
+        let us = onRangeSparse (solveForUij ix) [ix .. n - 1]
+            solveForUij i j = a - p where
+              a = aa @@! (i, j)
+              p = contractSub lmat umat i j (i - 1)
+        return $ insertRow umat (fromListSV n us) ix
+      lUpd (ix, lmat, umat) = do -- insertCol lmat (fromListSV n ls) ix
+        ls <- lsm
+        return $ insertCol lmat (fromListSV n ls) ix
+        where
+          lsm = onRangeSparseM (`solveForLij` ix) [ix + 1 .. n - 1]
+          solveForLij i j
+            | isNz ujj = return $ (a - p)/ujj
+            | otherwise = oops j
+            where
+             a = aa @@! (i, j)
+             ujj = umat @@! (j , j)   -- NB this must be /= 0
+             p = contractSub lmat umat i j (i - 1)    
+  s0 <- luInit
+  let config = IterConf 0 True vf prd2 where
+        vf (_, l, u) = (l, u)
+        prd2 (x, y) = do
+          prd0 x
+          prd0 y
+  (ixf, lf, uf) <- modifyUntilM' config q luUpd s0
+  ufin <- uUpd aa n (ixf, lf, uf)   -- final U update
+  return (lf, ufin)
          
 
 
+tmc4, tmc5 :: SpMatrix (Complex Double)
+tmc4 = fromListDenseSM 3 [3:+1, 4:+(-1), (-5):+3, 2:+2, 3:+(-2), 5:+0.2, 7:+(-2), 9:+(-1), 2:+3]
 
+tvc4 = vc [1:+3,2:+2,1:+9]
 
+tmc5 = fromListDenseSM 4 $ zipWith (:+) [16..31] [15,14..0]
 
 
 
