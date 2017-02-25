@@ -40,18 +40,19 @@ prdef = PPOpts 1 2
 
 
 
--- | printf format string for a Fractional
-prepD :: (Ord t, Fractional t) => PPrintOptions -> t -> String
+-- | printf format string
+-- prepD :: (Ord t, Epsilon t) => PPrintOptions -> t -> String
 prepD opts x = pstr -- printf pstr x
   where
-  pstr | abs x >= 10 || abs x < 0.1 = s ++ "e"
+  pstr | nearZero x = "_"
+       | abs x >= 10 || abs x < 0.1 = s ++ "e"
        | otherwise = s ++ "f"
     where
       s = concat ["%" , show ni, ".", show nd]
   nd = pprintDec opts
   ni = pprintInt opts
 
--- | printf format string for a Complex Fractional
+-- | printf format string for a Complex
 prepC :: (Epsilon t, Ord t) => PPrintOptions -> Complex t -> String
 prepC opts (r :+ i) = prepD opts r ++ oi where
     oi | isNz i = concat [s, prepD opts i', "i"]
@@ -63,9 +64,9 @@ prepC opts (r :+ i) = prepD opts r ++ oi where
 
 -- | printf for a list of values
 --
--- > printN prepD (PPOpts 1 3) [1,pi]
+-- > printDN prepD (PPOpts 1 3) [1,pi]
 printDN
-  :: (PrintfArg t1, PrintfType t, Ord t1, Fractional t1) =>
+  :: (PrintfArg t1, PrintfType t, Ord t1, Epsilon t1) =>
      PPrintOptions -> [t1] -> t
 printDN opts xl
   | null xl = printf "\n"
@@ -83,7 +84,8 @@ printDN opts xl
     pr = prepD opts
 
 
-
+-- | printf for list of complex values
+-- 
 -- > printCN pdef [(1:+pi), (3.5:+4.3), (pi:+(-3.4))]
 printCN
   :: (PrintfArg t1, PrintfType t, Epsilon t1, Ord t1) =>

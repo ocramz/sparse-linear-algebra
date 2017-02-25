@@ -21,20 +21,25 @@ minTup (x1,y1) (x2,y2) = (min x1 x2, min y1 y2)
 
 
 -- | integer-indexed ziplist
-denseIxArray :: [b] -> [(Int, b)]
-denseIxArray xs = zip [0..length xs-1] xs 
+indexed :: [b] -> [(Int, b)]
+indexed xs = indexed' (length xs) xs
+
+indexed' :: Int -> [a] -> [(Int, a)]
+indexed' n xs = zip [0 .. n-1] xs
+
+
+
+
+  
 
 -- | ", 2d arrays
-denseIxArray2 :: Int -> [c] -> [(Int, Int, c)]
-denseIxArray2 m xs = zip3 (concat $ replicate n ii_) jj_ xs where
+indexed2 :: Int -> [c] -> [(Int, Int, c)]
+indexed2 m xs = zip3 (concat $ replicate n ii_) jj_ xs where
   ii_ = [0 .. m-1]
   jj_ = concatMap (replicate m) [0 .. n-1]
   ln = length xs
   n = ln `div` m
 
-
--- indexed :: [b] -> [(Int, b)]
--- indexed x = zip [0 .. length x - 1] x
 
 
 

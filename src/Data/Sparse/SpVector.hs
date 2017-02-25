@@ -191,7 +191,7 @@ mkSpVC d ll = SV d $ mkImC ll
 
 -- | Create new sparse vector, assumin 0-based, contiguous indexing
 fromListDenseSV :: Int -> [a] -> SpVector a
-fromListDenseSV d ll = SV d (fromList $ denseIxArray (take d ll))
+fromListDenseSV d ll = SV d (fromList $ indexed (take d ll))
 
 
 -- | Map a function over a range of indices and filter the result (indices and values) to fit in a `n`-long SpVector
@@ -221,13 +221,15 @@ oneHotSV n k |inBounds0 n k = oneHotSVU n k
 
 -- | DENSE vector of `1`s
 onesSV :: Num a => Int -> SpVector a
-onesSV d = SV d $ fromList $ denseIxArray $ replicate d 1
+onesSV d = constv d 1
 
 -- | DENSE vector of `0`s
 zerosSV :: Num a => Int -> SpVector a
-zerosSV d = SV d $ fromList $ denseIxArray $ replicate d 0
+zerosSV d = constv d 0
 
-
+-- | DENSE vector with constant elements
+constv :: Int -> a -> SpVector a
+constv d x = SV d $ fromList $ indexed $ replicate d x
 
 
 
@@ -243,7 +245,7 @@ fromVector qv = V.ifoldl' ins (zeroSV n) qv where
 toVector :: SpVector a -> V.Vector a
 toVector = V.fromList . snd . unzip . toListSV
 
--- | -- | Populate a Vector with the entries of a SpVector, replacing the missing entries with 0
+-- | Populate a Vector with the entries of a SpVector, replacing the missing entries with 0
 toVectorDense :: Num a => SpVector a -> V.Vector a
 toVectorDense = V.fromList . toDenseListSV
 
@@ -275,9 +277,7 @@ fromListSV d iix = SV d $ foldr insf empty iix where
 
 
 createv :: [a] -> SpVector a
-createv ll = fromListSV n $ zip ii ll where
-  n = length ll
-  ii = [0..n-1]
+createv ll = fromListSV n $ indexed ll where n = length ll
 
 -- | Create a /dense/ SpVector from a list of Double's
 vr :: [Double] -> SpVector Double 

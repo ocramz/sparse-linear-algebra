@@ -225,7 +225,7 @@ mkSpMC d ixv = fromListSM d ixv :: SpMatrix (Complex Double)
 
 -- | Create new SpMatrix assuming contiguous, 0-based indexing of elements
 fromListDenseSM :: Int -> [a] -> SpMatrix a
-fromListDenseSM m ll = fromListSM (m, n) $ denseIxArray2 m ll where
+fromListDenseSM m ll = fromListSM (m, n) $ indexed2 m ll where
   n = length ll `div` m
 
 

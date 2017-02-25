@@ -54,9 +54,15 @@ module Numeric.LinearAlgebra.Sparse
          -- randSpMat, randSpVec,
          -- * Creation and conversion of sparse data
          -- ** SpVector
+         -- *** Sparse
          fromListSV, toListSV,
-         -- *** Creation of /dense/ real or complex SpVector
+         -- *** Dense
+         -- **** " from a list of entries
          vr, vc,
+         -- **** " from/to a Vector of entries
+         fromVector, toVectorDense,
+         -- **** " having constant elements
+         constv,
          -- ** SpMatrix
          fromListSM, toListSM,
          -- ** Packing and unpacking, rows or columns of a sparse matrix
@@ -66,6 +72,7 @@ module Numeric.LinearAlgebra.Sparse
          -- *** ", using Vector as container
          fromRowsV, fromColsV,
          -- * Operators
+         -- ** Scaling
          (.*), (./), 
          -- ** Inner product
          (<.>),
@@ -79,7 +86,7 @@ module Numeric.LinearAlgebra.Sparse
          (><),
          -- * Common operations
          dim, nnz, spy,
-         -- ** Vector-related
+         -- ** Vector spaces
          cvx,
          -- *** Norms and normalization
          norm, norm2, norm2', normalize, normalize2, normalize2',

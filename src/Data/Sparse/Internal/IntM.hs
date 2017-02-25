@@ -121,7 +121,7 @@ IntMapInstance(Double)
 
 -- -- | list to IntMap
 -- mkIm :: [Double] -> IM.IntMap Double
-mkIm xs = fromList $ denseIxArray xs :: IntM Double
+mkIm xs = fromList $ indexed xs :: IntM Double
 
 -- mkImC :: [Complex Double] -> IM.IntMap (Complex Double)
-mkImC xs = fromList $ denseIxArray xs :: IntM (Complex Double)
+mkImC xs = fromList $ indexed xs :: IntM (Complex Double)
