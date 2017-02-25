@@ -2,13 +2,17 @@ module Perf where
 
 
 import Numeric.LinearAlgebra.Sparse
+import Numeric.LinearAlgebra.Class
+import Numeric.Eps
 import qualified Data.Matrix.MatrixMarket as MM
+
+import Data.VectorSpace hiding (magnitude)
 
 import Data.Foldable
 import Data.Scientific
 
-fnameMat = "perf/data/e05r0000.mtx"
-fnameRhs = "perf/data/e05r0000_rhs1.mtx"
+fnameMat = "test/data/e05r0000.mtx"
+fnameRhs = "test/data/e05r0000_rhs1.mtx"
 
 
 -- main = return ()
@@ -21,26 +25,31 @@ main = do
       -- nrow' = nrow
   -- return aa
   -- aa <\> b
-  x <- linSolve0 CGS_ aa b (fromListSV nrow $ indexed $ replicate nrow 0.1)
+  x <- linSolve0 BCG_ aa b (fromListSV nrow $ indexed $ replicate nrow 0.1)
   -- kappa <- conditionNumberSM aa
-  return x
+  let res = (aa #> x) ^-^ b
+  return $ norm2 res
   
   
 -- toD2 :: (a, Scientific) -> (a, Double)
 -- toD2 (i, x) = (i, toRealFloat x)
-toD3 :: Num a => (a, a, Scientific) -> (a, a, Double)
+toD3 :: Num i => (i, i, Scientific) -> (i, i, Double)
 toD3 (i, j, x) = (i - 1, j - 1, toRealFloat x)
 
-buildSparse :: Num a => [Scientific] -> [(a, Double)]
+buildSparse :: (Num i, Epsilon t, RealFloat t) => [Scientific] -> [(i, t)]
 buildSparse xxs = go 1 xxs where
-  go i (x:xs) | isNz x = (i - 1, toRealFloat x) : go (i+1) xs
-              | otherwise = go (i+1) xs
+  go i (x:xs) = let x' = toRealFloat x
+                in if isNz x'
+                   then (i - 1, x') : go (i+1) xs
+                   else go (i+1) xs
   go _ [] = []
+                                  
 
-isNz :: (Ord a, Fractional a) => a -> Bool
-isNz x = abs x < 1e-16
 
-indexed :: Num t1 => [t] -> [(t1, t)]
+
+
+
+indexed :: Num i => [t] -> [(i, t)]
 indexed xxs = go 0 xxs where
   go i (x:xs) = (i,x):go (i+1) xs
   go _ [] = []

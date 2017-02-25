@@ -8,15 +8,14 @@ import Data.Typeable -- (TypeRep, Typeable, typeRep)
 import Data.Sparse.Utils
 
 
-
+-- | Errors associated with partial functions
 data PartialFunctionError = EmptyList String deriving (Eq, Typeable)
 instance Show PartialFunctionError where
   show (EmptyList s) = unwords [s, ": empty list"]
 instance Exception PartialFunctionError
 
 
--- | Input error
-
+-- | Input errors
 data InputError = NonNegError String Int deriving (Eq, Typeable)
 instance Show InputError where
   show (NonNegError s i) = unwords [s, ": parameter must be nonnegative, instead I got", show i]
@@ -24,7 +23,7 @@ instance Exception InputError
 
 
 
--- | Out of bounds index error
+-- | Out of bounds index errors
 data OutOfBoundsIndexError i = OOBIxError String i
                              | OOBIxsError String [i]
                              | OOBNoCompatRows String (i,i) deriving (Eq, Typeable)
@@ -61,9 +60,6 @@ instance Show i => Show (MatrixException i) where
   show (HugeConditionNumber s x) = unwords [s, ": Rank-deficient system: condition number", show x]
   show (NeedsPivoting s1 s2) = unwords [s1, ":", s2, "is close to 0. Permute the rows to obtain a nonzero diagonal"]
 instance (Show i, Typeable i) => Exception (MatrixException i)
-
-
-
 
 
 

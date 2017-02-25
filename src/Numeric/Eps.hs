@@ -50,17 +50,19 @@ instance Epsilon CDouble where
   nearZero a = abs a <= 1e-12
 
 
--- | Complex types
-
+-- | @'magnitude' a '<=' 1e-6@
 instance Epsilon (Complex Float) where
   nearZero a = magnitude a <= 1e-6
 
+-- | @'magnitude' a '<=' 1e-12@
 instance Epsilon (Complex Double) where
   nearZero a = magnitude a <= 1e-12
 
+-- | @'magnitude' a '<=' 1e-6@
 instance Epsilon (Complex CFloat) where
   nearZero a = magnitude a <= 1e-6
 
+-- | @'magnitude' a '<=' 1e-12@
 instance Epsilon (Complex CDouble) where
   nearZero a = magnitude a <= 1e-12
 
@@ -69,9 +71,12 @@ instance Epsilon (Complex CDouble) where
 -- * Rounding operations
 
 
--- | Rounding rule
-nearOne, isNz :: Epsilon a => a -> Bool
+-- | Is this quantity close to 1 ?
+nearOne :: Epsilon a => a -> Bool
 nearOne x = nearZero (1 - x)
+
+-- | Is this quantity distinguishable from 0 ?
+isNz :: Epsilon a => a -> Bool
 isNz x = not (nearZero x)
 
 withDefault :: (t -> Bool) -> t -> t -> t

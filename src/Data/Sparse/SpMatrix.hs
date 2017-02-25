@@ -794,7 +794,7 @@ matMatUnsafeWith ff2 m1 m2 = SM (nrows m1, ncols m2) (overRows2 <$> immSM m1) wh
 
 
 -- ** Matrix-matrix product, sparsified
--- | Removes all elements `x` for which `| x | <= eps`)
+-- | After multiplying the two matrices, all elements `x` for which `| x | <= eps` are removed.
 matMatSparsified, (#~#) :: (MatrixRing (SpMatrix a), Epsilon a) =>
     SpMatrix a -> SpMatrix a -> SpMatrix a
 matMatSparsified m1 m2 = sparsifySM $ m1 ## m2
@@ -806,13 +806,13 @@ matMatSparsified m1 m2 = sparsifySM $ m1 ## m2
 
 -- *** Sparsified matrix products of two matrices
 
--- | A^T B
+-- | Sparsifying A^T B
 (#~#^) :: (MatrixRing (SpMatrix a), Epsilon a) =>
      SpMatrix a -> SpMatrix a -> SpMatrix a
 a #~^# b = transpose a #~# b
 
 
--- | A B^T
+-- | Sparsifying A B^T
 (#~^#) :: (MatrixRing (SpMatrix a), Epsilon a) =>
      SpMatrix a -> SpMatrix a -> SpMatrix a
 a #~#^ b = a #~# transpose b

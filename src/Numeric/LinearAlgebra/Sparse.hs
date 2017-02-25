@@ -71,6 +71,10 @@ module Numeric.LinearAlgebra.Sparse
          fromColsL, toColsL,
          -- *** ", using Vector as container
          fromRowsV, fromColsV,
+         -- * Manipulation of sparse data
+         filterSV, ifilterSV,
+         -- * Sparsity-related
+         nearZero, nearOne, isNz,
          -- * Operators
          -- ** Scaling
          (.*), (./), 
@@ -224,15 +228,24 @@ hhRefl = hhMat 2
 
                   
 
--- | Givens' method, row version: given a row, column pair (i,j), choose a row index i' distinct from i such that :
--- * i' is below the diagonal
--- * the corresponding element is nonzero
--- To zero out entry A(i, j) we must find row k such that A(k, j) is non-zero but A has zeros in row k for all column indices < j.
--- NB: The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation embedded in R^n)
--- NB2: The form of a Complex rotation matrix is as follows (`*` indicates complex conjugation):
---    ( c    s )
--- G =(        )
---    ( -s*  c*)
+{- $givens
+Givens' method, row version: given a row, column pair (i,j), choose a row index i' distinct from i such that :
+
+* i' is below the diagonal
+
+* the corresponding element is nonzero
+
+To zero out entry A(i, j) we must find row k such that A(k, j) is non-zero but A has zeros in row k for all column indices < j.
+NB: The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation embedded in R^n)
+NB2: The form of a Complex rotation matrix is as follows (`*` indicates complex conjugation):
+
+@
+    ( c    s )
+ G =(        )
+    ( -s*  c*)
+@
+
+-}
 {-# inline givens #-}
 givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
 givens aa i j 
@@ -969,9 +982,14 @@ pinv aa b = (aa #^# aa) <\> atb where
 
 -- -- TFQMR is in LinearSolvers.Experimental for now
 -- | Iterative methods for linear systems
-data LinSolveMethod = GMRES_ | CGNE_ | BCG_ | CGS_ | BICGSTAB_ deriving (Eq, Show)
+data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual 
+                    | CGNE_   -- ^ Conjugate Gradient on the Normal Equations
+                    | BCG_    -- ^ BiConjugate Gradient
+                    | CGS_    -- ^ Conjugate Gradient Squared
+                    | BICGSTAB_ -- ^ BiConjugate Gradient Stabilized
+                    deriving (Eq, Show)
 
--- | Interface method to individual linear solvers, do not use directly
+-- | Interface method to individual linear solvers
 linSolve0 method aa b x0
   | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
   | otherwise = solve aa b where
@@ -996,7 +1014,7 @@ linSolve0 method aa b x0
 
 
 
--- -- -- | linSolve using the GMRES method as default
+-- | <\> uses the GMRES method as default
 instance LinearSystem (SpVector Double) where
   aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
     where n = ncols aa

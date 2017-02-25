@@ -218,9 +218,9 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
   type MatrixNorm m :: *
   -- | Matrix-matrix product
   (##) :: m -> m -> m
-  -- | A B^T
+  -- | Matrix times matrix transpose (A B^T)
   (##^) :: m -> m -> m
-  -- | A^T B
+  -- | Matrix transpose times matrix (A^T B)
   (#^#) :: m -> m -> m
   a #^# b = transpose a ## b
   -- | Matrix transpose (Hermitian conjugate in the Complex case)
