@@ -1,4 +1,4 @@
-module Main where
+module Perf where
 
 
 import Numeric.LinearAlgebra.Sparse
