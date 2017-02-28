@@ -5,7 +5,7 @@ import Control.Applicative
 -- import Control.Monad.Primitive
 import Control.Monad.ST
 
-import qualified Data.Foldable as F -- (foldl')
+import Data.Foldable (foldl')
 -- import Data.List (group, groupBy)
 
 import qualified Data.Vector as V 
@@ -14,12 +14,14 @@ import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Algorithms.Merge as VA (sortBy)
 -- import qualified Data.Vector.Generic as VG (convert)
 
+import qualified Data.IntMap as IM
+
 import Control.Monad
 import Data.Maybe
 import Data.Ord (comparing)
 
-import Data.Complex
-import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
+-- import Data.Complex
+-- import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 
 import Control.Concurrent
 -- import qualified Control.Monad.Par as Par
@@ -63,9 +65,26 @@ The blk_ptr array stores the index of each block in the val array, which is anal
 data CsbMatrix a = CSB {
   csbNrows, csbNcols :: {-# UNPACK #-} !Int,
   csbVal :: V.Vector a,
-  csbRowPtr, csbRowIx, csbColIx :: V.Vector Int
+  csbBlkPtr, csbRowIx, csbColIx :: V.Vector Int
                        } deriving (Eq, Functor)
 
+
+csbParams :: (Int, Int)  -- ^ Matrix size
+          -> Int         -- ^ Block parameter (i.e. block edge length)
+          -> (Int, Int)  -- ^ # of blocks per side
+csbParams (m,n) beta = (ceiling m', ceiling n')
+  where m' = fromIntegral m / fromIntegral beta
+        n' = fromIntegral n / fromIntegral beta
+
+-- | Which block (in row, col format) do matrix indices (i,j) fall in ?
+bBin :: Integral t => t -> t -> t -> (t, t)
+bBin beta i j = (i `div` beta, j `div` beta)
+
+-- | Block index (row-major order)
+blockIx :: (Int, Int) -> Int -> Int -> Int -> Int
+blockIx dims beta i j = bx + by*nbx where
+  (bx, by) = bBin beta i j
+  (nbx, _) = csbParams dims beta
 
 {- |
 encode:
@@ -80,6 +99,28 @@ Compute:
 * (Row, column) index (relative to block)
 -}
 
+
+
+data Block i a = B [(i,i,a)] deriving (Eq, Show)
+
+addb :: (i, i, a) -> Block i a -> Block i a
+addb x (B xs) = B (x : xs)
+
+type Blocks i a = IM.IntMap (Block i a) -- deriving (Eq, Show)
+
+{-# inline consBlockElem #-}
+consBlockElem ::
+  IM.Key -> (i, i, a) -> IM.IntMap (Block i a) -> IM.IntMap (Block i a)
+consBlockElem i x bb = IM.insert i (addb x blocki) bb where
+  blocki = fromMaybe (B []) (IM.lookup i bb)
+
+
+consBlocks :: Foldable t =>
+     (Int, Int) -> Int -> t (Int, Int, a) -> IM.IntMap (Block Int a)
+consBlocks dims beta ijx = foldl' ins IM.empty ijx where
+  ins accb (i,j,x) = consBlockElem ib (i,j,x) accb where
+    ib = blockIx dims beta i j 
+    
 
 
 -- data Block a = Block {

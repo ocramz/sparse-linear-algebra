@@ -2,7 +2,6 @@
 module Data.Sparse.Internal.CSR where
 
 import Control.Applicative
-import Control.Monad.Primitive
 import Control.Monad.ST
 
 import qualified Data.Foldable as F -- (foldl')
@@ -207,14 +206,14 @@ instance HasData SpMatrix1 a where
 instance Sparse SpMatrix1 a where
   spy mm = fromIntegral (nnz mm) / fromIntegral (m * n) where (m, n) = dim mm
 
-instance Num a => SpContainer SpMatrix1 a where
-  type ScIx SpMatrix1 = LexIx
-  scToList = V.toList . fmap snd . dat
-  scLookup = smLookup
-  mm @@ i = fromMaybe 0 (scLookup mm i)
+-- instance Num a => SpContainer SpMatrix1 a where
+--   type ScIx SpMatrix1 = LexIx
+--   scToList = V.toList . fmap snd . dat
+--   scLookup = smLookup
+--   mm @@ i = fromMaybe 0 (scLookup mm i)
 
-smLookup :: SpMatrix1 a -> LexIx -> Maybe a
-smLookup mm i = snd <$> V.find ((== i) . fst) (dat mm)
+-- smLookup :: SpMatrix1 a -> LexIx -> Maybe a
+-- smLookup mm i = snd <$> V.find ((== i) . fst) (dat mm)
 
 
 
@@ -240,14 +239,14 @@ decode t
       decodeC _ n jj = divMod jj n
 
 
-instance Num a => SparseMatrix SpMatrix1 a where
-  smFromVector et (m, n) v = SM1 m n et p' v' where
-    enc (i, j, x) = (encode et m n (i, j), x) -- encode indices
-    v' = sortByIx $ V.map enc v
-    p' = csrPtrVTup et m n v'
-  encodeIx mm o = encode o m n where (m, n) = dim mm
-  decodeIx mm o = decode o m n where (m, n) = dim mm
---   smTranspose ColsFirst = transposeSM1
+-- instance Num a => SparseMatrix SpMatrix1 a where
+--   smFromVector et (m, n) v = SM1 m n et p' v' where
+--     enc (i, j, x) = (encode et m n (i, j), x) -- encode indices
+--     v' = sortByIx $ V.map enc v
+--     p' = csrPtrVTup et m n v'
+--   encodeIx mm o = encode o m n where (m, n) = dim mm
+--   decodeIx mm o = decode o m n where (m, n) = dim mm
+-- --   smTranspose ColsFirst = transposeSM1
 
 
 -- | Generate the row/column row pointer according to the respective encoding
@@ -264,9 +263,9 @@ csrPtrVTup et m n v
 
 
 -- NB : binary operations on SpMatrix1 are defined only if dimensions AND lexical order encoding are equal
-instance Num a => AdditiveGroup (SpMatrix1 a) where
-  -- zero = SM1 0 0 ColsFirst V.empty V.empty
-  negated = fmap negate
+-- instance Num a => AdditiveGroup (SpMatrix1 a) where
+--   -- zero = SM1 0 0 ColsFirst V.empty V.empty
+--   negated = fmap negate
 
 -- stream merge -> SpMatrix1 binary lift
 
@@ -321,7 +320,7 @@ v0 = V.fromList [(0, pi), (2, 3), (3, 57)]
 
 v1 = V.fromList [(0,0,pi), (0,1,5), (2,1,exp 1)]
 
-sm0 = smFromVector ColsFirst (3, 3) v1 :: SpMatrix1 Double
+-- sm0 = smFromVector ColsFirst (3, 3) v1 :: SpMatrix1 Double
 
 
 
@@ -333,7 +332,7 @@ v2c = V.fromList [(4, 5), (5, 8), (10, 3), (13, 6)]
 
 v2 :: V.Vector (Int, Int, Double)
 v2 = V.fromList [(1,0,5), (1,1,8), (2,2,3), (3,1,6)]
-sm2 = smFromVector RowsFirst (4, 4) v2 :: SpMatrix1 Double
+-- sm2 = smFromVector RowsFirst (4, 4) v2 :: SpMatrix1 Double
 
 
 
