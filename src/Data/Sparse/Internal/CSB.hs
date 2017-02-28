@@ -77,8 +77,11 @@ csbParams (m,n) beta = (ceiling m', ceiling n')
         n' = fromIntegral n / fromIntegral beta
 
 -- | Which block (in row, col format) do matrix indices (i,j) fall in ?
-bBin :: Integral t => t -> t -> t -> (t, t)
+bBin, bCoords :: Integral t => t -> t -> t -> (t, t)
 bBin beta i j = (i `div` beta, j `div` beta)
+
+-- | Block coordinates
+bCoords beta i j = (i `mod` beta, j `mod` beta)
 
 -- | Block index (row-major order)
 blockIx :: (Int, Int) -> Int -> Int -> Int -> Int
@@ -86,33 +89,15 @@ blockIx dims beta i j = bx + by*nbx where
   (bx, by) = bBin beta i j
   (nbx, _) = csbParams dims beta
 
-{- |
-encode:
-
-Given:
-* Block size
-* Matrix size (#rows, #cols)
-* (row, column) index pair
-
-Compute:
-* Block index
-* (Row, column) index (relative to block)
--}
 
 
-
-data Block i a = B [(i,i,a)] deriving (Eq, Show)
-
-addb :: (i, i, a) -> Block i a -> Block i a
-addb x (B xs) = B (x : xs)
-
-type Blocks i a = IM.IntMap (Block i a) -- deriving (Eq, Show)
+type Block i a = [(i,i,a)]
 
 {-# inline consBlockElem #-}
 consBlockElem ::
   IM.Key -> (i, i, a) -> IM.IntMap (Block i a) -> IM.IntMap (Block i a)
-consBlockElem i x bb = IM.insert i (addb x blocki) bb where
-  blocki = fromMaybe (B []) (IM.lookup i bb)
+consBlockElem i x bb = IM.insert i (x : blocki) bb where
+  blocki = fromMaybe [] (IM.lookup i bb)
 
 
 consBlocks :: Foldable t =>
@@ -122,73 +107,5 @@ consBlocks dims beta ijx = foldl' ins IM.empty ijx where
     ib = blockIx dims beta i j 
     
 
-
--- data Block a = Block {
---   bRows, bCols :: {-# UNPACK #-} !Int,
---   rowIx :: V.Vector Int,
---   colIx :: V.Vector Int,
---   val :: V.Vector a      -- invariant: 
---   } deriving (Eq, Show)
-
--- instance Functor Block where
---   fmap f (Block br bc ri ci x) = Block br bc ri ci (fmap f x)
-
--- instance Foldable Block where
---   foldr f z bl = foldr f z (val bl)
-
--- instance Traversable Block where
---   traverse f (Block br bc ri ci v) = Block br bc ri ci <$> traverse f v
-
-
-
-
-
-
-
-
--- -- * CSB Matrix
-
--- -- | Invariants:
--- -- 1) csbNrows = sum bRows, csbNcols = sum bCols
-
--- data CsbMatrix a =
---   CB { csbNrows :: {-# UNPACK #-} !Int,
---        csbNcols :: {-# UNPACK #-} !Int,
---        -- csbBlkPtr :: V.Vector Int,
---        csbBlocks :: V.Vector (Block a) -- block ordering function f(i,j)
---      } deriving Eq
-
--- instance Functor CsbMatrix where
---   fmap f (CB m n bb) = CB m n $ fmap (fmap f) bb
-
--- -- instance Foldable CsbMatrix where
--- --   foldr f z cm = foldr f z (csbBlocks cm)
-
--- -- instance Traversable CsbMatrix where
--- --   traverse f (CB m n bp x) = CB m n bp <$> traverse f x
-
-
-
-
-
--- * fromList
--- m n [(i, j, x)] -> C
-
-
-
-
-
-
--- * Mat-vec (y = A x)
--- y[i] = < A[i,:] , x >
-
-
--- * MatT-vec (y = A^T x)
--- y[i] = < A[:, j] , x>
-
-
--- * Mat-vec (y = A x, parallel over CSB and block-partitioned x)
--- | Invariants:
--- 1) # cols block Aij == # entries j'th partition of x
 
 
