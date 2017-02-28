@@ -228,24 +228,21 @@ hhRefl = hhMat 2
 
                   
 
-{- $givens
-Givens' method, row version: given a row, column pair (i,j), choose a row index i' distinct from i such that :
-
-* i' is below the diagonal
-
-* the corresponding element is nonzero
-
-To zero out entry A(i, j) we must find row k such that A(k, j) is non-zero but A has zeros in row k for all column indices < j.
-NB: The Givens' matrix differs from Identity in 4 entries (geometrically, it is a planar rotation embedded in R^n)
-NB2: The form of a Complex rotation matrix is as follows (`*` indicates complex conjugation):
-
-@
-    ( c    s )
- G =(        )
-    ( -s*  c*)
-@
-
--}
+-- | Givens' matrix : a planar rotation embedded in R^n
+--
+-- Row version of the method: given a matrix element below the diagonal, indexed (i,j), choose a row index i' that is below the diagonal as well and distinct from i such that the corresponding element is nonzero.
+--
+-- To zero out entry A(i, j) we must find row i' such that A(i', j) is non-zero but A has zeros in row i' for all column indices < j.
+-- 
+-- NB: The Givens' matrix differs from Identity in 4 entries
+-- 
+-- NB2: The form of a Complex rotation matrix in R^2 is as follows (`*` indicates complex conjugation):
+--
+-- @
+--     ( c    s )
+--  G =(        )
+--     ( -s*  c*)
+-- @
 {-# inline givens #-}
 givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
 givens aa i j 
@@ -281,6 +278,7 @@ givensCoef u v = (c0/r, s0/r, r) where
 hypot :: Elt a => a -> a -> a
 hypot x y = sqrt (mag2 x + mag2 y) where
     mag2 i = i * conj i
+
 
 
 

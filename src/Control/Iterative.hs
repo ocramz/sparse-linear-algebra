@@ -248,6 +248,13 @@ combx g f x = g <$> f x
 
 -- | Helpers
 
+-- | Relative residual
+relRes :: (Normed t, LinearVectorSpace t) =>
+     MatrixType t -> t -> t -> Magnitude t
+relRes aa b x = n / d where
+  n = norm2 $ (aa #> x) ^-^ b
+  d = norm2 b
+
 
 -- meanl :: (Foldable t, Fractional a) => t a -> a
 -- meanl xx = 1/fromIntegral (length xx) * sum xx
