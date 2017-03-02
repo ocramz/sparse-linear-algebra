@@ -7,7 +7,10 @@
 -- Portability :  portable
 --
 -----------------------------------------------------------------------------
-module Data.Sparse.PPrint (prd, prd0, PrintDense, newline, PPrintOptions, prdef, prepD, prepC, printDN, printCN) where
+module Data.Sparse.PPrint (prd, prd0, PrintDense, newline,
+                           PPrintOptions, prdef, prepD, prepC,
+                           -- printDN,
+                           printCN) where
 
 import Data.Complex
 import Data.List
@@ -62,36 +65,42 @@ prepC opts (r :+ i) = prepD opts r ++ oi where
     i' = abs i
 
 
--- | printf for a list of values
---
--- > printDN (PPOpts 1 3) 2 [1,pi]
-printDN opts nmax xl0
-  | n==0 = printf "\n"
-  | n==1 = let [x1]=nums in printf strsc x1
-  | n==2 = let [x1,x2]=nums in printf strsc x1 x2
-  | n==3 = let [x1,x2,x3]=nums in printf strsc x1 x2 x3
-  | n==4 = let [x1,x2,x3,x4]=nums in printf strsc x1 x2 x3 x4
-  | otherwise = let [x1,x2,x3]=take 3 nums
-                    strs'= take 3 strs
-                    xfin=last nums
-                in printf (commas strs'++", ... , " ++ pr xfin ++ "\n") x1 x2 x3 xfin
-  where
-    (n, strs, nums) = printN opts prepD nmax xl0
-    strsc = commas strs ++ "\n"
-    pr = prepD opts
+-- -- | printf for a list of values
+-- --
+-- -- > printDN (PPOpts 1 3) 2 [1,pi]
+-- printDN opts nmax xl0
+--   | n==0 = printf "\n"
+--   | n==1 = let [x1]=nums in printf strsc x1
+--   | n==2 = let [x1,x2]=nums in printf strsc x1 x2
+--   | n==3 = let [x1,x2,x3]=nums in printf strsc x1 x2 x3
+--   | n==4 = let [x1,x2,x3,x4]=nums in printf strsc x1 x2 x3 x4
+--   | otherwise 
+--   -- | otherwise = let [x1,x2,x3]=take 3 nums
+--   --                   strs'= take 3 strs
+--   --                   xfin=last nums
+--   --               in printf (commas strs'++", ... , " ++ pr xfin ++ "\n") x1 x2 x3 xfin
+--   where
+--     (n, strs, nums) = printN opts prepD nmax xl0
+--     strsc = commas strs ++ "\n"
+--     pr = prepD opts
 
 printN :: Epsilon a =>
      t -> (t -> a -> String) -> Int -> [a] -> (Int, [String], [a])
 printN opts prepf nmax xl0 = go 0 xl0 [] [] where
   pr = prepf opts
-  go i (x:xs) ss ns | isNz x = if i <= nmax
+  go i [x] ss ns | isNz x = go (i+1) [] (pr x : ss) (x : ns)
+                 | otherwise = go i [] ("_" : ss) ns  
+  go i (x:xs) ss ns | isNz x = if i < nmax - 1
                                then go (i+1) xs (pr x : ss) (x : ns)
-                               else (i, reverse ss ++ [" ... "], reverse ns)
-                    | otherwise = if i <= nmax
+                               else if i == nmax - 1
+                                    then go (i+1) xs (" ... " : pr x : ss) (x : ns)
+                                    else go i xs ss ns
+                    | otherwise = if i < nmax - 1 
                                   then go i xs ("_" : ss) ns
-                                  else (i, reverse ss ++ [" ... "], reverse ns)
+                                  else if i == nmax - 1 
+                                       then go (i+1) xs (" ... " : "_" : ss) ns
+                                       else go i xs ss ns
   go nfin [] ss ns = (nfin, reverse ss , reverse ns)
-
 
 
 -- | printf for list of complex values
