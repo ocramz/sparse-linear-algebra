@@ -1,3 +1,4 @@
+{-# language FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -68,6 +69,8 @@ prepC opts (r :+ i) = prepD opts r ++ oi where
 -- | printf for a list of values
 --
 -- > printDN (PPOpts 1 3) 2 [1,pi]
+printDN :: (PrintfArg a, PrintfType t, Epsilon a, Ord a) =>
+     PPrintOptions -> [a] -> t
 printDN opts xl0
   | n==0 = printf "\n"
   | n==1 = let [x1]=nums in printf strsc x1
@@ -101,28 +104,42 @@ printN opts prepf nmax xl0 = go 0 xl0 [] [] where
 
 -- | printf for list of complex values
 -- 
--- > printCN pdef [(1:+pi), (3.5:+4.3), (pi:+(-3.4))]
-printCN
-  :: (PrintfArg t1, PrintfType t, Epsilon t1, Ord t1) =>
+-- > printCN prdef [(1:+pi), (3.5:+4.3), (pi:+(-3.4))]
+printCN :: (PrintfArg t1, PrintfType t, Epsilon (Complex t1), Epsilon t1,
+      Ord t1) =>
      PPrintOptions -> [Complex t1] -> t
-printCN opts xl
-  | null xl = printf "\n"
-  | null xs = printf (pr x) (re x) (aim x)
-  | n==1 = let [x1]=xs
-           in printf (commas (pr <$> xl)++"\n") (re x) (aim x) (re x1) (aim x1)
-  | n==2 = let [x1,x2]=xs
-           in printf (commas (pr <$> xl) ++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2)
-  | n==3 = let [x1,x2,x3]=xs
-           in printf (commas (pr <$> xl)++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3)
-  | n==4 = let [x1,x2,x3,x4]=xs
-           in printf (commas (pr <$> xl)++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3) (re x4) (aim x4)
-  | otherwise = let xs@[x,x1,x2,x3]=take 4 xl
-                    xfin = last xl
-                in printf (commas (pr <$> xs) ++ ", ... , " ++ pr xfin++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3) (re xfin) (aim xfin)
+printCN opts xl0
+  | n==0 = printf "\n"
+  | n==1 = let [x]=nums in printf strsc (re x) (aim x)
+  | n==2 = let [x1,x2]=nums in printf strsc (re x1) (aim x1) (re x2) (aim x2)
+  | n==3 = let [x1,x2,x3]=nums in printf strsc (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3)
+  | n==4 = let [x1,x2,x3,x4]=nums in printf strsc (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3) (re x4) (aim x4)
   where
-    (x:xs) = xl
-    pr = prepC opts
-    n = length xs
+    nmax = 4
+    (n, strs, nums) = printN opts prepC nmax xl0
+    strsc = commas strs ++ "\n"
+
+-- printCN
+--   :: (PrintfArg t1, PrintfType t, Epsilon t1, Ord t1) =>
+--      PPrintOptions -> [Complex t1] -> t
+-- printCN opts xl
+--   | null xl = printf "\n"
+--   | null xs = printf (pr x) (re x) (aim x)
+--   | n==1 = let [x1]=xs
+--            in printf (commas (pr <$> xl)++"\n") (re x) (aim x) (re x1) (aim x1)
+--   | n==2 = let [x1,x2]=xs
+--            in printf (commas (pr <$> xl) ++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2)
+--   | n==3 = let [x1,x2,x3]=xs
+--            in printf (commas (pr <$> xl)++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3)
+--   | n==4 = let [x1,x2,x3,x4]=xs
+--            in printf (commas (pr <$> xl)++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3) (re x4) (aim x4)
+--   | otherwise = let xs@[x,x1,x2,x3]=take 4 xl
+--                     xfin = last xl
+--                 in printf (commas (pr <$> xs) ++ ", ... , " ++ pr xfin++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3) (re xfin) (aim xfin)
+--   where
+--     (x:xs) = xl
+--     pr = prepC opts
+--     n = length xs
 
 commas :: [String] -> String    
 commas = intercalate ", "
