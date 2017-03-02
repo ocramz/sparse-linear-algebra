@@ -55,10 +55,10 @@ prepD opts x = pstr -- printf pstr x
 -- | printf format string for a Complex
 prepC :: (Epsilon t, Ord t) => PPrintOptions -> Complex t -> String
 prepC opts (r :+ i) = prepD opts r ++ oi where
-    oi | isNz i = concat [s, prepD opts i', "i"]
+    oi | isNz i = concat [s, prepD opts i'," i"]
        | otherwise = []
-    s | signum i >= 0 = "+"
-      | otherwise = "-"
+    s | signum i >= 0 = " + "
+      | otherwise = " - "
     i' = abs i
 
 
@@ -82,6 +82,15 @@ printDN opts xl
     (x:xs) = xl
     n = length xs
     pr = prepD opts
+
+
+
+printDN' opts xl0 = go 0 xl0 [] [] where
+  go i (x:xs) ss ns | isNz x = go (i+1) xs (prepD opts x : ss) (x : ns)
+                    | otherwise = go (i+1) xs ("_" : ss) ns
+  go i [] ss ns = (ss, ns)
+
+
 
 
 -- | printf for list of complex values

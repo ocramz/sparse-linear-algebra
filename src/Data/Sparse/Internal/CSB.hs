@@ -63,7 +63,7 @@ The blk_ptr array stores the index of each block in the val array, which is anal
 -- 2) " have at most (bRows x bCols) NZ
 --
 data CsbMatrix a = CSB {
-  csbNrows, csbNcols :: {-# UNPACK #-} !Int,
+  csbNrows, csbNcols, csbBeta :: {-# UNPACK #-} !Int,
   csbVal :: V.Vector a,
   csbBlkPtr, csbRowIx, csbColIx :: V.Vector Int
                        } deriving (Eq, Functor)
@@ -96,8 +96,8 @@ type Block i a = [(i,i,a)]
 {-# inline consBlockElem #-}
 consBlockElem ::
   IM.Key -> (i, i, a) -> IM.IntMap (Block i a) -> IM.IntMap (Block i a)
-consBlockElem i x bb = IM.insert i (x : blocki) bb where
-  blocki = fromMaybe [] (IM.lookup i bb)
+consBlockElem ib x bb = IM.insert ib (x : blocki) bb where
+  blocki = fromMaybe [] (IM.lookup ib bb)
 
 
 consBlocks :: Foldable t =>
