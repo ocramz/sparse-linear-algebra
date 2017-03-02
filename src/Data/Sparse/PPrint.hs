@@ -84,7 +84,8 @@ printDN opts xl
     pr = prepD opts
 
 
-
+printDN'
+  :: (Epsilon a, Ord a) => PPrintOptions -> [a] -> ([String], [a])
 printDN' opts xl0 = go 0 xl0 [] [] where
   go i (x:xs) ss ns | isNz x = go (i+1) xs (prepD opts x : ss) (x : ns)
                     | otherwise = go (i+1) xs ("_" : ss) ns
