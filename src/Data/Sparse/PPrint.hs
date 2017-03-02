@@ -119,27 +119,7 @@ printCN opts xl0
     (n, strs, nums) = printN opts prepC nmax xl0
     strsc = commas strs ++ "\n"
 
--- printCN
---   :: (PrintfArg t1, PrintfType t, Epsilon t1, Ord t1) =>
---      PPrintOptions -> [Complex t1] -> t
--- printCN opts xl
---   | null xl = printf "\n"
---   | null xs = printf (pr x) (re x) (aim x)
---   | n==1 = let [x1]=xs
---            in printf (commas (pr <$> xl)++"\n") (re x) (aim x) (re x1) (aim x1)
---   | n==2 = let [x1,x2]=xs
---            in printf (commas (pr <$> xl) ++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2)
---   | n==3 = let [x1,x2,x3]=xs
---            in printf (commas (pr <$> xl)++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3)
---   | n==4 = let [x1,x2,x3,x4]=xs
---            in printf (commas (pr <$> xl)++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3) (re x4) (aim x4)
---   | otherwise = let xs@[x,x1,x2,x3]=take 4 xl
---                     xfin = last xl
---                 in printf (commas (pr <$> xs) ++ ", ... , " ++ pr xfin++"\n") (re x) (aim x) (re x1) (aim x1) (re x2) (aim x2) (re x3) (aim x3) (re xfin) (aim xfin)
---   where
---     (x:xs) = xl
---     pr = prepC opts
---     n = length xs
+
 
 commas :: [String] -> String    
 commas = intercalate ", "
