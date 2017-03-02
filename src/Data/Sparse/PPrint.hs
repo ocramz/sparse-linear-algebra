@@ -41,11 +41,11 @@ prdef = PPOpts 1 2
 
 
 -- | printf format string
--- prepD :: (Ord t, Epsilon t) => PPrintOptions -> t -> String
+prepD :: (Ord t, Epsilon t) => PPrintOptions -> t -> String
 prepD opts x = pstr -- printf pstr x
   where
   pstr | nearZero x = "_"
-       | abs x >= 10 || abs x < 0.1 = s ++ "e"
+       | abs x >= 99 || abs x < 0.1 = s ++ "e"
        | otherwise = s ++ "f"
     where
       s = concat ["%" , show ni, ".", show nd]
@@ -64,33 +64,33 @@ prepC opts (r :+ i) = prepD opts r ++ oi where
 
 -- | printf for a list of values
 --
--- > printDN prepD (PPOpts 1 3) [1,pi]
-printDN
-  :: (PrintfArg t1, PrintfType t, Ord t1, Epsilon t1) =>
-     PPrintOptions -> [t1] -> t
-printDN opts xl
-  | null xl = printf "\n"
-  | null xs = printf (prepD opts x) x
-  | n==1 = let [x1]=xs in printf (commas (pr <$> xl)++"\n") x x1
-  | n==2 = let [x1,x2]=xs in printf (commas (pr <$> xl)++"\n") x x1 x2
-  | n==3 = let [x1,x2,x3]=xs in printf (commas (pr <$> xl)++"\n") x x1 x2 x3
-  | n==4 = let [x1,x2,x3,x4]=xs in printf (commas (pr <$> xl)++"\n") x x1 x2 x3 x4
-  | otherwise = let xs@[x,x1,x2,x3]=take 4 xl
-                    xfin=last xl
-                in printf (commas (pr <$> xs) ++ ", ... , " ++ pr xfin++"\n") x x1 x2 x3 xfin
+-- > printDN (PPOpts 1 3) 2 [1,pi]
+printDN opts nmax xl0
+  | n==0 = printf "\n"
+  | n==1 = let [x1]=nums in printf strsc x1
+  | n==2 = let [x1,x2]=nums in printf strsc x1 x2
+  | n==3 = let [x1,x2,x3]=nums in printf strsc x1 x2 x3
+  | n==4 = let [x1,x2,x3,x4]=nums in printf strsc x1 x2 x3 x4
+  | otherwise = let [x1,x2,x3]=take 3 nums
+                    strs'= take 3 strs
+                    xfin=last nums
+                in printf (commas strs'++", ... , " ++ pr xfin ++ "\n") x1 x2 x3 xfin
   where
-    (x:xs) = xl
-    n = length xs
+    (n, strs, nums) = printN opts prepD nmax xl0
+    strsc = commas strs ++ "\n"
     pr = prepD opts
 
-
-printDN'
-  :: (Epsilon a, Ord a) => PPrintOptions -> [a] -> ([String], [a])
-printDN' opts xl0 = go 0 xl0 [] [] where
-  go i (x:xs) ss ns | isNz x = go (i+1) xs (prepD opts x : ss) (x : ns)
-                    | otherwise = go (i+1) xs ("_" : ss) ns
-  go i [] ss ns = (ss, ns)
-
+printN :: Epsilon a =>
+     t -> (t -> a -> String) -> Int -> [a] -> (Int, [String], [a])
+printN opts prepf nmax xl0 = go 0 xl0 [] [] where
+  pr = prepf opts
+  go i (x:xs) ss ns | isNz x = if i <= nmax
+                               then go (i+1) xs (pr x : ss) (x : ns)
+                               else (i, reverse ss ++ [" ... "], reverse ns)
+                    | otherwise = if i <= nmax
+                                  then go i xs ("_" : ss) ns
+                                  else (i, reverse ss ++ [" ... "], reverse ns)
+  go nfin [] ss ns = (nfin, reverse ss , reverse ns)
 
 
 
