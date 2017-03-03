@@ -66,7 +66,7 @@ prepC opts (r :+ i) = prepD opts r ++ oi where
     i' = abs i
 
 
--- | printf for a list of values
+-- | printf for a list of real values
 --
 -- > printDN (PPOpts 1 3) 2 [1,pi]
 printDN :: (PrintfArg a, PrintfType t, Epsilon a, Ord a) =>
@@ -82,24 +82,6 @@ printDN opts xl0
     (n, strs, nums) = printN opts prepD nmax xl0
     strsc = commas strs ++ "\n"
     -- pr = prepD opts
-
-printN :: Epsilon a =>
-     t -> (t -> a -> String) -> Int -> [a] -> (Int, [String], [a])
-printN opts prepf nmax xl0 = go 0 xl0 [] [] where
-  pr = prepf opts
-  go i [x] ss ns | isNz x = go (i+1) [] (pr x : ss) (x : ns)
-                 | otherwise = go i [] ("_" : ss) ns  
-  go i (x:xs) ss ns | isNz x = if i < nmax - 2
-                               then go (i+1) xs (pr x : ss) (x : ns)
-                               else if i == nmax - 2
-                                    then go (i+1) xs (" ... " : pr x : ss) (x : ns)
-                                    else go i xs ss ns
-                    | otherwise = if i < nmax - 2 
-                                  then go i xs ("_" : ss) ns
-                                  else if i == nmax - 2 
-                                       then go (i+1) xs (" ... " : "_" : ss) ns
-                                       else go i xs ss ns
-  go nfin [] ss ns = (nfin, reverse ss , reverse ns)
 
 
 -- | printf for list of complex values
@@ -119,6 +101,27 @@ printCN opts xl0
     (n, strs, nums) = printN opts prepC nmax xl0
     strsc = commas strs ++ "\n"
 
+
+
+printN :: Epsilon a =>
+     t -> (t -> a -> String) -> Int -> [a] -> (Int, [String], [a])
+printN opts prepf nmax xl0 = go 0 xl0 [] [] where
+  pr = prepf opts
+  go i [x] ss ns | isNz x = go (i+1) [] (pr x : ss) (x : ns)
+                 | otherwise = go i [] ("_" : ss) ns  
+  go i (x:xs) ss ns | isNz x = if i < nmax - 2
+                               then go (i+1) xs (pr x : ss) (x : ns)
+                               else if i == nmax - 2
+                                    then go (i+1) xs (" ... " : pr x : ss) (x : ns)
+                                    else go i xs ss ns
+                    | otherwise = if i < nmax - 2 
+                                  then go i xs ("_" : ss) ns
+                                  else if i == nmax - 2 
+                                       then go (i+1) xs (" ... " : "_" : ss) ns
+                                       else go i xs ss ns
+  go nfin [] ss ns = (nfin, reverse ss , reverse ns)
+
+  
 
 
 commas :: [String] -> String    
