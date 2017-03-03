@@ -69,8 +69,9 @@ prepC opts (r :+ i) = prepD True opts r ++ oi where
   s | signum i >= 0 = " + "
     | otherwise = " - "
   i' = abs i
-  
 
+
+ 
 
 
 -- | printf for a list of real values
