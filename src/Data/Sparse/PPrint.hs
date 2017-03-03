@@ -121,6 +121,23 @@ printN opts prepf nmax xl0 = go 0 xl0 [] [] where
                                        else go i xs ss ns
   go nfin [] ss ns = (nfin, reverse ss , reverse ns)
 
+
+printN_C opts prepf nmax xl0 = go 0 xl0 [] [] where
+  pr = prepf opts
+  go i [x] ss ns | isNz x = go (i+1) [] (pr x : ss) (x : ns)
+                 | otherwise = go i [] ("_" : ss) ns  
+  go i (x:xs) ss ns | isNz x = if i < nmax - 2
+                               then go (i+1) xs (pr x : ss) (x : ns)
+                               else if i == nmax - 2
+                                    then go (i+1) xs (" ... " : pr x : ss) (x : ns)
+                                    else go i xs ss ns
+                    | otherwise = if i < nmax - 2 
+                                  then go i xs ("_" : ss) ns
+                                  else if i == nmax - 2 
+                                       then go (i+1) xs (" ... " : "_" : ss) ns
+                                       else go i xs ss ns
+  go nfin [] ss ns = (nfin, reverse ss , reverse ns)  
+
   
 
 
