@@ -385,28 +385,50 @@ toDenseListClip sv ncomax
            h = take (ncomax - 2) dr
            t = last dr
 
-printDenseSV :: (Show t, Epsilon t) => SpVector t -> IO ()
+-- printDenseSV :: (Show t, Epsilon t) => SpVector t -> IO ()
+printDenseSV :: PrintDense (SpVector a) => SpVector a -> IO ()
 printDenseSV sv = do
   newline
   putStrLn $ sizeStrSV sv
   newline
-  printDenseSV0 sv
+  prd0 sv
 
-printDenseSV0 :: (Show t, Epsilon t) => SpVector t -> IO ()
-printDenseSV0 sv = do
-  printDenseSV' sv 5
+-- printDenseSV0 :: (Show t, Epsilon t) => SpVector t -> IO ()
+-- printDenseSV0 sv = do
+--   printDenseSV' sv 5
+--   newline where
+--     printDenseSV' v nco = putStrLn rr_' where
+--       rr_ = toDenseListClip v nco :: String
+--       rr_' | dim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
+--            | otherwise = rr_
+
+
+printDenseSV0 f sv = do
+  printDenseSV' 5
   newline where
-    printDenseSV' v nco = putStrLn rr_' where
-      rr_ = toDenseListClip v nco :: String
-      rr_' | dim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
-           | otherwise = rr_
+    printDenseSV' n = putStrLn (f n vd)
+    vd = toDenseListSV sv
+
+printDenseSV0r :: SpVector Double -> IO ()
+printDenseSV0r = printDenseSV0 (`printDN` prdefR)
+printDenseSV0c :: SpVector (Complex Double) -> IO ()
+printDenseSV0c = printDenseSV0 (`printCN` prdefC)
 
 -- ** Pretty printer typeclass
 
 
-instance (Show a, Epsilon a) => PrintDense (SpVector a) where
+-- instance (Show a, Epsilon a, Ord a) => PrintDense (SpVector a) where
+--   prd = printDenseSV
+--   prd0 = printDenseSV0
+
+instance PrintDense (SpVector Double) where
   prd = printDenseSV
-  prd0 = printDenseSV0
+  prd0 = printDenseSV0r
+
+instance PrintDense (SpVector (Complex Double)) where
+  prd = printDenseSV
+  prd0 = printDenseSV0c
+
 
 instance (Show a, Epsilon a) => PrintDense (SpMatrix a) where
   prd = printDenseSM

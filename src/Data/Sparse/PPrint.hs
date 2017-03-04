@@ -7,9 +7,11 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
+--
+-- Pretty printing helper functions
 -----------------------------------------------------------------------------
 module Data.Sparse.PPrint (prd, prd0, PrintDense, newline
-                           , PPrintOptions, prdefR, prdefC
+                           , PPrintOptions(..), prdefR, prdefC
                            , printDN , printCN
                           ) where
 
