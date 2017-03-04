@@ -37,6 +37,7 @@ data PPrintOptions =
      pprintLen, pprintDec, pprintColWidth :: Int
      } deriving (Eq, Show)
 
+-- | Some defaults
 prdef :: PPrintOptions
 prdef = PPOpts 4 2 15
 
@@ -46,41 +47,24 @@ prdef = PPOpts 4 2 15
 printDN :: (PrintfArg a, Epsilon a, Foldable f, Ord a) =>
      PPrintOptions -> f a -> String
 printDN opts = printNpad f opts where
-  f o x = printf (prepD True o x) x
+  f o x | isNz x = printf (prepD o x) x
+        | otherwise = printf "_"
+
 
 -- | Pretty print an array of complex numbers
-printCN :: (PrintfArg a, Epsilon a, Foldable f, Ord a) =>
+printCN :: (PrintfArg a, Epsilon a, Epsilon (Complex a), Foldable f, Ord a) =>
      PPrintOptions -> f (Complex a) -> String
 printCN opts = printNpad f opts where
-  f o x = printf (prepC o x) (re x) (aim x)
+  f o x | nearZero (re x) = printf (prepD o (imagPart x)++ "i") (aim x)
+        | nearZero (imagPart x) = printf (prepD o (realPart x)) (re x)
+        | isNz x = printf (prepC o x) (re x) (aim x)
+        | otherwise = printf "_"
 
 
 
 
--- | printf format string
-prepD :: (Ord t, Epsilon t) => Bool -> PPrintOptions -> t -> String
-prepD ptn PPOpts{..} x = s ++ s2 where
-  s = concat ["%" , show ni, ".", show nd]
-  s2 | ptn = pstr x
-     | otherwise = pstr0 x
-  nd = pprintDec 
-  ni = pprintLen
-  pstr0 x | nearZero x = "_"
-          | otherwise = pstr x
-  pstr x | abs x > 999 || abs x < 0.1 = "e"
-         | otherwise = "f"                
 
-
--- | printf format string for a Complex
-prepC :: (Epsilon t, Ord t) => PPrintOptions -> Complex t -> String
-prepC opts (r :+ i) = prepD True opts r ++ oi where
-  oi = concat [s, prepD True opts i', "i"]
-  s | signum i >= 0 = " + "
-    | otherwise = " - "
-  i' = abs i
-
-
-
+-- | printf an array of items with padding space to render a fixed column width
 printNpad :: Foldable f =>
      (PPrintOptions -> a -> String) -> PPrintOptions -> f a -> String
 printNpad f o@PPOpts{..} xl = concat $ foldr ins [] xl where
@@ -88,6 +72,33 @@ printNpad f o@PPOpts{..} xl = concat $ foldr ins [] xl where
     n = pprintColWidth
     s = f o x
     spad = spaces (n - length s)
+
+    
+
+
+
+-- | printf format string
+prepD :: (Ord t, Epsilon t) => PPrintOptions -> t -> String
+prepD PPOpts{..} x = s where
+  s | nearZero x  = "_"
+    | abs x > 999 || abs x < 0.1 = s0 ++ "e"
+    | otherwise = s0 ++ "f"
+  s0 = concat ["%" , show ni, ".", show nd]
+  nd = pprintDec 
+  ni = pprintLen
+            
+
+
+-- | printf format string for a Complex
+prepC :: (Epsilon t, Ord t) => PPrintOptions -> Complex t -> String
+prepC opts (r :+ i) = prepD opts r ++ oi where
+  oi = concat [s, prepD opts i', "i"]
+  s | signum i >= 0 = " + "
+    | otherwise = " - "
+  i' = abs i
+
+
+
 
     
 
