@@ -8,8 +8,8 @@
 -- Portability :  portable
 --
 -----------------------------------------------------------------------------
-module Data.Sparse.PPrint (prd, prd0, PrintDense, newline,
-                           PPrintOptions, prdef, prepD, prepC
+module Data.Sparse.PPrint (prd, prd0, PrintDense, newline
+                           , PPrintOptions, prdefR, prdefC
                            , printDN , printCN
                           ) where
 
@@ -38,23 +38,23 @@ data PPrintOptions =
      } deriving (Eq, Show)
 
 -- | Some defaults
-prdef :: PPrintOptions
-prdef = PPOpts 4 2 15
-
+prdefR, prdefC :: PPrintOptions
+prdefR = PPOpts 4 3 7   -- reals
+prdefC = PPOpts 4 3 16  -- complex values
 
 
 -- | Pretty print an array of real numbers
-printDN :: (PrintfArg a, Epsilon a, Foldable f, Ord a) =>
-     PPrintOptions -> f a -> String
-printDN opts = printNpad f opts where
+printDN :: (PrintfArg a, Epsilon a, Ord a) =>
+     Int -> PPrintOptions -> [a] -> String
+printDN n = printNpad n f where
   f o x | isNz x = printf (prepD o x) x
         | otherwise = printf "_"
 
 
 -- | Pretty print an array of complex numbers
-printCN :: (PrintfArg a, Epsilon a, Epsilon (Complex a), Foldable f, Ord a) =>
-     PPrintOptions -> f (Complex a) -> String
-printCN opts = printNpad f opts where
+printCN :: (PrintfArg a, Epsilon a, Epsilon (Complex a), Ord a) =>
+     Int -> PPrintOptions -> [Complex a] -> String
+printCN n = printNpad n f where
   f o x | nearZero (re x) = printf (prepD o (imagPart x)++ "i") (aim x)
         | nearZero (imagPart x) = printf (prepD o (realPart x)) (re x)
         | isNz x = printf (prepC o x) (re x) (aim x)
@@ -64,16 +64,28 @@ printCN opts = printNpad f opts where
 
 
 
--- | printf an array of items with padding space to render a fixed column width
-printNpad :: Foldable f =>
-     (PPrintOptions -> a -> String) -> PPrintOptions -> f a -> String
-printNpad f o@PPOpts{..} xl = concat $ foldr ins [] xl where
-  ins x acc = (s ++ spad) : acc where
-    n = pprintColWidth
-    s = f o x
-    spad = spaces (n - length s)
 
-    
+-- | printf an array of items with padding space to render a fixed column width
+printNpad ::
+     Int -> (PPrintOptions -> a -> String) -> PPrintOptions -> [a] -> String
+printNpad nmax f o@PPOpts{..} xxl = commas [h,l] where
+  h = commas $ take (nmax-1) ll
+  l = last ll
+  ll = unfoldr g (0, xxl) 
+  g (i, x:xs) | i<nmax-2 = Just (s', (succ i, xs))
+              | i==nmax-2 = Just (dots', (succ i, xs))
+              | null xs = Just (s', (succ i, []))
+              | otherwise = Just (spaces n, (succ i, xs)) where                  
+                  s = f o x
+                  s' = s ++ spad
+                  dots' = dots ++ spadd
+                  spad = spaces (n - length s)
+                  spadd = spaces (n - length dots)
+  g (_, []) = Nothing
+  n = pprintColWidth
+  dots = " ... "
+
+
 
 
 
@@ -81,11 +93,15 @@ printNpad f o@PPOpts{..} xl = concat $ foldr ins [] xl where
 prepD :: (Ord t, Epsilon t) => PPrintOptions -> t -> String
 prepD PPOpts{..} x = s where
   s | nearZero x  = "_"
-    | abs x > 999 || abs x < 0.1 = s0 ++ "e"
+    | abs x > magHi-1 || abs x < magLo = s0 ++ "e"
     | otherwise = s0 ++ "f"
-  s0 = concat ["%" , show ni, ".", show nd]
+  -- s0 = concat ["%" , show nl, ".", show nd]
+  s0 = "%1." ++ show nd
   nd = pprintDec 
-  ni = pprintLen
+  nl = pprintLen
+  nint = nl - nd - 1 -- # of integer digits
+  magLo = 10 ** (- fromIntegral nd)
+  magHi = 10 ** fromIntegral nint
             
 
 
