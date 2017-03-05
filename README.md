@@ -103,9 +103,9 @@ Both sparse vectors and matrices can be pretty-printed using `prd`:
     4.00   , 3.00   , 2.00   
     _      , _      , 5.00       
 
-Note (sparse storage): sparse data should only contain non-zero entries not to waste memory and computation.
+*Note (sparse storage)*: sparse data should only contain non-zero entries not to waste memory and computation.
 
-Note (approximate output): `prd` rounds the results to two significant digits, and switches to scientific notation for large or small values. Moreover, values which are indistinguishable from 0 (see the `Numeric.Eps` module) are printed as `_`. 
+*Note (approximate output)*: `prd` rounds the results to two significant digits, and switches to scientific notation for large or small values. Moreover, values which are indistinguishable from 0 (see the `Numeric.Eps` module) are printed as `_`. 
 
 
 ### Matrix operations
