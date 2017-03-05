@@ -19,6 +19,7 @@ module Numeric.LinearAlgebra.Sparse
          pinv,
          -- ** Direct methods
          luSolve,
+         luSolveConf,
          -- *** Forward substitution
          triLowerSolve,
          -- *** Backward substitution
@@ -718,24 +719,30 @@ mSsorPre aa omega = (l, r) where
 -- * Linear solver, LU-based
 
 -- | Direct solver based on a triangular factorization of the system matrix.
-luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t), Epsilon t) =>
+luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t),
+            Epsilon t, PrintDense (SpVector t), MonadIO m) =>
      SpMatrix t    -- ^ Lower triangular
      -> SpMatrix t -- ^ Upper triangular
      -> SpVector t -- ^ r.h.s.
      -> m (SpVector t)
 luSolve ll uu b
   | isLowerTriSM ll && isUpperTriSM uu = do
-      w <- triLowerSolve ll b
-      triUpperSolve uu w
+      w <- triLowerSolve luSolveConf ll b
+      triUpperSolve luSolveConf uu w
   | otherwise = throwM (NonTriangularException "luSolve")
 
--- | Forward substitution solver
-triLowerSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      Epsilon t, MonadThrow m) =>
-     SpMatrix t    -- ^ Lower triangular
-     -> SpVector t -- ^ r.h.s
-     -> m (SpVector t)
-triLowerSolve ll b = do
+-- | Default configuration for triangular solvers
+luSolveConf :: PrintDense (SpVector a) =>
+    IterationConfig (SpVector a, Int) (SpVector a)
+luSolveConf = IterConf 0 True fst prd0
+
+-- -- | Forward substitution solver
+-- triLowerSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+--       Epsilon t, MonadThrow m) =>
+--      SpMatrix t    -- ^ Lower triangular
+--      -> SpVector t -- ^ r.h.s
+--      -> m (SpVector t)
+triLowerSolve conf ll b = do
   let q (_, i) = i == nb
       nb = svDim b
       oops i = throwM (NeedsPivoting "triLowerSolve" (unwords ["L", show (i, i)]) :: MatrixException Double)
@@ -757,19 +764,19 @@ triLowerSolve ll b = do
           then return (insertSpVector 0 w0 $ zeroSV (dim b), 1)
           else oops (0 :: Int)
   l0 <- lInit             
-  (v, _) <- MTS.execStateT (modifyUntilM q lStep) l0
+  (v, _) <- modifyUntilM' conf q lStep l0
   return $ sparsifySV v
 
 
 
 -- NB in the computation of `xi` we must rebalance the subrow indices (extractSubRow_RK) because `dropSV` does that too, in order to take the inner product with consistent index pairs
 -- | Backward substitution solver
-triUpperSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      Epsilon t, MonadThrow m) =>
-     SpMatrix t    -- ^ Upper triangular
-     -> SpVector t -- ^ r.h.s
-     -> m (SpVector t)
-triUpperSolve uu w = do 
+-- triUpperSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+--       Epsilon t, MonadThrow m) =>
+--      SpMatrix t    -- ^ Upper triangular
+--      -> SpVector t -- ^ r.h.s
+--      -> m (SpVector t)
+triUpperSolve conf uu w = do 
   let q (_, i) = i == (- 1)
       nw = svDim w
       oops i = throwM (NeedsPivoting "triUpperSolve" (unwords ["U", show (i, i)]) :: MatrixException Double)
@@ -790,7 +797,7 @@ triUpperSolve uu w = do
           then return (insertSpVector i x0 (zeroSV nw), i - 1)
           else oops (0 :: Int)
   u0 <- uInit             
-  (x, _) <- MTS.execStateT (modifyUntilM q uStep) u0
+  (x, _) <- modifyUntilM' conf q uStep u0
   return $ sparsifySV x      
 
 
@@ -817,10 +824,10 @@ triUpperSolve uu w = do
 --
 -- A common optimization involves interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
-gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
-      MonadThrow m) =>
-     SpMatrix t -> SpVector t -> m (SpVector t)
+-- gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+--       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
+--       MonadThrow m) =>
+--      SpMatrix t -> SpVector t -> m (SpVector t)
 gmres aa b = do
   let m = ncols aa
   (qa, ha) <- arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
@@ -830,7 +837,7 @@ gmres aa b = do
   (qh, rh) <- qr ha
   let rhs' = takeSV (dim b' - 1) (transpose qh #> b')
       rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
-  yhat <- triUpperSolve rh' rhs'
+  yhat <- triUpperSolve luSolveConf rh' rhs'
   let qa' = takeCols (ncols qa - 1) qa  -- we don't use last column of Krylov basis   
   return $ qa' #> yhat
 
@@ -999,7 +1006,7 @@ linSolve0 method aa b x0
        BICGSTAB_ -> solver "BICGSTAB" nits _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
        BCG_ -> solver "BCG" nits _xBcg (bcgStep aa) (bcgInit aa b x0)
        CGS_ -> solver "CGS" nits _x  (cgsStep aa r0hat) (cgsInit aa b x0)
-       GMRES_ -> gmres aa b
+       GMRES_ -> gmres aa b where                
        CGNE_ -> solver "CGNE" nits _xCgne (cgneStep aa) (cgneInit aa b x0)
      r0hat = b ^-^ (aa #> x0)
      nits = 200
@@ -1008,8 +1015,10 @@ linSolve0 method aa b x0
      solver fname nitermax fproj stepf initf = do
       xf <- untilConvergedG fname config (const True) stepf initf
       return $ fproj xf
-      where
-        config = IterConf nitermax False fproj prd0
+       where
+         config =  IterConf nitermax False fproj prd0
+
+        
   
 
 

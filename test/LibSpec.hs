@@ -323,7 +323,8 @@ checkChol a = do -- c1 && c2 where
 
 checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
-      Epsilon t, MonadThrow m) =>
+      PrintDense (SpVector t),      
+      Epsilon t, MonadThrow m, MonadIO m) =>
      SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
 checkLuSolve amat rhs = do
   (lmat, umat) <- lu amat
@@ -349,20 +350,22 @@ checkLuSolve' amat rhs = do
 {- triangular solvers -}
 checkTriUpperSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
-      MonadThrow m) =>
+      PrintDense (SpVector t),
+      MonadThrow m, MonadIO m) =>
      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 checkTriUpperSolve umat rhs = do
-  xhat <- triUpperSolve umat rhs
+  xhat <- triUpperSolve luSolveConf umat rhs
   let r = (umat #> xhat) ^-^ rhs
       flag = nearZero $ norm2 r
   return (xhat, flag)
 
 checkTriLowerSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
-      MonadThrow m) =>
+      PrintDense (SpVector t),      
+      MonadThrow m, MonadIO m) =>
      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 checkTriLowerSolve lmat rhs = do
-  xhat <- triLowerSolve lmat rhs
+  xhat <- triLowerSolve luSolveConf lmat rhs
   let r = (lmat #> xhat) ^-^ rhs
       flag = nearZero $ norm2 r
   return (xhat, flag)
