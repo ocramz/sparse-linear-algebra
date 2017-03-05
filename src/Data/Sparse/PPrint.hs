@@ -41,8 +41,8 @@ data PPrintOptions =
 
 -- | Some defaults
 prdefR, prdefC :: PPrintOptions
-prdefR = PPOpts 4 3 7   -- reals
-prdefC = PPOpts 4 3 16  -- complex values
+prdefR = PPOpts 6 2 7   -- reals
+prdefC = PPOpts 6 2 16  -- complex values
 
 
 -- | Pretty print an array of real numbers
@@ -89,18 +89,16 @@ printNpad nmax f o@PPOpts{..} xxl = commas [h,l] where
 
 
 
-
-
 -- | printf format string
 prepD :: (Ord t, Epsilon t) => PPrintOptions -> t -> String
 prepD PPOpts{..} x = s where
   s | nearZero x  = "_"
     | abs x > magHi-1 || abs x < magLo = s0 ++ "e"
     | otherwise = s0 ++ "f"
-  -- s0 = concat ["%" , show nl, ".", show nd]
-  s0 = "%1." ++ show nd
+  s0 = concat ["%" , show nl, ".", show nd]
+  -- s0 = "%1." ++ show nd
+  nl = pprintLen  
   nd = pprintDec 
-  nl = pprintLen
   nint = nl - nd - 1 -- # of integer digits
   magLo = 10 ** (- fromIntegral nd)
   magHi = 10 ** fromIntegral nint

@@ -228,8 +228,10 @@ hhRefl = hhMat 2
 
                   
 
--- | Givens' matrix : a planar rotation embedded in R^n
+-- | Givens matrix : a planar rotation embedded in R^n. 
 --
+-- >>> aa = fromListSM 
+-- >>> g <- givens aa 1 0
 -- Row version of the method: given a matrix element below the diagonal, indexed (i,j), choose a row index i' that is below the diagonal as well and distinct from i such that the corresponding element is nonzero.
 --
 -- To zero out entry A(i, j) we must find row i' such that A(i', j) is non-zero but A has zeros in row i' for all column indices < j.
@@ -346,11 +348,11 @@ tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs at most `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues.
-eigsQR :: (MonadThrow m, MonadIO m, Num' a, Normed (SpVector a), MatrixRing (SpMatrix a), Typeable (Magnitude (SpVector a))) =>
-        Int            -- ^ Max. # of iterations
-     -> Bool           -- ^ Print debug information        
-     -> SpMatrix a     -- ^ Operand matrix
-     -> m (SpVector a) -- ^ Eigenvalues {λ_i}
+-- eigsQR :: (MonadThrow m, MonadIO m, Num' a, Normed (SpVector a), MatrixRing (SpMatrix a), Typeable (Magnitude (SpVector a))) =>
+--         Int            -- ^ Max. # of iterations
+--      -> Bool           -- ^ Print debug information        
+--      -> SpMatrix a     -- ^ Operand matrix
+--      -> m (SpVector a) -- ^ Eigenvalues {λ_i}
 eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
   where
     pf = extractDiagDense

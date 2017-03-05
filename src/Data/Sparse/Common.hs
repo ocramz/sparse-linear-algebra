@@ -342,48 +342,43 @@ showNz x | nearZero x = " _ "
 
 toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
 toDenseRow sm irow =
-  fmap (\icol -> sm @@ (irow,icol)) [0..ncol-1] where (_, ncol) = (nrows sm, ncols sm)
+  fmap (\icol -> sm @@ (irow,icol)) [0..ncols sm-1]
 
 
 
-toDenseRowClip :: (Show a, Epsilon a) => SpMatrix a -> IM.Key -> Int -> String
-toDenseRowClip sm irow ncomax
-  | nco > ncomax = unwords (map showNz h) ++  " ... " ++ showNz t
-  | otherwise = unwords $ showNz <$> dr
-     where dr = toDenseRow sm irow
-           h = take (ncomax - 2) dr
-           t = last dr
-           (_, nco) = dim sm
 
 
--- printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
+-- -- printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
 -- printDenseSM :: (ScIx c ~ (Int, Int), FDSize c ~ (Int, Int), SpContainer c a, Show a, Epsilon a) => c a -> IO ()
 printDenseSM sm = do
   newline
   putStrLn $ sizeStr sm
   newline
-  printDenseSM0 sm
+  prd0 sm
 
-printDenseSM0 sm = do
+
+
+printDenseSM0
+  :: (SpMatrix a -> IxRow -> Int -> String) -> SpMatrix a -> IO ()
+printDenseSM0 f sm = do
   printDenseSM' sm 5 5
   newline
-  where    
-    -- printDenseSM' :: (Show t, Num t) => SpMatrix t -> Int -> Int -> IO ()
+  where
     printDenseSM' sm' nromax ncomax = mapM_ putStrLn rr_' where
       (nr, _) = (nrows sm, ncols sm)
-      rr_ = map (\i -> toDenseRowClip sm' i ncomax) [0..nr - 1]
+      rr_ = map (\i -> f sm' i ncomax) [0..nr-1]
       rr_' | nr > nromax = take (nromax - 2) rr_ ++ [" ... "] ++[last rr_]
-           | otherwise = rr_
+           | otherwise = rr_ 
 
+printDenseSM0r :: SpMatrix Double -> IO ()
+printDenseSM0r sm = printDenseSM0 g sm
+  where
+    g sm' irow ncolmax = printDN ncolmax prdefR $ toDenseRow sm' irow
+printDenseSM0c :: SpMatrix (Complex Double) -> IO ()
+printDenseSM0c sm = printDenseSM0 g sm
+  where
+    g sm' irow ncolmax = printCN ncolmax prdefC $ toDenseRow sm' irow
 
-
-toDenseListClip :: (Show a, Epsilon a) => SpVector a -> Int -> String
-toDenseListClip sv ncomax
-  | dim sv > ncomax = unwords (map showNz h) ++  " ... " ++ showNz t
-  | otherwise = unwords $ showNz <$> dr
-     where dr = toDenseListSV sv
-           h = take (ncomax - 2) dr
-           t = last dr
 
 -- printDenseSV :: (Show t, Epsilon t) => SpVector t -> IO ()
 printDenseSV :: PrintDense (SpVector a) => SpVector a -> IO ()
@@ -393,33 +388,22 @@ printDenseSV sv = do
   newline
   prd0 sv
 
--- printDenseSV0 :: (Show t, Epsilon t) => SpVector t -> IO ()
--- printDenseSV0 sv = do
---   printDenseSV' sv 5
---   newline where
---     printDenseSV' v nco = putStrLn rr_' where
---       rr_ = toDenseListClip v nco :: String
---       rr_' | dim sv > nco = unwords [take (nco - 2) rr_ , " ... " , [last rr_]]
---            | otherwise = rr_
+printDenseSV0r :: SpVector Double -> IO ()
+printDenseSV0r = printDenseSV0 (`printDN` prdefR)
+printDenseSV0c :: SpVector (Complex Double) -> IO ()
+printDenseSV0c = printDenseSV0 (`printCN` prdefC)
 
-
+printDenseSV0 :: Num a =>
+  (Int -> [a] -> String) -> SpVector a -> IO ()
 printDenseSV0 f sv = do
   printDenseSV' 5
   newline where
     printDenseSV' n = putStrLn (f n vd)
     vd = toDenseListSV sv
 
-printDenseSV0r :: SpVector Double -> IO ()
-printDenseSV0r = printDenseSV0 (`printDN` prdefR)
-printDenseSV0c :: SpVector (Complex Double) -> IO ()
-printDenseSV0c = printDenseSV0 (`printCN` prdefC)
 
+    
 -- ** Pretty printer typeclass
-
-
--- instance (Show a, Epsilon a, Ord a) => PrintDense (SpVector a) where
---   prd = printDenseSV
---   prd0 = printDenseSV0
 
 instance PrintDense (SpVector Double) where
   prd = printDenseSV
@@ -429,10 +413,15 @@ instance PrintDense (SpVector (Complex Double)) where
   prd = printDenseSV
   prd0 = printDenseSV0c
 
-
-instance (Show a, Epsilon a) => PrintDense (SpMatrix a) where
+instance PrintDense (SpMatrix Double) where
   prd = printDenseSM
-  prd0 = printDenseSM0
+  prd0 = printDenseSM0r
+
+instance PrintDense (SpMatrix (Complex Double)) where
+  prd = printDenseSM
+  prd0 = printDenseSM0c
+
+
 
 
 
