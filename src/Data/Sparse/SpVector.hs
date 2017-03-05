@@ -29,6 +29,8 @@ import Numeric.LinearAlgebra.Class
 import Data.Complex
 import Data.Maybe
 
+import Text.Printf
+
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
@@ -47,7 +49,7 @@ data SpVector a = SV { svDim :: {-# UNPACK #-} !Int ,
 instance Show a => Show (SpVector a) where
   show (SV d x) = "SV (" ++ show d ++ ") "++ show (toList x)
 
--- | SpVector sparsity
+-- | SpVector density
 spySV :: Fractional b => SpVector a -> b
 spySV s = fromIntegral (size (dat s)) / fromIntegral (dim s)
 
@@ -57,7 +59,9 @@ nzSV sv = size (dat sv)
 
 
 sizeStrSV :: SpVector a -> String
-sizeStrSV sv = unwords ["(",show (dim sv),"elements ) , ",show (nzSV sv),"NZ ( sparsity", show (spy sv),")"]
+sizeStrSV sv = unwords ["(",show (dim sv),"elements ) , ",show (nzSV sv),"NZ ( density", sys,")"] where
+  sy = spy sv :: Double
+  sys = printf "%1.3f %%" (sy * 100) :: String
 
 
 

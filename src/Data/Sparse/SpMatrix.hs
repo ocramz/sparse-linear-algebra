@@ -23,8 +23,8 @@ import Data.Sparse.Internal.IntM (IntM (..))
 import qualified Data.Sparse.Internal.IntM as I
 import Data.Sparse.Internal.IntMap2
 
-
 import GHC.Exts
+import Text.Printf
 
 import qualified Data.IntMap.Strict as IM
 
@@ -56,14 +56,15 @@ data SpMatrix a = SM {smDim :: {-# UNPACK #-} !(Rows, Cols),
                 deriving (Eq, Functor, Foldable)
 
 
-
 -- sizeStr :: (FDSize f ~ (a1, a2), Sparse f a, Show a2, Show a1) => f a -> String
 sizeStrSM :: SpMatrix a -> String
 sizeStrSM sm@(SM (nr, nc) _) =
-  unwords ["(",show nr,"rows,",show nc,"columns ) ,",show nz,"NZ ( sparsity",show sy,")"] where
+  unwords ["(",show nr,"rows,",show nc,"columns ) ,",show nz,"NZ ( density",sys,")"] where
   -- (nr, nc) = dim sm
   nz = nnz sm
   sy = spy sm :: Double
+  sys = printf "%1.3f %%" (sy * 100) :: String
+
 
 instance Show a => Show (SpMatrix a) where
   show sm@(SM _ x) = unwords ["SM",sizeStrSM sm,show (toList $ toList <$> x)]

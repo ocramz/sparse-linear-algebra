@@ -96,13 +96,17 @@ Alternatively, the user can copy the contents of a list to a (dense) SpVector us
 Both sparse vectors and matrices can be pretty-printed using `prd`:
 
     λ> prd amat
-    ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )
 
-    2.0  _   _ 
-    4.0 3.0 2.0
-     _   _  5.0
+    ( 3 rows, 3 columns ) , 5 NZ ( density 55.556 % )
 
-Note: sparse data should only contain non-zero entries not to waste memory and computation.
+    2.00   , _      , _      
+    4.00   , 3.00   , 2.00   
+    _      , _      , 5.00       
+
+Note (sparse storage): sparse data should only contain non-zero entries not to waste memory and computation.
+
+Note (approximate output): `prd` rounds the results to two significant digits, and switches to scientific notation for large or small values. Moreover, values which are indistinguishable from 0 (see the `Numeric.Eps` module) are printed as `_`. 
+
 
 ### Matrix operations
 
@@ -110,21 +114,25 @@ There are a few common matrix factorizations available; in the following example
 
     λ> (l, u) <- lu amat
     λ> prd $ l ## u
-    ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
+    
+    ( 3 rows, 3 columns ) , 9 NZ ( density 100.000 % )
 
-    2.0  _   _ 
-    4.0 3.0 2.0
-     _   _  5.0
+    2.00   , _      , _      
+    4.00   , 3.00   , 2.00   
+    _      , _      , 5.00       
+
 
 Notice that the result is _dense_, i.e. certain entries are numerically zero but have been inserted into the result along with all the others (thus taking up memory!).
 To preserve sparsity, we can use a sparsifying matrix-matrix product `#~#`, which filters out all the elements x for which `|x| <= eps`, where `eps` (defined in `Numeric.Eps`) depends on the numerical type used (e.g. it is 10^-6 for `Float`s and 10^-12 for `Double`s).
 
     λ> prd $ l #~# u
-    ( 3 rows, 3 columns ) , 5 NZ ( sparsity 0.5555555555555556 )
+    
+    ( 3 rows, 3 columns ) , 5 NZ ( density 55.556 % )
 
-    2.0  _   _ 
-    4.0 3.0 2.0
-     _   _  5.0    
+    2.00   , _      , _      
+    4.00   , 3.00   , 2.00   
+    _      , _      , 5.00 
+
 
 A matrix is transposed using the `transpose` function.
 
@@ -132,19 +140,23 @@ Sometimes we need to compute matrix-matrix transpose products, which is why the 
 
     λ> amat' = amat #^# amat
     λ> prd amat'
-    ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
-
-    20.0 12.0 8.0
-    12.0 9.0 6.0
-    8.0 6.0 29.0
     
-    λ> l <- chol amat'
-    λ> prd $ l ##^ l
-    ( 3 rows, 3 columns ) , 9 NZ ( sparsity 1.0 )
+    ( 3 rows, 3 columns ) , 9 NZ ( density 100.000 % )
 
-    20.000000000000004 12.0 8.0
-    12.0 9.0 10.8
-    8.0 10.8 29.0
+    20.00  , 12.00  , 8.00   
+    12.00  , 9.00   , 6.00   
+    8.00   , 6.00   , 29.00      
+
+    
+    λ> lc <- chol amat'
+    λ> prd $ lc ##^ lc
+    
+    ( 3 rows, 3 columns ) , 9 NZ ( density 100.000 % )
+
+    20.00  , 12.00  , 8.00   
+    12.00  , 9.00   , 10.80  
+    8.00   , 10.80  , 29.00      
+
 
 In the last example we have also shown the Cholesky decomposition (M = L L^T where L is a lower-triangular matrix), which is only defined for symmetric positive-definite matrices.
 
@@ -155,25 +167,30 @@ Large sparse linear systems are best solved with iterative methods. `sparse-line
     λ> b = fromListDenseSV 3 [3,2,5] :: SpVector Double
     λ> x <- amat <\> b
     λ> prd x
-    ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
-    1.4999999999999998 -1.9999999999999998 0.9999999999999998
+    ( 3 elements ) ,  3 NZ ( density 100.000 % )
+
+    1.50   , -2.00  , 1.00      
+
 
 The result can be verified by computing the matrix-vector action `amat #> x`, which should (ideally) be very close to the right-hand side `b` :
 
     λ> prd $ amat #> x
-    ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
 
-    2.9999999999999996 1.9999999999999996 4.999999999999999
+    ( 3 elements ) ,  3 NZ ( density 100.000 % )
 
-The library also provides a forward-backward substitution solver (`luSolve`) based on a triangular factorization of the system matrix (usually LU). This should be the preferred for solving smaller, dense systems. Using the data defined above we can cross-verify the two solution methods:
+    3.00   , 2.00   , 5.00       
+    
+
+The library also provides a forward-backward substitution solver (`luSolve`) based on a triangular factorization of the system matrix (usually LU). This should be the preferred for solving smaller, dense systems. Using the LU factors defined previously we can cross-verify the two solution methods:
 
     λ> x' <- luSolve l u b
     λ> prd x'
 
-    ( 3 elements ) ,  3 NZ ( sparsity 1.0 )
+    ( 3 elements ) ,  3 NZ ( density 100.000 % )
 
-    1.5 -2.0 1.0
+    1.50   , -2.00  , 1.00     
+
 
 
 

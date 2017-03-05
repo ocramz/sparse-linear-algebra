@@ -53,6 +53,12 @@ import qualified Data.Vector as V
 
 import Data.VectorSpace
 
+
+
+
+
+
+
 -- withBoundsSM m ij e f
 --   | isValidIxSM m ij = f m ij
 --   | otherwise = error e
