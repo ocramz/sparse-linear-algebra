@@ -57,15 +57,16 @@ data SpMatrix a = SM {smDim :: {-# UNPACK #-} !(Rows, Cols),
 
 
 
-sizeStr :: (FDSize f ~ (a1, a2), Sparse f a, Show a2, Show a1) => f a -> String
-sizeStr sm =
+-- sizeStr :: (FDSize f ~ (a1, a2), Sparse f a, Show a2, Show a1) => f a -> String
+sizeStrSM :: SpMatrix a -> String
+sizeStrSM sm@(SM (nr, nc) _) =
   unwords ["(",show nr,"rows,",show nc,"columns ) ,",show nz,"NZ ( sparsity",show sy,")"] where
-  (nr, nc) = dim sm
+  -- (nr, nc) = dim sm
   nz = nnz sm
   sy = spy sm :: Double
 
 instance Show a => Show (SpMatrix a) where
-  show sm@(SM _ x) = unwords ["SM",sizeStr sm,show (toList $ toList <$> x)]
+  show sm@(SM _ x) = unwords ["SM",sizeStrSM sm,show (toList $ toList <$> x)]
   -- show sm@(SM _ x) = show x
 
 -- instance Functor SpMatrix where

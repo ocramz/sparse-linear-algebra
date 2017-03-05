@@ -346,13 +346,17 @@ toDenseRow sm irow =
 
 
 
+prdR, prdC :: PPrintOptions
+prdR = PPOpts 4 2 7   -- reals
+prdC = PPOpts 4 2 16  -- complex values
+
 
 
 -- -- printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
 -- printDenseSM :: (ScIx c ~ (Int, Int), FDSize c ~ (Int, Int), SpContainer c a, Show a, Epsilon a) => c a -> IO ()
 printDenseSM sm = do
   newline
-  putStrLn $ sizeStr sm
+  putStrLn $ sizeStrSM sm
   newline
   prd0 sm
 
@@ -373,11 +377,11 @@ printDenseSM0 f sm = do
 printDenseSM0r :: SpMatrix Double -> IO ()
 printDenseSM0r sm = printDenseSM0 g sm
   where
-    g sm' irow ncolmax = printDN ncolmax prdefR $ toDenseRow sm' irow
+    g sm' irow ncolmax = printDN (ncols sm') ncolmax prdR $ toDenseRow sm' irow
 printDenseSM0c :: SpMatrix (Complex Double) -> IO ()
 printDenseSM0c sm = printDenseSM0 g sm
   where
-    g sm' irow ncolmax = printCN ncolmax prdefC $ toDenseRow sm' irow
+    g sm' irow ncolmax = printCN (ncols sm') ncolmax prdC $ toDenseRow sm' irow
 
 
 -- printDenseSV :: (Show t, Epsilon t) => SpVector t -> IO ()
@@ -389,16 +393,18 @@ printDenseSV sv = do
   prd0 sv
 
 printDenseSV0r :: SpVector Double -> IO ()
-printDenseSV0r = printDenseSV0 (`printDN` prdefR)
+printDenseSV0r = printDenseSV0 g where
+  g l n = printDN l n prdR
 printDenseSV0c :: SpVector (Complex Double) -> IO ()
-printDenseSV0c = printDenseSV0 (`printCN` prdefC)
+printDenseSV0c = printDenseSV0 g where
+  g l n = printCN l n prdC
 
 printDenseSV0 :: Num a =>
-  (Int -> [a] -> String) -> SpVector a -> IO ()
+  (Int -> Int -> [a] -> String) -> SpVector a -> IO ()
 printDenseSV0 f sv = do
-  printDenseSV' 5
+  printDenseSV' (svDim sv) 5
   newline where
-    printDenseSV' n = putStrLn (f n vd)
+    printDenseSV' l n = putStrLn (f l n vd)
     vd = toDenseListSV sv
 
 
