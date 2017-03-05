@@ -58,8 +58,10 @@ printDN l n = printNpad l n f where
 printCN :: (PrintfArg a, Epsilon a, Epsilon (Complex a), Ord a) =>
      Int -> Int -> PPrintOptions -> [Complex a] -> String
 printCN l n = printNpad l n f where
-  f o x | nearZero (re x) = printf (prepD o (imagPart x)++ "i") (aim x)
-        | nearZero (imagPart x) = printf (prepD o (realPart x)) (re x)
+  f o x | nearZero (re x) && isNz (imagPart x) =
+               printf (prepD o (imagPart x)++ "i") (aim x)
+        | nearZero (imagPart x) && isNz (re x) =
+               printf (prepD o (realPart x)) (re x)
         | isNz x = printf (prepC o x) (re x) (aim x)
         | otherwise = printf "_"
 
@@ -70,13 +72,16 @@ printCN l n = printNpad l n f where
 
 -- | printf an array of items with padding space to render a fixed column width
 printNpad ::
-     Int -> Int -> (PPrintOptions -> a -> String) -> PPrintOptions -> [a] -> String
+     Int     -- ^ Length of list to be provided
+     -> Int  -- ^ 
+     -> (PPrintOptions -> a -> String)
+     -> PPrintOptions -> [a] -> String
 printNpad llen nmax f o@PPOpts{..} xxl = commas [h,l] where
   h = commas $ take hlen ll
   l = last ll
   hlen = min (llen-1) (nmax-1)
   ll = unfoldr g (0, xxl) 
-  g (i, x:xs) | i<nmax-2 = Just (s', sxs)
+  g (i, x:xs) | i<nmax-2 || llen>=nmax = Just (s', sxs)
               | i==nmax-2 = Just (dots', sxs)
               | null xs = Just (s', sxs)
               | otherwise = Just ("", sxs) where                  
