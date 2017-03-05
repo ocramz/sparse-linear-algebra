@@ -81,7 +81,7 @@ printNpad llen nmax f o@PPOpts{..} xxl = commas [h,l] where
   l = last ll
   hlen = min (llen-1) (nmax-1)
   ll = unfoldr g (0, xxl) 
-  g (i, x:xs) | i<nmax-2 || llen>=nmax = Just (s', sxs)
+  g (i, x:xs) | i<nmax-2 || llen>=nmax-1 = Just (s', sxs)
               | i==nmax-2 = Just (dots', sxs)
               | null xs = Just (s', sxs)
               | otherwise = Just ("", sxs) where                  
