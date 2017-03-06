@@ -167,11 +167,11 @@ spec = do
       checkQr tm4 >>= (`shouldBe` True)
     it "qr (5 x 5 sparse)" $
       checkQr tm7 >>= (`shouldBe` True)
-  -- describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
-  --   it "qr (2 x 2 dense)" $
-  --     checkQr aa3cx >>= (`shouldBe` True)
-  --   it "qr (3 x 3 dense)" $
-  --     checkQr tmc4 >>= (`shouldBe` True)  
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
+    it "qr (2 x 2 dense)" $
+      checkQr aa3cx >>= (`shouldBe` True)
+    it "qr (3 x 3 dense)" $
+      checkQr tmc4 >>= (`shouldBe` True)  
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
     it "lu (3 x 3 dense)" $
       checkLu tm2 >>= (`shouldBe` True)
