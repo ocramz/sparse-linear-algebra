@@ -19,7 +19,6 @@ module Numeric.LinearAlgebra.Sparse
          pinv,
          -- ** Direct methods
          luSolve,
-         luSolveConf,
          -- *** Forward substitution
          triLowerSolve,
          -- *** Backward substitution
@@ -30,7 +29,7 @@ module Numeric.LinearAlgebra.Sparse
          eigsArnoldi,
          -- * Matrix factorization algorithms
          -- ** QR
-         qr, qr',
+         qr, 
          -- ** LU
          lu,
          -- ** Cholesky
@@ -161,7 +160,8 @@ type Num' x = (Epsilon x, Elt x, Show x, Ord x, Typeable x)
 -- * Matrix condition number
 
 -- | Matrix condition number: computes the QR factorization and extracts the extremal eigenvalues from the R factor
-conditionNumberSM :: (MonadThrow m, MatrixRing (SpMatrix a), Num' a) =>
+conditionNumberSM :: (MonadThrow m, MonadIO m, MatrixRing (SpMatrix a),
+                      PrintDense (SpMatrix a), Num' a) =>
      SpMatrix a -> m a
 conditionNumberSM m = do
   (_, r) <- qr m
@@ -299,35 +299,17 @@ NB: at each iteration `i` we multiply the Givens matrix `G_i` by the previous pa
 However, we must also accumulate the `G_i` in order to build `Q`, and the present formulation follows this definition closely.
 -}
 {-# inline qr #-}
-qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
-     SpMatrix a
-     -> m (SpMatrix a, SpMatrix a)  -- ^ Q, R
-qr mm = do 
-     (qt, r, _) <- MTS.execStateT (modifyUntilM haltf qrstepf) gminit
-     return (transpose qt, r) 
-  where
-    gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
-    haltf (_, _, iis) = null iis
-    qrstepf (qmatt, m, iis) = do
-        let (i, j) = head iis
-        g <- givens m i j
-        let
-          qmatt' = g #~# qmatt  -- update Q'
-          m' = g #~# m          -- update R
-        return (qmatt', m', tail iis)
-
-
-qr' :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a),
+qr :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a),
       Epsilon a, MonadThrow m, MonadIO m) =>
      SpMatrix a
      -> m (SpMatrix a, SpMatrix a) -- ^ Q, R
-qr' mm = do 
+qr mm = do 
      (qt, r, _) <- modifyUntilM' config haltf qrstepf gminit
      return (transpose qt, r) 
   where
     gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
     haltf (_, _, iis) = null iis
-    config = IterConf 0 True fst2 prd2 where
+    config = IterConf 0 False fst2 prd2 where
       fst2 (x,y,_) = (x,y)
       prd2 (x,y) = do
         prd0 x
@@ -340,8 +322,7 @@ qr' mm = do
           m' = g #~# m          -- update R
         return (qmatt', m', tail iis)    
 
-tm2 :: SpMatrix Double
-tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
+
 
 
 
@@ -373,7 +354,8 @@ eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
 
 -- | `eigsArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
 eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, V (SpVector t), Epsilon t, MonadThrow m) =>
+      Elt t, V (SpVector t), Epsilon t, PrintDense (SpMatrix t),
+      MonadThrow m, MonadIO m) =>
      Int
      -> SpMatrix t
      -> SpVector t
@@ -439,7 +421,7 @@ chol :: (Elt a, Epsilon a, MonadThrow m, MonadIO m, PrintDense (SpMatrix a)) =>
 chol aa = do
   let n = nrows aa
       q (i, _) = i == n
-      config = IterConf 0 True snd prd0
+      config = IterConf 0 False snd prd0
   l0 <- cholUpd aa (0, zeroSM n n)
   (_, lfin) <- modifyUntilM' config q (cholUpd aa) l0
   return lfin
@@ -731,22 +713,26 @@ luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t
      -> m (SpVector t)
 luSolve ll uu b
   | isLowerTriSM ll && isUpperTriSM uu = do
-      w <- triLowerSolve luSolveConf ll b
-      triUpperSolve luSolveConf uu w
-  | otherwise = throwM (NonTriangularException "luSolve")
-
--- | Default configuration for triangular solvers
-luSolveConf :: PrintDense (SpVector a) =>
-    IterationConfig (SpVector a, Int) (SpVector a)
-luSolveConf = IterConf 0 True fst prd0
+      w <- triLowerSolve0 luSolveConf ll b
+      triUpperSolve0 luSolveConf uu w
+  | otherwise = throwM (NonTriangularException "luSolve") where
+      luSolveConf = IterConf 0 True fst prd0
 
 -- | Forward substitution solver
 triLowerSolve
   :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+      PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadIO m) =>
+      SpMatrix t -> SpVector t -> m (SpVector t)
+triLowerSolve = triLowerSolve0 luSolveConfig
+
+luSolveConfig :: PrintDense (SpVector t) => IterationConfig (SpVector t, IxRow) (SpVector t)
+luSolveConfig = IterConf 0 True fst prd0
+
+triLowerSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
       Epsilon t, MonadThrow m, MonadIO m) =>
-     IterationConfig (SpVector t, Int) b
-     -> SpMatrix t -> SpVector t -> m (SpVector t)
-triLowerSolve conf ll b = do
+        IterationConfig (SpVector t, IxRow) b
+     -> SpMatrix t -> SpVector t -> m (SpVector t)  
+triLowerSolve0 config ll b = do
   let q (_, i) = i == nb
       nb = svDim b
       oops i = throwM (NeedsPivoting "triLowerSolve" (unwords ["L", show (i, i)]) :: MatrixException Double)
@@ -768,7 +754,7 @@ triLowerSolve conf ll b = do
           then return (insertSpVector 0 w0 $ zeroSV (dim b), 1)
           else oops (0 :: Int)
   l0 <- lInit             
-  (v, _) <- modifyUntilM' conf q lStep l0
+  (v, _) <- modifyUntilM' config q lStep l0
   return $ sparsifySV v
 
 
@@ -777,10 +763,15 @@ triLowerSolve conf ll b = do
 -- | Backward substitution solver
 triUpperSolve
   :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+      PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadIO m) =>
+      SpMatrix t -> SpVector t -> m (SpVector t)
+triUpperSolve = triUpperSolve0 luSolveConfig
+
+triUpperSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
       Epsilon t, MonadThrow m, MonadIO m) =>
      IterationConfig (SpVector t, IxRow) b
-     -> SpMatrix t -> SpVector t -> m (SpVector t)
-triUpperSolve conf uu w = do 
+     -> SpMatrix t -> SpVector t -> m (SpVector t)  
+triUpperSolve0 conf uu w = do 
   let q (_, i) = i == (- 1)
       nw = svDim w
       oops i = throwM (NeedsPivoting "triUpperSolve" (unwords ["U", show (i, i)]) :: MatrixException Double)
@@ -841,7 +832,7 @@ gmres aa b = do
   (qh, rh) <- qr ha
   let rhs' = takeSV (dim b' - 1) (transpose qh #> b')
       rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
-  yhat <- triUpperSolve luSolveConf rh' rhs'
+  yhat <- triUpperSolve rh' rhs'
   let qa' = takeCols (ncols qa - 1) qa  -- we don't use last column of Krylov basis   
   return $ qa' #> yhat
 

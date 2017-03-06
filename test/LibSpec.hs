@@ -20,12 +20,12 @@ import Numeric.LinearAlgebra.Sparse
 -- import Control.Monad (replicateM)
 import Control.Monad.Catch -- (MonadThrow (..))
 import Control.Monad.IO.Class
-import Control.Monad.State
+-- import Control.Monad.State
 -- import Data.Foldable (foldrM)
 
 import Data.Complex
 -- import Data.Either (either)
-import Data.Typeable
+-- import Data.Typeable
 
 import Data.VectorSpace hiding (magnitude)
 
@@ -275,16 +275,13 @@ checkGivens1 tm i j = do -- (rij, nearZero rij) where
 
 {- QR-}
 
-checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
+            MonadThrow m, MonadIO m) =>
      SpMatrix a
      -> m Bool
 checkQr = checkQr0 qr
 
-checkQr' :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
-             MonadThrow m, MonadIO m) =>
-     SpMatrix a
-     -> m Bool
-checkQr' = checkQr0 qr'
+
 
 checkQr0 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
      (SpMatrix a -> m (SpMatrix a, SpMatrix a))
@@ -361,13 +358,14 @@ checkLuSolve' amat rhs = do
 
 
 {- triangular solvers -}
+
 checkTriUpperSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
       PrintDense (SpVector t),
       MonadThrow m, MonadIO m) =>
      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 checkTriUpperSolve umat rhs = do
-  xhat <- triUpperSolve luSolveConf umat rhs
+  xhat <- triUpperSolve umat rhs
   let r = (umat #> xhat) ^-^ rhs
       flag = nearZero $ norm2 r
   return (xhat, flag)
@@ -378,7 +376,7 @@ checkTriLowerSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatr
       MonadThrow m, MonadIO m) =>
      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 checkTriLowerSolve lmat rhs = do
-  xhat <- triLowerSolve luSolveConf lmat rhs
+  xhat <- triLowerSolve lmat rhs
   let r = (lmat #> xhat) ^-^ rhs
       flag = nearZero $ norm2 r
   return (xhat, flag)
@@ -739,7 +737,8 @@ prop_Cholesky (PropMatSPD m) = checkChol m
 
 
 -- | QR decomposition
-prop_QR :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m, MonadIO m) =>
+prop_QR :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a), Epsilon a,
+            MonadThrow m, MonadIO m) =>
      PropMatI a -> m Bool
 prop_QR (PropMatI m) = checkQr m
 
