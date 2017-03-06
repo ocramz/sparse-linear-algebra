@@ -713,10 +713,9 @@ luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t
      -> m (SpVector t)
 luSolve ll uu b
   | isLowerTriSM ll && isUpperTriSM uu = do
-      w <- triLowerSolve0 luSolveConf ll b
-      triUpperSolve0 luSolveConf uu w
-  | otherwise = throwM (NonTriangularException "luSolve") where
-      luSolveConf = IterConf 0 True fst prd0
+      w <- triLowerSolve0 luSolveConfig ll b
+      triUpperSolve0 luSolveConfig uu w
+  | otherwise = throwM (NonTriangularException "luSolve")
 
 -- | Forward substitution solver
 triLowerSolve
