@@ -6,7 +6,6 @@
 
 
 	0.2.9.1
-
 	-------
 
 	* Uses classes from `vector-space` such as AdditiveGroup, VectorSpace and InnerSpace
