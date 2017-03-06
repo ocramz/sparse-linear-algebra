@@ -30,7 +30,7 @@ module Numeric.LinearAlgebra.Sparse
          eigsArnoldi,
          -- * Matrix factorization algorithms
          -- ** QR
-         qr,
+         qr, qr',
          -- ** LU
          lu,
          -- ** Cholesky
@@ -317,7 +317,10 @@ qr mm = do
         return (qmatt', m', tail iis)
 
 
-
+qr' :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a),
+      Epsilon a, MonadThrow m, MonadIO m) =>
+     SpMatrix a
+     -> m (SpMatrix a, SpMatrix a) -- ^ Q, R
 qr' mm = do 
      (qt, r, _) <- modifyUntilM' config haltf qrstepf gminit
      return (transpose qt, r) 
@@ -430,14 +433,15 @@ SVD of A, Golub-Kahan method
 
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
 -- | NB: The algorithm throws an exception if some diagonal element of A is zero.
-chol :: (Elt a, Epsilon a, MonadThrow m) =>
+chol :: (Elt a, Epsilon a, MonadThrow m, MonadIO m, PrintDense (SpMatrix a)) =>
         SpMatrix a
      -> m (SpMatrix a)  -- ^ L
 chol aa = do
   let n = nrows aa
       q (i, _) = i == n
+      config = IterConf 0 True snd prd0
   l0 <- cholUpd aa (0, zeroSM n n)
-  (_, lfin) <- MTS.execStateT (modifyUntilM q (cholUpd aa)) l0
+  (_, lfin) <- modifyUntilM' config q (cholUpd aa) l0
   return lfin
   where
    oops i = throwM (NeedsPivoting "chol" (unwords ["L", show (i,i)]) :: MatrixException Double)
@@ -736,12 +740,12 @@ luSolveConf :: PrintDense (SpVector a) =>
     IterationConfig (SpVector a, Int) (SpVector a)
 luSolveConf = IterConf 0 True fst prd0
 
--- -- | Forward substitution solver
--- triLowerSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
---       Epsilon t, MonadThrow m) =>
---      SpMatrix t    -- ^ Lower triangular
---      -> SpVector t -- ^ r.h.s
---      -> m (SpVector t)
+-- | Forward substitution solver
+triLowerSolve
+  :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+      Epsilon t, MonadThrow m, MonadIO m) =>
+     IterationConfig (SpVector t, Int) b
+     -> SpMatrix t -> SpVector t -> m (SpVector t)
 triLowerSolve conf ll b = do
   let q (_, i) = i == nb
       nb = svDim b
@@ -771,11 +775,11 @@ triLowerSolve conf ll b = do
 
 -- NB in the computation of `xi` we must rebalance the subrow indices (extractSubRow_RK) because `dropSV` does that too, in order to take the inner product with consistent index pairs
 -- | Backward substitution solver
--- triUpperSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
---       Epsilon t, MonadThrow m) =>
---      SpMatrix t    -- ^ Upper triangular
---      -> SpVector t -- ^ r.h.s
---      -> m (SpVector t)
+triUpperSolve
+  :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+      Epsilon t, MonadThrow m, MonadIO m) =>
+     IterationConfig (SpVector t, IxRow) b
+     -> SpMatrix t -> SpVector t -> m (SpVector t)
 triUpperSolve conf uu w = do 
   let q (_, i) = i == (- 1)
       nw = svDim w

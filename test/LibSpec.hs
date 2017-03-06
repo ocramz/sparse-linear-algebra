@@ -167,11 +167,11 @@ spec = do
       checkQr tm4 >>= (`shouldBe` True)
     it "qr (5 x 5 sparse)" $
       checkQr tm7 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
-    it "qr (2 x 2 dense)" $
-      checkQr aa3cx >>= (`shouldBe` True)
-    it "qr (3 x 3 dense)" $
-      checkQr tmc4 >>= (`shouldBe` True)  
+  -- describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
+  --   it "qr (2 x 2 dense)" $
+  --     checkQr aa3cx >>= (`shouldBe` True)
+  --   it "qr (3 x 3 dense)" $
+  --     checkQr tmc4 >>= (`shouldBe` True)  
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
     it "lu (3 x 3 dense)" $
       checkLu tm2 >>= (`shouldBe` True)
@@ -276,14 +276,26 @@ checkGivens1 tm i j = do -- (rij, nearZero rij) where
 {- QR-}
 
 checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
-     SpMatrix a -> m Bool
-checkQr a = do
-  (q, r) <- qr a
+     SpMatrix a
+     -> m Bool
+checkQr = checkQr0 qr
+
+checkQr' :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
+             MonadThrow m, MonadIO m) =>
+     SpMatrix a
+     -> m Bool
+checkQr' = checkQr0 qr'
+
+checkQr0 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     (SpMatrix a -> m (SpMatrix a, SpMatrix a))
+     -> SpMatrix a
+     -> m Bool
+checkQr0 mfqr a = do
+  (q, r) <- mfqr a
   let c1 = nearZero $ normFrobenius $ sparsifySM ((q ## r) ^-^ a)
       c2 = isOrthogonalSM q
       c3 = isUpperTriSM r
   return $ c1 && c2 && c3
-
 
 -- stepQR a = do
 --   (q, r) <- qr a
@@ -310,7 +322,8 @@ checkLu a = do
 
 {- Cholesky -}
 
-checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
+              MonadThrow m, MonadIO m) =>
      SpMatrix a -> m Bool
 checkChol a = do -- c1 && c2 where
   l <- chol a
@@ -719,13 +732,14 @@ prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 
 -- | Cholesky factorization of a random SPD matrix 
-prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
+                  MonadThrow m, MonadIO m) =>
      PropMatSPD a -> m Bool
 prop_Cholesky (PropMatSPD m) = checkChol m
 
 
 -- | QR decomposition
-prop_QR :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+prop_QR :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m, MonadIO m) =>
      PropMatI a -> m Bool
 prop_QR (PropMatI m) = checkQr m
 
