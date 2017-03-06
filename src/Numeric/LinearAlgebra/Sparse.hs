@@ -704,6 +704,11 @@ mSsorPre aa omega = (l, r) where
 
 -- * Linear solver, LU-based
 
+luSolveConfig :: PrintDense (SpVector t) => IterationConfig (SpVector t, IxRow) (SpVector t)
+luSolveConfig = IterConf 0 False fst prd0
+
+
+
 -- | Direct solver based on a triangular factorization of the system matrix.
 luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t),
             Epsilon t, PrintDense (SpVector t), MonadIO m) =>
@@ -724,8 +729,7 @@ triLowerSolve
       SpMatrix t -> SpVector t -> m (SpVector t)
 triLowerSolve = triLowerSolve0 luSolveConfig
 
-luSolveConfig :: PrintDense (SpVector t) => IterationConfig (SpVector t, IxRow) (SpVector t)
-luSolveConfig = IterConf 0 True fst prd0
+
 
 triLowerSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
       Epsilon t, MonadThrow m, MonadIO m) =>
