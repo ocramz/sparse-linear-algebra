@@ -128,6 +128,7 @@ zeroSM m n = SM (m,n) I.empty
 
 
 -- *** Diagonal matrix
+-- | `mkDiagonal n ll` : create a diagonal matrix of size `n` from a list `ll` of elements
 mkDiagonal :: Int -> [a] -> SpMatrix a
 mkDiagonal n = mkSubDiagonal n 0
 
@@ -408,8 +409,8 @@ isLowerTriSM m = m == lm where
 isUpperTriSM m = m == lm where
   lm = ifilterSM (\i j _ -> i <= j) m
 
--- -- -- |Is the matrix orthogonal? i.e. Q^t ## Q == I
--- -- isOrthogonalSM :: (Eq a, Epsilon a) => SpMatrix a -> Bool
+-- |Is the matrix orthogonal? i.e. Q^t ## Q == I
+isOrthogonalSM :: (Eq a, Epsilon a, MatrixRing (SpMatrix a)) => SpMatrix a -> Bool
 isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
   rsm = roundZeroOneSM $ transpose sm ## sm
 
@@ -541,7 +542,7 @@ bwBoundsSM s = -- b
 
 -- ** Matrix stacking
 
--- | Vertical stacking
+-- | Vertical stacking of matrix blocks
 vertStackSM, (-=-) :: SpMatrix a -> SpMatrix a -> SpMatrix a
 vertStackSM mm1 mm2 = SM (m, n) $ I.union u1 u2 where
   nro1 = nrows mm1
@@ -552,7 +553,7 @@ vertStackSM mm1 mm2 = SM (m, n) $ I.union u1 u2 where
 
 (-=-) = vertStackSM
 
--- | Horizontal stacking
+-- | Horizontal stacking of matrix blocks
 horizStackSM, (-||-) :: SpMatrix a -> SpMatrix a -> SpMatrix a
 horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
   t = transposeSM
@@ -561,7 +562,7 @@ horizStackSM mm1 mm2 = t (t mm1 -=- t mm2) where
 
 
 
--- | Assembles a square matrix from a list of square matrices, arranging these along the main diagonal
+-- | Assemble a block-diagonal square matrix from a list of square matrices, arranging these along the main diagonal
 fromBlocksDiag :: [SpMatrix a] -> SpMatrix a
 fromBlocksDiag mml = fromListSM (n, n) lstot where
   dims = map nrows mml

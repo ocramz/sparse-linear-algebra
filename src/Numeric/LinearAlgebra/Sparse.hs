@@ -65,15 +65,23 @@ module Numeric.LinearAlgebra.Sparse
          constv,
          -- ** SpMatrix
          fromListSM, toListSM,
+
          -- ** Packing and unpacking, rows or columns of a sparse matrix
          -- *** ", using lists as container
          fromRowsL, toRowsL,
          fromColsL, toColsL,
          -- *** ", using Vector as container
          fromRowsV, fromColsV,
+         -- ** Block operations
+         (-=-), (-||-), fromBlocksDiag,
+         -- ** Special matrices
+         eye, mkDiagonal, mkSubDiagonal,
+         permutationSM, permutPairsSM,
+         -- * Predicates
+         isOrthogonalSM, isDiagonalSM,
          -- * Manipulation of sparse data
          filterSV, ifilterSV,
-         -- * Sparsity-related
+         -- * Sparsity-related predicates
          nearZero, nearOne, isNz,
          -- * Operators
          -- ** Scaling
@@ -564,14 +572,15 @@ lu' aa = do
          
 
 
-tmc4, tmc5 :: SpMatrix (Complex Double)
+tmc4, tmc5, tmc6 :: SpMatrix (Complex Double)
 tmc4 = fromListDenseSM 3 [3:+1, 4:+(-1), (-5):+3, 2:+2, 3:+(-2), 5:+0.2, 7:+(-2), 9:+(-1), 2:+3]
 
 tvc4 = vc [1:+3,2:+2,1:+9]
 
-tmc5 = fromListDenseSM 4 $ zipWith (:+) [16..31] [15,14..0]
+tmc5 = fromListDenseSM 4 $ zipWith (:+) [16..31] [17,14..]
 
 
+tmc6 = fromListDenseSM 2 $ zipWith (:+) [1,2,3,4] [4,3,2,1] 
 
 
 
