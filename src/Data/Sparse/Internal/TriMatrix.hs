@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# language TypeFamilies, FlexibleInstances, DeriveFunctor #-}
 module Data.Sparse.Internal.TriMatrix where
 
@@ -25,6 +26,9 @@ import Data.Sparse.Common ((@@!), nrows, ncols, lookupSM, SpMatrix)
 
 import Control.Monad.Catch
 import Control.Exception.Common
+
+import Control.Monad (when)
+import Control.Monad.State
 
 {- | triangular sparse matrix, row-major order
 
@@ -82,10 +86,17 @@ lookupWD rlu clu aa i j = fromMaybe 0 (rlu i aa >>= clu j)
 {- | LU factorization : store L and U^T in TriMatrix format -}
 
 
--- luStep amat (lmat, umat, t) = 
---   let umat' = solveUrow amat lmat umat t
---       lmat' = solveLcol amat lmat umat' t
---   in (lmat', umat', succ t)
+luStep
+  :: (Elt a, Epsilon a,
+      MonadState (IM.IntMap (SList a), IM.IntMap (SList a), IM.Key) m,
+      MonadThrow m) =>
+     SpMatrix a -> m ()
+luStep amat = do
+  (lmat, umat, t) <- get
+  let (umat', utt) = solveUrow amat lmat umat t
+  when (nearZero utt) (throwM (NeedsPivoting "bla" (unwords ["U", show (t,t)]) :: MatrixException Double))
+  let lmat' = solveLcol amat lmat umat' utt t
+  put (lmat', umat', succ t)
 
 
 
@@ -111,6 +122,7 @@ solveUrow
      -> (IM.IntMap (SList a), a)   -- ^ updated U, i'th diagonal element Uii
 solveUrow amat lmat umat i = (umat', udiag) where
   n = ncols amat
+  udiag = amat@@!(i,i) - (li <.> umat ! i)
   li = lmat ! i
   umat' = foldr ins umat [i .. n-1]
   ins j acc
@@ -120,7 +132,7 @@ solveUrow amat lmat umat i = (umat', udiag) where
     x = aij - li <.> uj 
     aij = amat @@! (i,j)
     uj = umat ! j
-  udiag = amat@@!(i,i) - (li <.> umat ! i)
+  
 
 solveLcol
   :: (Elt a, Epsilon a) =>
@@ -130,14 +142,14 @@ solveLcol
      -> a                   -- ^ diagonal element of U (must be nonzero)
      -> IM.Key
      -> IM.IntMap (SList a) -- ^ updated L
-solveLcol amat lmat umat utt j = foldr ins lmat [j .. m-1] where
+solveLcol amat lmat umat udiag j = foldr ins lmat [j .. m-1] where
   m = nrows amat
   uj = umat ! j
   ins i acc
     | i == j = appendIM i (j, 1) acc  -- write 1 on the diagonal 
     | isNz x = appendIM i (j, x) acc
     | otherwise = acc where
-    x = (aij - li <.> uj)/utt 
+    x = (aij - li <.> uj)/udiag
     aij = amat @@! (i,j)
     li = lmat ! i
 
