@@ -22,7 +22,7 @@ import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 -- import Data.Sparse.SpMatrix ((@@!))
 import qualified Data.Sparse.Internal.IntM as IntM
-import Data.Sparse.Common ((@@!), nrows, ncols, lookupSM, SpMatrix)
+import Data.Sparse.Common ((@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpMatrix)
 
 import Control.Monad.Catch
 import Control.Exception.Common
@@ -86,6 +86,13 @@ lookupWD rlu clu aa i j = fromMaybe 0 (rlu i aa >>= clu j)
 {- | LU factorization : store L and U^T in TriMatrix format -}
 
 
+
+luInit amat = undefined
+  where
+    urow0 = extractRow amat 0
+    u00 = urow0 @@ 0
+    lcol0 = extractCol amat 0 ./ u00
+
 luStep
   :: (Elt a, Epsilon a,
       MonadState (IM.IntMap (SList a), IM.IntMap (SList a), IM.Key) m,
@@ -114,10 +121,10 @@ solveUrow amat lmat umat i = (umat', udiag) where
   li = lmat ! i
   umat' = foldr ins umat [i .. n-1]
   ins j acc
-      | i == j = appendIM j (i, udiag) acc
-      | isNz x = appendIM j (i, x) acc
+      | i == j   = appendIM j (i, udiag) acc
+      | isNz uij = appendIM j (i, uij) acc
       | otherwise = acc where
-    x = aij - li <.> uj 
+    uij = aij - li <.> uj 
     aij = amat @@! (i,j)
     uj = umat ! j
   
@@ -134,10 +141,10 @@ solveLcol amat lmat umat udiag j = foldr ins lmat [j .. m-1] where
   m = nrows amat
   uj = umat ! j
   ins i acc
-    | i == j = appendIM i (j, 1) acc  -- write 1 on the diagonal 
-    | isNz x = appendIM i (j, x) acc
+    | i == j   = appendIM i (j, 1) acc  -- write 1 on the diagonal 
+    | isNz lij = appendIM i (j, lij) acc
     | otherwise = acc where
-    x = (aij - li <.> uj)/udiag
+    lij = (aij - li <.> uj)/udiag
     aij = amat @@! (i,j)
     li = lmat ! i
 
