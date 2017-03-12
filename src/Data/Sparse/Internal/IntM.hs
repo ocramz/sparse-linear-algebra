@@ -16,38 +16,48 @@ import qualified Data.IntMap as IM
 -- | A synonym for IntMap 
 newtype IntM a = IntM {unIM :: IM.IntMap a} deriving (Eq, Show, Functor, Foldable)
 
-
+empty :: IntM a
 empty = IntM IM.empty
 
+size :: IntM a -> Int
 size (IntM x) = IM.size x
 
+singleton :: IM.Key -> a -> IntM a
 singleton i x = IntM $ IM.singleton i x
 
 filterWithKey f im = IntM $ IM.filterWithKey f (unIM im)
 
+insert :: IM.Key -> a -> IntM a -> IntM a
 insert k x (IntM im) = IntM $ IM.insert k x im
 
+filterI :: (a -> Bool) -> IntM a -> IntM a
 filterI f (IntM im) = IntM $ IM.filter f im
 
-lookup x (IntM im) = IM.lookup x im
+lookup :: IM.Key -> IntM a -> Maybe a
+lookup i (IntM im) = IM.lookup i im
 
 lookupLT x (IntM im) = IM.lookupLT x im
 
+foldlWithKey :: (a -> IM.Key -> b -> a) -> a -> IntM b -> a
 foldlWithKey f z (IntM im) = IM.foldlWithKey f z im
 
+foldlWithKey' :: (a -> IM.Key -> b -> a) -> a -> IntM b -> a
 foldlWithKey' f z (IntM im) = IM.foldlWithKey' f z im
 
 mapWithKey f (IntM im) = IntM $ IM.mapWithKey f im
 
+keys :: IntM a -> [IM.Key]
 keys (IntM im) = IM.keys im
 
 mapKeys f (IntM im) = IntM $ IM.mapKeys f im
 
+union :: IntM a -> IntM a -> IntM a
 union (IntM a) (IntM b) = IntM $ IM.union a b
 
 findMin (IntM im) = IM.findMin im
 findMax (IntM im) = IM.findMax im
 
+(!) :: IntM a -> IM.Key -> a
 (IntM im) ! i = im IM.! i
 
 

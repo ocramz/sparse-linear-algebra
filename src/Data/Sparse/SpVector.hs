@@ -76,6 +76,10 @@ instance Foldable SpVector where
     foldr f d v = F.foldr f d (svData v)
 
 
+foldlWithKeySV, foldlWithKeySV' :: (a -> IM.Key -> b -> a) -> a -> SpVector b -> a
+foldlWithKeySV f d v = foldlWithKey f d (svData v)
+
+foldlWithKeySV' f d v = foldlWithKey' f d (svData v)
 
 
 

@@ -11,8 +11,8 @@
 -----------------------------------------------------------------------------
 module Data.Sparse.SpMatrix where
 
-import Control.Exception.Common
-import Data.Sparse.SpVector
+-- import Control.Exception.Common
+-- import Data.Sparse.SpVector
 import Data.Sparse.Utils
 import Data.Sparse.Types
 
