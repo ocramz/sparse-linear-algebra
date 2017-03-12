@@ -94,24 +94,12 @@ luStep
 luStep amat = do
   (lmat, umat, t) <- get
   let (umat', utt) = solveUrow amat lmat umat t
-  when (nearZero utt) (throwM (NeedsPivoting "bla" (unwords ["U", show (t,t)]) :: MatrixException Double))
+  when (nearZero utt) $
+       throwM (NeedsPivoting "LU" (unwords ["U", show (t,t)]) :: MatrixException Double)
   let lmat' = solveLcol amat lmat umat' utt t
-  put (lmat', umat', succ t)
+  put (lmat', umat', t + 1)
 
 
-
--- solveUrowM amat lmat umat i = foldrM ins umat [i .. n-1] where
---   n = ncols amat
---   li = lmat ! i
---   ins j acc
---        | nearZero x && i == j =
---            throwM (NeedsPivoting "solveUrowM" "bla")
---             -- throwM (NeedsPivoting "solveUrowM" (unwords ["U",show (i,i :: Int)]))
---        | isNz x = pure $ appendIM j (i, x) acc
---        | otherwise = pure acc where
---     x = aij - li <.> uj 
---     aij = amat @@! (i,j)
---     uj = umat ! j
 
 solveUrow
   :: (Elt a, Epsilon a) =>
