@@ -108,15 +108,19 @@ solveUrow
      -> IM.IntMap (SList a)
      -> IM.IntMap (SList a)
      -> IM.Key
-     -> IM.IntMap (SList a)   -- ^ updated U
-solveUrow amat lmat umat i = foldr ins umat [i .. n-1] where
+     -> (IM.IntMap (SList a), a)   -- ^ updated U, i'th diagonal element Uii
+solveUrow amat lmat umat i = (umat', udiag) where
   n = ncols amat
   li = lmat ! i
-  ins j acc | isNz x = appendIM j (i, x) acc
-            | otherwise = acc where
+  umat' = foldr ins umat [i .. n-1]
+  ins j acc
+      | i == j = appendIM j (i, udiag) acc
+      | isNz x = appendIM j (i, x) acc
+      | otherwise = acc where
     x = aij - li <.> uj 
     aij = amat @@! (i,j)
     uj = umat ! j
+  udiag = amat@@!(i,i) - (li <.> umat ! i)
 
 solveLcol
   :: (Elt a, Epsilon a) =>
