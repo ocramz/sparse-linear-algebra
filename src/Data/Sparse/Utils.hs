@@ -1,8 +1,63 @@
 module Data.Sparse.Utils where
 
+import Data.Ord
 import qualified Data.Vector as V
 
 -- * Misc. utilities
+
+
+
+
+
+
+
+intersectWith :: Ord i => (a -> a -> b) -> [(i, a)] -> [(i, a)] -> [b]
+intersectWith f = intersectWith0 (comparing fst) (lift2snd f)
+
+unionWith :: Ord i =>
+     (a -> a -> a) -> a -> [(i, a)] -> [(i, a)] -> [(i, a)]
+unionWith f z = go [] where
+  go acc ls@((ix, x) : xs) rs@((iy, y) : ys) =
+    case compare ix iy of EQ -> go ((ix, f x y) : acc) xs ys
+                          LT -> go ((ix, f x z) : acc) xs rs
+                          _  -> go ((iy, f z y) : acc) ls ys
+  go acc [] r = acc ++ r
+  go acc l [] = acc ++ l
+
+  
+intersectWith0 :: (a -> b -> Ordering) -> (a -> b -> c) -> [a] -> [b] -> [c]
+intersectWith0 q f = go [] where
+  go acc ls@(x : xs) rs@(y : ys) =
+    case q x y of EQ -> go (f x y : acc) xs ys
+                  LT -> go acc xs rs
+                  _  -> go acc ls ys
+  go acc [] _ = acc
+  go acc _ [] = acc
+
+
+
+-- | Lift a binary function onto the second entry of a tuple
+lift2snd :: (t -> t1 -> t2) -> (a, t) -> (a1, t1) -> t2
+lift2snd f a b = f (snd a) (snd b)
+
+
+
+unionWith0 :: (a -> a -> Ordering) -> (a -> a -> a) -> a -> [a] -> [a] -> [a]
+unionWith0 q f z = go [] where
+  go acc ls@(x : xs) rs@(y : ys) =
+    case q x y of EQ -> go (f x y : acc) xs ys
+                  LT -> go (f x z : acc) xs rs
+                  _  -> go (f z y : acc) ls ys
+  go acc [] r = acc ++ r
+  go acc l [] = acc ++ l
+
+
+
+  
+
+
+
+
 
 
 -- | Wrap a function with a null check, returning in Maybe
