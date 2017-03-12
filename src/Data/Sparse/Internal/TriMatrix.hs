@@ -9,7 +9,7 @@ import Data.IntMap.Strict ((!))
 
 import Data.Maybe (fromMaybe)
 -- import Data.Monoid
-import Data.Complex
+-- import Data.Complex
 
 import Numeric.Eps
 import Data.Sparse.Types
@@ -36,10 +36,20 @@ appendIM :: IM.Key -> (Int, a) -> IM.IntMap (SList a) -> IM.IntMap (SList a)
 appendIM i x im = IM.insert i (x `consSL` e) im where
   e = fromMaybe emptySL (IM.lookup i im)
 
+-- -- | Appends a column to a TriMatrix from an IntMap
+-- appendColTM j z imx tm = IM.foldlWithKey ins z imx where
+--   ins acc i x = appendIM tm (j, x) acc
+  
+solveUij i j aij lmat umat = aij - li <.> uj
+  where
+    li = unTM lmat ! i
+    uj = unTM umat ! j
 
--- appendToRowTM :: IxRow -> IxCol -> a -> TriMatrix a -> TriMatrix a
--- appendToRowTM i j x tm = TM $ appendIM i (j, x) (unTM tm)
-
+solveLij i j aij lmat umat = (aij - li <.> uj)/utt
+  where
+    li = unTM lmat ! i
+    uj = unTM umat ! j
+    utt = snd $ head $ unSL uj
 
 
 
@@ -68,21 +78,5 @@ appendIM i x im = IM.insert i (x `consSL` e) im where
 
 
 
--- test data
 
-l1, l2 :: [(Int, Double)]
-l1 = [(0, pi), (2, pi),  (3, 5.4) ]
-
-l2 = [(1, exp 1), (2, 3.4)]
-
-l1c :: [(Int, Complex Double)]
-l1c = zip ii $ zipWith (:+) [1..3] [3,2,1] where
-  ii = [0, 2, 5]
-
-sl1c = SL l1c
-
-
--- helpers
-sortIndices :: [(IM.Key, a)] -> [(IM.Key, a)]
-sortIndices = IM.toList . IM.fromList
 

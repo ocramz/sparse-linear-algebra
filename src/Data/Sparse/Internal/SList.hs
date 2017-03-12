@@ -11,7 +11,7 @@ import Data.VectorSpace
 
 
 -- | Sparse list
-newtype SList a = SL {unSV :: [(Int, a)]} deriving (Eq, Show, Functor)
+newtype SList a = SL {unSL :: [(Int, a)]} deriving (Eq, Show, Functor)
 
 emptySL :: SList a
 emptySL = SL []
@@ -27,7 +27,7 @@ fromList :: [(Int, a)] -> SList a
 fromList = SL
 
 toList :: SList a -> [(Int, a)]
-toList = unSV
+toList = unSL
 
 
 {-|
@@ -52,7 +52,7 @@ slsum = unionWith (+) 0
 instance Elt a => AdditiveGroup (SList a) where
   zeroV = SL []
   negateV = fmap (* (-1))
-  u ^+^ v = SL $ slsum (unSV u) (unSV v)
+  u ^+^ v = SL $ slsum (unSL u) (unSL v)
 
 
 instance Elt a => VectorSpace (SList a) where
@@ -61,7 +61,7 @@ instance Elt a => VectorSpace (SList a) where
 
 
 instance (AdditiveGroup a, Elt a) => InnerSpace (SList a) where
-  u <.> v = sldot (unSV u) (unSV v)  
+  u <.> v = sldot (unSL u) (unSL v)  
 
 
 -- instance InnerSpace (SList Double) where
@@ -69,3 +69,24 @@ instance (AdditiveGroup a, Elt a) => InnerSpace (SList a) where
 
 -- instance InnerSpace (SList (Complex Double)) where
 --   u <.> v = innerC (unSV u) (unSV v)
+
+
+
+
+-- test data
+
+l1, l2 :: [(Int, Double)]
+l1 = [(0, pi), (2, pi),  (3, 5.4) ]
+
+l2 = [(1, exp 1), (2, 3.4)]
+
+-- l1c :: [(Int, Complex Double)]
+-- l1c = zip ii $ zipWith (:+) [1..3] [3,2,1] where
+--   ii = [0, 2, 5]
+
+-- sl1c = SL l1c
+
+
+-- helpers
+-- sortIndices :: [(IM.Key, a)] -> [(IM.Key, a)]
+-- sortIndices = IM.toList . IM.fromList
