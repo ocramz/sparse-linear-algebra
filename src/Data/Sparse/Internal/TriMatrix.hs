@@ -9,31 +9,29 @@ import Data.IntMap.Strict ((!))
 
 import Data.Maybe (fromMaybe)
 -- import Data.Monoid
-import Data.Ord (comparing)
 import Data.Complex
 
 import Numeric.Eps
 import Data.Sparse.Types
-import Data.Sparse.Utils
+-- import Data.Sparse.Utils
+import Data.Sparse.Internal.SList
 
 import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 
 {- | triangular sparse matrix, row-major order
 
-Intmap-of-lists
+Intmap-of-sparse lists
 * fast random access of rows
 * fast consing of row elements
 -}
--- newtype TriMatrix a = TM { unTM :: IM.IntMap [(Int, a)]} deriving (Show, Functor)
 
 newtype TriMatrix a = TM { unTM :: IM.IntMap (SList a)} deriving (Show, Functor)
 
 emptyTM :: Int -> TriMatrix a
 emptyTM n = TM $ IM.fromList [(i, emptySL) | i <- [0 .. n-1]]
 
--- | `appendIM i x im` appends an element `x` to the i'th list in an IntMap-of-lists structure
-
+-- | `appendIM i x im` appends an element `x` to the i'th SList in an IntMap-of-SLists structure
 appendIM :: IM.Key -> (Int, a) -> IM.IntMap (SList a) -> IM.IntMap (SList a)
 appendIM i x im = IM.insert i (x `consSL` e) im where
   e = fromMaybe emptySL (IM.lookup i im)
@@ -57,75 +55,6 @@ appendIM i x im = IM.insert i (x `consSL` e) im where
 
 
 
-
-
-
-
-
-
-
-
-
-
--- | Sparse list
-newtype SList a = SL {unSV :: [(Int, a)]} deriving (Eq, Show, Functor)
-
-emptySL :: SList a
-emptySL = SL []
-
-consSL :: (Int, a) -> SList a -> SList a
-consSL x (SL xs) = SL (x : xs)
-
-headSL :: SList a -> Maybe (Int, a)
-headSL (SL (x:_)) = Just x
-headSL (SL []) = Nothing
-
-fromList :: [(Int, a)] -> SList a
-fromList = SL
-
-toList :: SList a -> [(Int, a)]
-toList = unSV
-
-
-{-|
-NB : unionWith and intersectWith work only if the indices are _sorted_
--}
-
-
--- | Inner product between sparse lists
-sldot :: (Elt a, Ord i) => [(i, a)] -> [(i, a)] -> a
-sldot u v = sum $ intersectWith pf u v where
-  pf x y = conj x * y
-
--- | Vector sum of sparse lists
-slsum :: (Ord i, Elt a) => [(i, a)] -> [(i, a)] -> [(i, a)]
-slsum = unionWith (+) 0
-
-
-
-
--- | `vector-space` instances
-
-instance Elt a => AdditiveGroup (SList a) where
-  zeroV = SL []
-  negateV = fmap (* (-1))
-  u ^+^ v = SL $ slsum (unSV u) (unSV v)
-
-
-instance Elt a => VectorSpace (SList a) where
-  type Scalar (SList a) = a
-  a *^ v = fmap (* a) v
-
-
-instance (AdditiveGroup a, Elt a) => InnerSpace (SList a) where
-  u <.> v = sldot (unSV u) (unSV v)  
-
-
--- instance InnerSpace (SList Double) where
---   u <.> v = inner (unSV u) (unSV v)
-
--- instance InnerSpace (SList (Complex Double)) where
---   u <.> v = innerC (unSV u) (unSV v)
 
 
 
