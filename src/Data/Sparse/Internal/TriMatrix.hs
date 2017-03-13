@@ -11,7 +11,7 @@ import Data.IntMap.Strict ((!))
 import Data.Foldable (foldrM)
 import Data.Maybe (fromMaybe)
 -- import Data.Monoid
--- import Data.Complex
+import Data.Complex
 
 import Numeric.Eps
 import Data.Sparse.Types
@@ -21,15 +21,13 @@ import Data.Sparse.Internal.SList
 import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM)
-import qualified Data.Sparse.Internal.IntM as IntM
 import Data.Sparse.Common (prd, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
 
-import Control.Monad.Catch
+import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Exception.Common
 
 import Control.Monad (when)
-import Control.Monad.State (get, put)
-import Control.Monad.Trans.State hiding (get, put)
+import Control.Monad.Trans.State (execStateT)
 import Control.Iterative (modifyUntilM)
 
 {- | triangular sparse matrix, row-major order
@@ -76,7 +74,7 @@ lookupWD rlu clu aa i j = fromMaybe 0 (rlu i aa >>= clu j)
 
 lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
       MonadThrow m, Epsilon t) =>
-     SpMatrix t -> m (SpMatrix t, SpMatrix t)
+     SpMatrix t -> m (SpMatrix t, SpMatrix t) -- ^ L, U
 lu amat = do
   let d@(m,n) = (nrows amat, ncols amat)
       q (_, _, i) = i == m
@@ -86,26 +84,19 @@ lu amat = do
          umat0 = foldlWithKeySV ins (emptyIMSL n) urow0 -- populate umat0
          lmat0 = IM.insert 0 (SL [(0, 1)]) l0 where     -- populate lmat0
            l0 = foldlWithKeySV ins (emptyIMSL m) lcol0 
-         ins acc i x = appendIM i (0, x) acc  
-  (lfin, ufin, ifin) <- execStateT (modifyUntilM q (luStep amat)) luInit
-  -- let (ufin', utt) = uStep amat lfin ufin ifin
-  --     lfin' = lStep amat lfin ufin' utt ifin
+         ins acc i x = appendIM i (0, x) acc
+      luStep (lmat, umat, i) = do
+          let (umat', uii) = uStep amat lmat umat i
+          when (nearZero uii) $
+             throwM (NeedsPivoting "LU" (unwords ["U", show (i,i)]) :: MatrixException Double)
+          let lmat' = lStep amat lmat umat' uii i
+          return (lmat', umat', i + 1)         
+  (lfin, ufin, _) <- execStateT (modifyUntilM q luStep) luInit
   let uu = fillSM d True ufin
       ll = fillSM d False lfin
   return (ll, uu)
 
 
-
-
--- luStep :: (Elt a, MonadThrow m, Epsilon a) =>
---      SpMatrix a
---      -> StateT (IM.IntMap (SList a), IM.IntMap (SList a), IM.Key) m ()
-luStep amat (lmat, umat, i)= do
-  let (umat', uii) = uStep amat lmat umat i
-  when (nearZero uii) $
-       throwM (NeedsPivoting "LU" (unwords ["U", show (i,i)]) :: MatrixException Double)
-  let lmat' = lStep amat lmat umat' uii i
-  return (lmat', umat', i + 1)
 
 
 
@@ -167,22 +158,24 @@ test mm = do
   prd mm
   prd $ l #~# u
 
-tm2 :: SpMatrix Double
+tm2, tm9 :: SpMatrix Double
 tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
 
--- λ> (l,u) <- lu tm2
--- λ> prd l
-
--- 1.00   , _      , _      
--- 0.50   , 1.00   , _      
--- -0.33  , 0.04   , 1.00   
-
--- λ> prd u
-
--- 12.00  , -51.00 , 4.00   
--- _      , 1.92e2 , -70.00 
--- _      , _      , -37.12 
-
-
-tm9 :: SpMatrix Double
 tm9 = fromListSM (4, 4) [(0,0,pi), (1,1, 3), (3, 0, 23), (1,3, 45), (2,2,4), (3,2, 1), (3,1, 5), (3,3, exp 1)]
+
+-- -- complex
+tmc4, tmc5 :: SpMatrix (Complex Double)
+tmc4 = fromListDenseSM 3 [3:+1, 4:+(-1), (-5):+3, 2:+2, 3:+(-2), 5:+0.2, 7:+(-2), 9:+(-1), 2:+3]
+
+tmc5 = fromListDenseSM 4 $ zipWith (:+) [16..31] [15,14..0]
+
+
+-- λ> test tmc4
+
+-- 1.00            , _               , _               
+-- 1.10 - 0.70i    , 1.00            , _               
+-- -1.20 + 1.40i   , -0.56 + 1.04i   , 1.00            
+
+-- 3.00 + 1.00i    , 2.00 + 2.00i    , 7.00 - 2.00i    
+-- _               , 2.20 - 5.60i    , -0.10 - 3.70i   
+-- _               , _               , 16.99 + 8.24i   
