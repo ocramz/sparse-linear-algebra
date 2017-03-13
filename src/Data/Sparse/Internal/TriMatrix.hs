@@ -39,6 +39,7 @@ Intmap-of-sparse lists
 
 newtype TriMatrix a = TM { unTM :: IM.IntMap (SList a)} deriving (Show, Functor)
 
+emptyIMSL :: Int -> IM.IntMap (SList a)
 emptyIMSL n = IM.fromList [(i, emptySL) | i <- [0 .. n-1]]
 
 emptyTM :: Int -> TriMatrix a
@@ -48,10 +49,6 @@ emptyTM n = TM (emptyIMSL n)
 appendIM :: IM.Key -> (Int, a) -> IM.IntMap (SList a) -> IM.IntMap (SList a)
 appendIM i x im = IM.insert i (x `consSL` e) im where
   e = fromMaybe emptySL (IM.lookup i im)
-
-
-
-
 
 
 -- | Nested lookup with default value = 0
@@ -65,6 +62,11 @@ lookupWD :: Num a =>
 lookupWD rlu clu aa i j = fromMaybe 0 (rlu i aa >>= clu j)
 
  
+
+
+
+
+
 
 
 {- | LU factorization : store L and U^T in TriMatrix format -}
