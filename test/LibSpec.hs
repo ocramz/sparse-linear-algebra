@@ -105,8 +105,8 @@ spec = do
      
 
   describe "QuickCheck properties:" $ do
-    -- prop "prop_matSPD_vec : (m #^# m) is symmetric positive definite" $
-    --   \(PropMatSPDVec (m :: SpMatrix Double) v) -> prop_spd m v
+    prop "prop_matSPD_vec : (m #^# m) is symmetric positive definite" $
+      \(PropMatSPDVec (m :: SpMatrix Double) v) -> prop_spd m v
     prop "prop_dot : (v <.> v) ~= 1 if ||v|| == 1" $
       \(v :: SpVector Double) -> prop_dot v
     prop "prop_matMat1 : (A ## B)^T == (B^T ## A^T)" $
@@ -672,12 +672,12 @@ instance Arbitrary (PropMatVec Double) where
 
 
 
--- -- | A symmetric positive definite matrix and vector of compatible size
--- data PropMatSPDVec a = PropMatSPDVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
--- instance Arbitrary (PropMatSPDVec Double) where
---   arbitrary = do
---     PropMatVec m v <- arbitrary -- :: Gen (PropMatVec Double)
---     return $ PropMatSPDVec (m #^# m) v
+-- | A symmetric positive definite matrix and vector of compatible size
+data PropMatSPDVec a = PropMatSPDVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
+instance Arbitrary (PropMatSPDVec Double) where
+  arbitrary = do
+    PropMatVec m v <- arbitrary -- :: Gen (PropMatVec Double)
+    return $ PropMatSPDVec (m #^# m) v
 
 
     
