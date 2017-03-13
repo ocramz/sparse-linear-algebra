@@ -78,7 +78,7 @@ modifyUntilM' config q f x0 = MTS.execStateT (go 0) x0 where
    x <- get
    y <- lift $ f x
    when (printDebugInfo config) $ liftIO $ do
-     putStrLn $ unwords ["Iteration", show i]
+     putStrLn $ unwords ["Iteration", show i, "\n"]
      printDebugIO config (pf y) 
    put y
    if q y

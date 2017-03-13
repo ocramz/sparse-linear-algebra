@@ -21,14 +21,16 @@ import Data.Sparse.Internal.SList
 import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM, sparsifySM)
-import Data.Sparse.Common (prd, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
+import Data.Sparse.Common (prd, prd0, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
+import Data.Sparse.PPrint
 
 import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Exception.Common
 
 import Control.Monad (when)
+import Control.Monad.IO.Class
 import Control.Monad.Trans.State (execStateT)
-import Control.Iterative (modifyUntilM)
+import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM')
 
 {- | triangular sparse matrix, row-major order
 
@@ -73,7 +75,8 @@ lookupWD rlu clu aa i j = fromMaybe 0 (rlu i aa >>= clu j)
 
 
 lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
-      MonadThrow m, Epsilon t) =>
+      MonadThrow m, MonadIO m, PrintDense (SpMatrix t),
+      Epsilon t) =>
      SpMatrix t -> m (SpMatrix t, SpMatrix t) -- ^ L, U
 lu amat = do
   let d@(m,n) = (nrows amat, ncols amat)
@@ -91,7 +94,13 @@ lu amat = do
              throwM (NeedsPivoting "LU" (unwords ["U", show (i,i)]) :: MatrixException Double)
           let lmat' = lStep amat lmat umat' uii i
           return (lmat', umat', i + 1)         
-  (lfin, ufin, _) <- execStateT (modifyUntilM q luStep) luInit
+  -- (lfin, ufin, _) <- execStateT (modifyUntilM q luStep) luInit
+  let config = IterConf 0 True vf prf where
+        vf (l, u, _) = (l, u)
+        prf (l, u) = do
+          prd0 $ fillSM d False l
+          prd0 $ fillSM d True u
+  (lfin, ufin, _) <- modifyUntilM' config q luStep luInit  
   let uu = fillSM d True ufin
       ll = fillSM d False lfin
   return (ll, uu)
