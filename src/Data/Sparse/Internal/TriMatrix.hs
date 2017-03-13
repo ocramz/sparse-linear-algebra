@@ -159,9 +159,9 @@ test mm = do
 
 
 
-aa0, tm2, tm4, tm9 :: SpMatrix Double
+tm0, tm2, tm4, tm9 :: SpMatrix Double
 
-aa0 = fromListDenseSM 2 [1,3,2,4]
+tm0 = fromListDenseSM 2 [1,3,2,4]
 
 tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
 tm4 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
