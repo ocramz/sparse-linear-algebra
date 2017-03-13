@@ -10,20 +10,26 @@ import qualified Data.Vector as V
 
 
 
-
+-- | Intersection and union of sparse lists having indices in _ascending_ order
 intersectWith :: Ord i => (a -> a -> b) -> [(i, a)] -> [(i, a)] -> [b]
 intersectWith f = intersectWith0 (comparing fst) (lift2snd f)
 
 unionWith :: Ord i =>
      (a -> a -> a) -> a -> [(i, a)] -> [(i, a)] -> [(i, a)]
-unionWith f z = go [] where
-  go acc ls@((ix, x) : xs) rs@((iy, y) : ys) =
-    case compare ix iy of EQ -> go ((ix, f x y) : acc) xs ys
-                          LT -> go ((ix, f x z) : acc) xs rs
-                          _  -> go ((iy, f z y) : acc) ls ys
-  go acc [] r = acc ++ r
-  go acc l [] = acc ++ l
+unionWith = unionWith0 compare
 
+
+
+-- | Intersection and union of sparse lists having indices in _descending_ order
+intersectWithD :: Ord i => (a -> a -> b) -> [(i, a)] -> [(i, a)] -> [b]
+intersectWithD f = intersectWith0 (comparing (Down . fst)) (lift2snd f)
+
+unionWithD :: Ord i =>
+     (a -> a -> a) -> a -> [(i, a)] -> [(i, a)] -> [(i, a)]
+unionWithD = unionWith0 (comparing Down)
+
+
+--
   
 intersectWith0 :: (a -> b -> Ordering) -> (a -> b -> c) -> [a] -> [b] -> [c]
 intersectWith0 q f = go [] where
@@ -41,15 +47,24 @@ lift2snd :: (t -> t1 -> t2) -> (a, t) -> (a1, t1) -> t2
 lift2snd f a b = f (snd a) (snd b)
 
 
-
-unionWith0 :: (a -> a -> Ordering) -> (a -> a -> a) -> a -> [a] -> [a] -> [a]
+unionWith0 :: (i -> i -> Ordering) -> (a -> a -> a) -> a -> [(i, a)] -> [(i, a)] -> [(i, a)]
 unionWith0 q f z = go [] where
-  go acc ls@(x : xs) rs@(y : ys) =
-    case q x y of EQ -> go (f x y : acc) xs ys
-                  LT -> go (f x z : acc) xs rs
-                  _  -> go (f z y : acc) ls ys
+  go acc ls@((ix, x) : xs) rs@((iy, y) : ys) =
+    case q ix iy of EQ -> go ((ix, f x y) : acc) xs ys
+                    LT -> go ((ix, f x z) : acc) xs rs
+                    _  -> go ((iy, f z y) : acc) ls ys
   go acc [] r = acc ++ r
   go acc l [] = acc ++ l
+
+
+-- unionWith0 :: (a -> a -> Ordering) -> (a -> a -> a) -> a -> [a] -> [a] -> [a]
+-- unionWith0 q f z = go [] where
+--   go acc ls@(x : xs) rs@(y : ys) =
+--     case q x y of EQ -> go (f x y : acc) xs ys
+--                   LT -> go (f x z : acc) xs rs
+--                   _  -> go (f z y : acc) ls ys
+--   go acc [] r = acc ++ r
+--   go acc l [] = acc ++ l
 
 
 

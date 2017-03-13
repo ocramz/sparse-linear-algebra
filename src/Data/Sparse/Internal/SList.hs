@@ -32,17 +32,19 @@ toList = unSL
 
 {-|
 NB : unionWith and intersectWith work only if the indices are _sorted_
+
+NB2 : we use the _descending_ order comparison
 -}
 
 
 -- | Inner product between sparse lists
 sldot :: (Elt a, Ord i) => [(i, a)] -> [(i, a)] -> a
-sldot u v = sum $ intersectWith pf u v where
+sldot u v = sum $ intersectWithD pf u v where
   pf x y = conj x * y
 
 -- | Vector sum of sparse lists
 slsum :: (Ord i, Elt a) => [(i, a)] -> [(i, a)] -> [(i, a)]
-slsum = unionWith (+) 0
+slsum = unionWithD (+) 0
 
 
 
