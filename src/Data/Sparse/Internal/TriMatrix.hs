@@ -20,9 +20,9 @@ import Data.Sparse.Internal.SList
 
 import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
--- import Data.Sparse.SpMatrix ((@@!))
+import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM)
 import qualified Data.Sparse.Internal.IntM as IntM
-import Data.Sparse.Common ((@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV)
+import Data.Sparse.Common (prd, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##))
 
 import Control.Monad.Catch
 import Control.Exception.Common
@@ -77,17 +77,18 @@ lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
      -> m (IM.IntMap (SList t), IM.IntMap (SList t))
 lu amat = do
   (lfin, ufin, ifin) <- execStateT (luStep amat) (luInit amat)
-  let (ufin', _) = uStep amat lfin ufin ifin
-  return (lfin, ufin')
+  let (ufin', utt) = uStep amat lfin ufin ifin
+      lfin' = lStep amat lfin ufin' utt ifin
+  return (lfin', ufin')
 
 luInit amat = (lmat0, umat0, 1)
   where
     (m,n) = (nrows amat, ncols amat)
-    urow0 = extractRow amat 0
-    lcol0 = extractCol amat 0 ./ (urow0 @@ 0) 
-    umat0 = foldlWithKeySV ins (emptyIMSL n) lcol0 
+    urow0 = extractRow amat 0                 -- first row of U
+    lcol0 = extractCol amat 0 ./ (urow0 @@ 0) -- first col of L, div by U00
+    umat0 = foldlWithKeySV ins (emptyIMSL n) urow0
     lmat0 = IM.insert 0 (SL [(0, 1)]) l0 where
-      l0 = foldlWithKeySV ins (emptyIMSL m) urow0
+      l0 = foldlWithKeySV ins (emptyIMSL m) lcol0 
     ins acc i x = appendIM i (0, x) acc  
 
 
@@ -112,8 +113,8 @@ uStep :: (Elt a, Epsilon a) =>
      -> (IM.IntMap (SList a), a)   -- ^ updated U, i'th diagonal element Uii
 uStep amat lmat umat i = (umat', udiag) where
   n = ncols amat
-  udiag = amat@@!(i,i) - (li <.> umat ! i)
-  li = lmat ! i
+  udiag = amat@@!(i,i) - (li <.> umat ! i) -- i'th diag element of U
+  li = lmat ! i                            -- i'th row of L
   umat' = foldr ins umat [i .. n-1]
   ins j acc
       | i == j   = appendIM j (i, udiag) acc
@@ -145,5 +146,26 @@ lStep amat lmat umat udiag j = foldr ins lmat [j .. m-1] where
 
 
 
+fillSM :: (Rows, Cols) -> Bool -> IM.IntMap (SList a) -> SpMatrix a
+fillSM (m,n) transpq tm = IM.foldlWithKey rowIns (zeroSM m n) tm where
+  rowIns accRow i row = foldr ins accRow (unSL row) where
+    ins (j, x) acc | transpq = insertSpMatrix j i x acc   -- transpose fill
+                   | otherwise = insertSpMatrix i j x acc
 
 
+
+-- test data
+
+test = do
+  (l, u) <- lu tm2
+  let
+    d = (3,3)
+    l' = fillSM d False l
+    u' = fillSM d True u
+  prd l'
+  prd u'
+  prd tm2
+  prd $ l' ## u'
+
+tm2 :: SpMatrix Double
+tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
