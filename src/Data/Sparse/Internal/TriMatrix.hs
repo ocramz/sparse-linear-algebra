@@ -22,13 +22,13 @@ import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 -- import Data.Sparse.SpMatrix ((@@!))
 import qualified Data.Sparse.Internal.IntM as IntM
-import Data.Sparse.Common ((@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpMatrix)
+import Data.Sparse.Common ((@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV)
 
 import Control.Monad.Catch
 import Control.Exception.Common
 
 import Control.Monad (when)
-import Control.Monad.State
+import Control.Monad.Trans.State
 
 {- | triangular sparse matrix, row-major order
 
@@ -39,18 +39,17 @@ Intmap-of-sparse lists
 
 newtype TriMatrix a = TM { unTM :: IM.IntMap (SList a)} deriving (Show, Functor)
 
+emptyIMSL n = IM.fromList [(i, emptySL) | i <- [0 .. n-1]]
+
 emptyTM :: Int -> TriMatrix a
-emptyTM n = TM $ IM.fromList [(i, emptySL) | i <- [0 .. n-1]]
+emptyTM n = TM (emptyIMSL n)
 
 -- | `appendIM i x im` appends an element `x` to the i'th SList in an IntMap-of-SLists structure
 appendIM :: IM.Key -> (Int, a) -> IM.IntMap (SList a) -> IM.IntMap (SList a)
 appendIM i x im = IM.insert i (x `consSL` e) im where
   e = fromMaybe emptySL (IM.lookup i im)
 
--- -- | Appends a column to a TriMatrix from an IntMap
--- appendColTM j z imx tm = IM.foldlWithKey ins z imx where
---   ins acc i x = appendIM tm (j, x) acc
-  
+
 
 
 
@@ -65,42 +64,37 @@ lookupWD :: Num a =>
      -> a
 lookupWD rlu clu aa i j = fromMaybe 0 (rlu i aa >>= clu j)
 
-
-
--- -- innerMaybe :: Epsilon a => SVector a -> SVector a -> Maybe a
--- innerMaybe :: (Epsilon a, Ord i) => [(i, a)] -> [(i, a)] -> Maybe a
--- innerMaybe u v | isNz x = Just x
---                | otherwise = Nothing where x = inner u v
-
  
-
-
-
-
-
-
-
-
 
 
 {- | LU factorization : store L and U^T in TriMatrix format -}
 
+lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
+      MonadThrow m, Epsilon t) =>
+     SpMatrix t
+     -> m (IM.IntMap (SList t), IM.IntMap (SList t))
+lu amat = do
+  (lfin, ufin, ifin) <- execStateT (luStep amat) (luInit amat)
+  let (ufin', _) = uStep amat lfin ufin ifin
+  return (lfin, ufin')
 
-
-luInit amat = undefined
+luInit amat = (lmat0, umat0, 1)
   where
+    (m,n) = (nrows amat, ncols amat)
     urow0 = extractRow amat 0
-    u00 = urow0 @@ 0
-    lcol0 = extractCol amat 0 ./ u00
+    lcol0 = extractCol amat 0 ./ (urow0 @@ 0) 
+    umat0 = foldlWithKeySV ins (emptyIMSL n) lcol0 
+    lmat0 = IM.insert 0 (SL [(0, 1)]) l0 where
+      l0 = foldlWithKeySV ins (emptyIMSL m) urow0
+    ins acc i x = appendIM i (0, x) acc  
 
-luStep
-  :: (Elt a, Epsilon a,
-      MonadState (IM.IntMap (SList a), IM.IntMap (SList a), IM.Key) m,
-      MonadThrow m) =>
-     SpMatrix a -> m ()
+
+luStep :: (Elt a, MonadThrow m, Epsilon a) =>
+     SpMatrix a
+     -> StateT (IM.IntMap (SList a), IM.IntMap (SList a), IM.Key) m ()
 luStep amat = do
   (lmat, umat, t) <- get
-  let (umat', utt) = solveUrow amat lmat umat t
+  let (umat', utt) = uStep amat lmat umat t
   when (nearZero utt) $
        throwM (NeedsPivoting "LU" (unwords ["U", show (t,t)]) :: MatrixException Double)
   let lmat' = solveLcol amat lmat umat' utt t
@@ -108,14 +102,14 @@ luStep amat = do
 
 
 
-solveUrow
+uStep
   :: (Elt a, Epsilon a) =>
      SpMatrix a
      -> IM.IntMap (SList a)
      -> IM.IntMap (SList a)
      -> IM.Key
      -> (IM.IntMap (SList a), a)   -- ^ updated U, i'th diagonal element Uii
-solveUrow amat lmat umat i = (umat', udiag) where
+uStep amat lmat umat i = (umat', udiag) where
   n = ncols amat
   udiag = amat@@!(i,i) - (li <.> umat ! i)
   li = lmat ! i
