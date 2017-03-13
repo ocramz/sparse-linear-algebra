@@ -20,7 +20,7 @@ import Data.Sparse.Internal.SList
 
 import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
-import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM)
+import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM, sparsifySM)
 import Data.Sparse.Common (prd, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
 
 import Control.Monad.Catch (MonadThrow, throwM)
@@ -106,11 +106,10 @@ uStep :: (Elt a, Epsilon a) =>
      -> IM.IntMap (SList a)
      -> IM.Key
      -> (IM.IntMap (SList a), a)   -- ^ updated U, i'th diagonal element Uii
-uStep amat lmat umat i = (umat', udiag) where
+uStep amat lmat umat i = (foldr ins umat [i .. n-1], udiag) where
   n = ncols amat
   udiag = amat@@!(i,i) - (li <.> umat ! i) -- i'th diag element of U
   li = lmat ! i                            -- i'th row of L
-  umat' = foldr ins umat [i .. n-1]
   ins j acc
       | i == j   = appendIM j (i, udiag) acc
       | isNz uij = appendIM j (i, uij) acc
@@ -158,16 +157,21 @@ test mm = do
   prd mm
   prd $ l #~# u
 
-tm2, tm9 :: SpMatrix Double
-tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
 
+
+aa0, tm2, tm4, tm9 :: SpMatrix Double
+
+aa0 = fromListDenseSM 2 [1,3,2,4]
+
+tm2 = fromListDenseSM 3 [12, 6, -4, -51, 167, 24, 4, -68, -41]
+tm4 = sparsifySM $ fromListDenseSM 4 [1,0,0,0,2,5,0,10,3,6,8,11,4,7,9,12]
 tm9 = fromListSM (4, 4) [(0,0,pi), (1,1, 3), (3, 0, 23), (1,3, 45), (2,2,4), (3,2, 1), (3,1, 5), (3,3, exp 1)]
 
 -- -- complex
-tmc4, tmc5 :: SpMatrix (Complex Double)
+tmc4 :: SpMatrix (Complex Double)
 tmc4 = fromListDenseSM 3 [3:+1, 4:+(-1), (-5):+3, 2:+2, 3:+(-2), 5:+0.2, 7:+(-2), 9:+(-1), 2:+3]
 
-tmc5 = fromListDenseSM 4 $ zipWith (:+) [16..31] [15,14..0]
+
 
 
 -- λ> test tmc4

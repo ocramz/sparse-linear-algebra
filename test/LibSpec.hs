@@ -179,11 +179,9 @@ spec = do
       checkLu tm6 >>= (`shouldBe` True)
     it "lu (5 x 5 sparse)" $
       checkLu tm7 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ do
+  describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ 
     it "lu (3 x 3 dense)" $
       checkLu tmc4 >>= (`shouldBe` True)
-    -- it "lu (4 x 4 dense)" $
-    --   checkLu tmc5 >>= (`shouldBe` True)   
   
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
