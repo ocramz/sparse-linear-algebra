@@ -99,13 +99,12 @@ luStep amat = do
   let (umat', utt) = uStep amat lmat umat t
   when (nearZero utt) $
        throwM (NeedsPivoting "LU" (unwords ["U", show (t,t)]) :: MatrixException Double)
-  let lmat' = solveLcol amat lmat umat' utt t
+  let lmat' = lStep amat lmat umat' utt t
   put (lmat', umat', t + 1)
 
 
 
-uStep
-  :: (Elt a, Epsilon a) =>
+uStep :: (Elt a, Epsilon a) =>
      SpMatrix a
      -> IM.IntMap (SList a)
      -> IM.IntMap (SList a)
@@ -125,15 +124,14 @@ uStep amat lmat umat i = (umat', udiag) where
     uj = umat ! j
   
 
-solveLcol
-  :: (Elt a, Epsilon a) =>
+lStep :: (Elt a, Epsilon a) =>
      SpMatrix a
      -> IM.IntMap (SList a)
      -> IM.IntMap (SList a)
      -> a                   -- ^ diagonal element of U (must be nonzero)
      -> IM.Key
      -> IM.IntMap (SList a) -- ^ updated L
-solveLcol amat lmat umat udiag j = foldr ins lmat [j .. m-1] where
+lStep amat lmat umat udiag j = foldr ins lmat [j .. m-1] where
   m = nrows amat
   uj = umat ! j
   ins i acc
