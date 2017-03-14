@@ -86,8 +86,6 @@ library
 --                      , matrix-market-attoparsec
 --                      , scientific
   
-
-
 test-suite spec
   default-language:    Haskell2010
   ghc-options:         -Wall

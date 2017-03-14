@@ -143,22 +143,34 @@ eye n = mkDiagonal n (replicate n 1)
 -- | Permutation matrix from a (possibly incomplete) list of row swaps starting from row 0
 -- e.g. `permutationSM 5 [1,3]` first swaps rows (0, 1) and then rows (1, 3) :
 -- 
--- [0,1,0,0,0]
--- [0,0,0,1,0]
--- [0,0,1,0,0]
--- [1,0,0,0,0]
--- [0,0,0,0,1]
+-- >>> prd (permutationSM 5 [1,3] :: SpMatrix Double)
+-- 
+-- @
+-- ( 5 rows, 5 columns ) , 5 NZ ( density 20.000 % )
+-- 
+-- _      , 1.00   , _      , _      , _      
+-- _      , _      , _      , 1.00   , _      
+-- _      , _      , 1.00   , _      , _      
+-- 1.00   , _      , _      , _      , _      
+-- _      , _      , _      , _      , 1.00
+-- @
 permutationSM :: Num a => Int -> [IxRow] -> SpMatrix a
 permutationSM n iis = permutPairsSM n (zip [0 .. n-1] iis)
 
 -- | Permutation matrix from a (possibly incomplete) list of row pair swaps
 -- e.g. `permutPairs 5 [(2,4)]` swaps rows 2 and 4 :
---
--- [1,0,0,0,0]
--- [0,1,0,0,0]
--- [0,0,0,0,1]
--- [0,0,0,1,0]
--- [0,0,1,0,0]
+-- 
+-- >>> prd (permutPairsSM 5 [(2,4)] :: SpMatrix Double)
+-- 
+-- @
+-- ( 5 rows, 5 columns ) , 5 NZ ( density 20.000 % )
+-- 
+-- 1.00   , _      , _      , _      , _      
+-- _      , 1.00   , _      , _      , _      
+-- _      , _      , _      , _      , 1.00   
+-- _      , _      , _      , 1.00   , _      
+-- _      , _      , 1.00   , _      , _
+-- @
 permutPairsSM :: Num a => Int -> [(IxRow, IxRow)] -> SpMatrix a
 permutPairsSM n iix = go iix (eye n) where
   go ((i1, i2):iis) m = go iis (swapRows i1 i2 m)
