@@ -1,4 +1,13 @@
 
+	0.2.9.7
+	------
+
+	Improved pretty printer:
+
+	* Fixed display precision (e.g. 2 decimal digits), fixed column width output for vectors and matrices
+	
+	* Small and large values (wrt fixed precision) switch to scientific notation
+	
 	0.2.9.4
 	-------
 
