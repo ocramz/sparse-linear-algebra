@@ -292,28 +292,6 @@ class FiniteDim' f where
   dim' :: f -> FDSize' f
 
 
--- -- | unary dimension-checking bracket
--- withDim :: (FiniteDim f, Show s) =>
---      f e
---      -> (FDSize f -> f e -> Bool)
---      -> (f e -> c)
---      -> String
---      -> (f e -> s)
---      -> c
--- withDim x p f e ef | p (dim x) x = f x
---                    | otherwise = error e' where e' = e ++ show (ef x)
-
--- -- | binary dimension-checking bracket
--- withDim2 :: (FiniteDim f, FiniteDim g, Show s) =>
---      f e
---      -> g e
---      -> (FDSize f -> FDSize g -> f e -> g e -> Bool)
---      -> (f e -> g e -> c)
---      -> String
---      -> (f e -> g e -> s)
---      -> c
--- withDim2 x y p f e ef | p (dim x) (dim y) x y = f x y
---                       | otherwise = error e' where e' = e ++ show (ef x y)
 
 
 
