@@ -13,8 +13,8 @@ module Numeric.LinearAlgebra.Sparse
          -- * Linear solvers
          -- ** Iterative methods
          (<\>),
-         -- ** Preconditioners
-         jacobiPre, ilu0Pre, mSsorPre,   
+         -- -- ** Preconditioners
+         -- jacobiPre, ilu0Pre, mSsorPre,   
          -- ** Moore-Penrose pseudoinverse
          pinv,
          -- ** Direct methods
