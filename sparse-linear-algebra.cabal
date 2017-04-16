@@ -46,6 +46,7 @@ library
                        Data.Sparse.SpVector
                        Data.Sparse.SpMatrix
                        Data.Sparse.Common
+                       Data.Sparse.TestData
                        Control.Exception.Common                       
   other-modules:       Data.Sparse.Internal.IntMap2
                        Data.Sparse.Internal.IntM
@@ -55,7 +56,6 @@ library
                        Data.Sparse.Internal.CSB                       
                        Data.Sparse.Utils
                        Data.Sparse.PPrint
-                       Data.Sparse.TestData
                        Data.Sparse.Types
                        Control.Iterative
                        Numeric.LinearAlgebra.LinearSolvers.Experimental
@@ -93,7 +93,6 @@ test-suite spec
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   other-modules:       LibSpec
-                       TestData
   main-is:             Spec.hs
   build-depends:       QuickCheck >= 2.8.2
                      , base
