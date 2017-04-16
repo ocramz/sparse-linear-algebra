@@ -55,6 +55,7 @@ library
                        Data.Sparse.Internal.CSB                       
                        Data.Sparse.Utils
                        Data.Sparse.PPrint
+                       Data.Sparse.TestData
                        Data.Sparse.Types
                        Control.Iterative
                        Numeric.LinearAlgebra.LinearSolvers.Experimental

@@ -11,7 +11,7 @@
 -----------------------------------------------------------------------------
 module LibSpec where
 
-import TestData
+import Data.Sparse.TestData
 
 import Control.Exception.Common
 import Data.Sparse.Common
@@ -41,12 +41,8 @@ import Test.Hspec.QuickCheck
 import Test.QuickCheck
 
 
-
-
 main :: IO ()
 main = hspec spec
-
--- niter = 5
 
 spec :: Spec
 spec = do
