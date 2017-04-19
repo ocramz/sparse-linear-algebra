@@ -36,8 +36,6 @@ module Numeric.LinearAlgebra.Sparse
          chol, 
          -- ** Arnoldi iteration
          arnoldi,    
-         -- * Matrix partitioning
-         diagPartitions,
          -- * Utilities
          -- ** Givens' rotation
          givens,
@@ -45,7 +43,9 @@ module Numeric.LinearAlgebra.Sparse
          conditionNumberSM,
          -- ** Householder reflection
          hhRefl,
-         -- -- * Householder bidiagonalization         
+         -- -- * Householder bidiagonalization
+         -- ** Matrix partitioning
+         diagPartitions,
          -- -- * Random arrays
          -- randArray,
          -- -- * Random matrices and vectors
