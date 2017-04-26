@@ -46,7 +46,6 @@ library
                        Data.Sparse.SpVector
                        Data.Sparse.SpMatrix
                        Data.Sparse.Common
-                       Data.Sparse.TestData
                        Control.Exception.Common                       
   other-modules:       Data.Sparse.Internal.IntMap2
                        Data.Sparse.Internal.IntM
