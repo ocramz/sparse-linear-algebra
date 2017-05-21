@@ -28,6 +28,10 @@ data-files:          e05r0000.mtx
 cabal-version:       >=1.10
 tested-with:         GHC == 8.0.1
 
+source-repository head
+  type:     git
+  location: https://github.com/ocramz/sparse-linear-algebra
+                     
 flag dump
   manual: True
   default: False
@@ -107,9 +111,7 @@ test-suite spec
                      , scientific
                      , matrix-market-attoparsec
 
-source-repository head
-  type:     git
-  location: https://github.com/ocramz/sparse-linear-algebra
+
 
 
 

@@ -12,6 +12,8 @@ import Data.Foldable (foldrM)
 import Data.Maybe (fromMaybe)
 -- import Data.Monoid
 import Data.Complex
+import Data.Graph
+import Data.Tree
 
 import Numeric.Eps
 import Data.Sparse.Types
@@ -22,6 +24,7 @@ import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM, sparsifySM)
 import Data.Sparse.Common (prd, prd0, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
+import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM')
 import Data.Sparse.PPrint
 
 import Control.Monad.Catch (MonadThrow, throwM)
@@ -30,7 +33,7 @@ import Control.Exception.Common
 import Control.Monad (when)
 import Control.Monad.IO.Class
 import Control.Monad.Trans.State (execStateT)
-import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM')
+
 
 {- | triangular sparse matrix, row-major order
 

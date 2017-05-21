@@ -1,5 +1,6 @@
 module Data.Sparse.Utils where
 
+-- import Control.Arrow (first, second)
 import Data.Ord
 import qualified Data.Vector as V
 
@@ -20,10 +21,11 @@ unionWith = unionWith0 compare
 
 
 
--- | Intersection and union of sparse lists having indices in _descending_ order
+-- | Intersection of sparse lists having indices in _descending_ order
 intersectWithD :: Ord i => (a -> a -> b) -> [(i, a)] -> [(i, a)] -> [b]
 intersectWithD f = intersectWith0 (comparing (Down . fst)) (lift2snd f)
 
+-- | Union of sparse lists having indices in _descending_ order
 unionWithD :: Ord i =>
      (a -> a -> a) -> a -> [(i, a)] -> [(i, a)] -> [(i, a)]
 unionWithD = unionWith0 (comparing Down)
@@ -45,6 +47,7 @@ intersectWith0 q f = go [] where
 -- | Lift a binary function onto the second entry of a tuple
 lift2snd :: (t -> t1 -> t2) -> (a, t) -> (a1, t1) -> t2
 lift2snd f a b = f (snd a) (snd b)
+
 
 
 unionWith0 :: (i -> i -> Ordering) -> (a -> a -> a) -> a -> [(i, a)] -> [(i, a)] -> [(i, a)]
@@ -168,22 +171,4 @@ tail' = harness V.null V.tail
 
 
 
--- | a cons-based moving-window datatype of length at least 3
 
-data W3 a = W3 a a a [a] deriving (Eq, Show)
-initW3 :: a -> a -> a -> [a] -> W3 a
-initW3 = W3
-
-pushW3 :: a -> W3 a -> W3 a
-pushW3 i (W3 i0 i1 i2 is) = W3 i i0 i1 (i2 : initSafe is)
-
-fstW3 (W3 i _ _ _) = i
-sndW3 (W3 _ i _ _) = i
-thirdW3 (W3 _ _ i _) = i
-
-withInitW3, withTailW3 :: W3 t -> (t -> t -> t1) -> t1
-withInitW3 (W3 a b _ _) f = f a b
-withTailW3 (W3 _ b c _) f = f b c
-
-initSafe (x:xs) = x : initSafe xs
-initSafe [] = []

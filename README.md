@@ -108,7 +108,7 @@ Both sparse vectors and matrices can be pretty-printed using `prd`:
 *Note (approximate output)*: `prd` rounds the results to two significant digits, and switches to scientific notation for large or small values. Moreover, values which are indistinguishable from 0 (see the `Numeric.Eps` module) are printed as `_`. 
 
 
-### Matrix operations
+### Matrix factorizations, matrix product
 
 There are a few common matrix factorizations available; in the following example we compute the LU factorization of matrix `amat` and verify it with the matrix-matrix product `##` of its factors :
 
@@ -217,6 +217,8 @@ Inspired by
 
 [2] G.H. Golub and C.F. Van Loan, Matrix Computations, 3rd ed., 1996
 
-[3] L.N. Trefethen, D. Bau, Numerical Linear Algebra, SIAM, 1997
+[3] T.A. Davis, Direct Methods for Sparse Linear Systems, 2006
 
-[4] W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery, Numerical Recipes in Fortran 77, 2nd ed., 1992 
+[4] L.N. Trefethen, D. Bau, Numerical Linear Algebra, SIAM, 1997
+
+[5] W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery, Numerical Recipes in Fortran 77, 2nd ed., 1992 

@@ -49,6 +49,11 @@ slsum = unionWithD (+) 0
 
 
 
+
+
+
+
+
 -- | `vector-space` instances
 
 instance Elt a => AdditiveGroup (SList a) where
