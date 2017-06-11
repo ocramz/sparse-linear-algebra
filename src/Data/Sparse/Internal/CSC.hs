@@ -61,13 +61,13 @@ fromCSC :: CscMatrix a -> V.Vector (Int, Int, a)
 fromCSC mc = V.zip3 ii jj xx where (ii,jj,xx) = fromCSC0 mc
 fromCSC0 :: CscMatrix a -> (V.Vector Int, V.Vector Int, V.Vector a)
 fromCSC0 mc = (rowIx, cols, cscVal mc) where
-  (m, n) = dim mc
+  (_, n) = dim mc
   rowIx = cscRowIx mc
   l = length rowIx
   cp = cscColPtr mc
   cols = V.create $ do
     rowv <- VM.replicate l 0
-    forM_ [0 .. m-1] (\i -> go rowv i 0)
+    forM_ [0 .. n-1] (\i -> go rowv i 0)
     return rowv
   go vm irow j = when (j <= nj - 1) $ do
                           VM.write vm (j + jmin) irow
@@ -77,6 +77,12 @@ fromCSC0 mc = (rowIx, cols, cscVal mc) where
     nj = jmax - jmin
 
 
+
+-- | O(N log N) : Transpose CSC matrix
+transposeCSC :: CscMatrix a -> CscMatrix a
+transposeCSC mm = toCSC n m $ V.zip3 jj ii xx where
+  (m,n) = dim mm
+  (ii, jj, xx) = fromCSC0 mm
 
 
 
