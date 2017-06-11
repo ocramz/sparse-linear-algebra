@@ -119,9 +119,10 @@ extractRowCSR :: CsrMatrix a -> IxRow -> CsrVector a
 extractRowCSR (CsrM _ n _ cix rp x) irow = CV n ixs vals where
   imin = rp V.! irow
   imax = rp V.! (irow + 1)
-  ixs = trimf imin imax cix
-  vals = trimf imin imax x
-  trimf i1 i2 w = V.force $ V.drop i1 (V.take i2 w)
+  len = imax - imin
+  trimf  = V.slice imin len
+  ixs = trimf cix
+  vals = trimf x
 
 
 
@@ -137,7 +138,7 @@ fromCSR0 mc = (rows, csrColIx mc, csrVal mc) where
     rowv <- VM.replicate l 0
     forM_ [0 .. m-1] (\i -> go rowv i 0)
     return rowv
-  go vm irow j = when (j <= nj - 1) $ do
+  go vm irow j = when (j < nj) $ do
                           VM.write vm (j + jmin) irow
                           go vm irow (succ j) where
     jmin = rp V.! irow

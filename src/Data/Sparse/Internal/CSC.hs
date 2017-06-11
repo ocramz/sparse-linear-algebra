@@ -7,7 +7,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 
 import Data.Sparse.Types
--- import Data.Sparse.Internal.CSRVector
+import Data.Sparse.Internal.CSRVector
 import Data.Sparse.Internal.Utils
 import Numeric.LinearAlgebra.Class
 
@@ -66,15 +66,30 @@ fromCSC0 mc = (rowIx, cols, cscVal mc) where
   l = length rowIx
   cp = cscColPtr mc
   cols = V.create $ do
-    rowv <- VM.replicate l 0
-    forM_ [0 .. n-1] (\i -> go rowv i 0)
-    return rowv
-  go vm irow j = when (j <= nj - 1) $ do
+    colv <- VM.replicate l 0
+    forM_ [0 .. n-1] (\i -> go colv i 0)
+    return colv
+  go vm irow j = when (j < nj) $ do
                           VM.write vm (j + jmin) irow
                           go vm irow (succ j) where
     jmin = cp V.! irow
     jmax = cp V.! (irow + 1)
     nj = jmax - jmin
+
+
+-- ** Extract a column
+-- | O(1) : extract a column from the CSC matrix.
+extractColCSC :: CscMatrix a -> Int -> CsrVector a
+extractColCSC (CscM m _ _ rix cp x) jcol = CV m ixs vals where
+  jmin = cp V.! jcol
+  jmax = cp V.! (jcol + 1)
+  len = jmax - jmin
+  trimf  = V.slice jmin len
+  ixs = trimf rix
+  vals = trimf x
+
+
+
 
 
 
