@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# language TypeFamilies, FlexibleInstances, DeriveFunctor #-}
+{-# language DeriveFoldable, DeriveTraversable #-}
 module Data.Sparse.Internal.TriMatrix where
 
 -- import qualified Data.Map.Strict as M
@@ -12,8 +13,8 @@ import Data.Foldable (foldrM)
 import Data.Maybe (fromMaybe)
 -- import Data.Monoid
 import Data.Complex
-import Data.Graph
-import Data.Tree
+import qualified Data.Graph as G
+import qualified Data.Tree as T
 
 import Numeric.Eps
 import Data.Sparse.Types
@@ -32,7 +33,12 @@ import Control.Exception.Common
 
 import Control.Monad (when)
 import Control.Monad.IO.Class
-import Control.Monad.Trans.State (execStateT)
+import Control.Monad.Trans.State -- (execStateT, get, put, modify)
+-- import Control.Monad.State (MonadState())
+
+
+
+
 
 
 {- | triangular sparse matrix, row-major order
@@ -196,3 +202,24 @@ tmc4 = fromListDenseSM 3 [3:+1, 4:+(-1), (-5):+3, 2:+2, 3:+(-2), 5:+0.2, 7:+(-2)
 -- 3.00 + 1.00i    , 2.00 + 2.00i    , 7.00 - 2.00i    
 -- _               , 2.20 - 5.60i    , -0.10 - 3.70i   
 -- _               , _               , 16.99 + 8.24i   
+
+
+
+
+
+
+
+-- playground
+
+data T x
+  = Leaf
+  | Branch (T x) x (T x)
+  deriving (Functor, Foldable, Traversable, Show)
+
+next :: Monad m => StateT Int m Int
+next = do x <- get ; modify (+ 1) ; return x
+
+next' f = do x <- get;  modify f; return x
+
+labelElt :: Monad m => x -> StateT Int m (Int, x)
+labelElt x = (,) <$> next <*> pure x

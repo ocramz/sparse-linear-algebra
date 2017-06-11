@@ -26,8 +26,8 @@ import qualified Data.Vector.Algorithms.Merge as VA
 -- E.g.:
 -- > csrPtrV (==) 4 (V.fromList [1,1,2,3])
 -- [0,0,2,3,4]
-csrPtrV :: (a -> Int -> Bool) -> Int -> V.Vector a -> V.Vector Int
-csrPtrV eqf n xs = V.create createf where
+csPtrV :: (a -> Int -> Bool) -> Int -> V.Vector a -> V.Vector Int
+csPtrV eqf n xs = V.create createf where
   createf :: ST s (VM.MVector s Int)
   createf = do
     let c = 0

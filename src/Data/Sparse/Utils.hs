@@ -69,6 +69,14 @@ unionWith0 q f z = go [] where
 --   go acc [] r = acc ++ r
 --   go acc l [] = acc ++ l
 
+-- union :: Ord a => [a] -> [a] -> [a]
+-- union u_ v_ = go u_ v_ where
+--   go [] x = x
+--   go y [] = y
+--   go uu@(u:us) vv@(v:vs)
+--     | u == v =    u : go us vs
+--     | u < v =     u : go us vv 
+--     | otherwise = v : go uu vs
 
 
   
@@ -79,8 +87,8 @@ unionWith0 q f z = go [] where
 
 
 -- | Wrap a function with a null check, returning in Maybe
-harness :: (t -> Bool) -> (t -> a) -> t -> Maybe a
-harness q f v | q v = Nothing
+safe :: (t -> Bool) -> (t -> a) -> t -> Maybe a
+safe q f v | q v = Nothing
               | otherwise = Just $ f v
 
 
@@ -163,10 +171,10 @@ inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
 
 
 head' :: V.Vector a -> Maybe a
-head' = harness V.null V.head
+head' = safe V.null V.head
 
 tail' :: V.Vector a -> Maybe (V.Vector a)
-tail' = harness V.null V.tail
+tail' = safe V.null V.tail
 
 
 

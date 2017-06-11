@@ -51,7 +51,7 @@ import Numeric.LinearAlgebra.Class
 -}
 
 data CsrMatrix a =
-  CM {
+  CsrM {
       csrNrows :: {-# UNPACK #-} !Int,
       csrNcols :: {-# UNPACK #-} !Int,
       csrNz :: {-# UNPACK #-} !Int,
@@ -60,7 +60,7 @@ data CsrMatrix a =
       csrVal :: V.Vector a} deriving Eq
 
 instance Functor CsrMatrix where
-  fmap f (CM m n nz cc rp x) = CM m n nz cc rp (fmap f x)
+  fmap f (CsrM m n nz cc rp x) = CsrM m n nz cc rp (fmap f x)
 
 instance Foldable CsrMatrix where
   foldr f z cm = foldr f z (csrVal cm)
@@ -69,7 +69,7 @@ instance Foldable CsrMatrix where
 -- instance Set CsrMatrix where -- TODO: efficiency of intersection and union of sparse matrices depends on internal representation
 
 instance Show a => Show (CsrMatrix a) where
-  show m'@(CM m n nz cix rp x) = szs where
+  show m'@(CsrM m n nz cix rp x) = szs where
     szs = unwords ["CSR (",show m, "x", show n,"),",show nz, "NZ ( sparsity",show (spy m'),"), column indices:",show cix,", row pointers:", show rp,", data:",show x]
 
 
@@ -78,10 +78,10 @@ instance Show a => Show (CsrMatrix a) where
 -- * Creation
 -- | O(N log N) : Copy a Vector containing (row index, column index, entry) into a CSR structure. Sorts the Vector by row indices ( O(log N) ), unzips column indices and data ( O(N) ) and generates the row pointer vector ( 2 O(N) passes )
 toCSR :: Int -> Int -> V.Vector (Int, Int, a) -> CsrMatrix a
-toCSR m n ijxv = CM m n nz cix crp x where
+toCSR m n ijxv = CsrM m n nz cix crp x where
   nz = V.length x
   (rix, cix, x) = V.unzip3 (sortWith fst3 ijxv)  -- sort by rows
-  crp = csrPtrV (==) m rix
+  crp = csPtrV (==) m rix
 
 
 
@@ -116,7 +116,7 @@ lookupCSR z csr (i, j) = lookupRow csr i >>= \cr -> return $ lookupEntry_WD z cr
 -- ** Extract a row
 -- | O(1) : extract a row from the CSR matrix. Returns an empty Vector if the row is not present.
 extractRowCSR :: CsrMatrix a -> IxRow -> CsrVector a
-extractRowCSR (CM _ n _ cix rp x) irow = CV n ixs vals where
+extractRowCSR (CsrM _ n _ cix rp x) irow = CV n ixs vals where
   imin = rp V.! irow
   imax = rp V.! (irow + 1)
   ixs = trimf imin imax cix
@@ -182,7 +182,7 @@ instance Elt a => SpContainer CsrMatrix a where
 
 
 
--- * SpMatrix1 : entry coordinates are stored in lexicographic encodeding
+-- * SpMatrix1 : entry coordinates are stored in lexicographic encoding
 
 data SpMatrix1 a = SM1 { smNrows :: Rows,
                          smNcols :: Cols,
@@ -253,8 +253,8 @@ decode t
 csrPtrVTup ::
   LexOrd -> Rows -> Cols -> V.Vector (LexIx, t) -> V.Vector Int
 csrPtrVTup et m n v
-  | et == RowsFirst = csrPtrV (\(i, _) i0 -> fst (dec i) == i0) m v
-  | otherwise       = csrPtrV (\(i, _) i0 -> snd (dec i) == i0) n v 
+  | et == RowsFirst = csPtrV (\(i, _) i0 -> fst (dec i) == i0) m v
+  | otherwise       = csPtrV (\(i, _) i0 -> snd (dec i) == i0) n v 
     where
       dec = decode et m n
       
@@ -338,24 +338,10 @@ v2 = V.fromList [(1,0,5), (1,1,8), (2,2,3), (3,1,6)]
 
 
 
-
-
-
-
--- playground
-
-
   
 
 
-union :: Ord a => [a] -> [a] -> [a]
-union u_ v_ = go u_ v_ where
-  go [] x = x
-  go y [] = y
-  go uu@(u:us) vv@(v:vs)
-    | u == v =    u : go us vs
-    | u < v =     u : go us vv 
-    | otherwise = v : go uu vs
+
 
 
 
@@ -366,19 +352,7 @@ union u_ v_ = go u_ v_ where
 
     
 
-safe :: (a -> Bool) -> (a -> b) -> a -> Maybe b
-safe q f v
-  | q v = Just (f v)
-  | otherwise = Nothing
 
-vectorNonEmpty :: (V.Vector a1 -> a) -> V.Vector a1 -> Maybe a
-vectorNonEmpty = safe (not . V.null)
-
-safeHead :: V.Vector a -> Maybe a
-safeHead = vectorNonEmpty V.head
-
-safeTail :: V.Vector a -> Maybe (V.Vector a)
-safeTail = vectorNonEmpty V.tail
 
 
 
