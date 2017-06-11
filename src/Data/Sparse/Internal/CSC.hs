@@ -6,7 +6,7 @@ import Control.Monad (forM_, when)
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 
-import Data.Sparse.Types
+-- import Data.Sparse.Types
 import Data.Sparse.Internal.CSRVector
 import Data.Sparse.Internal.Utils
 import Numeric.LinearAlgebra.Class

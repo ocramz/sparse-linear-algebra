@@ -1,27 +1,16 @@
 {-# language TypeFamilies, FlexibleInstances, MultiParamTypeClasses, CPP #-}
 module Data.Sparse.Internal.CSR where
 
-import Control.Applicative
-import Control.Monad.ST
-
-import qualified Data.Foldable as F -- (foldl')
+-- import qualified Data.Foldable as F -- (foldl')
 -- import Data.List (group, groupBy)
 
 import qualified Data.Vector as V 
 -- import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Mutable as VM
-import qualified Data.Vector.Algorithms.Merge as VA (sortBy)
 -- import qualified Data.Vector.Generic as VG (convert)
 
 import Control.Monad (when, forM_)
-import Data.Maybe
-import Data.Ord (comparing)
 
-import Data.Complex
-import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
-
-
-import Data.Sparse.Utils
 import Data.Sparse.Types
 import Data.Sparse.Internal.CSRVector
 import Data.Sparse.Internal.Utils
@@ -179,15 +168,6 @@ instance Elt a => SpContainer CsrMatrix a where
 
 
 
--- * Utilities
-
-
-
-
-
-
-
-
 
 -- test data
 v0 :: V.Vector (Int, Double)
@@ -208,36 +188,3 @@ v2c = V.fromList [(4, 5), (5, 8), (10, 3), (13, 6)]
 v2 :: V.Vector (Int, Int, Double)
 v2 = V.fromList [(1,0,5), (1,1,8), (2,2,3), (3,1,6)]
 -- sm2 = smFromVector RowsFirst (4, 4) v2 :: SpMatrix1 Double
-
-
-
-
-
-  
-
-
-
-
-
-
-
-
-  
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
