@@ -23,6 +23,8 @@ import Data.Sparse.Internal.SList
 
 import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
+import Data.Sparse.Internal.CSC
+import Data.Sparse.Internal.CSRVector
 import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM, sparsifySM)
 import Data.Sparse.Common (prd, prd0, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
 import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM')
@@ -36,7 +38,18 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.State -- (execStateT, get, put, modify)
 -- import Control.Monad.State (MonadState())
 
+import qualified Data.Vector as V
 
+
+
+
+triLowerSolve ll b = undefined where
+  mn = dim ll
+  (ill, jll, xll) = fromCSC0 ll
+  ib = cvIx b
+  graphLL = G.buildG mn $ V.toList (V.zip ill jll)
+  fLL = G.dfs graphLL $ V.toList ib  -- solution NZ from reachable nodes of b via G(L)
+  
 
 
 
