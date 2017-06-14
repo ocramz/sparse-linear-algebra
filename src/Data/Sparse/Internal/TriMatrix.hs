@@ -39,17 +39,23 @@ import Control.Monad.Trans.State -- (execStateT, get, put, modify)
 -- import Control.Monad.State (MonadState())
 
 import qualified Data.Vector as V
-
+import qualified Data.Vector.Mutable as VM
 
 
 
 triLowerSolve ll b = undefined where
-  mn = dim ll
+  (m, _) = dim ll -- dimensions of L = bounds of G(L)
   (ill, jll, xll) = fromCSC0 ll
   ib = cvIx b
-  graphLL = G.buildG mn $ V.toList (V.zip ill jll)
+  graphLL = G.buildG (0,m-1) $ V.toList (V.zip ill jll) -- graph of L
   fLL = G.dfs graphLL $ V.toList ib  -- solution NZ from reachable nodes of b via G(L)
+  nnzx = sum $ length <$> fLL
   
+
+
+g0 = G.buildG (0,2) [(0,0),(2,0),(1,1),(2,2)]
+
+t0 = G.dfs (G.transposeG g0) [0,1,2]
 
 
 
