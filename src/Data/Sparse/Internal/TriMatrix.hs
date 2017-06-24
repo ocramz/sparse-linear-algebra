@@ -39,23 +39,39 @@ import Control.Monad.Trans.State -- (execStateT, get, put, modify)
 -- import Control.Monad.State (MonadState())
 
 import qualified Data.Vector as V
-import qualified Data.Vector.Mutable as VM
+import qualified Data.Vector.Mutable as VM (new)
 
 
 
-triLowerSolve ll b = undefined where
-  (m, _) = dim ll -- dimensions of L = bounds of G(L)
-  (ill, jll, xll) = fromCSC0 ll
-  ib = cvIx b
-  graphLL = G.buildG (0,m-1) $ V.toList (V.zip ill jll) -- graph of L
-  fLL = G.dfs graphLL $ V.toList ib  -- solution NZ from reachable nodes of b via G(L)
-  nnzx = sum $ length <$> fLL
+flattenForest :: T.Forest a -> [a]
+flattenForest = concatMap T.flatten
   
+
+triLowerSolve ll b = undefined -- do
+--    xm <- VM.new nnzx
+  where
+  -- xinz : nonzeros of solution vector x obtained from reachable nodes of b via G(L^T)
+  xinz = flattenForest $ G.dfs (G.transposeG $ cscToGraph ll) (V.toList $ cvIx b) 
+  nnzx = length xinz
+  -- xm = VM.new nnzx
+
+-- tlUpdateColumn lldiag llsubdiag x j = undefined where
+--   xj' = xj / lldiag
+
+imap f = zipWith (curry f)
+
+
+tlUpdateSubdiag :: VectorSpace v => v -> Scalar v -> v -> v
+tlUpdateSubdiag lsubdiag xj x = x ^-^ (xj .* lsubdiag)
+    
+  
+
 
 
 g0 = G.buildG (0,2) [(0,0),(2,0),(1,1),(2,2)]
 
-t0 = G.dfs (G.transposeG g0) [0,1,2]
+t0 :: T.Forest Int
+t0 = G.dfs (G.transposeG g0) [0]
 
 
 

@@ -3,6 +3,7 @@ module Data.Sparse.Internal.CSC where
 
 import Control.Monad (forM_, when)
 
+import qualified Data.Graph as G
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 
@@ -88,6 +89,15 @@ extractColCSC (CscM m _ _ rix cp x) jcol = CV m ixs vals where
   ixs = trimf rix
   vals = trimf x
 
+-- ** Extract the diagonal element, if this exists (NB this only holds for a lower triangular matrix)
+extractDiagSubdiagCSC :: CscMatrix a -> Int -> Maybe (a, CsrVector a)
+extractDiagSubdiagCSC cscm j
+  | V.length ixs > 1 && j == V.head ixs = Just (diagEl, subdiagVec)
+  | otherwise = Nothing where
+      (CV m ixs vals) = extractColCSC cscm j
+      diagEl = V.head vals
+      subdiagVec = CV (m-1) (V.tail ixs) (V.tail vals) 
+
 
 
 
@@ -106,3 +116,13 @@ transposeCSC mm = toCSC n m $ V.zip3 jj ii xx where
 -- row = np.array([0, 0, 1, 2, 2, 2])
 -- col = np.array([0, 2, 2, 0, 1, 2])
 -- data = np.array([1, 2, 3, 4, 5, 6])
+
+
+
+-- * Helpers
+
+cscToGraph :: CscMatrix a -> G.Graph
+cscToGraph ll = G.buildG (0, m-1) $ V.toList (V.zip ill jll) -- graph of L
+  where
+   (m, _) = dim ll -- dimensions of L = bounds of G(L)
+   (ill, jll, _) = fromCSC0 ll
