@@ -72,7 +72,7 @@ library
                      , containers
                      , vector
                      , vector-algorithms
-                     , hybrid-vectors
+                     -- , hybrid-vectors
                      , exceptions
                      , mtl >= 2.2.1                     
                      , transformers
