@@ -24,7 +24,7 @@ import Data.Sparse.Internal.SList
 import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 import Data.Sparse.Internal.CSC
-import Data.Sparse.Internal.CSRVector
+import Data.Sparse.Internal.SVector
 import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM, sparsifySM)
 import Data.Sparse.Common (prd, prd0, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
 import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM')

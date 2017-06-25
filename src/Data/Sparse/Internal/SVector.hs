@@ -1,5 +1,5 @@
 {-# language TypeFamilies, FlexibleInstances, MultiParamTypeClasses, CPP #-}
-module Data.Sparse.Internal.CSRVector where
+module Data.Sparse.Internal.SVector where
 
 import qualified Data.Foldable as F -- (foldl')
 -- import Data.List (group, groupBy)
@@ -24,46 +24,46 @@ import Numeric.LinearAlgebra.Class
 
 
 
-data CsrVector a = CV { cvDim :: {-# UNPACK #-} !Int,
-                        cvIx :: V.Vector Int,
-                        cvVal :: V.Vector a } deriving Eq
+data SVector a = SV { svDim :: {-# UNPACK #-} !Int,
+                      svIx :: V.Vector Int,
+                      svVal :: V.Vector a } deriving Eq
 
-instance Show a => Show (CsrVector a) where
-  show (CV n ix v) = unwords ["CV (",show n,"),",show nz,"NZ:",show (V.zip ix v)]
+instance Show a => Show (SVector a) where
+  show (SV n ix v) = unwords ["SV (",show n,"),",show nz,"NZ:",show (V.zip ix v)]
     where nz = V.length ix
 
-instance Functor CsrVector where
-  fmap f (CV n ix v) = CV n ix (fmap f v)
+instance Functor SVector where
+  fmap f (SV n ix v) = SV n ix (fmap f v)
 
-instance Foldable CsrVector where
-  foldr f z (CV _ _ v) = foldr f z v
+instance Foldable SVector where
+  foldr f z (SV _ _ v) = foldr f z v
 
-instance Traversable CsrVector where
-  traverse f (CV n ix v) = CV n ix <$> traverse f v
+instance Traversable SVector where
+  traverse f (SV n ix v) = SV n ix <$> traverse f v
 
 
 
 
 -- ** Construction 
 
-fromDenseCV :: V.Vector a -> CsrVector a
-fromDenseCV xs = CV n (V.enumFromTo 0 (n-1)) xs where
+fromDense :: V.Vector a -> SVector a
+fromDense xs = SV n (V.enumFromTo 0 (n-1)) xs where
   n = V.length xs
 
-fromVectorCV :: Int -> V.Vector (Int, a) -> CsrVector a
-fromVectorCV n ixs = CV n ix xs where
+fromVector :: Int -> V.Vector (Int, a) -> SVector a
+fromVector n ixs = SV n ix xs where
   (ix, xs) = V.unzip ixs
 
-fromListCV :: Int -> [(Int, a)] -> CsrVector a
-fromListCV n = fromVectorCV n . V.fromList
+fromList :: Int -> [(Int, a)] -> SVector a
+fromList n = fromVector n . V.fromList
 
 -- * Query
 
 -- | O(N) : Lookup an index in a CsrVector (based on `find` from Data.Foldable)
-indexCV :: CsrVector a -> Int -> Maybe a
-indexCV cv i =
-  case F.find (== i) (cvIx cv) of
-    Just i' -> Just $ (V.!) (cvVal cv) i'
+index :: SVector a -> Int -> Maybe a
+index cv i =
+  case F.find (== i) (svIx cv) of
+    Just i' -> Just $ (V.!) (svVal cv) i'
     Nothing -> Nothing
       
 
@@ -71,8 +71,8 @@ indexCV cv i =
 -- * Lifted binary functions
 
 -- | O(N) : Applies a function to the index _intersection_ of two CsrVector s. Useful e.g. to compute the inner product of two sparse vectors.
-intersectWithCV :: (a -> b -> c) -> CsrVector a -> CsrVector b -> CsrVector c
-intersectWithCV g (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV nfin ixf vf where
+intersectWith :: (a -> b -> c) -> SVector a -> SVector b -> SVector c
+intersectWith g (SV n1 ixu_ uu_) (SV n2 ixv_ vv_) = SV nfin ixf vf where
    nfin = V.length vf
    n = min n1 n2
    (ixf, vf) = V.unzip $ V.create $ do
@@ -94,8 +94,8 @@ intersectWithCV g (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV nfin ixf vf where
 
       
 -- | O(N) : Applies a function to the index _union_ of two CsrVector s. Useful e.g. to compute the vector sum of two sparse vectors.
-unionWithCV :: (t -> t -> a) -> t -> CsrVector t -> CsrVector t -> CsrVector a
-unionWithCV g z (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV n ixf vf where
+unionWith :: (t -> t -> a) -> t -> SVector t -> SVector t -> SVector a
+unionWith g z (SV n1 ixu_ uu_) (SV n2 ixv_ vv_) = SV n ixf vf where
    n = max n1 n2
    (ixf, vf) = V.unzip $ V.create $ do
     vm <- VM.new n
@@ -124,18 +124,18 @@ unionWithCV g z (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV n ixf vf where
 
 
 
-#define CVType(t) \
-  instance AdditiveGroup (CsrVector t) where {zeroV = CV 0 V.empty V.empty; (^+^) = unionWithCV (+) 0 ; negateV = fmap negate};\
-  instance VectorSpace (CsrVector t) where {type Scalar (CsrVector t) = (t); n *^ x = fmap (* n) x };\
-  instance InnerSpace (CsrVector t) where {a <.> b = sum $ intersectWithCV (*) a b}
+#define SVType(t) \
+  instance AdditiveGroup (SVector t) where {zeroV = SV 0 V.empty V.empty; (^+^) = unionWith (+) 0 ; negateV = fmap negate};\
+  instance VectorSpace (SVector t) where {type Scalar (SVector t) = (t); n *^ x = fmap (* n) x };\
+  instance InnerSpace (SVector t) where {a <.> b = sum $ intersectWith (*) a b}
   -- instance Normed (CsrVector t) where {norm p v = norm' p v}
   -- instance Hilbert (CsrVector t) where {x `dot` y = sum $ intersectWithCV (*) x y };\
   
 
-#define CVTypeC(t) \
-  instance AdditiveGroup (CsrVector (Complex t)) where {zeroV = CV 0 V.empty V.empty; (^+^) = unionWithCV (+) (0 :+ 0) ; negateV = fmap negate};\
-  instance VectorSpace (CsrVector (Complex t)) where {type Scalar (CsrVector (Complex t)) = (Complex t); n *^ x = fmap (* n) x };\
-  instance InnerSpace (CsrVector (Complex t)) where {x <.> y = sum $ intersectWithCV (*) (conjugate <$> x) y};\
+#define SVTypeC(t) \
+  instance AdditiveGroup (SVector (Complex t)) where {zeroV = SV 0 V.empty V.empty; (^+^) = unionWith (+) (0 :+ 0) ; negateV = fmap negate};\
+  instance VectorSpace (SVector (Complex t)) where {type Scalar (SVector (Complex t)) = (Complex t); n *^ x = fmap (* n) x };\
+  instance InnerSpace (SVector (Complex t)) where {x <.> y = sum $ intersectWith (*) (conjugate <$> x) y};\
 
 -- #define NormedType(t) \
 --   instance Normed (CsrVector t) where { norm p v | p==1 = norm1 v | otherwise = norm2 v ; normalize p v = v ./ norm p v};\
@@ -144,21 +144,21 @@ unionWithCV g z (CV n1 ixu_ uu_) (CV n2 ixv_ vv_) = CV n ixf vf where
 
 -- CVType(Int)
 -- CVType(Integer)
-CVType(Float)
-CVType(Double)
+SVType(Float)
+SVType(Double)
 -- CVType(CSChar)
 -- CVType(CInt)
 -- CVType(CShort)
 -- CVType(CLong)
 -- CVType(CLLong)
 -- CVType(CIntMax)
-CVType(CFloat)
-CVType(CDouble)
+SVType(CFloat)
+SVType(CDouble)
 
-CVTypeC(Float)
-CVTypeC(Double)  
-CVTypeC(CFloat)
-CVTypeC(CDouble)
+SVTypeC(Float)
+SVTypeC(Double)  
+SVTypeC(CFloat)
+SVTypeC(CDouble)
 
 -- NormedType(Float)
 -- NormedType(Double)
