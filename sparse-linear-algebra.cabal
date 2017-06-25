@@ -54,6 +54,8 @@ library
   other-modules:       Data.Sparse.Internal.IntMap2
                        Data.Sparse.Internal.IntM
                        Data.Sparse.Internal.Utils
+                       Data.Sparse.Internal.SVector
+                       -- Data.Sparse.Internal.SHVector
                        Data.Sparse.Internal.SList
                        Data.Sparse.Internal.TriMatrix
                        Data.Sparse.Internal.CSB
@@ -65,6 +67,7 @@ library
                        Numeric.LinearAlgebra.LinearSolvers.Experimental
                        Numeric.LinearAlgebra.EigenSolvers.Experimental
   build-depends:       base >= 4.7 && < 5
+                     , deepseq
                      , vector-space
                      , containers
                      , vector
