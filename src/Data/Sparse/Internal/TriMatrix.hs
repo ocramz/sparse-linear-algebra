@@ -26,6 +26,7 @@ import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 import Data.Sparse.Internal.CSC
 import Data.Sparse.Internal.SVector
+import Data.Sparse.Internal.SVector.Mutable
 import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM, sparsifySM)
 import Data.Sparse.Common (prd, prd0, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
 import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM')
@@ -37,10 +38,11 @@ import Control.Exception.Common
 import Control.Monad (when)
 import Control.Monad.IO.Class
 import Control.Monad.Trans.State -- (execStateT, get, put, modify)
+import Control.Monad.Primitive
 -- import Control.Monad.State (MonadState())
 
-import qualified Data.Vector as V (Vector, freeze, toList)
-import qualified Data.Vector.Mutable as VM (MVector, new, write, clone)
+import qualified Data.Vector as V (Vector, freeze, fromList, toList, zip)
+import qualified Data.Vector.Mutable as VM (MVector, new, set, write, clone)
 
 
 
@@ -48,34 +50,40 @@ flattenForest :: T.Forest a -> [a]
 flattenForest = concatMap T.flatten
 
 -- | Given a lower triangular system L x = b, finds the nonzero entries of the solution vector x as the set of reachable nodes from the r.h.s. via the graph G(L^T). Node indices are _sorted_ afterwards, for a total complexity of O(N)
-reachableFromRHS :: G.Graph -> [G.Vertex] -> [G.Vertex]  
-reachableFromRHS g vs = sort . flattenForest $ G.dfs (G.transposeG g) vs
+reachableFromRHS :: G.Graph -> V.Vector Int -> V.Vector Int
+reachableFromRHS g vs = V.fromList . sort . flattenForest $ G.dfs (G.transposeG g) (V.toList vs)
 
 
 
-triLowerSolve ll b = undefined -- do
+triLowerSolve ll b = xinz -- do
 --    xm <- VM.new nnzx
   where
   -- xinz : nonzeros of solution vector x obtained from reachable nodes of b via G(L^T)
-  xinz = reachableFromRHS (cscToGraph ll) (V.toList $ svIx b)
+  xinz = reachableFromRHS (cscToGraph ll) (svIx b)
   nnzx = length xinz
   -- xm = VM.new nnzx
 
 -- tlUpdateColumn lldiag llsubdiag x j = undefined where
 --   xj' = xj / lldiag
 
+initializeSoln ::
+  (PrimMonad m, Num a) => V.Vector Int -> SVector a -> m (SMVector m a)
+initializeSoln ixnz (SV n ixb b) = do
+  let nnzx = length ixnz 
+  xm <- VM.new nnzx
+  VM.set xm 0
+  xm' <- writeMany xm (V.zip ixb b)
+  return (SMV n ixnz xm')
+
 
 
 tlUpdateSubdiag :: VectorSpace v => v -> Scalar v -> v -> v
 tlUpdateSubdiag lsubdiag xj x = x ^-^ (xj .* lsubdiag)
-    
+   
 
-vm // [] = V.freeze vm
-vm // ((i,x) : xs) = do
-  VM.write vm i x
-  vm // xs
-
-writeMany vm ixs = foldrM writef vm ixs >>= V.freeze where
+writeMany :: (PrimMonad m, Foldable t) => VM.MVector (PrimState m) a
+     -> t (Int, a) -> m (VM.MVector (PrimState m) a)
+writeMany vm ixs = foldrM writef vm ixs where
   writef (i, x) vm_ = do
     VM.write vm_ i x
     return vm_

@@ -17,7 +17,7 @@ import Control.Monad.Primitive
 
 -- import Data.Sparse.Utils
 -- import Data.Sparse.Types
-
+import Data.Sparse.Internal.SVector.Mutable
 import Data.VectorSpace
 
 import Numeric.LinearAlgebra.Class
@@ -43,6 +43,9 @@ instance Foldable SVector where
 instance Traversable SVector where
   traverse f (SV n ix v) = SV n ix <$> traverse f v
 
+instance HasData SVector a where
+  nnz = length . svIx
+  -- dat (SV _ _ x) = x
 
 
 
@@ -74,25 +77,20 @@ index cv i =
 
 -- | O(N) : Applies a function to the index _intersection_ of two CsrVector s. Useful e.g. to compute the inner product of two sparse vectors.
 intersectWith :: (a -> b -> c) -> SVector a -> SVector b -> SVector c
-intersectWith g (SV n1 ixu u) (SV n2 ixv v) = SV nfin ixf vf where
+intersectWith g v1 v2 = SV nfin ixf vf where
    nfin = V.length vf
-   n = min n1 n2
-   (ixf, vf) = V.unzip $ V.create (intersectWithM g ixu u ixv v)
+   (ixf, vf) = V.unzip $ V.create (intersectWithM g v1 v2)
 
-
-intersectWithM :: (PrimMonad m, Ord a) =>
-     (t1 -> t2 -> t)
-     -> V.Vector a
-     -> V.Vector t1
-     -> V.Vector a
-     -> V.Vector t2
-     -> m (VM.MVector (PrimState m) (a, t))
-intersectWithM g ixu u ixv v = do
+intersectWithM :: PrimMonad m =>
+     (a -> b -> c)
+     -> SVector a
+     -> SVector b
+     -> m (VM.MVector (PrimState m) (Int, c))
+intersectWithM g (SV n1 ixu u) (SV n2 ixv v) = do
   vm <- VM.new n
   (vm', nfin) <- go ixu u ixv v 0 vm
   return $ VM.take nfin vm'
   where
-    (n1, n2) = both length (ixu, ixv)
     n = min n1 n2
     go ixu_ u_ ixv_ v_ i vm
       | V.null u_ || V.null v_ || i == n = return (vm, i)
@@ -106,32 +104,25 @@ intersectWithM g ixu u ixv v = do
                      else if ix1 < ix2 then go ix1s us ixv  v_ i vm
                                        else go ixu  u_ ix2s vs i vm
 
-
-
-
-
       
 -- | O(N) : Applies a function to the index _union_ of two CsrVector s. Useful e.g. to compute the vector sum of two sparse vectors.
 unionWith :: (t -> t -> a) -> t -> SVector t -> SVector t -> SVector a
-unionWith g z (SV n1 ixu u) (SV n2 ixv v) = SV n ixf vf where
-   n = max n1 n2
-   (ixf, vf) = V.unzip $ V.create (unionWithM g z ixu u ixv v)
+unionWith g z v1 v2 = SV n ixf vf where
+   n = max (svDim v1) (svDim v2)
+   (ixf, vf) = V.unzip $ V.create (unionWithM g z v1 v2)
 
-unionWithM :: (PrimMonad m, Ord t) =>
-     (a -> a -> t1)
+unionWithM :: PrimMonad m =>
+     (a -> a -> b)
      -> a
-     -> V.Vector t
-     -> V.Vector a
-     -> V.Vector t
-     -> V.Vector a
-     -> m (VM.MVector (PrimState m) (t, t1))
-unionWithM g z ixu u ixv v = do
+     -> SVector a
+     -> SVector a
+     -> m (VM.MVector (PrimState m) (Int, b))
+unionWithM g z (SV n1 ixu u) (SV n2 ixv v) = do
   vm <- VM.new n
   (vm', nfin) <- go ixu u ixv v 0 vm
   let vm'' = VM.take nfin vm'
   return vm''
   where
-    (n1, n2) = both length (u, v)
     n = min n1 n2
     go iu u_ iv v_ i vm
           | (V.null u_ && V.null v_) || i == n = return (vm , i)
@@ -195,6 +186,22 @@ SVTypeC(CDouble)
 -- NormedType(Double)
 -- NormedType(CFloat)
 -- NormedType(CDouble)    
+
+
+
+
+-- * To/from SMVector
+
+thaw :: PrimMonad m => SVector a -> m (SMVector m a)
+thaw (SV n ix v) = do
+  vm <- V.thaw v
+  return $ SMV n ix vm
+
+freeze :: PrimMonad m => SMVector m a -> m (SVector a)
+freeze (SMV n ix vm) = do
+  v <- V.freeze vm
+  return $ SV n ix v
+
 
 
 

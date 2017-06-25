@@ -55,6 +55,7 @@ library
                        Data.Sparse.Internal.IntM
                        Data.Sparse.Internal.Utils
                        Data.Sparse.Internal.SVector
+                       Data.Sparse.Internal.SVector.Mutable                       
                        -- Data.Sparse.Internal.SHVector
                        Data.Sparse.Internal.SList
                        Data.Sparse.Internal.TriMatrix
