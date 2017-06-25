@@ -55,13 +55,11 @@ reachableFromRHS g vs = V.fromList . sort . flattenForest $ G.dfs (G.transposeG 
 
 
 
-triLowerSolve ll b = xinz -- do
---    xm <- VM.new nnzx
+triLowerSolve ll b = do
+  initializeSoln xinz b
   where
   -- xinz : nonzeros of solution vector x obtained from reachable nodes of b via G(L^T)
   xinz = reachableFromRHS (cscToGraph ll) (svIx b)
-  nnzx = length xinz
-  -- xm = VM.new nnzx
 
 -- tlUpdateColumn lldiag llsubdiag x j = undefined where
 --   xj' = xj / lldiag

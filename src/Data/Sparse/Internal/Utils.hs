@@ -24,7 +24,7 @@ import qualified Data.Vector.Algorithms.Merge as VA
 
 -- | Given a number of rows(resp. columns) `n` and a _sorted_ Vector of Integers in increasing order (containing the row(col) indices of nonzero entries), return the cumulative vector of nonzero entries of length `n + 1` (the "row(col) pointer" of the CSR(CSC) format). NB: Fused count-and-accumulate
 -- E.g.:
--- > csrPtrV (==) 4 (V.fromList [1,1,2,3])
+-- > csPtrV (==) 4 (V.fromList [1,1,2,3])
 -- [0,0,2,3,4]
 csPtrV :: (a -> Int -> Bool) -> Int -> V.Vector a -> V.Vector Int
 csPtrV eqf n xs = V.create createf where

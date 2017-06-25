@@ -44,9 +44,7 @@ intersectWith0 q f = go [] where
 
 
 
--- | Lift a binary function onto the second entry of a tuple
-lift2snd :: (t -> t1 -> t2) -> (a, t) -> (a1, t1) -> t2
-lift2snd f a b = f (snd a) (snd b)
+
 
 
 
@@ -60,26 +58,14 @@ unionWith0 q f z = go [] where
   go acc l [] = acc ++ l
 
 
--- unionWith0 :: (a -> a -> Ordering) -> (a -> a -> a) -> a -> [a] -> [a] -> [a]
--- unionWith0 q f z = go [] where
---   go acc ls@(x : xs) rs@(y : ys) =
---     case q x y of EQ -> go (f x y : acc) xs ys
---                   LT -> go (f x z : acc) xs rs
---                   _  -> go (f z y : acc) ls ys
---   go acc [] r = acc ++ r
---   go acc l [] = acc ++ l
 
--- union :: Ord a => [a] -> [a] -> [a]
--- union u_ v_ = go u_ v_ where
---   go [] x = x
---   go y [] = y
---   go uu@(u:us) vv@(v:vs)
---     | u == v =    u : go us vs
---     | u < v =     u : go us vv 
---     | otherwise = v : go uu vs
 
 
   
+-- | Lift a binary function onto the second entry of a tuple
+lift2snd :: (t -> t1 -> t2) -> (a, t) -> (a1, t1) -> t2
+lift2snd f a b = f (snd a) (snd b)
+
 
 
 
@@ -180,3 +166,23 @@ tail' = safe V.null V.tail
 
 
 
+
+
+
+-- unionWith0 :: (a -> a -> Ordering) -> (a -> a -> a) -> a -> [a] -> [a] -> [a]
+-- unionWith0 q f z = go [] where
+--   go acc ls@(x : xs) rs@(y : ys) =
+--     case q x y of EQ -> go (f x y : acc) xs ys
+--                   LT -> go (f x z : acc) xs rs
+--                   _  -> go (f z y : acc) ls ys
+--   go acc [] r = acc ++ r
+--   go acc l [] = acc ++ l
+
+-- union :: Ord a => [a] -> [a] -> [a]
+-- union u_ v_ = go u_ v_ where
+--   go [] x = x
+--   go y [] = y
+--   go uu@(u:us) vv@(v:vs)
+--     | u == v =    u : go us vs
+--     | u < v =     u : go us vv 
+--     | otherwise = v : go uu vs
