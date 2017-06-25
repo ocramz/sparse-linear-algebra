@@ -67,7 +67,8 @@ library
                        Numeric.LinearAlgebra.LinearSolvers.Experimental
                        Numeric.LinearAlgebra.EigenSolvers.Experimental
   build-depends:       base >= 4.7 && < 5
-                     , deepseq
+                     , primitive
+                     -- , deepseq
                      , vector-space
                      , containers
                      , vector

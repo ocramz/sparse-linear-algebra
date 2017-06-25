@@ -10,6 +10,7 @@ import Data.IntMap.Strict ((!))
 -- import qualified Data.Vector as V
 
 import Data.Foldable (foldrM)
+import Data.List (sort)
 import Data.Maybe (fromMaybe)
 -- import Data.Monoid
 import Data.Complex
@@ -38,32 +39,46 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.State -- (execStateT, get, put, modify)
 -- import Control.Monad.State (MonadState())
 
-import qualified Data.Vector as V
-import qualified Data.Vector.Mutable as VM (new)
+import qualified Data.Vector as V (Vector, freeze, toList)
+import qualified Data.Vector.Mutable as VM (MVector, new, write, clone)
 
 
 
 flattenForest :: T.Forest a -> [a]
 flattenForest = concatMap T.flatten
-  
+
+-- | Given a lower triangular system L x = b, finds the nonzero entries of the solution vector x as the set of reachable nodes from the r.h.s. via the graph G(L^T). Node indices are _sorted_ afterwards, for a total complexity of O(N)
+reachableFromRHS :: G.Graph -> [G.Vertex] -> [G.Vertex]  
+reachableFromRHS g vs = sort . flattenForest $ G.dfs (G.transposeG g) vs
+
+
 
 triLowerSolve ll b = undefined -- do
 --    xm <- VM.new nnzx
   where
   -- xinz : nonzeros of solution vector x obtained from reachable nodes of b via G(L^T)
-  xinz = flattenForest $ G.dfs (G.transposeG $ cscToGraph ll) (V.toList $ svIx b) 
+  xinz = reachableFromRHS (cscToGraph ll) (V.toList $ svIx b)
   nnzx = length xinz
   -- xm = VM.new nnzx
 
 -- tlUpdateColumn lldiag llsubdiag x j = undefined where
 --   xj' = xj / lldiag
 
-imap f = zipWith (curry f)
 
 
 tlUpdateSubdiag :: VectorSpace v => v -> Scalar v -> v -> v
 tlUpdateSubdiag lsubdiag xj x = x ^-^ (xj .* lsubdiag)
     
+
+vm // [] = V.freeze vm
+vm // ((i,x) : xs) = do
+  VM.write vm i x
+  vm // xs
+
+writeMany vm ixs = foldrM writef vm ixs >>= V.freeze where
+  writef (i, x) vm_ = do
+    VM.write vm_ i x
+    return vm_
   
 
 
@@ -73,6 +88,7 @@ g0 = G.buildG (0,2) [(0,0),(2,0),(1,1),(2,2)]
 t0 :: T.Forest Int
 t0 = G.dfs (G.transposeG g0) [0]
 
+g1 = G.buildG (0, 4) [(0,0), (1,0), (1,1), (2,0), (2,2), (3,1), (3,2), (3,3), (4,0), (4,4)]
 
 
 
@@ -83,7 +99,7 @@ Intmap-of-sparse lists
 * fast consing of row elements
 -}
 
-newtype TriMatrix a = TM { unTM :: IM.IntMap (SList a)} deriving (Show, Functor)
+newtype TriMatrix a = TM { unTM :: IM.IntMap (SList a) } deriving (Show, Functor)
 
 emptyIMSL :: Int -> IM.IntMap (SList a)
 emptyIMSL n = IM.fromList [(i, emptySL) | i <- [0 .. n-1]]
