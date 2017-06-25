@@ -51,7 +51,7 @@ triLowerSolve ll b = undefined -- do
 --    xm <- VM.new nnzx
   where
   -- xinz : nonzeros of solution vector x obtained from reachable nodes of b via G(L^T)
-  xinz = flattenForest $ G.dfs (G.transposeG $ cscToGraph ll) (V.toList $ cvIx b) 
+  xinz = flattenForest $ G.dfs (G.transposeG $ cscToGraph ll) (V.toList $ svIx b) 
   nnzx = length xinz
   -- xm = VM.new nnzx
 

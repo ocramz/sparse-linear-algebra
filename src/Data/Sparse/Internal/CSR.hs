@@ -12,7 +12,7 @@ import qualified Data.Vector.Mutable as VM
 import Control.Monad (when, forM_)
 
 import Data.Sparse.Types
-import Data.Sparse.Internal.CSRVector
+import Data.Sparse.Internal.SVector
 import Data.Sparse.Internal.Utils
 
 import Numeric.LinearAlgebra.Class
@@ -82,13 +82,13 @@ toCSR m n ijxv = CsrM m n nz cix crp x where
 
 -- * Lookup
 -- | O(1) : lookup row
-lookupRow :: CsrMatrix a -> IxRow -> Maybe (CsrVector a)
+lookupRow :: CsrMatrix a -> IxRow -> Maybe (SVector a)
 lookupRow cm i | null er = Nothing
                | otherwise = Just er where er = extractRowCSR cm i
 
 -- | O(N) lookup entry by index in a sparse Vector, using a default value in case of missing entry
-lookupEntry_WD :: a -> CsrVector a -> Int -> a
-lookupEntry_WD z cr j = maybe z (\j -> cvVal cr V.! j) (V.findIndex (== j) (cvIx cr))
+lookupEntry_WD :: a -> SVector a -> Int -> a
+lookupEntry_WD z cr j = maybe z (\j -> svVal cr V.! j) (V.findIndex (== j) (svIx cr))
 
 
 
@@ -104,8 +104,8 @@ lookupCSR z csr (i, j) = lookupRow csr i >>= \cr -> return $ lookupEntry_WD z cr
 
 -- ** Extract a row
 -- | O(1) : extract a row from the CSR matrix. Returns an empty Vector if the row is not present.
-extractRowCSR :: CsrMatrix a -> IxRow -> CsrVector a
-extractRowCSR (CsrM _ n _ cix rp x) irow = CV n ixs vals where
+extractRowCSR :: CsrMatrix a -> IxRow -> SVector a
+extractRowCSR (CsrM _ n _ cix rp x) irow = SV n ixs vals where
   imin = rp V.! irow
   imax = rp V.! (irow + 1)
   len = imax - imin

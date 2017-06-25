@@ -8,7 +8,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 
 -- import Data.Sparse.Types
-import Data.Sparse.Internal.CSRVector
+import Data.Sparse.Internal.SVector
 import Data.Sparse.Internal.Utils
 import Numeric.LinearAlgebra.Class
 
@@ -80,8 +80,8 @@ fromCSC0 mc = (rowIx, cols, cscVal mc) where
 
 -- ** Extract a column
 -- | O(1) : extract a column from the CSC matrix.
-extractColCSC :: CscMatrix a -> Int -> CsrVector a
-extractColCSC (CscM m _ _ rix cp x) jcol = CV m ixs vals where
+extractColCSC :: CscMatrix a -> Int -> SVector a
+extractColCSC (CscM m _ _ rix cp x) jcol = SV m ixs vals where
   jmin = cp V.! jcol
   jmax = cp V.! (jcol + 1)
   len = jmax - jmin
@@ -90,13 +90,13 @@ extractColCSC (CscM m _ _ rix cp x) jcol = CV m ixs vals where
   vals = trimf x
 
 -- ** Extract the diagonal element, if this exists (NB this only holds for a lower triangular matrix)
-extractDiagSubdiagCSC :: CscMatrix a -> Int -> Maybe (a, CsrVector a)
+extractDiagSubdiagCSC :: CscMatrix a -> Int -> Maybe (a, SVector a)
 extractDiagSubdiagCSC cscm j
   | V.length ixs > 1 && j == V.head ixs = Just (diagEl, subdiagVec)
   | otherwise = Nothing where
-      (CV m ixs vals) = extractColCSC cscm j
+      (SV m ixs vals) = extractColCSC cscm j
       diagEl = V.head vals
-      subdiagVec = CV (m-1) (V.tail ixs) (V.tail vals) 
+      subdiagVec = SV (m-1) (V.tail ixs) (V.tail vals) 
 
 
 
