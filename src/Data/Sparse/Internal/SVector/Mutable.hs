@@ -38,14 +38,14 @@ unionWithM_prealloc g z v vm@(SMV nvm vmix vmv) = undefined
 
 
 
--- | unionWithM takes the union of two sparse mutable vectors given a binary function and a neutral element.
-unionWithM :: PrimMonad m =>
+-- | unionWithSMV takes the union of two sparse mutable vectors given a binary function and a neutral element.
+unionWithSMV :: PrimMonad m =>
      (a -> a -> b)
      -> a
      -> SMVector m a
      -> SMVector m a
      -> m (VM.MVector (PrimState m) (Int, b))
-unionWithM g z (SMV n1 ixu uu) (SMV n2 ixv vv) = do
+unionWithSMV g z (SMV n1 ixu uu) (SMV n2 ixv vv) = do
   vm <- VM.new n
   (vm', nfin) <- go ixu uu ixv vv 0 vm
   let vm'' = VM.take nfin vm'
