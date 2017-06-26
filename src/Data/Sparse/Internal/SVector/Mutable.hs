@@ -3,9 +3,8 @@ module Data.Sparse.Internal.SVector.Mutable where
 
 import qualified Data.Vector as V 
 import qualified Data.Vector.Mutable as VM
-import qualified Data.Vector.Generic as VG
 
-import Control.Arrow (Arrow, (***), (&&&))
+import Control.Arrow ((&&&))
 import Control.Monad.Primitive
 
 data SMVector m a = SMV { smvDim :: {-# UNPACK #-} !Int,
@@ -28,8 +27,18 @@ data SMVector m a = SMV { smvDim :: {-# UNPACK #-} !Int,
 
 
 
+-- | traverse the sparse mutable vector and operate on the union set between the indices of the immutable vector `v` and those of the mutable one `vm`, _overwriting_ the values in vm.
+-- Invariant: the index set of `v` is a strict subset of that of `vm` (i.e. we assume that `vm` is preallocated properly, or, we assume there won't be any out-of-bound writes attempted)
+unionWithM_prealloc g z v vm@(SMV nvm vmix vmv) = undefined
 
 
+
+
+
+
+
+
+-- | unionWithM takes the union of two sparse mutable vectors given a binary function and a neutral element.
 unionWithM :: PrimMonad m =>
      (a -> a -> b)
      -> a
@@ -42,6 +51,7 @@ unionWithM g z (SMV n1 ixu uu) (SMV n2 ixv vv) = do
   let vm'' = VM.take nfin vm'
   return vm''
   where
+    headTail = V.head &&& V.tail
     n = min n1 n2
     go iu u_ iv v_ i vm
           | (VM.null u_ && VM.null v_) || i == n = return (vm , i)
@@ -73,6 +83,4 @@ unionWithM g z (SMV n1 ixu uu) (SMV n2 ixv vv) = do
 -- -- both :: Arrow arr => arr b c -> arr (b, b) (c, c)
 -- -- both f = f *** f
 
-headTailM = VM.take 1 &&& VM.tail
 
-headTail = V.head &&& V.tail
