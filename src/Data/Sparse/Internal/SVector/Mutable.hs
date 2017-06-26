@@ -1,11 +1,11 @@
-{-# language FlexibleContexts #-}
+{-# language FlexibleContexts, TypeFamilies #-}
 module Data.Sparse.Internal.SVector.Mutable where
 
 import qualified Data.Vector as V 
 import qualified Data.Vector.Mutable as VM
--- import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Generic as VG
 
--- import Control.Arrow (Arrow, (***), (&&&))
+import Control.Arrow (Arrow, (***), (&&&))
 import Control.Monad.Primitive
 
 data SMVector m a = SMV { smvDim :: {-# UNPACK #-} !Int,
@@ -30,32 +30,42 @@ data SMVector m a = SMV { smvDim :: {-# UNPACK #-} !Int,
 
 
 
--- unionWithM g z (SMV n1 ixu u) (SMV n2 ixv v) = do
---   vm <- VM.new n
---   (vm', nfin) <- go ixu u ixv v 0 vm
---   let vm'' = VM.take nfin vm'
---   return vm''
---   where
---     n = min n1 n2
---     go iu u_ iv v_ i vm
---           | (VG.null u_ && VG.null v_) || i == n = return (vm , i)
---           | VG.null u_ = do
---                  VM.write vm i (V.head iv, g z (VG.head v_))
---                  go iu u_ (V.tail iv) (VG.tail v_) (i + 1) vm
---           | VG.null v_ = do
---                  VM.write vm i (V.head iu, g (VG.head u_) z)
---                  go (V.tail iu) (VG.tail u_) iv v_ (i + 1) vm
---           | otherwise =  do
---            let (u, us) = headTailG u_
---                (v, vs) = headTailG v_
---                (iu1, ius) = headTail iu
---                (iv1, ivs) = headTail iv
---            if iu1 == iv1 then do VM.write vm i (iu1, g u v)
---                                  go ius us ivs vs (i + 1) vm
---                          else if iu1 < iv1 then do VM.write vm i (iu1, g u z)
---                                                    go ius us iv v_ (i + 1) vm
---                                            else do VM.write vm i (iv1, g z v)
---                                                    go iu u_ ivs vs (i + 1) vm
+unionWithM :: PrimMonad m =>
+     (a -> a -> b)
+     -> a
+     -> SMVector m a
+     -> SMVector m a
+     -> m (VM.MVector (PrimState m) (Int, b))
+unionWithM g z (SMV n1 ixu uu) (SMV n2 ixv vv) = do
+  vm <- VM.new n
+  (vm', nfin) <- go ixu uu ixv vv 0 vm
+  let vm'' = VM.take nfin vm'
+  return vm''
+  where
+    n = min n1 n2
+    go iu u_ iv v_ i vm
+          | (VM.null u_ && VM.null v_) || i == n = return (vm , i)
+          | VM.null u_ = do
+              v0 <- VM.read v_ 0
+              VM.write vm i (V.head iv, g z v0)
+              go iu u_ (V.tail iv) (VM.tail v_) (i + 1) vm
+          | VM.null v_ = do
+              u0 <- VM.read u_ 0
+              VM.write vm i (V.head iu, g u0 z)
+              go (V.tail iu) (VM.tail u_) iv v_ (i + 1) vm
+          | otherwise =  do
+             u <- VM.read u_ 0
+             v <- VM.read v_ 0
+             let us = VM.tail u_
+                 vs = VM.tail v_
+             let (iu1, ius) = headTail iu
+                 (iv1, ivs) = headTail iv
+             if iu1 == iv1 then do VM.write vm i (iu1, g u v)
+                                   go ius us ivs vs (i + 1) vm
+                           else if iu1 < iv1 then do VM.write vm i (iu1, g u z)
+                                                     go ius us iv v_ (i + 1) vm
+                                             else do VM.write vm i (iv1, g z v)
+                                                     go iu u_ ivs vs (i + 1) vm
 
 
 -- -- * helpers
@@ -63,6 +73,6 @@ data SMVector m a = SMV { smvDim :: {-# UNPACK #-} !Int,
 -- -- both :: Arrow arr => arr b c -> arr (b, b) (c, c)
 -- -- both f = f *** f
 
--- headTailG = VG.head &&& VG.tail
+headTailM = VM.take 1 &&& VM.tail
 
--- headTail = V.head &&& V.tail
+headTail = V.head &&& V.tail
