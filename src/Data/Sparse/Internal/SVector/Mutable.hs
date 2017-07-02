@@ -29,15 +29,6 @@ fromList n ixv = do
 
       
 
--- writeManyM :: (PrimMonad m, Foldable t) =>
---     VM.MVector (PrimState m) a ->
---     t (Int, a) ->
---     m (VM.MVector (PrimState m) a)
--- writeManyM vm ixs = foldrM writef vm ixs where
---   writef (i, x) vm_ = do
---     VM.write vm_ i x
---     return vm_
-
 -- instance Show a => Show (SMVector m a) where
 --   show (SMV n ix v) = unwords ["SMV (",show n,"),",show nz,"NZ:",show (V.zip ix v)]
 --     where nz = V.length ix

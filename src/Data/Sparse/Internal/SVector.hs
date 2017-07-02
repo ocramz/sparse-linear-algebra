@@ -2,6 +2,8 @@
 module Data.Sparse.Internal.SVector where
 
 import Control.Arrow
+import Control.Monad (unless)
+import Control.Monad.IO.Class
 import qualified Data.Foldable as F -- (foldl')
 -- import Data.List (group, groupBy)
 
@@ -216,18 +218,23 @@ invariants :
 * length ixv == length vv
 
 -}
-unionWithSMV :: PrimMonad m =>
-     (a -> a -> a)
-     -> a -> SVector a -> SMVector m a -> m (SMVector m a)
-unionWithSMV g z (SV n1 ixu uu) (SMV n2 ixm_ vm_) = do
-  (ixm, vm) <- go 0 ixm_ vm_
-  return $ SMV n ixm vm
+-- unionWithSMV :: PrimMonad m =>
+--      (a -> a -> a)
+--      -> a -> SVector a -> SMVector m a -> m (SMVector m a)
+unionWithSMV g z (SV n ixu uu) (SMV n2 ixm_ vm_) = do
+  ixmnew <- VM.new nnzero  -- create new mutable vectors
+  vmnew <- VM.new nnzero
+  unless (n == n2) (error "unionWithSMV : operand vectors must have the same length")
+  (ixm, vm, nfin) <- go 0 ixmnew vmnew
+  let ixm' = VM.take nfin ixm
+      vm' = VM.take nfin vm
+  return (SMV n ixm' vm', nfin)
   where
-    n = max n1 n2
+    nnzero = lu + lv
     lu = V.length ixu
     lv = VM.length ixm_
     go i ixm vm
-      | i == lu && i == lv || i == n = return (ixm, vm)
+      | i == lu && i == lv || i == n = return (ixm, vm, i)
       | i == lu = do
           v0 <- VM.read vm i
           VM.write ixm i i
@@ -266,7 +273,8 @@ testUnionWithSMV :: IO (SVector Double)
 testUnionWithSMV = do 
   let v = fromList 4 [(1, 1), (2, 1)]
   vm <- SMV.fromList 4 [(0, pi), (2, pi)]
-  vmres <- unionWithSMV (+) 0 v vm
+  (vmres, nfin) <- unionWithSMV (+) 0 v vm
+  liftIO $ print nfin
   freeze vmres
 
 
