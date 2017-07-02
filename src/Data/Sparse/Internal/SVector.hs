@@ -218,9 +218,9 @@ invariants :
 * length ixv == length vv
 
 -}
--- unionWithSMV :: PrimMonad m =>
---      (a -> a -> a)
---      -> a -> SVector a -> SMVector m a -> m (SMVector m a)
+unionWithSMV :: PrimMonad m =>
+     (a -> a -> a)
+     -> a -> SVector a -> SMVector m a -> m (SMVector m a)
 unionWithSMV g z (SV n ixu uu) (SMV n2 ixm_ vm_) = do
   ixmnew <- VM.new nnzero  -- create new mutable vectors
   vmnew <- VM.new nnzero
@@ -228,7 +228,7 @@ unionWithSMV g z (SV n ixu uu) (SMV n2 ixm_ vm_) = do
   (ixm, vm, nfin) <- go 0 ixmnew vmnew
   let ixm' = VM.take nfin ixm
       vm' = VM.take nfin vm
-  return (SMV n ixm' vm', nfin)
+  return $ SMV n ixm' vm'
   where
     nnzero = lu + lv
     lu = V.length ixu
@@ -268,14 +268,14 @@ unionWithSMV g z (SV n ixu uu) (SMV n2 ixm_ vm_) = do
                                
                              
 
--- test data
-testUnionWithSMV :: IO (SVector Double)
-testUnionWithSMV = do 
-  let v = fromList 4 [(1, 1), (2, 1)]
-  vm <- SMV.fromList 4 [(0, pi), (2, pi)]
-  (vmres, nfin) <- unionWithSMV (+) 0 v vm
-  liftIO $ print nfin
-  freeze vmres
+-- -- test data
+-- testUnionWithSMV :: IO (SVector Double)
+-- testUnionWithSMV = do 
+--   let v = fromList 4 [(1, 1), (2, 1)]
+--   vm <- SMV.fromList 4 [(0, pi), (2, pi)]
+--   (vmres, nfin) <- unionWithSMV (+) 0 v vm
+--   liftIO $ print nfin
+--   freeze vmres
 
 
 
