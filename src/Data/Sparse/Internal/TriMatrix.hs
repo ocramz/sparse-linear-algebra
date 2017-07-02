@@ -42,7 +42,7 @@ import Control.Monad.Primitive
 -- import Control.Monad.State (MonadState())
 
 import qualified Data.Vector as V (Vector, freeze, fromList, toList, zip)
-import qualified Data.Vector.Mutable as VM (MVector, new, set, write, clone)
+import qualified Data.Vector.Mutable as VM (MVector, new, set, write, read, clone)
 
 
 
@@ -55,23 +55,28 @@ reachableFromRHS g vs = V.fromList . sort . flattenForest $ G.dfs (G.transposeG 
 
 
 
-triLowerSolve ll b = do
-  initializeSoln xinz b
-  where
-  -- xinz : nonzeros of solution vector x obtained from reachable nodes of b via G(L^T)
-  xinz = reachableFromRHS (cscToGraph ll) (svIx b)
+-- triLowerSolve ll b = do
+--   initializeSoln xinz b
+--   where
+--   -- xinz : nonzeros of solution vector x obtained from reachable nodes of b via G(L^T)
+--   xinz = reachableFromRHS (cscToGraph ll) (svIx b)
 
--- tlUpdateColumn lldiag llsubdiag x j = undefined where
---   xj' = xj / lldiag
+-- -- tlUpdateColumn lldiag llsubdiag x j = undefined where
+-- --   xj' = xj / lldiag
 
-initializeSoln ::
-  (PrimMonad m, Num a) => V.Vector Int -> SVector a -> m (SMVector m a)
-initializeSoln ixnz (SV n ixb b) = do
-  let nnzx = length ixnz 
-  xm <- VM.new nnzx
-  VM.set xm 0
-  xm' <- writeMany xm (V.zip ixb b)
-  return (SMV n ixnz xm')
+-- | Build the initial solution vector `x` for the triangular solve, given a vector of nonzero indices `ixnz` and the right hand side of the linear system `bb`:
+-- -- 1. Initialize an empty mutable vector of length `length ixnz` to 0
+-- -- 2. Copy the entries from `bb` to `x`.
+-- --
+-- -- Note: this assumes that the index set of `bb` is strictly contained within that of `x` (which is true for the case of the triangular solve, see `reachableFromRHS`)
+-- initializeSoln ::
+--   (PrimMonad m, Num a) => V.Vector Int -> SVector a -> m (SMVector m a)
+-- initializeSoln ixnz (SV n ixb b) = do
+--   let nnzx = length ixnz 
+--   xm <- VM.new nnzx
+--   VM.set xm 0
+--   xm' <- writeManyM xm (V.zip ixb b)
+--   return (SMV n ixnz xm')
 
 
 
@@ -79,12 +84,7 @@ tlUpdateSubdiag :: VectorSpace v => v -> Scalar v -> v -> v
 tlUpdateSubdiag lsubdiag xj x = x ^-^ (xj .* lsubdiag)
    
 
-writeMany :: (PrimMonad m, Foldable t) => VM.MVector (PrimState m) a
-     -> t (Int, a) -> m (VM.MVector (PrimState m) a)
-writeMany vm ixs = foldrM writef vm ixs where
-  writef (i, x) vm_ = do
-    VM.write vm_ i x
-    return vm_
+
   
 
 

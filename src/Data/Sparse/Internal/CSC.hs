@@ -60,6 +60,7 @@ toCSC m n ijxv = CscM m n nz rix crp x where
 -- | O(N) : Rebuilds the (row, column, entry) Vector from the CSC representation. 
 fromCSC :: CscMatrix a -> V.Vector (Int, Int, a)
 fromCSC mc = V.zip3 ii jj xx where (ii,jj,xx) = fromCSC0 mc
+
 fromCSC0 :: CscMatrix a -> (V.Vector Int, V.Vector Int, V.Vector a)
 fromCSC0 mc = (rowIx, cols, cscVal mc) where
   (_, n) = dim mc
@@ -84,8 +85,7 @@ extractColCSC :: CscMatrix a -> Int -> SVector a
 extractColCSC (CscM m _ _ rix cp x) jcol = SV m ixs vals where
   jmin = cp V.! jcol
   jmax = cp V.! (jcol + 1)
-  len = jmax - jmin
-  trimf  = V.slice jmin len
+  trimf  = V.slice jmin (jmax - jmin) -- trimming function
   ixs = trimf rix
   vals = trimf x
 

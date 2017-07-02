@@ -17,7 +17,8 @@ import Control.Monad.Primitive
 
 -- import Data.Sparse.Utils
 -- import Data.Sparse.Types
-import Data.Sparse.Internal.SVector.Mutable
+import Data.Sparse.Internal.SVector.Mutable hiding (fromList)
+import qualified Data.Sparse.Internal.SVector.Mutable as SMV (fromList)
 import Data.VectorSpace
 
 import Numeric.LinearAlgebra.Class
@@ -64,11 +65,11 @@ fromList n = fromVector n . V.fromList
 
 -- * Query
 
--- | O(N) : Lookup an index in a CsrVector (based on `find` from Data.Foldable)
+-- | O(N) : Lookup an index in a SVector (based on `find` from Data.Foldable)
 index :: SVector a -> Int -> Maybe a
 index cv i =
   case F.find (== i) (svIx cv) of
-    Just i' -> Just $ (V.!) (svVal cv) i'
+    Just i' -> Just $ svVal cv V.! i'
     Nothing -> Nothing
       
 
@@ -190,16 +191,102 @@ SVTypeC(CDouble)
 
 
 
+
+
+
+
+{-| Modify the mutable vector operand by applying a binary function over the index union of the two.
+
+e.g.
+
+g = (+)
+z = 0
+u = [(1, a), (2, b)]
+v = [(0, d), (2, e)]
+
+unionWithSMV g z u v = [(0, d), (1, a), (2, b + e)]
+
+invariants :
+
+* uu, vv nonzero values
+* ixu, ixv nonzero indices
+* ixu, ixv sorted in ascending order
+* n1 == n2
+* length ixu == length uu
+* length ixv == length vv
+
+-}
+unionWithSMV :: PrimMonad m =>
+     (a -> a -> a)
+     -> a -> SVector a -> SMVector m a -> m (SMVector m a)
+unionWithSMV g z (SV n1 ixu uu) (SMV n2 ixm_ vm_) = do
+  (ixm, vm) <- go 0 ixm_ vm_
+  return $ SMV n ixm vm
+  where
+    n = max n1 n2
+    lu = V.length ixu
+    lv = VM.length ixm_
+    go i ixm vm
+      | i == lu && i == lv || i == n = return (ixm, vm)
+      | i == lu = do
+          v0 <- VM.read vm i
+          VM.write ixm i i
+          VM.write vm i (g z v0)
+          go (i + 1) ixm vm
+      | i == lv = do
+          let u0 = uu V.! i
+          VM.write ixm_ i i
+          VM.write vm_ i (g u0 z)
+          go (i + 1) ixm vm
+      | otherwise = do
+          let u = uu V.! i    -- read head elements and indices
+              iu = ixu V.! i
+          v <- VM.read vm i
+          iv <- VM.read ixm i
+          if iu == iv then
+            do
+              VM.write ixm i iu         -- write `iu` at position `i` 
+              VM.write vm i (g u v)
+              go (i + 1) ixm vm
+          else if iu < iv then
+            do
+              VM.write ixm i iu         -- write `iu` at position `i` 
+              VM.write vm i (g u z)
+              go (i + 1) ixm vm
+              else
+                do
+                  VM.write ixm i iv     -- write `iv` at position `i` 
+                  VM.write vm i (g z v)
+                  go (i + 1) ixm vm
+                               
+                             
+
+-- test data
+testUnionWithSMV :: IO (SVector Double)
+testUnionWithSMV = do 
+  let v = fromList 4 [(1, 1), (2, 1)]
+  vm <- SMV.fromList 4 [(0, pi), (2, pi)]
+  vmres <- unionWithSMV (+) 0 v vm
+  freeze vmres
+
+
+
+
+            
+          
+
 -- * To/from SMVector
 
 thaw :: PrimMonad m => SVector a -> m (SMVector m a)
 thaw (SV n ix v) = do
   vm <- V.thaw v
-  return $ SMV n ix vm
+  ixm <- V.thaw ix
+  return $ SMV n ixm vm
 
 freeze :: PrimMonad m => SMVector m a -> m (SVector a)
-freeze (SMV n ix vm) = do
+freeze (SMV n ixm vm) = do
   v <- V.freeze vm
+  ix <- V.freeze ixm
   return $ SV n ix v
 
 
