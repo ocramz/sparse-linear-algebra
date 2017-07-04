@@ -19,22 +19,24 @@ fromList n ixv = do
   let ns = length ixv
   vm <- VM.new ns
   ixm <- VM.new ns
-  go vm ixm ixv 0
+  fromListOverwrite ixm vm n ixv
+  
+
+fromListOverwrite :: PrimMonad m =>
+     VM.MVector (PrimState m) Int
+     -> VM.MVector (PrimState m) a
+     -> Int
+     -> [(Int, a)]
+     -> m (SMVector m a)
+fromListOverwrite ixm vm n ixv = go ixm vm ixv 0
     where
       go ixm_ vm_ [] _ = return $ SMV n ixm_ vm_
       go ixm_ vm_ ((i, x) : xs) iwrite = do
         VM.write vm_ iwrite x
         VM.write ixm_ iwrite i
         go ixm_ vm_ xs (iwrite + 1)
-
       
 
--- instance Show a => Show (SMVector m a) where
---   show (SMV n ix v) = unwords ["SMV (",show n,"),",show nz,"NZ:",show (V.zip ix v)]
---     where nz = V.length ix
-
--- instance Functor (SMVector m) where
---   fmap f (SMV n ix v) = SMV n ix (fmap f v)
 
 -- instance Foldable (SMVector m) where
 --   foldr f z (SMV _ _ v) = foldr f z v

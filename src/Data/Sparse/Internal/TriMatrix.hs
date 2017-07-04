@@ -26,7 +26,7 @@ import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 import Data.Sparse.Internal.CSC
 import Data.Sparse.Internal.SVector
-import Data.Sparse.Internal.SVector.Mutable
+import qualified Data.Sparse.Internal.SVector.Mutable as SMV
 import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM, sparsifySM)
 import Data.Sparse.Common (prd, prd0, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
 import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM')
@@ -41,7 +41,7 @@ import Control.Monad.Trans.State -- (execStateT, get, put, modify)
 import Control.Monad.Primitive
 -- import Control.Monad.State (MonadState())
 
-import qualified Data.Vector as V (Vector, freeze, fromList, toList, zip)
+import qualified Data.Vector as V (Vector, freeze, thaw, fromList, toList, zip)
 import qualified Data.Vector.Mutable as VM (MVector, new, set, write, read, clone)
 
 
@@ -67,16 +67,17 @@ reachableFromRHS g vs = V.fromList . sort . flattenForest $ G.dfs (G.transposeG 
 -- | Build the initial solution vector `x` for the triangular solve, given a vector of nonzero indices `ixnz` and the right hand side of the linear system `bb`:
 -- -- 1. Initialize an empty mutable vector of length `length ixnz` to 0
 -- -- 2. Copy the entries from `bb` to `x`.
--- --
--- -- Note: this assumes that the index set of `bb` is strictly contained within that of `x` (which is true for the case of the triangular solve, see `reachableFromRHS`)
--- initializeSoln ::
---   (PrimMonad m, Num a) => V.Vector Int -> SVector a -> m (SMVector m a)
--- initializeSoln ixnz (SV n ixb b) = do
---   let nnzx = length ixnz 
---   xm <- VM.new nnzx
---   VM.set xm 0
---   xm' <- writeManyM xm (V.zip ixb b)
---   return (SMV n ixnz xm')
+--
+-- Note: this assumes that the index set of `bb` is strictly contained within that of `x` (which is true for the case of the triangular solve, see `reachableFromRHS`)
+initializeSoln ::
+  (PrimMonad m, Num a) => V.Vector Int -> SVector a -> m (SMV.SMVector m a)
+initializeSoln ixnz (SV n ixb b) = do
+  let nnzx = length ixnz 
+  xm <- VM.new nnzx
+  ixnzm <- V.thaw ixnz
+  VM.set xm 0
+  SMV.fromListOverwrite ixnzm xm n $ V.toList (V.zip ixb b)
+
 
 
 
