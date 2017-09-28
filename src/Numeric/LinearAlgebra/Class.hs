@@ -28,7 +28,7 @@ import Control.Monad.IO.Class
 
 import qualified Data.Vector as V (Vector)
 
-import Data.VectorSpace hiding (magnitude)
+-- import Data.VectorSpace hiding (magnitude)
 
 import Data.Sparse.Types
 import Numeric.Eps
@@ -44,28 +44,60 @@ class (Eq e , AdditiveGroup e, Fractional e, Floating e, Num (EltMag e), Ord (El
   -- | Magnitude
   mag :: e -> EltMag e
 
-instance Elt Double where {type EltMag Double = Double ; mag = id}
-instance Elt Float where {type EltMag Float = Float; mag = id}
-instance (AdditiveGroup e, RealFloat e) => Elt (Complex e) where
-  type EltMag (Complex e) = e
-  conj = conjugate
-  mag = magnitude
+-- instance Elt Double where {type EltMag Double = Double ; mag = id}
+-- instance Elt Float where {type EltMag Float = Float; mag = id}
+-- instance (AdditiveGroup e, RealFloat e) => Elt (Complex e) where
+--   type EltMag (Complex e) = e
+--   conj = conjugate
+--   mag = magnitude
   
 
 
 
+infixl 6 ^+^, ^-^
+
+-- * Additive group
+class AdditiveGroup v where
+  -- | The zero element: identity for '(^+^)'
+  zeroV :: v
+    -- | Add vectors
+  (^+^) :: v -> v -> v
+  -- | Additive inverse
+  negateV :: v -> v
+  -- | Group subtraction
+  (^-^) :: v -> v -> v
 
 
+infixr 7 .*
 
--- * Vector space
+-- * Vector space @v@.
+class AdditiveGroup v => VectorSpace v where
+  type Scalar v :: *
+  -- | Scale a vector
+  (.*) :: Scalar v -> v -> v
 
--- | Scale a vector 
-(.*) :: VectorSpace v => Scalar v -> v -> v
-(.*) = (*^)
+-- | Adds inner (dot) products.
+class (VectorSpace v, AdditiveGroup (Scalar v)) => InnerSpace v where
+  -- | Inner/dot product
+  (<.>) :: v -> v -> Scalar v
+
+
+infixr 7 ./
+infixl 7 *.
 
 -- | Scale a vector by the reciprocal of a number (e.g. for normalization)
-(./) :: (VectorSpace v, Fractional (Scalar v)) => v -> Scalar v -> v
-v ./ n = recip n .* v
+(./) :: (VectorSpace v, s ~ Scalar v, Fractional s) => v -> s -> v
+v ./ s = (recip s) .* v
+
+-- | Vector multiplied by scalar
+(*.) :: (VectorSpace v, s ~ Scalar v) => v -> s -> v
+(*.) = flip (.*)  
+
+
+
+
+
+
 
 -- | Convex combination of two vectors (NB: 0 <= `a` <= 1). 
 cvx :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
@@ -150,27 +182,27 @@ normInftyC x = maximum (magnitude <$> x)
 
 
 
-instance Normed Double where
-  type Magnitude Double = Double
-  type RealScalar Double = Double
-  norm1 = abs
-  norm2Sq = abs
-  normP _ = abs
-  normalize _ _ = 1
-  normalize2 _ = 1
-  norm2 = abs
-  norm2' = abs
+-- instance Normed Double where
+--   type Magnitude Double = Double
+--   type RealScalar Double = Double
+--   norm1 = abs
+--   norm2Sq = abs
+--   normP _ = abs
+--   normalize _ _ = 1
+--   normalize2 _ = 1
+--   norm2 = abs
+--   norm2' = abs
 
-instance Normed (Complex Double) where
-  type Magnitude (Complex Double) = Double
-  type RealScalar (Complex Double) = Double
-  norm1 (r :+ i) = abs r + abs i
-  norm2Sq = (**2) . magnitude
-  normP p (r :+ i) = (r**p + i**p)**(1/p)
-  normalize p c = c ./ normP p c
-  normalize2 c = c ./ magnitude c
-  norm2 = magnitude
-  norm2' = magnitude
+-- instance Normed (Complex Double) where
+--   type Magnitude (Complex Double) = Double
+--   type RealScalar (Complex Double) = Double
+--   norm1 (r :+ i) = abs r + abs i
+--   norm2Sq = (**2) . magnitude
+--   normP p (r :+ i) = (r**p + i**p)**(1/p)
+--   normalize p c = c ./ normP p c
+--   normalize2 c = c ./ magnitude c
+--   norm2 = magnitude
+--   norm2' = magnitude
   
 
 
