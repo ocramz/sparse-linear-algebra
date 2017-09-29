@@ -15,7 +15,9 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-7.2
+
+# resolver: lts-7.2
+resolver: lts-9.6
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -40,8 +42,7 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- MemoTrie-0.6.7
-- newtype-generics-0.5
+# - newtype-generics-0.5
 - matrix-market-attoparsec-0.1.0.5
 # - monad-log-0.1.1.0
 

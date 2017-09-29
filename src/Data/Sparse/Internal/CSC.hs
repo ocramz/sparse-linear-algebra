@@ -29,13 +29,9 @@ instance Functor CscMatrix where
 instance Foldable CscMatrix where
   foldr f z cm = foldr f z (cscVal cm)
 
-
 instance Show a => Show (CscMatrix a) where
   show m'@(CscM m n nz cix rp x) = szs where
     szs = unwords ["CSC (",show m, "x", show n,"),",show nz, "NZ ( sparsity",show (spy m'),"), row indices:",show cix,", column pointers:", show rp,", data:",show x]
-
-
--- some instances
 
 instance FiniteDim (CscMatrix a) where
   type FDSize (CscMatrix a) = (Int, Int)
