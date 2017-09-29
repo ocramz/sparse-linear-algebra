@@ -36,7 +36,7 @@ import Numeric.Eps
 
 
 -- * Matrix and vector elements (optionally Complex)
-class (Eq e , AdditiveGroup e, Fractional e, Floating e, Num (EltMag e), Ord (EltMag e)) => Elt e where
+class (Eq e , Fractional e, Floating e, Num (EltMag e), Ord (EltMag e)) => Elt e where
   type EltMag e :: *
   -- | Complex conjugate, or identity function if its input is real-valued
   conj :: e -> e
@@ -44,12 +44,12 @@ class (Eq e , AdditiveGroup e, Fractional e, Floating e, Num (EltMag e), Ord (El
   -- | Magnitude
   mag :: e -> EltMag e
 
--- instance Elt Double where {type EltMag Double = Double ; mag = id}
--- instance Elt Float where {type EltMag Float = Float; mag = id}
--- instance (AdditiveGroup e, RealFloat e) => Elt (Complex e) where
---   type EltMag (Complex e) = e
---   conj = conjugate
---   mag = magnitude
+instance Elt Double where {type EltMag Double = Double ; mag = id}
+instance Elt Float where {type EltMag Float = Float; mag = id}
+instance (RealFloat e) => Elt (Complex e) where
+  type EltMag (Complex e) = e
+  conj = conjugate
+  mag = magnitude
   
 
 
@@ -82,6 +82,8 @@ class (VectorSpace v, AdditiveGroup (Scalar v)) => InnerSpace v where
   (<.>) :: v -> v -> Scalar v
 
 
+
+
 infixr 7 ./
 infixl 7 *.
 
@@ -107,7 +109,6 @@ cvx a u v = a .* u ^+^ ((1-a) .* v)
 -- linearCombination :: (VectorSpace v , Foldable t) => t (Scalar v, v) -> v
 -- linearCombination  =  foldr (\(a, x) (b, y) -> (a .* x) ^+^ (b .* y)) 
 
--- linComb a v = a .* v
 
 
 
