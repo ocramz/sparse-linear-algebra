@@ -47,8 +47,8 @@ spec = do
       norm2Sq (x ^-^ x) `shouldBe` zeroV
     it "<.> : inner product (Real)" $
       tv0 <.> tv0 `shouldBe` 61
-    it "<.> : inner product (Complex)" $
-      tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
+    -- it "<.> : inner product (Complex)" $
+    --   tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
     it "transpose : sparse matrix transpose" $
       transpose m1 `shouldBe` m1t
     it "(#>) : matrix-vector product (Real)" $
@@ -121,42 +121,42 @@ spec = do
       -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
     --   prop_psd aa2 v
     
-  describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
-    -- it "TFQMR (2 x 2 dense)" $
-    it "GMRES (2 x 2 dense)" $
-      -- checkLinSolveR GMRES_ aa0 b0 x0true >>= (`shouldBe` True)
-      checkLinSolveR GMRES_ aa0 b0 x0true `shouldBeM` True
-    it "GMRES (3 x 3 sparse, symmetric pos.def.)" $
-      checkLinSolveR GMRES_ aa2 b2 x2 >>= (`shouldBe` True)
-    it "GMRES (4 x 4 sparse)" $
-      checkLinSolveR GMRES_ aa1 b1 x1 >>= (`shouldBe` True)
-    it "GMRES (5 x 5 sparse)" $
-      checkLinSolveR GMRES_ tm7 tvb7 tvx7 >>= (`shouldBe` True)  
-    it "BCG (2 x 2 dense)" $
-      checkLinSolveR BCG_ aa0 b0 x0true >>= (`shouldBe` True)
-    it "BCG (3 x 3 sparse, symmetric pos.def.)" $
-      checkLinSolveR BCG_ aa2 b2 x2 >>= (`shouldBe` True)
-    -- it "BiCGSTAB (2 x 2 dense)" $ 
-    --   nearZero (normSq (linSolve BICGSTAB_ aa0 b0 ^-^ x0true)) `shouldBe` True
-    it "BiCGSTAB (3 x 3 sparse, symmetric pos.def.)" $ 
-      checkLinSolveR BICGSTAB_ aa2 b2 x2 >>= (`shouldBe` True)
-    it "CGS (2 x 2 dense)" $ 
-      checkLinSolveR CGS_ aa0 b0 x0true >>= (`shouldBe` True)
-    it "CGS (3 x 3 sparse, SPD)" $ 
-      checkLinSolveR CGS_ aa2 b2 x2 >>= (`shouldBe` True)
-    it "Moore-Penrose pseudoinverse (3 x 2 dense)" $
-      checkPinv aa10 b10 x10 >>= (`shouldBe` True)
+  -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
+  --   -- it "TFQMR (2 x 2 dense)" $
+  --   it "GMRES (2 x 2 dense)" $
+  --     -- checkLinSolveR GMRES_ aa0 b0 x0true >>= (`shouldBe` True)
+  --     checkLinSolveR GMRES_ aa0 b0 x0true `shouldBeM` True
+  --   it "GMRES (3 x 3 sparse, symmetric pos.def.)" $
+  --     checkLinSolveR GMRES_ aa2 b2 x2 >>= (`shouldBe` True)
+  --   it "GMRES (4 x 4 sparse)" $
+  --     checkLinSolveR GMRES_ aa1 b1 x1 >>= (`shouldBe` True)
+  --   it "GMRES (5 x 5 sparse)" $
+  --     checkLinSolveR GMRES_ tm7 tvb7 tvx7 >>= (`shouldBe` True)  
+  --   it "BCG (2 x 2 dense)" $
+  --     checkLinSolveR BCG_ aa0 b0 x0true >>= (`shouldBe` True)
+  --   it "BCG (3 x 3 sparse, symmetric pos.def.)" $
+  --     checkLinSolveR BCG_ aa2 b2 x2 >>= (`shouldBe` True)
+  --   -- it "BiCGSTAB (2 x 2 dense)" $ 
+  --   --   nearZero (normSq (linSolve BICGSTAB_ aa0 b0 ^-^ x0true)) `shouldBe` True
+  --   it "BiCGSTAB (3 x 3 sparse, symmetric pos.def.)" $ 
+  --     checkLinSolveR BICGSTAB_ aa2 b2 x2 >>= (`shouldBe` True)
+  --   it "CGS (2 x 2 dense)" $ 
+  --     checkLinSolveR CGS_ aa0 b0 x0true >>= (`shouldBe` True)
+  --   it "CGS (3 x 3 sparse, SPD)" $ 
+  --     checkLinSolveR CGS_ aa2 b2 x2 >>= (`shouldBe` True)
+  --   it "Moore-Penrose pseudoinverse (3 x 2 dense)" $
+  --     checkPinv aa10 b10 x10 >>= (`shouldBe` True)
       
   -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Complex)" $ do
   --   it "<\\> (3 x 3 dense)" $
   --     checkBackslash tmc4 tvc4 >>= (`shouldBe` True)
       
-  describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
-    it "luSolve (4 x 4 sparse)" $ 
-      checkLuSolve aa1 b1 >>= (`shouldBe` (True, True, True))
-  -- describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Complex)" $ 
-  --   it "luSolve (3 x 3 dense)" $ 
-  --     checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True, True)) 
+  -- describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
+  --   it "luSolve (4 x 4 sparse)" $ 
+  --     checkLuSolve aa1 b1 >>= (`shouldBe` (True, True, True))
+  -- -- describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Complex)" $ 
+  -- --   it "luSolve (3 x 3 dense)" $ 
+  -- --     checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True, True)) 
       
   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
     it "qr (3 x 3 dense)" $ 
@@ -170,16 +170,16 @@ spec = do
       checkQr aa3cx >>= (`shouldBe` True)
     it "qr (3 x 3 dense)" $
       checkQr tmc4 >>= (`shouldBe` True)  
-  describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
-    it "lu (3 x 3 dense)" $
-      checkLu tm2 >>= (`shouldBe` True)
-    it "lu (4 x 4 dense)" $
-      checkLu tm6 >>= (`shouldBe` True)
-    it "lu (5 x 5 sparse)" $
-      checkLu tm7 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ 
-    it "lu (3 x 3 dense)" $
-      checkLu tmc4 >>= (`shouldBe` True)
+  -- describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
+  --   -- it "lu (3 x 3 dense)" $
+  --   --   checkLu tm2 >>= (`shouldBe` True)
+  --   it "lu (4 x 4 dense)" $
+  --     checkLu tm6 >>= (`shouldBe` True)
+  --   it "lu (5 x 5 sparse)" $
+  --     checkLu tm7 >>= (`shouldBe` True)
+  -- describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ 
+  --   it "lu (3 x 3 dense)" $
+  --     checkLu tmc4 >>= (`shouldBe` True)
   
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
@@ -189,14 +189,14 @@ spec = do
   --     checkChol (tmc5 ##^ tmc5) >>= (`shouldBe` True) 
   
       
-  describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
-    it "arnoldi (4 x 4 dense)" $
-      checkArnoldi tm6 4 >>= (`shouldBe` True)
-    it "arnoldi (5 x 5 sparse)" $
-      checkArnoldi tm7 5 >>= (`shouldBe` True)
-  -- describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Complex)" $ do      
+  -- describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
   --   it "arnoldi (4 x 4 dense)" $
-  --     checkArnoldi tmc4 4 >>= (`shouldBe` True)      
+  --     checkArnoldi tm6 4 >>= (`shouldBe` True)
+  --   it "arnoldi (5 x 5 sparse)" $
+  --     checkArnoldi tm7 5 >>= (`shouldBe` True)
+  -- -- describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Complex)" $ do      
+  -- --   it "arnoldi (4 x 4 dense)" $
+  -- --     checkArnoldi tmc4 4 >>= (`shouldBe` True)      
 
 
 {- linear systems -}
@@ -216,27 +216,27 @@ checkLinSolve method aa b x x0r = do
   xhat <- linSolve0 method aa b x0r
   return $ nearZero $ norm2 (x ^-^ xhat)
 
-checkLinSolveR
-  :: (MonadIO m, MonadCatch m) =>
-     LinSolveMethod 
-     -> SpMatrix Double        -- ^ operator
-     -> SpVector Double        -- ^ r.h.s
-     -> SpVector Double        -- ^ candidate solution
-     -> m Bool
-checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
-  x0r = mkSpVR n $ replicate n 0.1
-  n = ncols aa
+-- checkLinSolveR
+--   :: (MonadIO m, MonadCatch m) =>
+--      LinSolveMethod 
+--      -> SpMatrix Double        -- ^ operator
+--      -> SpVector Double        -- ^ r.h.s
+--      -> SpVector Double        -- ^ candidate solution
+--      -> m Bool
+-- checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
+--   x0r = mkSpVR n $ replicate n 0.1
+--   n = ncols aa
 
-checkLinSolveC
-  :: (MonadIO m, MonadCatch m) =>
-     LinSolveMethod
-     -> SpMatrix (Complex Double)
-     -> SpVector (Complex Double)
-     -> SpVector (Complex Double)
-     -> m Bool
-checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
-  x0r = mkSpVC n $ replicate n (0.1 :+ 0.1)
-  n = ncols aa
+-- checkLinSolveC
+--   :: (MonadIO m, MonadCatch m) =>
+--      LinSolveMethod
+--      -> SpMatrix (Complex Double)
+--      -> SpVector (Complex Double)
+--      -> SpVector (Complex Double)
+--      -> m Bool
+-- checkLinSolveC method aa b x = checkLinSolve method aa b x x0r where
+--   x0r = mkSpVC n $ replicate n (0.1 :+ 0.1)
+--   n = ncols aa
 
 
 
@@ -1072,7 +1072,7 @@ tm7 = a ^+^ b ^+^ c where
 
 tvx7 = mkSpVR 5 [3,8,-12,4,9]
 
-tvb7 = tm7 #> tvx7
+-- tvb7 = tm7 #> tvx7
 
 
 
@@ -1129,9 +1129,9 @@ tmc6 = fromListDenseSM 4 (zipWith (:+) [0..15] (replicate 16 1))
 aa10 :: SpMatrix Double
 aa10 = fromListDenseSM 3 [1,2,3,4,5,6]
 
-x10, b10 :: SpVector Double
+x10 :: SpVector Double
 x10 = fromListDenseSV 2 [2,3]
-b10 = aa10 #> x10
+-- b10 = aa10 #> x10
 
 --
 
