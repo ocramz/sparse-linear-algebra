@@ -28,15 +28,13 @@ import Control.Monad.IO.Class
 
 import qualified Data.Vector as V (Vector)
 
-import Data.VectorSpace hiding (magnitude)
-
 import Data.Sparse.Types
 import Numeric.Eps
 
 
 
 -- * Matrix and vector elements (optionally Complex)
-class (Eq e , AdditiveGroup e, Fractional e, Floating e, Num (EltMag e), Ord (EltMag e)) => Elt e where
+class (Eq e , Fractional e, Floating e, Num (EltMag e), Ord (EltMag e)) => Elt e where
   type EltMag e :: *
   -- | Complex conjugate, or identity function if its input is real-valued
   conj :: e -> e
@@ -46,7 +44,7 @@ class (Eq e , AdditiveGroup e, Fractional e, Floating e, Num (EltMag e), Ord (El
 
 instance Elt Double where {type EltMag Double = Double ; mag = id}
 instance Elt Float where {type EltMag Float = Float; mag = id}
-instance (AdditiveGroup e, RealFloat e) => Elt (Complex e) where
+instance (RealFloat e) => Elt (Complex e) where
   type EltMag (Complex e) = e
   conj = conjugate
   mag = magnitude
@@ -54,28 +52,65 @@ instance (AdditiveGroup e, RealFloat e) => Elt (Complex e) where
 
 
 
+infixl 6 ^+^, ^-^
+
+-- * Additive group
+class AdditiveGroup v where
+  -- | The zero element: identity for '(^+^)'
+  zeroV :: v
+  -- | Add vectors
+  (^+^) :: v -> v -> v
+  -- | Additive inverse
+  negateV :: v -> v
+  -- | Group subtraction
+  (^-^) :: v -> v -> v
+
+
+infixr 7 .*
+
+-- * Vector space @v@.
+class (AdditiveGroup v, Num (Scalar v)) => VectorSpace v where
+  type Scalar v :: *
+  -- | Scale a vector
+  (.*) :: Scalar v -> v -> v
+
+-- | Adds inner (dot) products.
+class (VectorSpace v, AdditiveGroup (Scalar v)) => InnerSpace v where
+  -- | Inner/dot product
+  (<.>) :: v -> v -> Scalar v
 
 
 
--- * Vector space
 
--- | Scale a vector 
-(.*) :: VectorSpace v => Scalar v -> v -> v
-(.*) = (*^)
+
+
+
+
+infixr 7 ./
+infixl 7 *.
 
 -- | Scale a vector by the reciprocal of a number (e.g. for normalization)
-(./) :: (VectorSpace v, Fractional (Scalar v)) => v -> Scalar v -> v
-v ./ n = recip n .* v
+(./) :: (VectorSpace v, s ~ Scalar v, Fractional s) => v -> s -> v
+v ./ s = (recip s) .* v
+
+-- | Vector multiplied by scalar
+(*.) :: (VectorSpace v, s ~ Scalar v) => v -> s -> v
+(*.) = flip (.*)  
+
+
+
+
+
+
 
 -- | Convex combination of two vectors (NB: 0 <= `a` <= 1). 
-cvx :: (VectorSpace e, Num (Scalar e)) => Scalar e -> e -> e -> e
+cvx :: VectorSpace v => Scalar v -> v -> v -> v
 cvx a u v = a .* u ^+^ ((1-a) .* v)
 
 
 -- linearCombination :: (VectorSpace v , Foldable t) => t (Scalar v, v) -> v
--- linearCombination  =  foldr (\(a, x) (b, y) -> (a .* x) ^+^ (b .* y)) 
+-- linearCombination  =  foldr (\(a, x) (b, y) -> (a .* x) ^+^ (b .* y)) (0, zeroV)
 
--- linComb a v = a .* v
 
 
 
@@ -150,27 +185,27 @@ normInftyC x = maximum (magnitude <$> x)
 
 
 
-instance Normed Double where
-  type Magnitude Double = Double
-  type RealScalar Double = Double
-  norm1 = abs
-  norm2Sq = abs
-  normP _ = abs
-  normalize _ _ = 1
-  normalize2 _ = 1
-  norm2 = abs
-  norm2' = abs
+-- instance Normed Double where
+--   type Magnitude Double = Double
+--   type RealScalar Double = Double
+--   norm1 = abs
+--   norm2Sq = abs
+--   normP _ = abs
+--   normalize _ _ = 1
+--   normalize2 _ = 1
+--   norm2 = abs
+--   norm2' = abs
 
-instance Normed (Complex Double) where
-  type Magnitude (Complex Double) = Double
-  type RealScalar (Complex Double) = Double
-  norm1 (r :+ i) = abs r + abs i
-  norm2Sq = (**2) . magnitude
-  normP p (r :+ i) = (r**p + i**p)**(1/p)
-  normalize p c = c ./ normP p c
-  normalize2 c = c ./ magnitude c
-  norm2 = magnitude
-  norm2' = magnitude
+-- instance Normed (Complex Double) where
+--   type Magnitude (Complex Double) = Double
+--   type RealScalar (Complex Double) = Double
+--   norm1 (r :+ i) = abs r + abs i
+--   norm2Sq = (**2) . magnitude
+--   normP p (r :+ i) = (r**p + i**p)**(1/p)
+--   normalize p c = c ./ normP p c
+--   normalize2 c = c ./ magnitude c
+--   norm2 = magnitude
+--   norm2' = magnitude
   
 
 
@@ -228,7 +263,6 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
 
 
 
-
 -- a "sparse matrix ring" ?
 
 -- class MatrixRing m a => SparseMatrixRing m a where
@@ -280,44 +314,29 @@ class LinearVectorSpace v => LinearSystem v where
 
 -- * FiniteDim : finite-dimensional objects
 
-class Functor f => FiniteDim f where
-  type FDSize f :: *
+class FiniteDim f where
+  type FDSize f
   -- | Dimension (i.e. Int for SpVector, (Int, Int) for SpMatrix)
-  dim :: f a -> FDSize f
-
-class FiniteDim' f where
-  type FDSize' f :: *
-  dim' :: f -> FDSize' f
-
-
-
-
+  dim :: f -> FDSize f
 
 
 
 
 -- * HasData : accessing inner data (do not export)
 
-class HasData f a where
-  type HDData f a :: *
+class HasData f where
+  type HDData f 
   -- | Number of nonzeros
-  nnz :: f a -> Int
-  dat :: f a -> HDData f a
+  nnz :: f -> Int
+  dat :: f -> HDData f
 
-class HasData' f where
-  type HDD f :: *
-  nnz' :: f -> Int
-  dat' :: f -> HDD f
 
 
 -- * Sparse : sparse datastructures
 
-class (FiniteDim f, HasData f a) => Sparse f a where
+class (FiniteDim f, HasData f) => Sparse f where
   -- | Sparsity (fraction of nonzero elements)
-  spy :: Fractional b => f a -> b
-
-class (FiniteDim' f, HasData' f) => Sparse' f where
-  spy' :: Fractional b => f -> b
+  spy :: Fractional b => f -> b
 
 
 
@@ -334,22 +353,15 @@ class Functor f => Set f where
 
 
 -- * SpContainer : sparse container datastructures. Insertion, lookup, toList, lookup with 0 default
-class Sparse c a => SpContainer c a where
+class Sparse c => SpContainer c where
   type ScIx c :: *
-  scInsert :: ScIx c -> a -> c a -> c a
-  scLookup :: c a -> ScIx c -> Maybe a
-  scToList :: c a -> [(ScIx c, a)]
+  type ScElem c
+  scInsert :: ScIx c -> ScElem c -> c -> c
+  scLookup :: c -> ScIx c -> Maybe (ScElem c)
+  scToList :: c -> [(ScIx c, ScElem c)]
   -- -- | Lookup with default, infix form ("safe" : should throw an exception if lookup is outside matrix bounds)
-  (@@) :: c a -> ScIx c -> a
+  (@@) :: c -> ScIx c -> ScElem c
 
-
-
-class SpContainer' c where
-  type ScIx' c :: *
-  scInsert' :: ScIx' c -> a -> c -> c
-  scLookup' :: c -> ScIx' c -> Maybe a
-  scToList' :: c -> [a]
-  -- (@@')
 
 
 
@@ -358,11 +370,11 @@ class SpContainer' c where
 
 -- * SparseVector
 
-class SpContainer v e => SparseVector v e where
+class SpContainer v => SparseVector v where
   type SpvIx v :: *
-  svFromList :: Int -> [(SpvIx v, e)] -> v e
-  svFromListDense :: Int -> [e] -> v e
-  svConcat :: Foldable t => t (v e) -> v e
+  svFromList :: Int -> [(SpvIx v, ScElem v)] -> v
+  svFromListDense :: Int -> [ScElem v] -> v
+  svConcat :: Foldable t => t v -> v
   -- svZipWith :: (e -> e -> e) -> v e -> v e -> v e
 
 
@@ -374,27 +386,20 @@ class SpContainer v e => SparseVector v e where
 
 -- * SparseMatrix
 
-class SpContainer m e => SparseMatrix m e where
-  smFromVector :: LexOrd -> (Int, Int) -> V.Vector (IxRow, IxCol, e) -> m e
+class SpContainer m => SparseMatrix m where
+  smFromVector :: LexOrd -> (Int, Int) -> V.Vector (IxRow, IxCol, ScElem m) -> m
   -- smFromFoldableDense :: Foldable t => t e -> m e  
-  smTranspose :: m e -> m e
+  smTranspose :: m -> m
   -- smExtractSubmatrix ::
   --   m e -> (IxRow, IxRow) -> (IxCol, IxCol) -> m e
-  encodeIx :: m e -> LexOrd -> (IxRow, IxCol) -> LexIx
-  decodeIx :: m e -> LexOrd -> LexIx -> (IxRow, IxCol)
+  encodeIx :: m -> LexOrd -> (IxRow, IxCol) -> LexIx
+  decodeIx :: m -> LexOrd -> LexIx -> (IxRow, IxCol)
 
 
 -- data RowsFirst = RowsFirst
 -- data ColsFirst = ColsFirst
 
--- class SpContainer m e => SparseMatrix m o e where
---   smFromVector :: o -> (Int, Int) -> V.Vector (IxRow, IxCol, e) -> m e
---   -- smFromFoldableDense :: Foldable t => t e -> m e  
---   smTranspose :: o -> m e -> m e
---   -- smExtractSubmatrix ::
---   --   m e -> (IxRow, IxRow) -> (IxCol, IxCol) -> m e
---   encodeIx :: m e -> o -> (IxRow, IxCol) -> LexIx
---   decodeIx :: m e -> o -> LexIx -> (IxRow, IxCol)
+
 
 
 

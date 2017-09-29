@@ -29,7 +29,7 @@ import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.State.Strict  as MTS -- (runStateT)
 import Data.Foldable (foldrM)
 
-import Data.VectorSpace
+
 
 
 data ConvergenceStatus a = BufferNotReady

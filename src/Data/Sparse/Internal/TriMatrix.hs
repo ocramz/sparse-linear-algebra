@@ -22,7 +22,6 @@ import Data.Sparse.Types
 -- import Data.Sparse.Utils
 import Data.Sparse.Internal.SList
 
-import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 import Data.Sparse.Internal.CSC
 import Data.Sparse.Internal.SVector
@@ -141,7 +140,7 @@ lookupWD rlu clu aa i j = fromMaybe 0 (rlu i aa >>= clu j)
 {- | LU factorization : store L and U^T in TriMatrix format -}
 
 
-lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t),
+lu :: (Scalar (SpVector t) ~ t, Elt t, AdditiveGroup t, VectorSpace (SpVector t),
       MonadThrow m, MonadIO m, PrintDense (SpMatrix t),
       Epsilon t) =>
      SpMatrix t -> m (SpMatrix t, SpMatrix t) -- ^ L, U
@@ -177,7 +176,7 @@ luConfig d = IterConf 0 True vf prf where
 
 
 
-uStep :: (Elt a, Epsilon a) =>
+uStep :: (Elt a, Epsilon a, AdditiveGroup a) =>
      SpMatrix a
      -> IM.IntMap (SList a)
      -> IM.IntMap (SList a)
@@ -185,7 +184,7 @@ uStep :: (Elt a, Epsilon a) =>
      -> (IM.IntMap (SList a), a)   -- ^ updated U, i'th diagonal element Uii
 uStep amat lmat umat i = (foldr ins umat [i .. n-1], udiag) where
   n = ncols amat
-  udiag = amat@@!(i,i) - (li <.> umat ! i) -- i'th diag element of U
+  udiag = amat@@!(i,i) - (li <.> (umat ! i)) -- i'th diag element of U
   li = lmat ! i                            -- i'th row of L
   ins j acc
       | i == j   = appendIM j (i, udiag) acc
@@ -196,7 +195,7 @@ uStep amat lmat umat i = (foldr ins umat [i .. n-1], udiag) where
     uj = umat ! j
   
 
-lStep :: (Elt a, Epsilon a) =>
+lStep :: (Elt a, Epsilon a, AdditiveGroup a) =>
      SpMatrix a
      -> IM.IntMap (SList a)
      -> IM.IntMap (SList a)

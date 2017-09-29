@@ -71,7 +71,6 @@ library
   build-depends:       base >= 4.7 && < 5
                      , primitive
                      -- , deepseq
-                     , vector-space
                      , containers
                      , vector
                      , vector-algorithms
@@ -115,7 +114,6 @@ test-suite spec
                      , mwc-random
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra
-                     , vector-space
                      , scientific
                      , matrix-market-attoparsec
 

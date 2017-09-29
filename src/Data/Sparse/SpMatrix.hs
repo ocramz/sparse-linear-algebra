@@ -32,7 +32,7 @@ import Data.Complex
 import Data.Foldable (foldl')
 import Data.Maybe
 
-import Data.VectorSpace hiding (magnitude)
+-- import Data.VectorSpace hiding (magnitude)
 
 
 -- *
@@ -92,21 +92,22 @@ instance Num a => AdditiveGroup (SpMatrix a) where
 
 
 -- | 'SpMatrix'es are maps between finite-dimensional spaces
-instance FiniteDim SpMatrix where
-  type FDSize SpMatrix = (Rows, Cols)
+instance FiniteDim (SpMatrix a) where
+  type FDSize (SpMatrix a) = (Rows, Cols)
   dim = smDim
 
-instance HasData SpMatrix a where
-  type HDData SpMatrix a = IntM (IntM a)
+instance HasData (SpMatrix a) where
+  type HDData (SpMatrix a) = IntM (IntM a)
   nnz = nzSM
   dat = smData
 
-instance Sparse SpMatrix a where
+instance Sparse (SpMatrix a) where
   spy = spySM
 
 -- | 'SpMatrix'es are sparse containers too, i.e. any specific component may be missing (so it is assumed to be 0)
-instance Num a => SpContainer SpMatrix a where
-  type ScIx SpMatrix = (Rows, Cols)
+instance Num a => SpContainer (SpMatrix a) where
+  type ScIx (SpMatrix a) = (Rows, Cols)
+  type ScElem (SpMatrix a) = a
   scInsert (i,j) = insertSpMatrix i j
   scLookup m (i, j) = lookupSM m i j
   m @@ d | isValidIxSM m d = m @@! d

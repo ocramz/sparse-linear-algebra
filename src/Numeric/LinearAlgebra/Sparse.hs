@@ -138,7 +138,7 @@ import qualified Control.Monad.Trans.State  as MTS -- (runStateT)
 -- import Control.Monad.Trans.Writer (runWriterT)
 import Data.Complex
 
-import Data.VectorSpace hiding (magnitude)
+-- import Data.VectorSpace hiding (magnitude)
 
 import qualified Data.Sparse.Internal.IntM as I
 -- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
@@ -1014,7 +1014,7 @@ linSolve0 method aa b x0
        BICGSTAB_ -> solver "BICGSTAB" nits _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
        BCG_ -> solver "BCG" nits _xBcg (bcgStep aa) (bcgInit aa b x0)
        CGS_ -> solver "CGS" nits _x  (cgsStep aa r0hat) (cgsInit aa b x0)
-       GMRES_ -> gmres aa b where                
+       GMRES_ -> gmres aa b            
        CGNE_ -> solver "CGNE" nits _xCgne (cgneStep aa) (cgneInit aa b x0)
      r0hat = b ^-^ (aa #> x0)
      nits = 200
@@ -1032,13 +1032,14 @@ linSolve0 method aa b x0
 
 
 -- | <\> uses the GMRES method as default
-instance LinearSystem (SpVector Double) where
-  aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
-    where n = ncols aa
 
-instance LinearSystem (SpVector (Complex Double)) where
-  aa <\> b = linSolve0 GMRES_ aa b (mkSpVC n $ replicate n 0.1)
-    where n = ncols aa
+-- instance LinearSystem (SpVector Double) where
+--   aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
+--     where n = ncols aa
+
+-- instance LinearSystem (SpVector (Complex Double)) where
+--   aa <\> b = linSolve0 GMRES_ aa b (mkSpVC n $ replicate n 0.1)
+--     where n = ncols aa
 
 
 
@@ -1072,12 +1073,12 @@ instance LinearSystem (SpVector (Complex Double)) where
 
 -- test data
 
--- aa4 : eigenvalues 1 (mult.=2) and -1
-aa4 :: SpMatrix Double
-aa4 = fromListDenseSM 3 [3,2,-2,2,2,-1,6,5,-4] 
+-- -- aa4 : eigenvalues 1 (mult.=2) and -1
+-- aa4 :: SpMatrix Double
+-- aa4 = fromListDenseSM 3 [3,2,-2,2,2,-1,6,5,-4] 
 
-aa4c :: SpMatrix (Complex Double)
-aa4c = toC <$> aa4
+-- aa4c :: SpMatrix (Complex Double)
+-- aa4c = toC <$> aa4
 
 
 

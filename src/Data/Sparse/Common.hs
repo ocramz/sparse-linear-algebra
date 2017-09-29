@@ -51,7 +51,6 @@ import Data.Complex
 import Data.Maybe (fromMaybe, maybe)
 import qualified Data.Vector as V
 
-import Data.VectorSpace
 
 
 
@@ -236,15 +235,15 @@ FIXME : matVec is more general than SpVector's :
   :: (Normed f1, Num b, Functor f) => f (f1 b) -> f1 b -> f b
 -}
 
-instance LinearVectorSpace (SpVector Double) where
-  type MatrixType (SpVector Double) = SpMatrix Double
-  (#>) = matVecSD
-  (<#) = vecMatSD
+-- instance LinearVectorSpace (SpVector Double) where
+--   type MatrixType (SpVector Double) = SpMatrix Double
+--   (#>) = matVecSD
+--   (<#) = vecMatSD
 
-instance LinearVectorSpace (SpVector (Complex Double)) where
-  type MatrixType (SpVector (Complex Double)) = SpMatrix (Complex Double)
-  (#>) = matVecSD
-  (<#) = vecMatSD
+-- instance LinearVectorSpace (SpVector (Complex Double)) where
+--   type MatrixType (SpVector (Complex Double)) = SpMatrix (Complex Double)
+--   (#>) = matVecSD
+--   (<#) = vecMatSD
 
   
 
