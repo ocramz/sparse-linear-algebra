@@ -2,6 +2,7 @@
 module Data.Sparse.Internal.CSC where
 
 import Control.Monad (forM_, when)
+import Control.Monad.Primitive (PrimMonad(..), PrimState(..))
 
 import qualified Data.Graph as G
 import qualified Data.Vector as V
@@ -71,6 +72,7 @@ fromCSC0 mc = (rowIx, cols, cscVal mc) where
     colv <- VM.replicate l 0
     forM_ [0 .. n-1] (\i -> go colv i 0)
     return colv
+  go :: PrimMonad m => VM.MVector (PrimState m) Int -> Int -> Int -> m ()  
   go vm irow j = when (j < nj) $ do
                           VM.write vm (j + jmin) irow
                           go vm irow (succ j) where
@@ -110,15 +112,6 @@ transposeCSC mm = toCSC n m $ V.zip3 jj ii xx where
   (ii, jj, xx) = fromCSC0 mm
 
 
-
--- example data
-
--- row = np.array([0, 0, 1, 2, 2, 2])
--- col = np.array([0, 2, 2, 0, 1, 2])
--- data = np.array([1, 2, 3, 4, 5, 6])
-
-
-
 -- * Helpers
 
 cscToGraph :: CscMatrix a -> G.Graph
@@ -126,3 +119,12 @@ cscToGraph ll = G.buildG (0, m-1) $ V.toList (V.zip ill jll) -- graph of L
   where
    (m, _) = dim ll -- dimensions of L = bounds of G(L)
    (ill, jll, _) = fromCSC0 ll
+
+
+
+
+-- -- example data
+
+-- -- row = np.array([0, 0, 1, 2, 2, 2])
+-- -- col = np.array([0, 2, 2, 0, 1, 2])
+-- -- data = np.array([1, 2, 3, 4, 5, 6])
