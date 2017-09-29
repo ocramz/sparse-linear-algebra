@@ -6,7 +6,7 @@ import Numeric.LinearAlgebra.Class
 
 import GHC.Exts
 import Data.Complex
-import Data.VectorSpace
+
 import qualified Data.IntMap as IM
 
 
@@ -85,45 +85,45 @@ instance Num a => AdditiveGroup (IntM a) where
 
 
 
--- | ParamInstance can be used with all types that are instances of Set (which are by construction also instances of Functor)
-#define ParamInstance(f, t) \
-  instance VectorSpace (f t) where {type (Scalar (f (t))) = (t); n *^ im = fmap (* n) im};\
-  instance VectorSpace (f (Complex t)) where {type (Scalar (f (Complex t))) = Complex (t); n *^ im = fmap (* n) im};\
-  instance InnerSpace (f t) where {a <.> b = sum $ liftI2 (*) a b};\
-  instance InnerSpace (f (Complex t)) where {a <.> b = sum $ liftI2 (*) (conjugate <$> a) b};\
-  -- instance Normed (f t) where {type RealScalar (f t) = t ; type Magnitude (f t) = t ; norm1 a = sum (abs <$> a) ; norm2Sq a = sum $ liftI2 (*) a a; normP p v = sum u**(1/p) where u = fmap (**p) v; normalize = normzPR ; normalize2 = normz2R}; \
-  -- instance Normed (f (Complex t)) where {type RealScalar (f (Complex t)) = t; type Magnitude (f (Complex t)) = t; norm1 a = realPart $ sum (abs <$> a); norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a; normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v; normalize = normzPC; normalize2 = normz2C }
+-- -- | ParamInstance can be used with all types that are instances of Set (which are by construction also instances of Functor)
+-- #define ParamInstance(f, t) \
+--   instance VectorSpace (f t) where {type (Scalar (f (t))) = (t); n .* im = fmap (* n) im};\
+--   instance VectorSpace (f (Complex t)) where {type (Scalar (f (Complex t))) = Complex (t); n .* im = fmap (* n) im};\
+--   instance InnerSpace (f t) where {a <.> b = sum $ liftI2 (*) a b};\
+--   instance InnerSpace (f (Complex t)) where {a <.> b = sum $ liftI2 (*) (conjugate <$> a) b};\
+--   -- instance Normed (f t) where {type RealScalar (f t) = t ; type Magnitude (f t) = t ; norm1 a = sum (abs <$> a) ; norm2Sq a = sum $ liftI2 (*) a a; normP p v = sum u**(1/p) where u = fmap (**p) v; normalize = normzPR ; normalize2 = normz2R}; \
+--   -- instance Normed (f (Complex t)) where {type RealScalar (f (Complex t)) = t; type Magnitude (f (Complex t)) = t; norm1 a = realPart $ sum (abs <$> a); norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a; normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v; normalize = normzPC; normalize2 = normz2C }
 
 
-instance Normed (IntM Double) where
-  type RealScalar (IntM Double) = Double
-  type Magnitude (IntM Double) = Double
-  norm1 a = sum (abs <$> a)
-  norm2Sq a = sum $ liftI2 (*) a a
-  normP p v = sum u**(1/p) where u = fmap (**p) v
-  normalize p v = v ./ normP p v 
-  normalize2 v = v ./ norm2 v 
+-- instance Normed (IntM Double) where
+--   type RealScalar (IntM Double) = Double
+--   type Magnitude (IntM Double) = Double
+--   norm1 a = sum (abs <$> a)
+--   norm2Sq a = sum $ liftI2 (*) a a
+--   normP p v = sum u**(1/p) where u = fmap (**p) v
+--   normalize p v = v ./ normP p v 
+--   normalize2 v = v ./ norm2 v 
   
-instance Normed (IntM (Complex Double)) where
-  type RealScalar (IntM (Complex Double)) = Double
-  type Magnitude (IntM (Complex Double)) = Double
-  norm1 a = realPart $ sum (abs <$> a)
-  norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a
-  normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v
-  normalize p v = v ./ toC (normP p v)
-  normalize2 v = v ./ toC (norm2 v)
+-- instance Normed (IntM (Complex Double)) where
+--   type RealScalar (IntM (Complex Double)) = Double
+--   type Magnitude (IntM (Complex Double)) = Double
+--   norm1 a = realPart $ sum (abs <$> a)
+--   norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a
+--   normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v
+--   normalize p v = v ./ toC (normP p v)
+--   normalize2 v = v ./ toC (norm2 v)
 
 
 
 
 
 
--- | IntMap instances
-#define IntMapInstance(t) \
-  ParamInstance( IntM, t )
+-- -- | IntMap instances
+-- #define IntMapInstance(t) \
+--   ParamInstance( IntM, t )
 
-IntMapInstance(Double)
--- IntMapInstance(Float)
+-- IntMapInstance(Double)
+-- -- IntMapInstance(Float)
 
 
 

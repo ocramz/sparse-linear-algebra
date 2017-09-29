@@ -35,7 +35,7 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 
-import Data.VectorSpace hiding (magnitude)
+
 
 
 
@@ -87,22 +87,23 @@ foldlWithKeySV' f d v = foldlWithKey' f d (svData v)
 
 
 -- | 'SpVector's are finite-dimensional vectors
-instance FiniteDim SpVector where
-  type FDSize SpVector = Int
+instance FiniteDim (SpVector a) where
+  type FDSize (SpVector a) = Int
   dim = svDim  
 
-instance HasData SpVector a where
-  type HDData SpVector a = IntM a
+instance HasData (SpVector a) where
+  type HDData (SpVector a) = IntM a
   dat = svData
   nnz (SV _ x) = length x 
 
-instance Sparse SpVector a where
+instance Sparse (SpVector a) where
   spy = spySV
 
 
 -- | 'SpVector's are sparse containers too, i.e. any specific component may be missing (so it is assumed to be 0)
-instance Elt a => SpContainer SpVector a where
-  type ScIx SpVector = Int
+instance Elt a => SpContainer (SpVector a) where
+  type ScIx (SpVector a) = Int
+  type ScElem (SpVector a) = a
   scInsert = insertSpVector
   scLookup v i = lookupSV i v
   scToList = toListSV
@@ -120,19 +121,19 @@ instance Elt a => SpContainer SpVector a where
 
 
 
-#define SpVectorInstance(t) \
-  instance AdditiveGroup (SpVector (t)) where { zeroV = SV 0 empty; (^+^) = liftU2 (+); negateV = fmap negate };\
-  instance AdditiveGroup (SpVector (Complex t)) where { zeroV = SV 0 empty; (^+^) = liftU2 (+); negateV = fmap negate };\
-  instance VectorSpace (SpVector t) where { type (Scalar (SpVector t)) = t; n *^ v = scale n v};\
-  instance VectorSpace (SpVector (Complex t)) where { type (Scalar (SpVector (Complex t))) = Complex t; n *^ v = scale n v};\
-  instance InnerSpace (SpVector (t)) where { (<.>) = dotS };\
-  instance InnerSpace (SpVector (Complex (t))) where { (<.>) = dotS };\
-  instance Normed (SpVector (t)) where {type RealScalar (SpVector (t)) = t; type Magnitude (SpVector (t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)};\
-  instance Normed (SpVector (Complex t)) where {type RealScalar (SpVector (Complex t)) = t; type Magnitude (SpVector (Complex t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)}
+-- #define SpVectorInstance(t) \
+--   instance AdditiveGroup (SpVector (t)) where { zeroV = SV 0 empty; (^+^) = liftU2 (+); negateV = fmap negate };\
+--   instance AdditiveGroup (SpVector (Complex t)) where { zeroV = SV 0 empty; (^+^) = liftU2 (+); negateV = fmap negate };\
+--   instance VectorSpace (SpVector t) where { type (Scalar (SpVector t)) = t; n *^ v = scale n v};\
+--   instance VectorSpace (SpVector (Complex t)) where { type (Scalar (SpVector (Complex t))) = Complex t; n *^ v = scale n v};\
+--   instance InnerSpace (SpVector (t)) where { (<.>) = dotS };\
+--   instance InnerSpace (SpVector (Complex (t))) where { (<.>) = dotS };\
+--   instance Normed (SpVector (t)) where {type RealScalar (SpVector (t)) = t; type Magnitude (SpVector (t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)};\
+--   instance Normed (SpVector (Complex t)) where {type RealScalar (SpVector (Complex t)) = t; type Magnitude (SpVector (Complex t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)}
 
 
 
-SpVectorInstance(Double)
+-- SpVectorInstance(Double)
 -- SpVectorInstance(Float)
 
 

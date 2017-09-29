@@ -27,8 +27,6 @@ import Data.Complex
 -- import Data.Either (either)
 -- import Data.Typeable
 
-import Data.VectorSpace hiding (magnitude)
-
 -- import Control.Monad.State.Strict (execState)
 
 -- import qualified System.Random.MWC as MWC
