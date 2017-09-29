@@ -7,7 +7,7 @@ import Data.Sparse.Common
 
 import Control.Monad.Catch
 
-import Data.VectorSpace
+
 
 
 -- ** TFQMR

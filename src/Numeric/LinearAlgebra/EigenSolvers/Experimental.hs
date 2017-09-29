@@ -8,7 +8,6 @@ import Data.Sparse.Common
 import Control.Monad.Catch
 import Control.Monad.State.Strict
 
-import Data.VectorSpace
 
 
 -- | `eigRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair.
