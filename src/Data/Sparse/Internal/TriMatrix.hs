@@ -22,7 +22,6 @@ import Data.Sparse.Types
 -- import Data.Sparse.Utils
 import Data.Sparse.Internal.SList
 
-import Data.VectorSpace
 import Numeric.LinearAlgebra.Class
 import Data.Sparse.Internal.CSC
 import Data.Sparse.Internal.SVector

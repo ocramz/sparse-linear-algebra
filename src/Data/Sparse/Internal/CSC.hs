@@ -36,14 +36,14 @@ instance Show a => Show (CscMatrix a) where
 
 -- some instances
 
-instance FiniteDim CscMatrix where
-  type FDSize CscMatrix = (Int, Int)
+instance FiniteDim (CscMatrix a) where
+  type FDSize (CscMatrix a) = (Int, Int)
   dim m = (cscNrows m, cscNcols m)
 
-instance HasData CscMatrix a where
+instance HasData (CscMatrix a) where
   nnz = cscNz
   
-instance Sparse CscMatrix a where
+instance Sparse (CscMatrix a) where
   spy m = fromIntegral (nnz m) / fromIntegral (cscNrows m * cscNcols m)
 
   

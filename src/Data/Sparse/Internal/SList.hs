@@ -5,8 +5,6 @@ module Data.Sparse.Internal.SList where
 import Data.Sparse.Utils
 import Numeric.LinearAlgebra.Class
 
-import Data.VectorSpace
-
 
 
 
@@ -64,7 +62,7 @@ instance Elt a => AdditiveGroup (SList a) where
 
 instance Elt a => VectorSpace (SList a) where
   type Scalar (SList a) = a
-  a *^ v = fmap (* a) v
+  a .* v = fmap (* a) v
 
 
 instance (AdditiveGroup a, Elt a) => InnerSpace (SList a) where
