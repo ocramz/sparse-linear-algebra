@@ -58,7 +58,7 @@ infixl 6 ^+^, ^-^
 class AdditiveGroup v where
   -- | The zero element: identity for '(^+^)'
   zeroV :: v
-    -- | Add vectors
+  -- | Add vectors
   (^+^) :: v -> v -> v
   -- | Additive inverse
   negateV :: v -> v
