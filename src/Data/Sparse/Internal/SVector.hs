@@ -21,7 +21,7 @@ import Control.Monad.Primitive
 -- import Data.Sparse.Types
 import Data.Sparse.Internal.SVector.Mutable hiding (fromList)
 import qualified Data.Sparse.Internal.SVector.Mutable as SMV (fromList)
-import Data.VectorSpace
+
 
 import Numeric.LinearAlgebra.Class
 
@@ -46,7 +46,7 @@ instance Foldable SVector where
 instance Traversable SVector where
   traverse f (SV n ix v) = SV n ix <$> traverse f v
 
-instance HasData SVector a where
+instance HasData (SVector a) where
   nnz = length . svIx
   -- dat (SV _ _ x) = x
 
@@ -151,7 +151,7 @@ unionWithM g z (SV n1 ixu u) (SV n2 ixv v) = do
 
 #define SVType(t) \
   instance AdditiveGroup (SVector t) where {zeroV = SV 0 V.empty V.empty; (^+^) = unionWith (+) 0 ; negateV = fmap negate};\
-  instance VectorSpace (SVector t) where {type Scalar (SVector t) = (t); n *^ x = fmap (* n) x };\
+  instance VectorSpace (SVector t) where {type Scalar (SVector t) = (t); n .* x = fmap (* n) x };\
   instance InnerSpace (SVector t) where {a <.> b = sum $ intersectWith (*) a b}
   -- instance Normed (CsrVector t) where {norm p v = norm' p v}
   -- instance Hilbert (CsrVector t) where {x `dot` y = sum $ intersectWithCV (*) x y };\
@@ -159,7 +159,7 @@ unionWithM g z (SV n1 ixu u) (SV n2 ixv v) = do
 
 #define SVTypeC(t) \
   instance AdditiveGroup (SVector (Complex t)) where {zeroV = SV 0 V.empty V.empty; (^+^) = unionWith (+) (0 :+ 0) ; negateV = fmap negate};\
-  instance VectorSpace (SVector (Complex t)) where {type Scalar (SVector (Complex t)) = (Complex t); n *^ x = fmap (* n) x };\
+  instance VectorSpace (SVector (Complex t)) where {type Scalar (SVector (Complex t)) = (Complex t); n .* x = fmap (* n) x };\
   instance InnerSpace (SVector (Complex t)) where {x <.> y = sum $ intersectWith (*) (conjugate <$> x) y};\
 
 -- #define NormedType(t) \
@@ -167,28 +167,28 @@ unionWithM g z (SV n1 ixu u) (SV n2 ixv v) = do
 --   instance Normed (CsrVector (Complex t)) where { norm p v | p==1 = norm1 v | otherwise = norm2 v ; normalize p v = v ./ norm p v}
 
 
--- CVType(Int)
--- CVType(Integer)
-SVType(Float)
-SVType(Double)
--- CVType(CSChar)
--- CVType(CInt)
--- CVType(CShort)
--- CVType(CLong)
--- CVType(CLLong)
--- CVType(CIntMax)
-SVType(CFloat)
-SVType(CDouble)
+-- -- CVType(Int)
+-- -- CVType(Integer)
+-- SVType(Float)
+-- SVType(Double)
+-- -- CVType(CSChar)
+-- -- CVType(CInt)
+-- -- CVType(CShort)
+-- -- CVType(CLong)
+-- -- CVType(CLLong)
+-- -- CVType(CIntMax)
+-- SVType(CFloat)
+-- SVType(CDouble)
 
-SVTypeC(Float)
-SVTypeC(Double)  
-SVTypeC(CFloat)
-SVTypeC(CDouble)
+-- SVTypeC(Float)
+-- SVTypeC(Double)  
+-- SVTypeC(CFloat)
+-- SVTypeC(CDouble)
 
--- NormedType(Float)
--- NormedType(Double)
--- NormedType(CFloat)
--- NormedType(CDouble)    
+-- -- NormedType(Float)
+-- -- NormedType(Double)
+-- -- NormedType(CFloat)
+-- -- NormedType(CDouble)    
 
 
 
