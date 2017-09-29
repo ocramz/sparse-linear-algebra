@@ -43,18 +43,19 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "Numeric.LinearAlgebra.Sparse : Library" $ do
-    prop "Subtraction is cancellative" $ \(x :: SpVector Double) ->
-      norm2Sq (x ^-^ x) `shouldBe` zeroV
-    it "<.> : inner product (Real)" $
-      tv0 <.> tv0 `shouldBe` 61
+    -- prop "Subtraction is cancellative" $ \(x :: SpVector Double) ->
+    --   norm2Sq (x ^-^ x) `shouldBe` zeroV
+    -- it "<.> : inner product (Real)" $
+    --   tv0 <.> tv0 `shouldBe` 61
     -- it "<.> : inner product (Complex)" $
     --   tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
     it "transpose : sparse matrix transpose" $
       transpose m1 `shouldBe` m1t
-    it "(#>) : matrix-vector product (Real)" $
-      nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
-    it "(<#) : vector-matrix product (Real)" $
-      nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True  
+    -- it "(#>) : matrix-vector product (Real)" $
+    --   nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
+    -- it "(<#) : vector-matrix product (Real)" $
+    --   nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True
+  
     it "(##) : matrix-matrix product (Real, square)" $ 
       (m1 ## m2) `shouldBe` m1m2
     it "(##) : matrix-matrix product (Real, rectangular)" $ do
@@ -81,45 +82,45 @@ spec = do
     it "isLowerTriSM : checks whether matrix is lower triangular" $
       isLowerTriSM tm8' && isUpperTriSM tm8 `shouldBe` True
       
-    it "untilConvergedG0 : early termination by iteration count and termination by convergence" $ 
-     let
-      n1 = 4
-      nexp1 = fromIntegral n1 / fromIntegral (2^n1) -- 0.25
-      f x = x/2
-      mm1 = untilConvergedG0 "blah"
-               (IterConf n1 False id print) (1/(2^n1)) f (fromIntegral n1 :: Double)
-      n2 = 2^16
-      mm2 = untilConvergedG0 "blah"
-               (IterConf n2 False id print) (1/(2^n2)) f (fromIntegral n1 :: Double)
-      eh (NotConvergedE _ _ x) = return x
-      in
-       do x1 <- mm1 `catch` eh
-          x1 `shouldBe` nexp1
-          x2 <- mm2 `catch` eh
-          nearZero x2 `shouldBe` True
+    -- it "untilConvergedG0 : early termination by iteration count and termination by convergence" $ 
+    --  let
+    --   n1 = 4
+    --   nexp1 = fromIntegral n1 / fromIntegral (2^n1) -- 0.25
+    --   f x = x/2
+    --   mm1 = untilConvergedG0 "blah"
+    --            (IterConf n1 False id print) (1/(2^n1)) f (fromIntegral n1 :: Double)
+    --   n2 = 2^16
+    --   mm2 = untilConvergedG0 "blah"
+    --            (IterConf n2 False id print) (1/(2^n2)) f (fromIntegral n1 :: Double)
+    --   eh (NotConvergedE _ _ x) = return x
+    --   in
+    --    do x1 <- mm1 `catch` eh
+    --       x1 `shouldBe` nexp1
+    --       x2 <- mm2 `catch` eh
+    --       nearZero x2 `shouldBe` True
       
      
 
-  describe "QuickCheck properties:" $ do
-    prop "prop_matSPD_vec : (m #^# m) is symmetric positive definite" $
-      \(PropMatSPDVec (m :: SpMatrix Double) v) -> prop_spd m v
-    -- prop "prop_matSPD_vec : (m #^# m) is symmetric positive definite" $
-    --   \(PropMatSPDVec (m :: SpMatrix (Complex Double)) v) -> prop_spd m v  
-    prop "prop_dot : (v <.> v) ~= 1 if ||v|| == 1" $
-      \(v :: SpVector Double) -> prop_dot v
-    prop "prop_matMat1 : (A ## B)^T == (B^T ## A^T)" $
-      \p@(PropMatMat (_ :: SpMatrix Double) _) -> prop_matMat1 p
-    prop "prop_matMat2 : M^T ##^ M == M #^# M^T" $
-      \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
-    -- prop "prop_matMat2 : M^T ##^ M == M #^# M^T , Complex" $
-    --   \p@(PropMat (_ :: SpMatrix (Complex Double))) -> whenFail (prd $ unPropMat p) (prop_matMat2 p :: Bool)
+  -- describe "QuickCheck properties:" $ do
+  --   prop "prop_matSPD_vec : (m #^# m) is symmetric positive definite" $
+  --     \(PropMatSPDVec (m :: SpMatrix Double) v) -> prop_spd m v
+  --   -- prop "prop_matSPD_vec : (m #^# m) is symmetric positive definite" $
+  --   --   \(PropMatSPDVec (m :: SpMatrix (Complex Double)) v) -> prop_spd m v  
+  --   prop "prop_dot : (v <.> v) ~= 1 if ||v|| == 1" $
+  --     \(v :: SpVector Double) -> prop_dot v
+  --   prop "prop_matMat1 : (A ## B)^T == (B^T ## A^T)" $
+  --     \p@(PropMatMat (_ :: SpMatrix Double) _) -> prop_matMat1 p
+  --   prop "prop_matMat2 : M^T ##^ M == M #^# M^T" $
+  --     \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
+  --   -- prop "prop_matMat2 : M^T ##^ M == M #^# M^T , Complex" $
+  --   --   \p@(PropMat (_ :: SpMatrix (Complex Double))) -> whenFail (prd $ unPropMat p) (prop_matMat2 p :: Bool)
                                                        
-    -- prop "prop_QR : Q R = A, Q is orthogonal, R is upper triangular" $
-    --   \p@(PropMatI (_ :: SpMatrix Double)) -> prop_QR p
-    -- prop "prop_Cholesky" $ \p@(PropMat_SPD (_ :: SpMatrix Double)) -> prop_Cholesky p
-    -- prop "prop_linSolve GMRES" $ prop_linSolve GMRES_
-      -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
-    --   prop_psd aa2 v
+  --   -- prop "prop_QR : Q R = A, Q is orthogonal, R is upper triangular" $
+  --   --   \p@(PropMatI (_ :: SpMatrix Double)) -> prop_QR p
+  --   -- prop "prop_Cholesky" $ \p@(PropMat_SPD (_ :: SpMatrix Double)) -> prop_Cholesky p
+  --   -- prop "prop_linSolve GMRES" $ prop_linSolve GMRES_
+  --     -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
+  --   --   prop_psd aa2 v
     
   -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
   --   -- it "TFQMR (2 x 2 dense)" $
@@ -507,24 +508,6 @@ genSpMDiagonal f n = do
 
 
 
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -602,46 +585,46 @@ genSpMI m = do
 
 
 
--- | An arbitrary Householder reflection matrix 
-newtype PropHhReflMat a = PropHhReflMat { unHh :: SpMatrix a} deriving Show
-instance Arbitrary (PropHhReflMat Double) where
-  arbitrary = sized (\n -> PropHhReflMat <$> genReflMat n) `suchThat` ((> 2) . nrows . unHh)
+-- -- | An arbitrary Householder reflection matrix 
+-- newtype PropHhReflMat a = PropHhReflMat { unHh :: SpMatrix a} deriving Show
+-- instance Arbitrary (PropHhReflMat Double) where
+--   arbitrary = sized (\n -> PropHhReflMat <$> genReflMat n) `suchThat` ((> 2) . nrows . unHh)
 
-genReflMat :: Int -> Gen (SpMatrix Double)
-genReflMat n = do
-  v <- normalize2 <$> (genSpVDense n :: Gen (SpVector Double))
-  return $ hhRefl v
-
-
+-- genReflMat :: Int -> Gen (SpMatrix Double)
+-- genReflMat n = do
+--   v <- normalize2 <$> (genSpVDense n :: Gen (SpVector Double))
+--   return $ hhRefl v
 
 
--- a product of a "large" number of random Householder matrices
-newtype PropMatUnitary a = PropMatUnitary {unUnitary :: SpMatrix a} deriving Show
-instance Arbitrary (PropMatUnitary Double) where
-  arbitrary = sized (\n -> PropMatUnitary <$> genReflMat n) `suchThat` ((> 2) . nrows . unUnitary)
+
+
+-- -- a product of a "large" number of random Householder matrices
+-- newtype PropMatUnitary a = PropMatUnitary {unUnitary :: SpMatrix a} deriving Show
+-- instance Arbitrary (PropMatUnitary Double) where
+--   arbitrary = sized (\n -> PropMatUnitary <$> genReflMat n) `suchThat` ((> 2) . nrows . unUnitary)
   
-genUnitary :: Int -> Gen (SpMatrix Double)
-genUnitary n = do
-  q <- vectorOf (10 * n) $ genReflMat n  -- random Householder matrix
-  return $ foldr (##) (eye n) q 
+-- genUnitary :: Int -> Gen (SpMatrix Double)
+-- genUnitary n = do
+--   q <- vectorOf (10 * n) $ genReflMat n  -- random Householder matrix
+--   return $ foldr (##) (eye n) q 
 
-prop_unitary :: (MatrixRing (SpMatrix a), Epsilon a, Eq a) =>
-     PropMatUnitary a -> Bool
-prop_unitary (PropMatUnitary m) = isOrthogonalSM m
-
-
+-- prop_unitary :: (MatrixRing (SpMatrix a), Epsilon a, Eq a) =>
+--      PropMatUnitary a -> Bool
+-- prop_unitary (PropMatUnitary m) = isOrthogonalSM m
 
 
--- | A symmetric, positive-definite matrix
-newtype PropMatSPD a = PropMatSPD {unPropMatSPD :: SpMatrix a} deriving (Show)
-instance Arbitrary (PropMatSPD Double) where
-  arbitrary = sized genSpM_SPD `suchThat` ((> 2) . nrows . unPropMatSPD)
 
-genSpM_SPD :: Int -> Gen (PropMatSPD Double)
-genSpM_SPD n = do
-  q <- genUnitary n 
-  d <- genSpMDiagonal (all (> 0)) n          -- positive diagonal
-  return $ PropMatSPD ( q ## (d ##^ q) )
+
+-- -- | A symmetric, positive-definite matrix
+-- newtype PropMatSPD a = PropMatSPD {unPropMatSPD :: SpMatrix a} deriving (Show)
+-- instance Arbitrary (PropMatSPD Double) where
+--   arbitrary = sized genSpM_SPD `suchThat` ((> 2) . nrows . unPropMatSPD)
+
+-- genSpM_SPD :: Int -> Gen (PropMatSPD Double)
+-- genSpM_SPD n = do
+--   q <- genUnitary n 
+--   d <- genSpMDiagonal (all (> 0)) n          -- positive diagonal
+--   return $ PropMatSPD ( q ## (d ##^ q) )
 
 
 
@@ -725,11 +708,11 @@ prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 
 
--- | Cholesky factorization of a random SPD matrix 
-prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
-                  MonadThrow m, MonadIO m) =>
-     PropMatSPD a -> m Bool
-prop_Cholesky (PropMatSPD m) = checkChol m
+-- -- | Cholesky factorization of a random SPD matrix 
+-- prop_Cholesky :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
+--                   MonadThrow m, MonadIO m) =>
+--      PropMatSPD a -> m Bool
+-- prop_Cholesky (PropMatSPD m) = checkChol m
 
 
 -- | QR decomposition
@@ -1114,7 +1097,7 @@ tmc4 = fromListDenseSM 3 [3:+1, 4:+(-1), (-5):+3, 2:+2, 3:+(-2), 5:+0.2, 7:+(-2)
 -- tvc4 : unknown to be found
 tvc4 = vc [1:+3,2:+2,1:+9]
 -- bc4 : right-hand side
-bc4 = tmc4 #> tvc4
+-- bc4 = tmc4 #> tvc4
 
 tmc5 = fromListDenseSM 4 $ zipWith (:+) [16..31] [15,14..0]
 
