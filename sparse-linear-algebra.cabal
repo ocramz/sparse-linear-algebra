@@ -26,7 +26,7 @@ data-dir:            test/data
 data-files:          e05r0000.mtx
                      e05r0000_rhs1.mtx
 cabal-version:       >=1.10
-tested-with:         GHC == 8.0.1
+tested-with:         GHC == 8.0.2
 
 source-repository head
   type:     git

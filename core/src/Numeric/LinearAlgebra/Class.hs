@@ -1,11 +1,9 @@
-{-# language TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances, ConstraintKinds #-}
-{-# language AllowAmbiguousTypes #-}
-{-# language CPP #-}
+{-# language TypeFamilies, FlexibleContexts, ConstraintKinds, ConstrainedClassMethods #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Numeric.LinearAlgebra.Class
 -- Copyright   :  (c) Marco Zocca 2017
--- License     :  GPL-3 (see the file LICENSE)
+-- License     :  BSD3 (see the file LICENSE)
 --
 -- Maintainer  :  zocca marco gmail
 -- Stability   :  experimental
@@ -15,6 +13,8 @@
 --
 -----------------------------------------------------------------------------
 module Numeric.LinearAlgebra.Class where
+
+
 
 -- import Control.Applicative
 import Data.Complex
