@@ -1,0 +1,14 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Numeric.LinearAlgebra.Sparse.Accelerate
+-- Copyright   :  (c) Marco Zocca 2017
+-- License     :  BSD3 (see the file LICENSE)
+--
+-- Maintainer  :  zocca marco gmail
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- `accelerate` instances for sparse linear algebra
+--
+-----------------------------------------------------------------------------
+module Numeric.LinearAlgebra.Sparse.Accelerate where

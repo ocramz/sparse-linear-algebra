@@ -14,8 +14,6 @@
 -----------------------------------------------------------------------------
 module Numeric.LinearAlgebra.Class where
 
-
-
 -- import Control.Applicative
 import Data.Complex
 
@@ -89,7 +87,7 @@ infixl 7 *.
 
 -- | Scale a vector by the reciprocal of a number (e.g. for normalization)
 (./) :: (VectorSpace v, s ~ Scalar v, Fractional s) => v -> s -> v
-v ./ s = (recip s) .* v
+v ./ s = recip s .* v
 
 -- | Vector multiplied by scalar
 (*.) :: (VectorSpace v, s ~ Scalar v) => v -> s -> v
@@ -337,7 +335,7 @@ class Sparse c => SpContainer c where
   scInsert :: ScIx c -> ScElem c -> c -> c
   scLookup :: c -> ScIx c -> Maybe (ScElem c)
   scToList :: c -> [(ScIx c, ScElem c)]
-  -- -- | Lookup with default, infix form ("safe" : should throw an exception if lookup is outside matrix bounds)
+  -- -- | Lookup with default `d` , infix form. `ll @@ i` == `fromMaybe d (scLookup ll i)`
   (@@) :: c -> ScIx c -> ScElem c
 
 
@@ -349,8 +347,7 @@ class Sparse c => SpContainer c where
 -- * SparseVector
 
 class SpContainer v => SparseVector v where
-  type SpvIx v :: *
-  svFromList :: Int -> [(SpvIx v, ScElem v)] -> v
+  svFromList :: Int -> [(ScIx v, ScElem v)] -> v
   svFromListDense :: Int -> [ScElem v] -> v
   svConcat :: Foldable t => t v -> v
   -- svZipWith :: (e -> e -> e) -> v e -> v e -> v e
@@ -365,7 +362,7 @@ class SpContainer v => SparseVector v where
 -- * SparseMatrix
 
 class SpContainer m => SparseMatrix m where
-  smFromVector :: LexOrd -> (Int, Int) -> V.Vector (IxRow, IxCol, ScElem m) -> m
+  smFromList :: LexOrd -> (Int, Int) -> [(IxRow, IxCol, ScElem m)] -> m
   -- smFromFoldableDense :: Foldable t => t e -> m e  
   smTranspose :: m -> m
   -- smExtractSubmatrix ::

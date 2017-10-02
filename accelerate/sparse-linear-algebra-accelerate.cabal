@@ -20,7 +20,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Lib
   build-depends:       base >= 4.7 && < 5
-                     , sparse-linear-algebra-core
+                     -- , sparse-linear-algebra-core
                      , accelerate
 
 -- executable sparse-linear-algebra-accelerate
