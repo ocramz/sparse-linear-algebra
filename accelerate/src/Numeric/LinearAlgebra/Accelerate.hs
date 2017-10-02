@@ -19,6 +19,7 @@ module Numeric.LinearAlgebra.Accelerate where
 import qualified Data.Array.Accelerate as A
 import Data.Array.Accelerate
           (Acc, Array, Vector, Segments, DIM1, DIM2, Exp, Any(Any), All(All), Z(Z), (:.)((:.)))
+import Data.Array.Accelerate.Interpreter (run)
 
 -- | Vector as newtype
 -- newtype Vector e = Vector (Array DIM1 e) deriving (Eq, Show)
@@ -57,12 +58,16 @@ type SparseVector e = Vector (A.Int32, e)
 type SparseMatrix e = (Segments A.Int32, SparseVector e)
 
 
--- smvm :: A.Num a => Acc (SparseMatrix a) -> Acc (Vector a) -> Acc (Vector a)
+smvm :: A.Num a => Acc (SparseMatrix a) -> Acc (Vector a) -> Acc (Vector a)
 smvm smat vec
   = let (segd, svec)    = A.unlift smat
         (inds, vals)    = A.unzip svec
 
-        vecVals         = A.gather (A.map A.fromIntegral inds) vec
+        -- vecVals         = A.gather (A.map A.fromIntegral inds) vec
+        vecVals         = A.backpermute
+                             (A.shape inds)
+                             (\i -> A.index1 $ A.fromIntegral $ inds A.! i)
+                             vec
         products        = A.zipWith (*) vecVals vals
     in
     A.foldSeg (+) 0 products segd
