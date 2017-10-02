@@ -18,7 +18,8 @@ library
   default-language:    Haskell2010
   ghc-options:         -Wall
   hs-source-dirs:      src
-  exposed-modules:     Numeric.LinearAlgebra.Class
+  exposed-modules:     Numeric.LinearAlgebra.Core.Class
+                       Numeric.LinearAlgebra.Core.Sparse
                        Numeric.Eps
   other-modules:       Data.Sparse.Types
   build-depends:       base >= 4.7 && < 5

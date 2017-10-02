@@ -71,3 +71,10 @@ smvm smat vec
         products        = A.zipWith (*) vecVals vals
     in
     A.foldSeg (+) 0 products segd
+
+
+
+sv0 :: A.Array DIM1 (Int, Int)
+sv0 = A.fromList (Z :. 5) $ zip [0,1,3,4,6] [4 ..]
+
+

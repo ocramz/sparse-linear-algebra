@@ -1,7 +1,7 @@
-{-# language TypeFamilies, FlexibleContexts, ConstraintKinds, ConstrainedClassMethods #-}
+{-# language MultiParamTypeClasses, TypeFamilies, FlexibleContexts, ConstraintKinds, ConstrainedClassMethods #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Numeric.LinearAlgebra.Class
+-- Module      :  Numeric.LinearAlgebra.Core.Class
 -- Copyright   :  (c) Marco Zocca 2017
 -- License     :  BSD3 (see the file LICENSE)
 --
@@ -12,7 +12,7 @@
 -- Typeclasses for linear algebra and related concepts
 --
 -----------------------------------------------------------------------------
-module Numeric.LinearAlgebra.Class where
+module Numeric.LinearAlgebra.Core.Class where
 
 -- import Control.Applicative
 import Data.Complex
@@ -362,7 +362,7 @@ class SpContainer v => SparseVector v where
 -- * SparseMatrix
 
 class SpContainer m => SparseMatrix m where
-  smFromList :: LexOrd -> (Int, Int) -> [(IxRow, IxCol, ScElem m)] -> m
+  smFromList :: (Int, Int) -> [(IxRow, IxCol, ScElem m)] -> m
   -- smFromFoldableDense :: Foldable t => t e -> m e  
   smTranspose :: m -> m
   -- smExtractSubmatrix ::
@@ -373,6 +373,9 @@ class SpContainer m => SparseMatrix m where
 
 -- data RowsFirst = RowsFirst
 -- data ColsFirst = ColsFirst
+
+class SpContainer m => CSRMatrix v m where
+  csrFromList :: (Int, Int) -> [(IxRow, IxCol, ScElem m)] -> (v IxCol, v (IxRow, ScElem m))
 
 
 
