@@ -47,8 +47,17 @@ data SSMatrix i m n e = SSMatrix {
   , ssmEntries :: SVector e
                                  }
 
+-- -- identity ::
+-- --    (A.IsNum a, A.Elt a) =>
+-- --    Exp DIM2 -> Acc (Array DIM2 a)
+-- identity sh =
+--    A.generate sh
+--       (withMatrixIndex $
+--        \(_ :. r :. c) -> A.fromIntegral $ A.boolToInt (r A.== c))
 
-
+-- -- withMatrixIndex :: (A.Lift c a, A.Unlift d b) =>
+-- --      (a -> b) -> c (A.Plain a) -> d (A.Plain b)
+-- withMatrixIndex f = A.lift . f . A.unlift      
 
 
 -- Sparse-matrix vector multiplication

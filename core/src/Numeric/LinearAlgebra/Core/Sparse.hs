@@ -6,4 +6,6 @@ import Numeric.LinearAlgebra.Core.Class
 
 
 
-rotMtx m n ixrow ixcol angle = smFromList
+rotMtx m n ixrow ixcol angle = undefined
+  where
+    -- mat = smFromList (m, n)
