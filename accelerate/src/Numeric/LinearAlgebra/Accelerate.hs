@@ -23,13 +23,13 @@ import Data.Array.Accelerate.Interpreter (run)
 
 -- | Vector as newtype
 -- newtype Vector e = Vector (Array DIM1 e) deriving (Eq, Show)
+-- | segments : vector of segment lengths 
+-- newtype Segments i = Segments (Vector i) deriving (Eq, Show)
 
 
 -- | sparse vectors
-newtype SVector e = SVector (Int, e) deriving (Eq, Show)
+newtype SVector e = SVector (Array DIM1 (Int, e)) deriving (Eq, Show)
 
--- -- | segments : vector of segment lengths 
--- newtype Segments i = Segments (Vector i) deriving (Eq, Show)
 
 
 data SMatrix i e = SMatrix {
