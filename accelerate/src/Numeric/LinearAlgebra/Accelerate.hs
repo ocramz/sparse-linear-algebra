@@ -47,6 +47,15 @@ data SSMatrix i m n e = SSMatrix {
   , ssmEntries :: SVector e
                                  }
 
+
+-- | sparse matrix, coordinate representation
+data SMatrixCOO i e = SMCOO {
+    smcoNrows :: Int
+  , smcoNcols :: Int
+  , smcoRows, smcoCols :: Array DIM1 i
+  , smcoEntries        :: Array DIM1 e
+                            } deriving (Eq, Show)
+
 -- -- identity ::
 -- --    (A.IsNum a, A.Elt a) =>
 -- --    Exp DIM2 -> Acc (Array DIM2 a)
