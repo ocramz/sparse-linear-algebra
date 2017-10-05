@@ -19,6 +19,9 @@ module Numeric.LinearAlgebra.Accelerate where
 import qualified Data.Array.Accelerate as A
 import Data.Array.Accelerate
           (Acc, Array, Vector, Segments, DIM1, DIM2, Exp, Any(Any), All(All), Z(Z), (:.)((:.)))
+import Data.Array.Accelerate.IO (fromVectors, toVectors)
+import Data.Vector
+import Data.Vector.Algorithms.Merge
 import Data.Array.Accelerate.Interpreter (run)
 
 -- | Vector as newtype
@@ -55,6 +58,13 @@ data SMatrixCOO i e = SMCOO {
   , smcoRows, smcoCols :: Array DIM1 i
   , smcoEntries        :: Array DIM1 e
                             } deriving (Eq, Show)
+
+-- | array-of-struct representation of "
+data SMatCOO2 i e = SMCOO2 {
+    smcooNrows :: Int
+  , smcooNcols :: Int   
+  , smcooEntries        :: Array DIM1 (i, i, e)
+                           }
 
 -- -- identity ::
 -- --    (A.IsNum a, A.Elt a) =>
