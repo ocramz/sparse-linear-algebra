@@ -36,13 +36,14 @@ data SMatrixCOO i e = SMCOO {
 data SMatCOO2 i e = SMCOO2 {
     smcooNrows :: Int
   , smcooNcols :: Int   
-  , smcooEntries        :: Array DIM1 (i, i, e)
+  , smcooEntries        :: Array DIM1 (COOElem i e)
                            }
 
 newtype COOElem i e = CooE (i, i, e) deriving (Eq, Show)
-row (CooE (i, _, _)) = i
-col (CooE (_, j, _)) = j
-elem (CooE (_, _, e)) = e
+getRow (CooE (i, _, _)) = i
+getCol (CooE (_, j, _)) = j
+getElem (CooE (_, _, e)) = e
+setElem e' (CooE (i, j, _)) = CooE (i, j, e')
 
 -- -- identity ::
 -- --    (A.IsNum a, A.Elt a) =>

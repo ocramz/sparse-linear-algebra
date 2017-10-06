@@ -3,7 +3,6 @@ module LibSpec where
 import Test.Hspec
 import Test.Hspec.QuickCheck
 
--- import Lib 
 
 main :: IO ()
 main = hspec spec
