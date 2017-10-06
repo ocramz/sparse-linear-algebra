@@ -18,7 +18,9 @@ library
   default-language:    Haskell2010
   ghc-options:         -Wall
   hs-source-dirs:      src
-  exposed-modules:     Lib
+  exposed-modules:     Numeric.LinearAlgebra.Accelerate
+                       Data.Array.Accelerate.Sparse.SVector
+                       Data.Array.Accelerate.Sparse.SMatrix                       
   build-depends:       base >= 4.7 && < 5
                      -- , sparse-linear-algebra-core
                      , accelerate
