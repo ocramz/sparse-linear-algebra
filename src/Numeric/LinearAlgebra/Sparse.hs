@@ -130,27 +130,11 @@ import Data.Typeable
 
 -- import Control.Applicative ((<|>))
 
--- import Control.Monad (replicateM)
 import Control.Monad.State.Strict
--- import Control.Monad.Writer
--- import Control.Monad.Trans.Class
-import qualified Control.Monad.Trans.State  as MTS -- (runStateT)
--- import Control.Monad.Trans.Writer (runWriterT)
+import qualified Control.Monad.Trans.State  as MTS 
 import Data.Complex
 
--- import Data.VectorSpace hiding (magnitude)
-
 import qualified Data.Sparse.Internal.IntM as I
--- import Data.Utils.StrictFold (foldlStrict) -- hidden in `containers`
-
--- import qualified System.Random.MWC as MWC
--- import qualified System.Random.MWC.Distributions as MWC
-
--- import Data.Monoid
--- import qualified Data.Foldable as F
--- import qualified Data.Traversable as T
-
--- import qualified Data.List as L
 
 import Data.Maybe
 
