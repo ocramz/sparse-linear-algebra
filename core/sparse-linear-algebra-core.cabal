@@ -1,7 +1,7 @@
 name:                sparse-linear-algebra-core
 version:             0.1.0.0
--- synopsis:
--- description:
+synopsis:            Core typeclasses for sparse-linear-algebra
+description:         This package provides the core typeclasses and some necessary primitive type instances for `sparse-linear-algebra`. The algorithm implementations live in specific libraries such as `sparse-linear-algebra-accelerate`.
 homepage:            https://github.com/ocramz/sparse-linear-algebra
 license:             BSD3
 license-file:        LICENSE

@@ -1,7 +1,7 @@
 name:                sparse-linear-algebra-accelerate
 version:             0.1.0.0
--- synopsis:
--- description:
+synopsis:            Accelerate backend for `sparse-linear-algebra-core`
+description:         This package provides one `accelerate`-based implementation of the `sparse-linear-algebra` algorithms.
 homepage:            https://github.com/ocramz/sparse-linear-algebra
 license:             BSD3
 license-file:        LICENSE
