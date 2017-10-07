@@ -27,6 +27,8 @@ library
                      , accelerate-io
                      , vector
                      , vector-algorithms
+                     -- DEBUG:
+                     , criterion
 
 -- executable sparse-linear-algebra-accelerate
 --   default-language:    Haskell2010
@@ -46,6 +48,17 @@ test-suite spec
                      , sparse-linear-algebra-accelerate
                      , hspec
                      , QuickCheck
+
+test-suite bench
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Bench.hs
+  build-depends:       base
+                     , sparse-linear-algebra-accelerate
+                     , criterion
+                     
 
 source-repository head
   type:     git

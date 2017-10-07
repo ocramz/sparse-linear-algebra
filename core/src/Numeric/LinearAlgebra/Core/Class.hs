@@ -374,6 +374,8 @@ class SpContainer m => SparseMatrix m where
 -- data RowsFirst = RowsFirst
 -- data ColsFirst = ColsFirst
 
+-- * A typeclass for CSR 
+
 -- class SpContainer m => CSRMatrix v m where
 --   csrFromList :: (Int, Int) -> [(IxRow, IxCol, ScElem m)] -> (v IxCol, v (IxRow, ScElem m))
 

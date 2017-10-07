@@ -45,6 +45,14 @@ getCol (CooE (_, j, _)) = j
 getElem (CooE (_, _, e)) = e
 setElem e' (CooE (i, j, _)) = CooE (i, j, e')
 
+-- | Lexicographic ordering, rows-first
+instance (Eq e, Ord i) => Ord (COOElem i e ) where
+  (CooE (i, j, _)) <= (CooE (i', j', _))
+    | i < i' = True
+    | i == i' && j <= j' = True
+    | otherwise = False
+
+
 -- -- identity ::
 -- --    (A.IsNum a, A.Elt a) =>
 -- --    Exp DIM2 -> Acc (Array DIM2 a)
