@@ -43,7 +43,8 @@ test-suite spec
   ghc-options:         -Wall
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
-  main-is:             Spec.hs
+  main-is:             LibSpec.hs
+  other-modules:       Spec
   build-depends:       base
                      , sparse-linear-algebra-accelerate
                      , hspec

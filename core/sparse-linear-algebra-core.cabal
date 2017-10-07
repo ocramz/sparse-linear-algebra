@@ -25,6 +25,8 @@ library
   build-depends:       base >= 4.7 && < 5
                      , vector
                      , exceptions
+                     -- DEBUG
+                     , hspec
 
 
 test-suite spec
@@ -32,7 +34,9 @@ test-suite spec
   ghc-options:         -Wall
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
-  main-is:             Spec.hs
+  main-is:             LibSpec.hs
+  other-modules:       Spec
+                       LibSpec
   build-depends:       base
                      , sparse-linear-algebra-core
                      , hspec
