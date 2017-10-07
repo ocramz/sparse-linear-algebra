@@ -4,7 +4,19 @@ Numerical computation in native Haskell
 
 [![Hackage](https://img.shields.io/hackage/v/sparse-linear-algebra.svg)](https://hackage.haskell.org/package/sparse-linear-algebra)  [![Build Status](https://travis-ci.org/ocramz/sparse-linear-algebra.png)](https://travis-ci.org/ocramz/sparse-linear-algebra)
 
-This library provides common numerical analysis functionality, without requiring any external bindings. It is not optimized for performance (yet), but it serves as an experimental platform for scientific computation in a purely functional setting.
+This library provides common numerical analysis functionality, without requiring any external bindings. It aims to serve as an experimental platform for scientific computation in a purely functional setting.
+
+## News
+
+Oct 7., 2017: The library is evolving:
+
+* typeclasses and instances for primitive types will become `sparse-linear-algebra-core`, along with a typeclass-oriented reformulation of the numerical algorithms that used to depend on the nested IntMap representation.
+This will let other developers build on top of this library, in the spirit of `vector-space` and `linear`.
+
+* The `vector`-based backend is being reworked.
+
+* An `accelerate`-based backend is under development.
+
 
 Contents :
 
