@@ -8,7 +8,7 @@ This library provides common numerical analysis functionality, without requiring
 
 ## News
 
-Oct 7., 2017: The library is evolving:
+Oct 7., 2017: The library is evolving in a number of ways, to reflect performance observations and user requests:
 
 * typeclasses and instances for primitive types will become `sparse-linear-algebra-core`, along with a typeclass-oriented reformulation of the numerical algorithms that used to depend on the nested IntMap representation.
 This will let other developers build on top of this library, in the spirit of `vector-space` and `linear`.
