@@ -18,7 +18,7 @@ This will let other developers build on top of this library, in the spirit of `v
 * An `accelerate`-based backend is under development.
 
 
-Contents :
+## Contents
 
 * Iterative linear solvers (`<\>`)
 
