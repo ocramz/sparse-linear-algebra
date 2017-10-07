@@ -8,20 +8,13 @@ import Data.Array.Accelerate.Sparse.SVector
 
 
 
-data SMatrix i e = SMatrix {
+-- | Compressed-sparse row. The definition appearing in the 2011 Accelerate paper. Efficient for matrix-vector action but not for matrix-matrix product
+data SMatrixCSR i e = SMatrixCSR {
     smNrows :: Int
   , smNcols :: Int
   , smSegments :: Segments i
   , smEntries :: SVector e } deriving (Eq, Show)
 
-
-
-data SSMatrix i m n e = SSMatrix {
-    ssmNrows :: m
-  , ssmNcols :: n
-  , ssmSegments :: Segments i
-  , ssmEntries :: SVector e
-                                 }
 
 
 -- | sparse matrix, coordinate representation
@@ -40,10 +33,12 @@ data SMatCOO2 i e = SMCOO2 {
                            }
 
 newtype COOElem i e = CooE (i, i, e) deriving (Eq, Show)
+getRow, getCol :: COOElem i e -> i
 getRow (CooE (i, _, _)) = i
 getCol (CooE (_, j, _)) = j
+getElem :: COOElem i e -> e
 getElem (CooE (_, _, e)) = e
-setElem e' (CooE (i, j, _)) = CooE (i, j, e')
+-- setElem e' (CooE (i, j, _)) = CooE (i, j, e')
 
 -- | Lexicographic ordering, rows-first
 instance (Eq e, Ord i) => Ord (COOElem i e ) where

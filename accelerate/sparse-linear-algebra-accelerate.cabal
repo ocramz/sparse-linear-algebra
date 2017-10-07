@@ -20,7 +20,8 @@ library
   hs-source-dirs:      src
   exposed-modules:     Numeric.LinearAlgebra.Accelerate
                        Data.Array.Accelerate.Sparse.SVector
-                       Data.Array.Accelerate.Sparse.SMatrix                       
+                       Data.Array.Accelerate.Sparse.SMatrix
+  other-modules:       Data.Array.Accelerate.Sparse.Static                    
   build-depends:       base >= 4.7 && < 5
                      -- , sparse-linear-algebra-core
                      , accelerate
