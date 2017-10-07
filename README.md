@@ -3,6 +3,8 @@
 Numerical computation in native Haskell
 
 [![Hackage](https://img.shields.io/hackage/v/sparse-linear-algebra.svg)](https://hackage.haskell.org/package/sparse-linear-algebra)  [![Build Status](https://travis-ci.org/ocramz/sparse-linear-algebra.png)](https://travis-ci.org/ocramz/sparse-linear-algebra)
+[![plot-light](http://stackage.org/package/sparse-linear-algebra/badge/lts)](http://stackage.org/lts/package/sparse-linear-algebra)
+[![plot-light](http://stackage.org/package/sparse-linear-algebra/badge/nightly)](http://stackage.org/nightly/package/sparse-linear-algebra)
 
 This library provides common numerical analysis functionality, without requiring any external bindings. It aims to serve as an experimental platform for scientific computation in a purely functional setting.
 
