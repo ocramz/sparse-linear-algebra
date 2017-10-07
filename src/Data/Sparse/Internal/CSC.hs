@@ -83,9 +83,8 @@ extractColCSC :: CscMatrix a -> Int -> SVector a
 extractColCSC (CscM m _ _ rix cp x) jcol = SV m ixs vals where
   jmin = cp V.! jcol
   jmax = cp V.! (jcol + 1)
-  trimf  = V.slice jmin (jmax - jmin) -- trimming function
-  ixs = trimf rix
-  vals = trimf x
+  ixs = V.slice jmin (jmax - jmin) rix
+  vals = V.slice jmin (jmax - jmin) x
 
 -- ** Extract the diagonal element, if this exists (NB this only holds for a lower triangular matrix)
 extractDiagSubdiagCSC :: CscMatrix a -> Int -> Maybe (a, SVector a)

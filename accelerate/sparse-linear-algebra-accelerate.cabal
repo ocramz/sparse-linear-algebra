@@ -44,7 +44,6 @@ test-suite spec
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             LibSpec.hs
-  other-modules:       Spec
   build-depends:       base
                      , sparse-linear-algebra-accelerate
                      , hspec
