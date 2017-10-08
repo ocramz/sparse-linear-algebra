@@ -33,12 +33,14 @@ data SMatCOO2 i e = SMCOO2 {
                            }
 
 newtype COOElem i e = CooE (i, i, e) deriving (Eq, Show)
+
 getRow, getCol :: COOElem i e -> i
 getRow (CooE (i, _, _)) = i
 getCol (CooE (_, j, _)) = j
+
 getElem :: COOElem i e -> e
 getElem (CooE (_, _, e)) = e
--- setElem e' (CooE (i, j, _)) = CooE (i, j, e')
+
 
 -- | Lexicographic ordering, rows-first
 instance (Eq e, Ord i) => Ord (COOElem i e ) where

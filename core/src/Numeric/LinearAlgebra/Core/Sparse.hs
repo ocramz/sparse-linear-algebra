@@ -16,8 +16,8 @@ rotMtx m ii jj angle = smFromList (m, m) arr
     m' = m - 3 -- 2 on-diagonal values will be /= 1
     c = cos angle
     s = sin angle
-    arr0 = [(i, i, 1) | i <- [0.. m']]
-    arr1 = [(jj, jj, c), (jj, ii, - s)
+    arr0 = [(i, i, 1) | i <- [0.. m']] -- identity matrix elements
+    arr1 = [(jj, jj, c), (jj, ii, - s) -- 2D rotation matrix elements
            ,(ii, jj, s), (ii, ii, c) ]
     arr = arr1 ++ arr0
 
