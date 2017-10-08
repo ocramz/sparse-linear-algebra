@@ -1,3 +1,4 @@
+{-# language FlexibleContexts, TypeFamilies #-}
 module Numeric.LinearAlgebra.Core.Sparse where
 
 import Data.List (unfoldr)
@@ -8,33 +9,17 @@ import Numeric.LinearAlgebra.Core.Class
 
 
 
-
-rotMtx m n ixrow ixcol angle = undefined
+-- | Givens' rotation matrix
+rotMtx :: (a ~ ScElem m, Floating a, SparseMatrix m) => Int -> Int -> Int -> a -> m
+rotMtx m ii jj angle = smFromList (m, m) arr
   where
-    -- mat = smFromList (m, n)
+    m' = m - 3 -- 2 on-diagonal values will be /= 1
+    c = cos angle
+    s = sin angle
+    arr0 = [(i, i, 1) | i <- [0.. m']]
+    arr1 = [(jj, jj, c), (jj, ii, - s)
+           ,(ii, jj, s), (ii, ii, c) ]
+    arr = arr1 ++ arr0
 
 
-rotMtx0 m n irow jcol angle = undefined where
-  arrx = [0 .. m-1]
-  arry = [0.. n-1]
-  c = cos angle
-  s = sin angle
-  -- go coords
-  --   | coords == (irow, irow) = c
-  --   | coords == (irow, jcol) = s
-  --   | coords == (jcol, jcol) = c
-  --   | coords == (jcol, irow) = - s
-  --   | otherwise = coords
-  
-
-
-data Entry a = E { cx :: Int, cy :: Int, elem :: a}
-
-
-step m angle ii jj (i, j)
-  | i < m - 1 || j < m - 1 =
-        if i /= ii && j /= jj
-        then Just (E (i+1) (j+1) 1, (i + 1, j + 1))
-        else undefined -- if i == ii then 
-  | otherwise = Nothing
 
