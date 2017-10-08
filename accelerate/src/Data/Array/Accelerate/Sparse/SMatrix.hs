@@ -29,7 +29,7 @@ data SMatrixCOO i e = SMCOO {
 data SMatCOO2 i e = SMCOO2 {
     smcooNrows :: Int
   , smcooNcols :: Int   
-  , smcooEntries        :: Array DIM1 (COOElem i e)
+  , smcooEntries :: Array DIM1 (COOElem i e)
                            }
 
 newtype COOElem i e = CooE (i, i, e) deriving (Eq, Show)

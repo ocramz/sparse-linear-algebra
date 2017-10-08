@@ -288,31 +288,30 @@ class LinearVectorSpace v => LinearSystem v where
 
 
 
--- * FiniteDim : finite-dimensional objects
+-- -- * FiniteDim : finite-dimensional objects
 
-class FiniteDim f where
-  type FDSize f
-  -- | Dimension (i.e. Int for SpVector, (Int, Int) for SpMatrix)
-  dim :: f -> FDSize f
-
-
-
-
--- * HasData : accessing inner data (do not export)
-
-class HasData f where
-  type HDData f 
-  -- | Number of nonzeros
-  nnz :: f -> Int
-  dat :: f -> HDData f
+-- class FiniteDim f where
+--   type FDSize f
+--   -- | Dimension (i.e. Int for SpVector, (Int, Int) for SpMatrix)
+--   dim :: f -> FDSize f
 
 
 
 -- * Sparse : sparse datastructures
 
-class (FiniteDim f, HasData f) => Sparse f where
-  -- | Sparsity (fraction of nonzero elements)
-  spy :: Fractional b => f -> b
+class Sparse f where
+  type HDData f
+  type FDSize f
+  dim :: f -> FDSize f
+  {-# minimal dim, nnz, dens, dat #-}
+  -- | # Nonzeros
+  nnz :: f -> Int
+  -- | Density (fraction of nonzero elements)
+  dens :: Fractional b => f -> b
+  -- | Internal data 
+  dat :: f -> HDData f
+
+
 
 
 

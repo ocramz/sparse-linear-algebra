@@ -23,3 +23,19 @@ rotMtx m ii jj angle = smFromList (m, m) arr
 
 
 
+data SpM a = SpM { spmDims :: (Int, Int), spmData :: [(Int, Int, a)] } deriving (Eq, Show)
+
+
+
+instance Sparse (SpM a) where
+  type FDSize (SpM a) = (Int, Int)
+  type HDData (SpM a) = [(Int, Int, a)]
+  dim = spmDims
+  nnz = length . dat  
+  dat = spmData
+  dens c = fromIntegral (nnz c) / fromIntegral (m * n) where (m, n) = dim c
+
+
+instance SpContainer (SpM a) where
+
+instance SparseMatrix (SpM a) where 
