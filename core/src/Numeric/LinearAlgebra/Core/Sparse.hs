@@ -23,6 +23,11 @@ rotMtx m ii jj angle = smFromList (m, m) arr
 
 
 
+
+
+
+-- | Test sparse matrix 
+
 data SpM a = SpM { spmDims :: (Int, Int), spmNnz :: Int, spmData :: [(Int, Int, a)] } deriving (Eq, Show)
 
 instance FiniteDim (SpM a) where

@@ -320,9 +320,6 @@ class FiniteDim f => Sparse f where
 -- spLookupWD d sc i  = fromMaybe d (spLookup i sc)
 
 
-
-
-
 -- * SparseVector
 
 class Sparse v => SparseVector v where
