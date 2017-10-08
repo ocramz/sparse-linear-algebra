@@ -10,7 +10,7 @@ import Numeric.LinearAlgebra.Core.Class
 
 
 -- | Givens' rotation matrix
-rotMtx :: (a ~ ScElem m, Floating a, SparseMatrix m) => Int -> Int -> Int -> a -> m
+rotMtx :: (a ~ SpElem m, Floating a, SparseMatrix m) => Int -> Int -> Int -> a -> m
 rotMtx m ii jj angle = smFromList (m, m) arr
   where
     m' = m - 3 -- 2 on-diagonal values will be /= 1
@@ -23,19 +23,23 @@ rotMtx m ii jj angle = smFromList (m, m) arr
 
 
 
-data SpM a = SpM { spmDims :: (Int, Int), spmData :: [(Int, Int, a)] } deriving (Eq, Show)
+data SpM a = SpM { spmDims :: (Int, Int), spmNnz :: Int, spmData :: [(Int, Int, a)] } deriving (Eq, Show)
 
-
+instance FiniteDim (SpM a) where
+  type FDSize (SpM a) = (Int, Int)
+  dim = spmDims
 
 instance Sparse (SpM a) where
-  type FDSize (SpM a) = (Int, Int)
-  type HDData (SpM a) = [(Int, Int, a)]
-  dim = spmDims
-  nnz = length . dat  
-  dat = spmData
+  -- type SpIx (SpM a) = (Int, Int)
+  type SpElem (SpM a) = a
+  nnz = spmNnz
   dens c = fromIntegral (nnz c) / fromIntegral (m * n) where (m, n) = dim c
 
 
-instance SpContainer (SpM a) where
+instance SparseMatrix (SpM a) where
+  smFromList dims ll = SpM dims (length ll) ll
+  smToList (SpM _ _ ll) = ll
 
-instance SparseMatrix (SpM a) where 
+
+
+m0 = SpM (2,2) 2 [(0,0, exp 1), (1,1, pi)]

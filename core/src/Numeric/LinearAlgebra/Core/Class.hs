@@ -17,6 +17,8 @@ module Numeric.LinearAlgebra.Core.Class where
 -- import Control.Applicative
 import Data.Complex
 
+import Data.Maybe (fromMaybe)
+
 -- import Control.Exception
 -- import Control.Exception.Common
 import Control.Monad.Catch
@@ -287,57 +289,35 @@ class LinearVectorSpace v => LinearSystem v where
 
 
 
-
--- -- * FiniteDim : finite-dimensional objects
-
--- class FiniteDim f where
---   type FDSize f
---   -- | Dimension (i.e. Int for SpVector, (Int, Int) for SpMatrix)
---   dim :: f -> FDSize f
-
-
-
--- * Sparse : sparse datastructures
-
-class Sparse f where
-  type HDData f
-  type FDSize f
-  dim :: f -> FDSize f
-  {-# minimal dim, nnz, dens, dat #-}
-  -- | # Nonzeros
-  nnz :: f -> Int
-  -- | Density (fraction of nonzero elements)
-  dens :: Fractional b => f -> b
-  -- | Internal data 
-  dat :: f -> HDData f
-
-
-
-
-
 -- * Set : types that behave as sets
 
 class Functor f => Set f where
   -- | Union binary lift : apply function on _union_ of two "sets"
   liftU2 :: (a -> a -> a) -> f a -> f a -> f a
-
   -- | Intersection binary lift : apply function on _intersection_ of two "sets"
   liftI2 :: (a -> a -> b) -> f a -> f a -> f b
 
 
+-- * FiniteDim : finite-dimensional objects
+
+class FiniteDim f where
+  type FDSize f
+  -- | Dimension (i.e. Int for SpVector, (Int, Int) for SpMatrix)
+  dim :: f -> FDSize f
 
 
--- * SpContainer : sparse container datastructures. Insertion, lookup, toList, lookup with 0 default
-class Sparse c => SpContainer c where
-  type ScIx c :: *
-  type ScElem c
-  scInsert :: ScIx c -> ScElem c -> c -> c
-  scLookup :: c -> ScIx c -> Maybe (ScElem c)
-  scToList :: c -> [(ScIx c, ScElem c)]
-  -- -- | Lookup with default `d` , infix form. `ll @@ i` == `fromMaybe d (scLookup ll i)`
-  (@@) :: c -> ScIx c -> ScElem c
-
-
+-- * Sparse : sparse datastructures
+class FiniteDim f => Sparse f where
+  -- type SpIx f :: *
+  type SpElem f
+  nnz :: f -> Int
+  dens :: Fractional b => f -> b
+  -- | Not sure about the following :
+  --   spLookup :: SpIx f -> f -> Maybe (SpElem f)
+  
+-- -- | Lookup with default
+-- spLookupWD :: Sparse f => SpElem f -> f -> SpIx f -> SpElem f
+-- spLookupWD d sc i  = fromMaybe d (spLookup i sc)
 
 
 
@@ -345,38 +325,23 @@ class Sparse c => SpContainer c where
 
 -- * SparseVector
 
-class SpContainer v => SparseVector v where
-  svFromList :: Int -> [(ScIx v, ScElem v)] -> v
-  svFromListDense :: Int -> [ScElem v] -> v
-  svConcat :: Foldable t => t v -> v
-  -- svZipWith :: (e -> e -> e) -> v e -> v e -> v e
-
-
-
-
-
-
-
+class Sparse v => SparseVector v where
+  svFromList :: Int -> [(Int, SpElem v)] -> v
+  svToList :: v -> [(Int, SpElem v)]
+  svFromListDense :: Int -> [SpElem v] -> v
 
 -- * SparseMatrix
-
-class SpContainer m => SparseMatrix m where
-  smFromList :: (Int, Int) -> [(IxRow, IxCol, ScElem m)] -> m
-  -- smFromFoldableDense :: Foldable t => t e -> m e  
-  smTranspose :: m -> m
-  -- smExtractSubmatrix ::
-  --   m e -> (IxRow, IxRow) -> (IxCol, IxCol) -> m e
-  encodeIx :: m -> LexOrd -> (IxRow, IxCol) -> LexIx
-  decodeIx :: m -> LexOrd -> LexIx -> (IxRow, IxCol)
+class Sparse m => SparseMatrix m where
+  smFromList :: (Int, Int) -> [(IxRow, IxCol, SpElem m)] -> m
+  smToList :: m -> [(IxRow, IxCol, SpElem m)]
 
 
--- data RowsFirst = RowsFirst
--- data ColsFirst = ColsFirst
 
--- * A typeclass for CSR 
 
--- class SpContainer m => CSRMatrix v m where
---   csrFromList :: (Int, Int) -> [(IxRow, IxCol, ScElem m)] -> (v IxCol, v (IxRow, ScElem m))
+-- -- * A typeclass for CSR 
+
+-- -- class SpContainer m => CSRMatrix v m where
+-- --   csrFromList :: (Int, Int) -> [(IxRow, IxCol, ScElem m)] -> (v IxCol, v (IxRow, ScElem m))
 
 
 
