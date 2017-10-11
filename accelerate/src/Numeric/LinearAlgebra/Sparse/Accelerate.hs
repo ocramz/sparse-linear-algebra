@@ -19,7 +19,25 @@ import Data.Array.Accelerate
 import Data.Array.Accelerate.IO (fromVectors, toVectors)
 import Data.Vector
 import Data.Vector.Algorithms.Merge
+
+import Data.Vector.Mutable
+
 import Data.Array.Accelerate.Interpreter (run)
+
+import Data.Array.Accelerate.Sparse.SMatrix
+import Data.Array.Accelerate.Sparse.SVector
+
+
+
+
+-- sortCOO v = do
+--   vm <- toVectors v
+--   sort vm
+--   fromVectors DIM1 vm
+
+-- sortCOO v = fromVectors DIM1 vm' where
+--   vm' = 
+
 
 
 

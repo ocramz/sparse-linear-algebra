@@ -19,6 +19,7 @@ library
   ghc-options:         -Wall
   hs-source-dirs:      src
   exposed-modules:     Numeric.LinearAlgebra.Accelerate
+                       Numeric.LinearAlgebra.Sparse.Accelerate
                        Data.Array.Accelerate.Sparse.SVector
                        Data.Array.Accelerate.Sparse.SMatrix
   other-modules:       Data.Array.Accelerate.Sparse.Static                    
@@ -49,6 +50,8 @@ test-suite spec
                      , sparse-linear-algebra-accelerate
                      , hspec
                      , QuickCheck
+                     -- DEBUG
+                     , accelerate-io
 
 test-suite bench
   default-language:    Haskell2010
