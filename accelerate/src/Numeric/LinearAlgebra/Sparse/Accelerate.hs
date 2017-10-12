@@ -13,14 +13,20 @@
 -----------------------------------------------------------------------------
 module Numeric.LinearAlgebra.Sparse.Accelerate where
 
+import Control.Monad.Primitive
+import Data.Ord (comparing)
+
 import qualified Data.Array.Accelerate as A
 import Data.Array.Accelerate
           (Acc, Array, Vector, Segments, DIM1, DIM2, Exp, Any(Any), All(All), Z(Z), (:.)((:.)))
 import Data.Array.Accelerate.IO (fromVectors, toVectors)
-import Data.Vector
-import Data.Vector.Algorithms.Merge
 
-import Data.Vector.Mutable
+import Data.Vector.Algorithms.Merge (sort, sortBy)
+-- import Data.Vector.Algorithms.Common
+
+import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as VM
+
 
 import Data.Array.Accelerate.Interpreter (run)
 
@@ -30,10 +36,17 @@ import Data.Array.Accelerate.Sparse.SVector
 
 
 
--- sortCOO v = do
---   vm <- toVectors v
+-- sortCOO dim v = do
+--   vm <- toVectors ((), v)
 --   sort vm
---   fromVectors DIM1 vm
+--   fromVectors dim vm
+
+sortWith :: (Ord b, PrimMonad m) => (a -> b) -> V.Vector a -> m (V.Vector a)
+sortWith by v = do
+  vm <- V.thaw v
+  sortBy (comparing by) vm
+  V.freeze vm
+
 
 -- sortCOO v = fromVectors DIM1 vm' where
 --   vm' = 

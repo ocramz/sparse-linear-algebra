@@ -29,6 +29,7 @@ library
                      , accelerate-io
                      , vector
                      , vector-algorithms
+                     , primitive
                      -- DEBUG:
                      , criterion
 
