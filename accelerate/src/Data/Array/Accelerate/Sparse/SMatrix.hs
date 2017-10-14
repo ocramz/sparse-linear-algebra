@@ -31,29 +31,17 @@ data SMatrixCOO i e = SMatrixCOO {
 fromListCOO :: (Elt e, Elt i, Foldable t) => i -> i -> t (i, i, e) -> SMatrixCOO i e
 fromListCOO m n ll = SMatrixCOO m n mtx
   where
-    mtx = A.fromList dim $ foldr insert [] ll 
-    dim = Z :. length ll
-    insert (i, j, x) acc = CooE (i, j, x) : acc 
+    mtx = A.fromList d $ foldr ins [] ll 
+    d = Z :. length ll
+    ins (i, j, x) acc = CooE (i, j, x) : acc 
 
--- -- identity ::
--- --    (A.IsNum a, A.Elt a) =>
--- --    Exp DIM2 -> Acc (Array DIM2 a)
--- identity sh =
---    A.generate sh
---       (withMatrixIndex $
---        \(_ :. r :. c) -> A.fromIntegral $ A.boolToInt (r A.== c))
-
--- -- withMatrixIndex :: (A.Lift c a, A.Unlift d b) =>
--- --      (a -> b) -> c (A.Plain a) -> d (A.Plain b)
--- withMatrixIndex f = A.lift . f . A.unlift      
-
-
+toListCOO :: SMatrixCOO i e -> [COOElem i e]
+toListCOO (SMatrixCOO _ _ ll) = A.toList ll
 
 
 
 -- | Matrix element in COO form
 newtype COOElem i e = CooE (i, i, e) deriving (Eq, Show)
--- type COOElem e = COOElem' Int64 e
 
 getRow, getCol :: COOElem i e -> i
 getRow (CooE (i, _, _)) = i
@@ -100,3 +88,18 @@ data SMatrixCSR i e = SMatrixCSR {
   , smNcols :: Int
   , smSegments :: Segments i
   , smEntries :: SVector e } deriving (Eq, Show)
+
+
+
+-- -- identity ::
+-- --    (A.IsNum a, A.Elt a) =>
+-- --    Exp DIM2 -> Acc (Array DIM2 a)
+-- identity sh =
+--    A.generate sh
+--       (withMatrixIndex $
+--        \(_ :. r :. c) -> A.fromIntegral $ A.boolToInt (r A.== c))
+
+-- -- withMatrixIndex :: (A.Lift c a, A.Unlift d b) =>
+-- --      (a -> b) -> c (A.Plain a) -> d (A.Plain b)
+-- withMatrixIndex f = A.lift . f . A.unlift      
+
