@@ -1,9 +1,17 @@
-{-# language FlexibleContexts #-}
+{-# language FlexibleContexts, TypeFamilies #-}
+{-# language ScopedTypeVariables #-}
+{-# language UndecidableInstances #-}
 module Data.Array.Accelerate.Sparse.SMatrix where
 
 import Data.Typeable
 import Data.Int (Int32, Int64)
 
+-- import Data.Array.Accelerate.Lift
+import Data.Array.Accelerate.Product
+import Data.Array.Accelerate.Smart
+import Data.Array.Accelerate.Type
+import Data.Array.Accelerate.Array.Sugar
+import Data.Array.Accelerate.Array.Data
 
 import qualified Data.Array.Accelerate as A
 import Data.Array.Accelerate
@@ -12,28 +20,20 @@ import Data.Array.Accelerate
 import Data.Array.Accelerate.Sparse.SVector
 
 
-
-
-
-
-
 -- | Sparse matrix, coordinate representation (COO), array-of-struct encoding
-data SMatrixCOO e = SMatrixCOO {
-    smcooNrows :: Int64
-  , smcooNcols :: Int64 
-  , smcooEntries :: Array DIM1 (COOElem e)
+data SMatrixCOO i e = SMatrixCOO {
+    smcooNrows :: i
+  , smcooNcols :: i
+  , smcooEntries :: Array DIM1 (COOElem i e)
                            } deriving (Eq, Show)
 
 
-
-
-fromList :: (Show e, Typeable e, A.Elt (COOElem' Int64 e), Foldable t) =>
-                  Int64 -> Int64 -> t (Int64, Int64, e) -> SMatrixCOO e
-fromList m n ll = SMatrixCOO m n mtx
+fromListCOO :: (Elt e, Elt i, Foldable t) => i -> i -> t (i, i, e) -> SMatrixCOO i e
+fromListCOO m n ll = SMatrixCOO m n mtx
   where
     mtx = A.fromList dim $ foldr insert [] ll 
     dim = Z :. length ll
-    insert (i, j, x) acc = CooE' (i, j, x) : acc 
+    insert (i, j, x) acc = CooE (i, j, x) : acc 
 
 -- -- identity ::
 -- --    (A.IsNum a, A.Elt a) =>
@@ -52,29 +52,40 @@ fromList m n ll = SMatrixCOO m n mtx
 
 
 -- | Matrix element in COO form
-newtype COOElem' i e = CooE' (i, i, e) deriving (Eq, Show)
-type COOElem e = COOElem' Int64 e
+newtype COOElem i e = CooE (i, i, e) deriving (Eq, Show)
+-- type COOElem e = COOElem' Int64 e
 
--- getRow, getCol :: COOElem i e -> i
-getRow (CooE' (i, _, _)) = i
-getCol (CooE' (_, j, _)) = j
+getRow, getCol :: COOElem i e -> i
+getRow (CooE (i, _, _)) = i
+getCol (CooE (_, j, _)) = j
 
--- getElem :: COOElem i e -> e
-getElem (CooE' (_, _, e)) = e
+getElem :: COOElem i e -> e
+getElem (CooE (_, _, e)) = e
 
 
 -- | Lexicographic ordering of matrix elements, rows-first
-instance (Ord i, Eq e) => Ord (COOElem' i e) where
-  (CooE' (i, j, _)) <= (CooE' (i', j', _))
+instance (Ord i, Eq e) => Ord (COOElem i e) where
+  (CooE (i, j, _)) <= (CooE (i', j', _))
     | i < i' = True
     | i == i' && j <= j' = True
     | otherwise = False
 
 
--- -- No instance for (A.Elt (COOElem' Int64 Double))
--- -- NB: EltRepr is not exported. This seems to mean that users are not supposed to create new array element types. Hm
-instance (Show i, Show e, Typeable i, Typeable e) => A.Elt (COOElem' i e) where
+type instance EltRepr (COOElem i a) = EltRepr (i, i, a)
 
+instance (ArrayElt (EltRepr e), Typeable (EltRepr e), ArrayElt (EltRepr i), Typeable (EltRepr i), Show i, Show e, Typeable i, Typeable e, Elt i, Elt e) => A.Elt (COOElem i e) where
+  fromElt (CooE (i, j, x)) = fromElt (i, j, x)
+  toElt c = let (i, j, x) = toElt c in CooE (i, j, x)
+  eltType (_ :: COOElem i a) = eltType (undefined :: (i, i, a))
+
+
+-- instance (Elt a, Elt b, Elt c) => Elt (a, b, c) where
+--   eltType _             = PairTuple (eltType (undefined :: (a, b))) (eltType (undefined :: c))
+--   fromElt (a, b, c)     = (fromElt (a, b), fromElt c)
+--   toElt (ab, c)         = let (a, b) = toElt ab in (a, b, toElt c)
+
+-- instance (Show e, Show i, Typeable i, Typeable e, Typeable (EltRepr i), Typeable (EltRepr e), ArrayElt (EltRepr i), ArrayElt (EltRepr e)) => A.Elt (COOElem i e) where
+  -- eltType _ = 
 
 
 
