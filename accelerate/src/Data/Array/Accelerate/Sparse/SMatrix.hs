@@ -1,3 +1,4 @@
+{-# language FlexibleContexts #-}
 module Data.Array.Accelerate.Sparse.SMatrix where
 
 import qualified Data.Array.Accelerate as A
@@ -8,47 +9,28 @@ import Data.Array.Accelerate.Sparse.SVector
 
 
 
--- | Compressed-sparse row. The definition appearing in the 2011 Accelerate paper. Efficient for matrix-vector action but not for matrix-matrix product
-data SMatrixCSR i e = SMatrixCSR {
-    smNrows :: Int
-  , smNcols :: Int
-  , smSegments :: Segments i
-  , smEntries :: SVector e } deriving (Eq, Show)
 
 
 
--- | sparse matrix, coordinate representation
-data SMatrixCOO i e = SMCOO {
-    smcoNrows :: Int
-  , smcoNcols :: Int
-  , smcoRows, smcoCols :: Array DIM1 i
-  , smcoEntries        :: Array DIM1 e
-                            } deriving (Eq, Show)
 
--- | array-of-struct representation of "
-data SMatCOO2 i e = SMCOO2 {
+-- | Sparse matrix, coordinate representation (COO), array-of-struct encoding
+data SMatrixCOO i e = SMatrixCOO {
     smcooNrows :: Int
   , smcooNcols :: Int   
   , smcooEntries :: Array DIM1 (COOElem i e)
-                           }
-
-newtype COOElem i e = CooE (i, i, e) deriving (Eq, Show)
-
-getRow, getCol :: COOElem i e -> i
-getRow (CooE (i, _, _)) = i
-getCol (CooE (_, j, _)) = j
-
-getElem :: COOElem i e -> e
-getElem (CooE (_, _, e)) = e
+                           } deriving (Eq, Show)
 
 
--- | Lexicographic ordering, rows-first
-instance (Eq e, Ord i) => Ord (COOElem i e ) where
-  (CooE (i, j, _)) <= (CooE (i', j', _))
-    | i < i' = True
-    | i == i' && j <= j' = True
-    | otherwise = False
 
+
+
+fromList :: (A.Elt (COOElem i e), Foldable t) =>
+                  Int -> Int -> t (i, i, e) -> SMatrixCOO i e
+fromList m n ll = SMatrixCOO m n mtx
+  where
+    mtx = A.fromList dim $ foldr insert [] ll 
+    dim = Z :. length ll
+    insert (i, j, x) acc = CooE (i, j, x) : acc 
 
 -- -- identity ::
 -- --    (A.IsNum a, A.Elt a) =>
@@ -61,3 +43,37 @@ instance (Eq e, Ord i) => Ord (COOElem i e ) where
 -- -- withMatrixIndex :: (A.Lift c a, A.Unlift d b) =>
 -- --      (a -> b) -> c (A.Plain a) -> d (A.Plain b)
 -- withMatrixIndex f = A.lift . f . A.unlift      
+
+
+
+
+
+-- | Matrix element in COO form
+newtype COOElem i e = CooE (i, i, e) deriving (Eq, Show)
+
+getRow, getCol :: COOElem i e -> i
+getRow (CooE (i, _, _)) = i
+getCol (CooE (_, j, _)) = j
+
+getElem :: COOElem i e -> e
+getElem (CooE (_, _, e)) = e
+
+
+-- | Lexicographic ordering of matrix elements, rows-first
+instance (Eq e, Ord i) => Ord (COOElem i e ) where
+  (CooE (i, j, _)) <= (CooE (i', j', _))
+    | i < i' = True
+    | i == i' && j <= j' = True
+    | otherwise = False
+
+
+
+-- | CSR
+
+
+-- | Compressed-sparse row. The definition appearing in the 2011 Accelerate paper. Efficient for matrix-vector action but not for matrix-matrix product
+data SMatrixCSR i e = SMatrixCSR {
+    smNrows :: Int
+  , smNcols :: Int
+  , smSegments :: Segments i
+  , smEntries :: SVector e } deriving (Eq, Show)

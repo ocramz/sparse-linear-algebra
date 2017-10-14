@@ -41,6 +41,12 @@ import Data.Array.Accelerate.Sparse.SVector
 --   sort vm
 --   fromVectors dim vm
 
+sortV :: (Ord a, PrimMonad m) => V.Vector a -> m (V.Vector a)
+sortV v = do
+  vm <- V.thaw v
+  sort vm
+  V.freeze vm
+
 sortWith :: (Ord b, PrimMonad m) => (a -> b) -> V.Vector a -> m (V.Vector a)
 sortWith by v = do
   vm <- V.thaw v
