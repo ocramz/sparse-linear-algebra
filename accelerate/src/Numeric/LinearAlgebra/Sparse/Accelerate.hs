@@ -1,3 +1,4 @@
+{-# language GADTs #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Numeric.LinearAlgebra.Sparse.Accelerate
@@ -19,8 +20,9 @@ import Data.Ord (comparing)
 import qualified Data.Array.Accelerate as A
 import Data.Array.Accelerate
           (Acc, Array, Vector, Segments, DIM1, DIM2, Exp, Any(Any), All(All), Z(Z), (:.)((:.)))
-import Data.Array.Accelerate.IO (fromVectors, toVectors)
+import Data.Array.Accelerate.IO -- (fromVectors, toVectors)
 
+import Data.Array.Accelerate.Array.Sugar
 import Data.Vector.Algorithms.Merge (sort, sortBy)
 -- import Data.Vector.Algorithms.Common
 
@@ -36,10 +38,19 @@ import Data.Array.Accelerate.Sparse.SVector
 
 
 
--- sortCOO dim v = do
---   vm <- toVectors ((), v)
---   sort vm
---   fromVectors dim vm
+-- * SpGEMM : matrix-matrix product
+
+
+
+-- | Sort an accelerate array via vector-algorithms
+sortA :: (Vectors (EltRepr e) ~ V.Vector e, Ord e
+         , Elt e
+         , Shape t
+         , PrimMonad m) => t -> Array t e -> m (Array t e)
+sortA dim v = do
+  let vm = toVectors v
+  vm' <- sortV vm
+  return $ fromVectors dim vm'
 
 sortV :: (Ord a, PrimMonad m) => V.Vector a -> m (V.Vector a)
 sortV v = do
@@ -54,8 +65,6 @@ sortWith by v = do
   V.freeze vm
 
 
--- sortCOO v = fromVectors DIM1 vm' where
---   vm' = 
 
 
 
