@@ -28,7 +28,7 @@ import Data.Vector.Algorithms.Merge (sort, sortBy)
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
-import qualified Data.Vector.Generic as VG
+-- import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Storable as VS
 
 
@@ -45,7 +45,9 @@ import Data.Array.Accelerate.Sparse.SVector
 
 
 -- | Sort an accelerate array via vector-algorithms
-sortA :: (Vectors (EltRepr e) ~ VS.Vector e, VS.Storable e, Ord e
+sortA :: (Vectors (EltRepr e) ~ VS.Vector e
+         , VS.Storable e
+         , Ord e
          , Elt e
          , Shape t
          , PrimMonad m) => t -> Array t e -> m (Array t e)
