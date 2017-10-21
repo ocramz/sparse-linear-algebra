@@ -1,4 +1,4 @@
-{-# language GADTs #-}
+{-# language GADTs, TypeFamilies #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Numeric.LinearAlgebra.Sparse.Accelerate
@@ -28,6 +28,8 @@ import Data.Vector.Algorithms.Merge (sort, sortBy)
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
+import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Storable as VS
 
 
 import Data.Array.Accelerate.Interpreter (run)
@@ -43,20 +45,23 @@ import Data.Array.Accelerate.Sparse.SVector
 
 
 -- | Sort an accelerate array via vector-algorithms
-sortA :: (Vectors (EltRepr e) ~ V.Vector e, Ord e
+sortA :: (Vectors (EltRepr e) ~ VS.Vector e, VS.Storable e, Ord e
          , Elt e
          , Shape t
          , PrimMonad m) => t -> Array t e -> m (Array t e)
 sortA dim v = do
   let vm = toVectors v
-  vm' <- sortV vm
+  vm' <- sortVS vm
   return $ fromVectors dim vm'
 
-sortV :: (Ord a, PrimMonad m) => V.Vector a -> m (V.Vector a)
-sortV v = do
-  vm <- V.thaw v
+
+-- | Sort a storable vector
+sortVS :: (VS.Storable a, PrimMonad m, Ord a) =>
+     VS.Vector a -> m (VS.Vector a)
+sortVS v = do
+  vm <- VS.thaw v
   sort vm
-  V.freeze vm
+  VS.freeze vm
 
 sortWith :: (Ord b, PrimMonad m) => (a -> b) -> V.Vector a -> m (V.Vector a)
 sortWith by v = do
