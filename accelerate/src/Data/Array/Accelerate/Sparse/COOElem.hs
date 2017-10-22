@@ -2,7 +2,7 @@
 {-# language UndecidableInstances #-}
 module Data.Array.Accelerate.Sparse.COOElem where
 
-import Foreign.Storable --  (Storable(..), peek, poke, alignment, sizeOf)
+import Foreign.Storable (Storable(..))
 import Foreign.Ptr
 import qualified Data.Vector.Storable as VS
 
@@ -76,15 +76,6 @@ instance (A.Lift A.Exp e, Elt (A.Plain e)) => A.Lift A.Exp (COOElem i e) where
   -- lift (CooE (i,j,x)) = Exp . Tuple $ NilTup `SnocTup` A.lift i `SnocTup` A.lift j `SnocTup` A.lift x
 
 
--- instance Elt a => IsProduct Elt (HSL a) where
---   type ProdRepr (HSL a)          = ((((),a), a), a)
---   fromProd _ (HSL h s l)         = ((((), h), s), l)
---   toProd _ ((((),h),s),l)        = HSL h s l
---   prod cst _                     = prod cst (undefined :: (a,a,a))
-
--- instance (Lift Exp a, Elt (Plain a)) => A.Lift Exp (HSL a) where
---   type Plain (HSL a)    = HSL (Plain a)
---   lift (HSL h s l)      = Exp . Tuple $ NilTup `SnocTup` lift h `SnocTup` lift s `SnocTup` lift l
 
 -- instance Elt a => A.Unlift Exp (HSL (Exp a)) where
 --   unlift c      = let h = Exp $ SuccTupIdx (SuccTupIdx ZeroTupIdx) `Prj` c
