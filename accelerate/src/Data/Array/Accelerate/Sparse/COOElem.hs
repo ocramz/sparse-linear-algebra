@@ -62,7 +62,7 @@ instance (ArrayElt (EltRepr e), Typeable (EltRepr e), ArrayElt (EltRepr i), Type
   toElt c = let (i, j, x) = toElt c in CooE (i, j, x)
   eltType (_ :: COOElem i a) = eltType (undefined :: (i, i, a))
 
-instance (Elt i, Elt e) => IsProduct Elt (COOElem i e) where
+instance (Elt ix, Elt e) => IsProduct Elt (COOElem ix e) where
   type ProdRepr (COOElem ix e) = ((((), ix), ix), e)
   fromProd _ (CooE (i, j, x)) = ((((), i), j), x)
   toProd _ ((((),i), j), x) = CooE (i,j,x)
