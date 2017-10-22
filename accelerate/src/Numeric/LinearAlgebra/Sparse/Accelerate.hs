@@ -36,7 +36,7 @@ import Data.Array.Accelerate.Interpreter (run)
 
 import Data.Array.Accelerate.Sparse.SMatrix
 import Data.Array.Accelerate.Sparse.SVector
-
+import Data.Array.Accelerate.Sparse.COOElem
 
 
 
@@ -101,3 +101,9 @@ sortWith by v = do
 
 -- sv0 :: A.Array DIM1 (Int, Int)
 -- sv0 = A.fromList (Z :. 5) $ zip [0,1,3,4,6] [4 ..]
+
+sv1 :: A.Array DIM1 (COOElem Int Double)
+sv1 = A.fromList (Z :. 3) [a, b, c] where
+  a = CooE (0, 1, pi)
+  b = CooE (0, 0, 2.3)
+  c = CooE (1, 1, 1.23)
