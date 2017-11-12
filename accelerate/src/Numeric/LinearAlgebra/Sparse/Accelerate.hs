@@ -14,6 +14,7 @@
 -----------------------------------------------------------------------------
 module Numeric.LinearAlgebra.Sparse.Accelerate where
 
+import Foreign.Storable (Storable(..))
 import Control.Monad.Primitive
 import Data.Ord (comparing)
 
@@ -46,7 +47,7 @@ import Data.Array.Accelerate.Sparse.COOElem
 
 -- | Sort an accelerate array via vector-algorithms
 sortA :: (Vectors (EltRepr e) ~ VS.Vector e
-         , VS.Storable e
+         , Storable e
          , Ord e
          , Elt e
          , Shape t
@@ -56,9 +57,23 @@ sortA dim v = do
   vm' <- sortVS vm
   return $ fromVectors dim vm'
 
+-- sortA' v = do
+--   let dim = A.shape v
+--   let vm = toVectors v
+--   vm' <- sortVS vm
+--   return $ fromVectors dim vm'
+
+-- sortA' v = do
+--   let v_acc = A.use v
+--       dim = A.shape v_acc
+--       vm = toVectors v
+--   vm' <- sortVS vm
+--   -- return $ fromVectors dim vm'
+--   return vm'
+
 
 -- | Sort a storable vector
-sortVS :: (VS.Storable a, PrimMonad m, Ord a) =>
+sortVS :: (Storable a, PrimMonad m, Ord a) =>
      VS.Vector a -> m (VS.Vector a)
 sortVS v = do
   vm <- VS.thaw v
