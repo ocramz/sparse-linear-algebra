@@ -1,5 +1,5 @@
 {-# language TypeFamilies, ScopedTypeVariables, MultiParamTypeClasses #-}
-{-# language UndecidableInstances #-}
+{-# language FlexibleInstances, UndecidableInstances #-}
 module Data.Array.Accelerate.Sparse.COOElem where
 
 import Foreign.Storable (Storable(..))
@@ -9,7 +9,8 @@ import qualified Data.Vector.Storable as VS
 import qualified Data.Array.Accelerate as A
 import Data.Array.Accelerate.Array.Sugar
 import Data.Array.Accelerate.Array.Data
-import Data.Array.Accelerate.Product  ( IsProduct(..) )
+import Data.Array.Accelerate.Smart
+import Data.Array.Accelerate.Product  ( IsProduct(..), TupleIdx(..) )
 
 import Data.Typeable
 
@@ -69,19 +70,17 @@ instance (Elt ix, Elt e) => IsProduct Elt (COOElem ix e) where
   prod cst _ = prod cst (undefined :: (i,i,e))
 
 
-instance (A.Lift A.Exp e, Elt (A.Plain e)) => A.Lift A.Exp (COOElem i e) where
-  -- type Plain (HSL a)    = HSL (Plain a)
+instance (A.Lift A.Exp e, Elt (A.Plain e), A.Lift A.Exp i, Elt (A.Plain i)) => A.Lift A.Exp (COOElem i e) where
   type Plain (COOElem i e) = COOElem (A.Plain i) (A.Plain e)
-  -- -- lift (HSL h s l)      = Exp . Tuple $ NilTup `SnocTup` lift h `SnocTup` lift s `SnocTup` lift l
-  -- lift (CooE (i,j,x)) = Exp . Tuple $ NilTup `SnocTup` A.lift i `SnocTup` A.lift j `SnocTup` A.lift x
+  lift (CooE (i,j,x)) = Exp . Tuple $ NilTup `SnocTup` A.lift i `SnocTup` A.lift j `SnocTup` A.lift x
 
 
 
--- instance Elt a => A.Unlift Exp (HSL (Exp a)) where
---   unlift c      = let h = Exp $ SuccTupIdx (SuccTupIdx ZeroTupIdx) `Prj` c
---                       s = Exp $ SuccTupIdx ZeroTupIdx `Prj` c
---                       l = Exp $ ZeroTupIdx `Prj` c
---                   in HSL h s l
+instance (A.Lift A.Exp e, Elt (A.Plain e), A.Lift A.Exp i, Elt (A.Plain i), Elt i, Elt e) => A.Unlift A.Exp (COOElem (A.Exp i) (A.Exp e)) where
+  unlift c = let ii = Exp $ SuccTupIdx (SuccTupIdx ZeroTupIdx) `Prj` c
+                 jj = Exp $ SuccTupIdx ZeroTupIdx `Prj` c
+                 xx = Exp $ ZeroTupIdx `Prj` c
+             in CooE (ii, jj, xx)
 
 
 
