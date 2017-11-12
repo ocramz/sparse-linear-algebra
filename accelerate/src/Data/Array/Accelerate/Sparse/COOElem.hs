@@ -4,7 +4,7 @@ module Data.Array.Accelerate.Sparse.COOElem where
 
 import Foreign.Storable (Storable(..))
 import Foreign.Ptr
-import qualified Data.Vector.Storable as VS
+-- import qualified Data.Vector.Storable as VS
 
 import qualified Data.Array.Accelerate as A
 import Data.Array.Accelerate.Array.Sugar
@@ -33,7 +33,8 @@ instance (Ord i, Eq e) => Ord (COOElem i e) where
     | i == i' && j <= j' = True
     | otherwise = False
 
-instance (Integral i, Storable i, Storable e) => VS.Storable (COOElem i e) where
+-- | COOElem must be Storable if we want to sort vectors of these via vector-algorithms
+instance (Integral i, Storable i, Storable e) => Storable (COOElem i e) where
   sizeOf _ = sizeOf (undefined :: e) + 2 * sizeOf (undefined :: i)
   alignment _ = max (alignment (undefined :: e)) (alignment (undefined :: i))
   peek p = do
