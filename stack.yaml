@@ -39,8 +39,9 @@ resolver: lts-9.6
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
-- core/
-- accelerate/
+# - core/
+# - accelerate/
+
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
@@ -58,7 +59,7 @@ extra-package-dbs: []
 
 ghc-options: # {}
   # "*" : -w -Wno-missing-signatures # -fprint-potential-instances
-  "*" : -Wno-missing-signatures -Wno-name-shadowing # -fprint-potential-instances
+  "*" : -Wno-missing-signatures -Wno-name-shadowing -Wno-unused-imports # -fprint-potential-instances
   
 # Control whether we use the GHC we find on the path
 # system-ghc: true

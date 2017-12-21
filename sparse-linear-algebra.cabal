@@ -1,10 +1,10 @@
 name:                sparse-linear-algebra
 version:             0.2.9.8
-synopsis:            Numerical computation in native Haskell
+synopsis:            Numerical computing in native Haskell
 description:
   /Overview/
   .
-  The @sparse-linear-algebra@ library provides iterative linear solvers, matrix decompositions, eigenvalue computations and related utilities. The user interface is provided by the top-level module "Numeric.LinearAlgebra.Sparse":
+  The @sparse-linear-algebra@ library provides iterative linear solvers, matrix decompositions, eigenvalue algorithms and related utilities. The user interface is provided by the top-level module "Numeric.LinearAlgebra.Sparse":
   .
   @
   import           Numeric.LinearAlgebra.Sparse

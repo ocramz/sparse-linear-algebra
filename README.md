@@ -17,7 +17,7 @@ This will let other developers build on top of this library, in the spirit of `v
 
 * The `vector`-based backend is being reworked.
 
-* An `accelerate`-based backend is under development.
+* An `accelerate`-based backend is under development [6, 7].
 
 
 ## Contents
@@ -235,4 +235,8 @@ Inspired by
 
 [4] L.N. Trefethen, D. Bau, Numerical Linear Algebra, SIAM, 1997
 
-[5] W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery, Numerical Recipes in Fortran 77, 2nd ed., 1992 
+[5] W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery, Numerical Recipes in Fortran 77, 2nd ed., 1992
+
+[6] M. M. T. Chakravarty, et al., Accelerating Haskell array codes with multicore GPUs - DAMP'11
+
+[7] [`accelerate`](http://hackage.haskell.org/package/accelerate)
