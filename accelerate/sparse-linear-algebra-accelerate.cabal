@@ -16,13 +16,14 @@ tested-with:         GHC == 8.0.2
 
 library
   default-language:    Haskell2010
-  ghc-options:         -Wall
+  ghc-options:         -O2 -Wno-missing-signatures -Wno-name-shadowing
   hs-source-dirs:      src
   exposed-modules:     Numeric.LinearAlgebra.Accelerate
                        Numeric.LinearAlgebra.Sparse.Accelerate
                        Data.Array.Accelerate.Sparse.SVector
                        Data.Array.Accelerate.Sparse.SMatrix
-  other-modules:       Data.Array.Accelerate.Sparse.Static                    
+  other-modules:       Data.Array.Accelerate.Sparse.Static
+                       Data.Array.Accelerate.Sparse.COOElem            
   build-depends:       base >= 4.7 && < 5
                      -- , sparse-linear-algebra-core
                      , accelerate

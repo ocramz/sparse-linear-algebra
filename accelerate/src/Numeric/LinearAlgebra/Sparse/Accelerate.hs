@@ -35,13 +35,33 @@ import qualified Data.Vector.Storable as VS
 
 import Data.Array.Accelerate.Interpreter (run)
 
-import Data.Array.Accelerate.Sparse.SMatrix
-import Data.Array.Accelerate.Sparse.SVector
+-- import Data.Array.Accelerate.Sparse.SMatrix
+-- import Data.Array.Accelerate.Sparse.SVector
 import Data.Array.Accelerate.Sparse.COOElem
 
 
 
+-- takeWhile ins = A.fold ins (A.use []) where
+
+
+-- extractRow i = A.filter (\coo -> let ixr = getRow coo in ixr == i)
+
+-- extractRow i = A.filter (\e -> A.lift (eqRowIx i e))
+
+-- eqRowIx :: Eq i => i -> COOElem i a -> Bool
+-- eqRowIx i = (== i) . getRow . A.unlift
+
+
+-- withExp :: (a -> b) -> Exp a -> Exp b
+-- withExp f = A.lift . f . A.unlift
+
+
+-- empty = A.use $ V.fromList []
+
+
 -- * SpGEMM : matrix-matrix product
+
+
 
 
 
@@ -57,19 +77,6 @@ sortA dim v = do
   vm' <- sortVS vm
   return $ fromVectors dim vm'
 
--- sortA' v = do
---   let dim = A.shape v
---   let vm = toVectors v
---   vm' <- sortVS vm
---   return $ fromVectors dim vm'
-
--- sortA' v = do
---   let v_acc = A.use v
---       dim = A.shape v_acc
---       vm = toVectors v
---   vm' <- sortVS vm
---   -- return $ fromVectors dim vm'
---   return vm'
 
 
 -- | Sort a storable vector

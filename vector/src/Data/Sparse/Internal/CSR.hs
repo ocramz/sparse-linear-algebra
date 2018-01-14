@@ -11,11 +11,11 @@ import qualified Data.Vector.Mutable as VM
 
 import Control.Monad (when, forM_)
 
-import Data.Sparse.Types
-import Data.Sparse.Internal.SVector
-import Data.Sparse.Internal.Utils
+-- import Data.Sparse.Types
+-- import Data.Sparse.Internal.SVector
+import Data.Sparse.Internal.Vector.Utils
 
-import Numeric.LinearAlgebra.Class
+-- import Numeric.LinearAlgebra.Class
 -- import Data.Sparse.Common
 
 
@@ -75,43 +75,38 @@ toCSR m n ijxv = CsrM m n nz cix crp x where
 
 
 
+-- -- * Lookup
+-- -- | O(1) : lookup row
+-- lookupRow :: CsrMatrix a -> IxRow -> Maybe (SVector a)
+-- lookupRow cm i | null er = Nothing
+--                | otherwise = Just er where er = extractRowCSR cm i
+
+-- -- | O(N) lookup entry by index in a sparse Vector, using a default value in case of missing entry
+-- lookupEntry_WD :: a -> SVector a -> Int -> a
+-- lookupEntry_WD z cr j = maybe z (\j -> svVal cr V.! j) (V.findIndex (== j) (svIx cr))
 
 
 
 
+-- -- | O(N) : lookup entry by (row, column) indices, using a default value in case of missing entry
+-- lookupCSR_WD :: a -> CsrMatrix a -> (IxRow, IxCol) -> a
+-- lookupCSR_WD z csr (i,j) = maybe z (\r -> lookupEntry_WD z r j) (lookupRow csr i)
 
--- * Lookup
--- | O(1) : lookup row
-lookupRow :: CsrMatrix a -> IxRow -> Maybe (SVector a)
-lookupRow cm i | null er = Nothing
-               | otherwise = Just er where er = extractRowCSR cm i
-
--- | O(N) lookup entry by index in a sparse Vector, using a default value in case of missing entry
-lookupEntry_WD :: a -> SVector a -> Int -> a
-lookupEntry_WD z cr j = maybe z (\j -> svVal cr V.! j) (V.findIndex (== j) (svIx cr))
+-- -- | O(N) : lookup entry by (row, column) indices
+-- lookupCSR :: a -> CsrMatrix a -> (IxRow, IxCol) -> Maybe a
+-- lookupCSR z csr (i, j) = lookupRow csr i >>= \cr -> return $ lookupEntry_WD z cr j
 
 
-
-
--- | O(N) : lookup entry by (row, column) indices, using a default value in case of missing entry
-lookupCSR_WD :: a -> CsrMatrix a -> (IxRow, IxCol) -> a
-lookupCSR_WD z csr (i,j) = maybe z (\r -> lookupEntry_WD z r j) (lookupRow csr i)
-
--- | O(N) : lookup entry by (row, column) indices
-lookupCSR :: a -> CsrMatrix a -> (IxRow, IxCol) -> Maybe a
-lookupCSR z csr (i, j) = lookupRow csr i >>= \cr -> return $ lookupEntry_WD z cr j
-
-
--- ** Extract a row
--- | O(1) : extract a row from the CSR matrix. Returns an empty Vector if the row is not present.
-extractRowCSR :: CsrMatrix a -> IxRow -> SVector a
-extractRowCSR (CsrM _ n _ cix rp x) irow = SV n ixs vals where
-  imin = rp V.! irow
-  imax = rp V.! (irow + 1)
-  len = imax - imin
-  trimf  = V.slice imin len
-  ixs = trimf cix
-  vals = trimf x
+-- -- ** Extract a row
+-- -- | O(1) : extract a row from the CSR matrix. Returns an empty Vector if the row is not present.
+-- extractRowCSR :: CsrMatrix a -> IxRow -> SVector a
+-- extractRowCSR (CsrM _ n _ cix rp x) irow = SV n ixs vals where
+--   imin = rp V.! irow
+--   imax = rp V.! (irow + 1)
+--   len = imax - imin
+--   trimf  = V.slice imin len
+--   ixs = trimf cix
+--   vals = trimf x
 
 
 
@@ -143,48 +138,48 @@ transposeCSR mm = toCSR n m $ V.zip3 jj ii xx where
 
 
 
--- some instances
+-- -- some instances
 
-instance FiniteDim CsrMatrix where
-  type FDSize CsrMatrix = (Int, Int)
-  dim m = (csrNrows m, csrNcols m)
+-- instance FiniteDim CsrMatrix where
+--   type FDSize CsrMatrix = (Int, Int)
+--   dim m = (csrNrows m, csrNcols m)
 
-instance HasData CsrMatrix a where
-  nnz = csrNz
+-- instance HasData CsrMatrix a where
+--   nnz = csrNz
   
-instance Sparse CsrMatrix a where
-  spy m = fromIntegral (nnz m) / fromIntegral (csrNrows m * csrNcols m) 
+-- instance Sparse CsrMatrix a where
+--   spy m = fromIntegral (nnz m) / fromIntegral (csrNrows m * csrNcols m) 
 
-instance Elt a => SpContainer CsrMatrix a where
-  type ScIx CsrMatrix = (Int, Int)
-  -- scInsert = undefined
-  (@@) = lookupCSR_WD 0
+-- instance Elt a => SpContainer CsrMatrix a where
+--   type ScIx CsrMatrix = (Int, Int)
+--   -- scInsert = undefined
+--   (@@) = lookupCSR_WD 0
 
--- instance Elt a => SparseMatrix CsrMatrix a where
-
-
+-- -- instance Elt a => SparseMatrix CsrMatrix a where
 
 
 
 
 
 
--- test data
-v0 :: V.Vector (Int, Double)
-v0 = V.fromList [(0, pi), (2, 3), (3, 57)]
-
-v1 = V.fromList [(0,0,pi), (0,1,5), (2,1,exp 1)]
-
--- sm0 = smFromVector ColsFirst (3, 3) v1 :: SpMatrix1 Double
 
 
+-- -- test data
+-- v0 :: V.Vector (Int, Double)
+-- v0 = V.fromList [(0, pi), (2, 3), (3, 57)]
+
+-- v1 = V.fromList [(0,0,pi), (0,1,5), (2,1,exp 1)]
+
+-- -- sm0 = smFromVector ColsFirst (3, 3) v1 :: SpMatrix1 Double
 
 
-v2r, v2c :: V.Vector (LexIx, Double)
-v2r = V.fromList [(1, 5), (5, 8), (7, 6), (10, 3)]
 
-v2c = V.fromList [(4, 5), (5, 8), (10, 3), (13, 6)]
 
-v2 :: V.Vector (Int, Int, Double)
-v2 = V.fromList [(1,0,5), (1,1,8), (2,2,3), (3,1,6)]
--- sm2 = smFromVector RowsFirst (4, 4) v2 :: SpMatrix1 Double
+-- v2r, v2c :: V.Vector (LexIx, Double)
+-- v2r = V.fromList [(1, 5), (5, 8), (7, 6), (10, 3)]
+
+-- v2c = V.fromList [(4, 5), (5, 8), (10, 3), (13, 6)]
+
+-- v2 :: V.Vector (Int, Int, Double)
+-- v2 = V.fromList [(1,0,5), (1,1,8), (2,2,3), (3,1,6)]
+-- -- sm2 = smFromVector RowsFirst (4, 4) v2 :: SpMatrix1 Double

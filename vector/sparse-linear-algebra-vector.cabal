@@ -1,0 +1,48 @@
+name:           sparse-linear-algebra-vector
+version:        0.1.0.0
+description:    Please see the README on Github at <https://github.com/ocramz/sparse-linear-algebra#readme>
+homepage:       https://github.com/ocramz/sparse-linear-algebra#readme
+bug-reports:    https://github.com/ocramz/sparse-linear-algebra/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2018 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    ChangeLog.md
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/ocramz/sparse-linear-algebra
+
+library
+  hs-source-dirs:
+      src
+  build-depends:
+                base >=4.7 && <5
+              , vector
+              , primitive
+  exposed-modules:
+                  Data.Sparse.Internal.CSR
+                  Data.Sparse.Internal.CSC
+                  Data.Sparse.Internal.CSB
+  -- other-modules:
+  default-language: Haskell2010
+
+
+test-suite sparse-linear-algebra-vector-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , sparse-linear-algebra-vector
+  other-modules:
+      Paths_sparse_linear_algebra_vector
+  default-language: Haskell2010

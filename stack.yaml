@@ -57,9 +57,9 @@ flags: {}
 # Extra package databases containing global packages
 extra-package-dbs: []
 
-ghc-options: # {}
+ghc-options: {} 
   # "*" : -w -Wno-missing-signatures # -fprint-potential-instances
-  "*" : -Wno-missing-signatures -Wno-name-shadowing -Wno-unused-imports # -fprint-potential-instances
+  # "*" : -Wno-missing-signatures -Wno-name-shadowing -Wno-unused-imports # -fprint-potential-instances
   
 # Control whether we use the GHC we find on the path
 # system-ghc: true
