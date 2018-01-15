@@ -24,7 +24,10 @@ library
       src
   build-depends:
                 base >=4.7 && <5
+              , sparse-linear-algebra
+              , containers
               , vector
+              , vector-algorithms
               , primitive
   exposed-modules:
                   Data.Sparse.Internal.CSR

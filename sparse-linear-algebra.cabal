@@ -62,8 +62,8 @@ library
                        -- Data.Sparse.Internal.SHVector
                        Data.Sparse.Internal.SList
                        Data.Sparse.Internal.TriMatrix
-                       Data.Sparse.Internal.CSB
-                       Data.Sparse.Internal.CSC                       
+                       -- Data.Sparse.Internal.CSB
+                       -- Data.Sparse.Internal.CSC           
                        Data.Sparse.Utils
                        Data.Sparse.PPrint
                        Data.Sparse.Types

@@ -31,7 +31,7 @@ import Control.Concurrent
 import Data.Sparse.Utils
 import Data.Sparse.Types
 -- import Data.Sparse.Internal.CSRVector
-import Data.Sparse.Internal.Utils
+import Data.Sparse.Internal.Vector.Utils
 
 import Numeric.LinearAlgebra.Class
 

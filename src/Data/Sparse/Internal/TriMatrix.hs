@@ -23,7 +23,7 @@ import Data.Sparse.Types
 import Data.Sparse.Internal.SList
 
 import Numeric.LinearAlgebra.Class
-import Data.Sparse.Internal.CSC
+-- import Data.Sparse.Internal.CSC
 import Data.Sparse.Internal.SVector
 import qualified Data.Sparse.Internal.SVector.Mutable as SMV
 import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM, sparsifySM)

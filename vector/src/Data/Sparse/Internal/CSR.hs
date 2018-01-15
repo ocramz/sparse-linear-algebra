@@ -15,7 +15,7 @@ import Control.Monad (when, forM_)
 -- import Data.Sparse.Internal.SVector
 import Data.Sparse.Internal.Vector.Utils
 
--- import Numeric.LinearAlgebra.Class
+import Numeric.LinearAlgebra.Class
 -- import Data.Sparse.Common
 
 
@@ -138,11 +138,11 @@ transposeCSR mm = toCSR n m $ V.zip3 jj ii xx where
 
 
 
--- -- some instances
+-- some /sparse-linear-algebra/ instances
 
--- instance FiniteDim CsrMatrix where
---   type FDSize CsrMatrix = (Int, Int)
---   dim m = (csrNrows m, csrNcols m)
+instance FiniteDim CsrMatrix where
+  type FDSize CsrMatrix = (Int, Int)
+  dim m = (csrNrows m, csrNcols m)
 
 -- instance HasData CsrMatrix a where
 --   nnz = csrNz
