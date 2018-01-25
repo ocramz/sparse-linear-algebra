@@ -1,7 +1,10 @@
 # Contribution guidelines
 
 Chatroom: https://gitter.im/ocramz/sparse-linear-algebra
+
 Issues: https://github.com/ocramz/sparse-linear-algebra/issues
+
+## Introduction
 
 `sparse-linear-algebra` is a young and experimental library, but it aims to provide high-performance _and_ high-level functionality.
 
