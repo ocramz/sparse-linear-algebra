@@ -40,7 +40,7 @@ import Data.Sparse.SpVector as X
 import Numeric.Eps as X
 import Numeric.LinearAlgebra.Class as X
 
-import qualified Data.IntMap as IM
+import qualified Data.IntMap.Strict as IM
 
 import GHC.Exts
 import Data.Complex

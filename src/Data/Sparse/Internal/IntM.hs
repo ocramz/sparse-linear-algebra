@@ -7,7 +7,7 @@ import Numeric.LinearAlgebra.Class
 import GHC.Exts
 import Data.Complex
 
-import qualified Data.IntMap as IM
+import qualified Data.IntMap.Strict as IM
 
 
 
