@@ -1,5 +1,5 @@
 name:                sparse-linear-algebra
-version:             0.2.9.8
+version:             0.2.9.9
 synopsis:            Numerical computing in native Haskell
 description:
   /Overview/
@@ -22,6 +22,7 @@ category:            Numeric
 build-type:          Simple
 extra-source-files:  README.md
                      CHANGELOG.markdown
+                     CONTRIBUTORS.md
 data-dir:            test/data
 data-files:          e05r0000.mtx
                      e05r0000_rhs1.mtx
