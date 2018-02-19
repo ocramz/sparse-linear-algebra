@@ -14,7 +14,7 @@ import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Algorithms.Merge as VA (sortBy)
 -- import qualified Data.Vector.Generic as VG (convert)
 
-import qualified Data.IntMap as IM
+import qualified Data.IntMap.Strict as IM
 
 import Control.Monad
 import Data.Maybe
