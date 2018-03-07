@@ -1,4 +1,4 @@
-{-# language GeneralizedNewtypeDeriving, DeriveFunctor, DeriveFoldable, TypeFamilies #-}
+{-# language DeriveFunctor, DeriveFoldable, TypeFamilies #-}
 module Data.Sparse.Internal.IntM where
 
 import Data.Sparse.Utils
