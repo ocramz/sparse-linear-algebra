@@ -77,8 +77,6 @@ instance Num a => AdditiveGroup (IntM a) where
   {-# INLINE zeroV #-}
   (^+^) = liftU2 (+)
   {-# INLINE (^+^) #-}
-  (^-^) = liftU2 (-)
-  {-# INLINE (^-^) #-}
   negateV = fmap negate
   {-# INLINE negateV #-}
 
