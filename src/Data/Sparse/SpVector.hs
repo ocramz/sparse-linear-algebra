@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# language TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
-{-# language CPP #-}
+{-# language TypeFamilies, MultiParamTypeClasses #-}
 {-# language GeneralizedNewtypeDeriving, DeriveFunctor #-}
 -----------------------------------------------------------------------------
 -- |
@@ -116,35 +115,34 @@ instance Elt a => SpContainer (SpVector a) where
 --   svFromListDense = fromListDenseSV
 --   svConcat = foldr concatSV zero
 
--- instance SparseVector SpVector (Complex Double) where
 
+instance AdditiveGroup a => AdditiveGroup (SpVector a) where
+  zeroV = SV 0 zeroV
+  (^+^) = liftU2 (^+^)
+  negateV v = fmap negateV v
 
+instance VectorSpace a => VectorSpace (SpVector a) where
+  type Scalar (SpVector a) = Scalar a
+  n .* v = fmap (n .*) v
 
+instance InnerSpace a => InnerSpace (SpVector a) where
+  v <.> w = sum $ liftI2 (<.>) v w
 
 -- #define SpVectorInstance(t) \
---   instance AdditiveGroup (SpVector (t)) where { zeroV = SV 0 empty; (^+^) = liftU2 (+); negateV = fmap negate };\
---   instance AdditiveGroup (SpVector (Complex t)) where { zeroV = SV 0 empty; (^+^) = liftU2 (+); negateV = fmap negate };\
---   instance VectorSpace (SpVector t) where { type (Scalar (SpVector t)) = t; n *^ v = scale n v};\
---   instance VectorSpace (SpVector (Complex t)) where { type (Scalar (SpVector (Complex t))) = Complex t; n *^ v = scale n v};\
---   instance InnerSpace (SpVector (t)) where { (<.>) = dotS };\
---   instance InnerSpace (SpVector (Complex (t))) where { (<.>) = dotS };\
 --   instance Normed (SpVector (t)) where {type RealScalar (SpVector (t)) = t; type Magnitude (SpVector (t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)};\
 --   instance Normed (SpVector (Complex t)) where {type RealScalar (SpVector (Complex t)) = t; type Magnitude (SpVector (Complex t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)}
-
-
-
 -- SpVectorInstance(Double)
 -- SpVectorInstance(Float)
 
 
-dotS :: InnerSpace (IntM t) => SpVector t -> SpVector t -> Scalar (IntM t)
+dotS :: InnerSpace t => SpVector t -> SpVector t -> Scalar (IntM t)
 (SV m a) `dotS` (SV n b)
   | n == m = a <.> b
   | otherwise = error $ unwords ["<.> : Incompatible dimensions:", show m, show n]
 
 -- dotSSafe :: (MonadThrow m, InnerSpace (IM.IntMap t)) =>
 --      SpVector t -> SpVector t -> m (Scalar (IM.IntMap t))
-dotSSafe :: (InnerSpace (IntM t), MonadThrow m) =>
+dotSSafe :: (InnerSpace t, MonadThrow m) =>
   SpVector t -> SpVector t -> m (Scalar (IntM t))
 dotSSafe (SV m a) (SV n b)
   | n == m = return $ a <.> b
