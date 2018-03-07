@@ -1,4 +1,4 @@
-{-# language FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, TypeFamilies #-}
+{-# language FlexibleInstances, FlexibleContexts, TypeFamilies #-}
 {-# language DeriveFunctor, DeriveFoldable #-}
 -----------------------------------------------------------------------------
 -- |
@@ -70,23 +70,19 @@ instance Show a => Show (SpMatrix a) where
   show sm@(SM _ x) = unwords ["SM",sizeStrSM sm,show (toList $ toList <$> x)]
   -- show sm@(SM _ x) = show x
 
--- instance Functor SpMatrix where
---   fmap f (SM d md) = SM d ((fmap . fmap) f md)
-
-
-    
-
 instance Set SpMatrix where
   liftU2 f2 (SM n1 x1) (SM n2 x2) = SM (maxTup n1 n2) ((liftU2.liftU2) f2 x1 x2)
   liftI2 f2 (SM n1 x1) (SM n2 x2) = SM (minTup n1 n2) ((liftI2.liftI2) f2 x1 x2)
 
 -- | 'SpMatrix'es form an additive group, in that they can have an invertible associtative operation (matrix sum)
-instance Num a => AdditiveGroup (SpMatrix a) where
+instance AdditiveGroup a => AdditiveGroup (SpMatrix a) where
   zeroV = SM (0,0) I.empty
-  (^+^) = liftU2 (+)
-  negateV = fmap negate
-  (^-^) = liftU2 (-)
+  (^+^) = liftU2 (^+^)
+  negateV = fmap negateV
 
+instance VectorSpace a => VectorSpace (SpMatrix a) where
+  type Scalar (SpMatrix a) = Scalar a
+  n .* v = fmap (n .*) v
 
 
 
