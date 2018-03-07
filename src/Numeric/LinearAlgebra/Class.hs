@@ -76,7 +76,7 @@ class (AdditiveGroup v, Num (Scalar v)) => VectorSpace v where
   (.*) :: Scalar v -> v -> v
 
 -- | Adds inner (dot) products.
-class (VectorSpace v, AdditiveGroup (Scalar v)) => InnerSpace v where
+class VectorSpace v => InnerSpace v where
   -- | Inner/dot product
   (<.>) :: v -> v -> Scalar v
 
@@ -418,43 +418,38 @@ toC r = r :+ 0
 
 
 
--- -- | Instances for AdditiveGroup
--- instance Integral a => AdditiveGroup (Ratio a) where
---   {zero=0; (^+^) = (+); negated = negate}
+-- | Instances for builtin types
+#define ScalarType(t) \
+instance AdditiveGroup (t) where {zeroV = 0; (^+^) = (+); negateV = negate};\
+instance VectorSpace (t) where {type Scalar (t) = (t); (.*) = (*) };\
+instance InnerSpace (t) where {(<.>) = (*)};
 
--- instance (RealFloat v, AdditiveGroup v) => AdditiveGroup (Complex v) where
---   zero    = zero :+ zero
---   (^+^)   = (+)
---   negated = negate
+ScalarType(Int)
+ScalarType(Integer)
+ScalarType(Float)
+ScalarType(Double)
+--ScalarType(CSChar)
+--ScalarType(CInt)
+--ScalarType(CShort)
+--ScalarType(CLong)
+--ScalarType(CLLong)
+--ScalarType(CIntMax)
+--ScalarType(CFloat)
+--ScalarType(CDouble)
 
--- -- | Standard instance for an applicative functor applied to a vector space.
--- instance AdditiveGroup v => AdditiveGroup (a -> v) where
---   zero    = pure   zero
---   (^+^)   = liftA2 (^+^)
---   negated = fmap   negated
+#undef ScalarType
 
+-- | Instances for Complex numbers. Note that these instances define the complex
+-- | numbers as a (two dimensional) real vector space!
+instance AdditiveGroup v => AdditiveGroup (Complex v) where
+  zeroV = zeroV :+ zeroV
+  (x1 :+ y1) ^+^ (x2 :+ y2) = (x1 ^+^ x2) :+ (y1 ^+^ y2)
+  negateV (x1 :+ y1) = (negateV x1 :+ negateV y1)
 
--- -- | Instances for VectorSpace
--- instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
---   type Scalar (Complex v) = Scalar v
---   s .* (u :+ v) = s .* u :+ s .* v
+instance VectorSpace v => VectorSpace (Complex v) where
+  type Scalar (Complex v) = Scalar v
+  s .* (u :+ v) = (s .* u) :+ (s .* v)
 
-
-
--- #define ScalarType(t) \
---   instance AdditiveGroup (t) where {zero = 0; (^+^) = (+); negated = negate};\
---   instance VectorSpace (t) where {type Scalar (t) = (t); (.*) = (*) };\
---   instance Hilbert (t) where dot = (*)
-
--- ScalarType(Int)
--- ScalarType(Integer)
--- ScalarType(Float)
--- ScalarType(Double)
--- ScalarType(CSChar)
--- ScalarType(CInt)
--- ScalarType(CShort)
--- ScalarType(CLong)
--- ScalarType(CLLong)
--- ScalarType(CIntMax)
--- ScalarType(CFloat)
--- ScalarType(CDouble)
+instance InnerSpace v => InnerSpace (Complex v) where
+  -- this is the same as `x * conjugate y` for scalar types
+  (x1 :+ y1) <.> (x2 :+ y2) = (x1 <.> x2) + (y1 <.> y2)
