@@ -173,13 +173,13 @@ conditionNumberSM m = do
 
 -- * Householder transformation
 
-hhMat :: Num a => a -> SpVector a -> SpMatrix a
+hhMat :: (Num a, AdditiveGroup a) => a -> SpVector a -> SpMatrix a
 hhMat beta x = eye n ^-^ beta `scale` (x >< x) where
   n = dim x
 
 
 -- | Householder reflection: a vector `x` uniquely defines an orthogonal (hyper)plane, i.e. an orthogonal subspace; the Householder operator reflects any point `v` through this subspace: v' = (I - 2 x >< x) v
-hhRefl :: Num a => SpVector a -> SpMatrix a
+hhRefl :: (Num a, AdditiveGroup a) => SpVector a -> SpMatrix a
 hhRefl = hhMat 2
 
 

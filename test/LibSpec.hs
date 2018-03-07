@@ -575,7 +575,7 @@ instance Show a => Show (PropMatI a) where show = show . unPropMatI
 instance Arbitrary (PropMatI Double) where
   arbitrary = sized (\m -> PropMatI <$> genSpMI m) `suchThat` ((> 2) . nrows . unPropMatI)
 
-genSpMI :: (Num a, Arbitrary a) => Int -> Gen (SpMatrix a)
+genSpMI :: (AdditiveGroup a, Num a, Arbitrary a) => Int -> Gen (SpMatrix a)
 genSpMI m = do
   mm <- genSpM m m
   return $ mm ^+^ eye m

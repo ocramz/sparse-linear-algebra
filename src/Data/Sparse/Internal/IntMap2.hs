@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}
 module Data.Sparse.Internal.IntMap2 where
 
 import qualified Data.Sparse.Internal.IntM as I

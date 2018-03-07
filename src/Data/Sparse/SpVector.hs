@@ -1,6 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# language TypeFamilies, MultiParamTypeClasses #-}
-{-# language GeneralizedNewtypeDeriving, DeriveFunctor #-}
+{-# language FlexibleContexts, TypeFamilies #-}
+{-# language DeriveFunctor, DeriveFoldable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -43,7 +42,7 @@ import qualified Data.Vector as V
 -- * Sparse Vector
 
 data SpVector a = SV { svDim :: {-# UNPACK #-} !Int ,
-                       svData :: !(IntM a)} deriving Eq
+                       svData :: !(IntM a)} deriving (Eq, Functor, Foldable)
 
 instance Show a => Show (SpVector a) where
   show (SV d x) = "SV (" ++ show d ++ ") "++ show (toList x)
@@ -62,18 +61,9 @@ sizeStrSV sv = unwords ["(",show (dim sv),"elements ) , ",show (nzSV sv),"NZ ( d
   sy = spy sv :: Double
   sys = printf "%1.3f %%" (sy * 100) :: String
 
-
-
-instance Functor SpVector where
-  fmap f (SV n x) = SV n (fmap f x)
-
 instance Set SpVector where  
   liftU2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftU2 f2 x1 x2)
   liftI2 f2 (SV n1 x1) (SV n2 x2) = SV (max n1 n2) (liftI2 f2 x1 x2)
-  
-instance Foldable SpVector where
-    foldr f d v = F.foldr f d (svData v)
-
 
 foldlWithKeySV, foldlWithKeySV' :: (a -> IM.Key -> b -> a) -> a -> SpVector b -> a
 foldlWithKeySV f d v = foldlWithKey f d (svData v)
