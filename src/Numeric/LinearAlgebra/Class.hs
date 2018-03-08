@@ -219,7 +219,7 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
 
 -- * Linear vector space
 
-class (VectorSpace v, MatrixRing (MatrixType v)) => LinearVectorSpace v where
+class (VectorSpace v {-, MatrixRing (MatrixType v)-}) => LinearVectorSpace v where
   type MatrixType v :: *
   -- | Matrix-vector action
   (#>) :: MatrixType v -> v -> v

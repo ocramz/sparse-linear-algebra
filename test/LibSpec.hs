@@ -43,18 +43,18 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "Numeric.LinearAlgebra.Sparse : Library" $ do
-    -- it "<.> : inner product (Complex)" $
-    --   tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
     prop "Subtraction is cancellative" $ \(x :: SpVector Double) ->
       norm2Sq (x ^-^ x) `shouldBe` zeroV
     it "<.> : inner product (Real)" $
       tv0 <.> tv0 `shouldBe` 61
+    -- it "<.> : inner product (Complex)" $
+    --   tvc2 <.> tvc3 `shouldBe` 2 -- :+ (-2)  
     it "transpose : sparse matrix transpose" $
       transpose m1 `shouldBe` m1t
-    -- it "(#>) : matrix-vector product (Real)" $
-    --   nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
-    -- it "(<#) : vector-matrix product (Real)" $
-    --   nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True
+    it "(#>) : matrix-vector product (Real)" $
+      nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
+    it "(<#) : vector-matrix product (Real)" $
+      nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True
   
     it "(##) : matrix-matrix product (Real, square)" $ 
       (m1 ## m2) `shouldBe` m1m2
@@ -253,7 +253,7 @@ checkBackslash' aa x = do
 
 
 -- | NB : we compare the norm _squared_ of the residual, since `pinv` squares the condition number
-checkPinv :: (Normed v, LinearSystem v, MonadThrow m, MonadIO m) =>
+checkPinv :: (Normed v, LinearSystem v, MatrixRing (MatrixType v), MonadThrow m, MonadIO m) =>
      MatrixType v -> v -> v -> m Bool
 checkPinv aa b x = do
   xhat <- aa `pinv` b

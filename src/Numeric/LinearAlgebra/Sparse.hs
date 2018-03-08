@@ -348,7 +348,7 @@ eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
 -- | `eigsArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
 eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, V (SpVector t), Epsilon t, PrintDense (SpMatrix t),
-      MonadThrow m, MonadIO m) =>
+      MatrixRing (SpMatrix t), MonadThrow m, MonadIO m) =>
      Int
      -> SpMatrix t
      -> SpVector t
@@ -854,7 +854,7 @@ cgneInit aa b x0 = CGNE x0 r0 p0 where
 
 cgneStep :: (MatrixType (SpVector a) ~ SpMatrix a,
       LinearVectorSpace (SpVector a), InnerSpace (SpVector a),
-      Fractional (Scalar (SpVector a))) =>
+      MatrixRing (SpMatrix a), Fractional (Scalar (SpVector a))) =>
      SpMatrix a -> CGNE a -> CGNE a
 cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
     alphai = (r `dot` r) / (p `dot` p)
@@ -882,7 +882,7 @@ bcgInit aa b x0 = BCG x0 r0 r0hat p0 p0hat where
 
 bcgStep :: (MatrixType (SpVector a) ~ SpMatrix a,
       LinearVectorSpace (SpVector a), InnerSpace (SpVector a),
-      Fractional (Scalar (SpVector a))) =>
+      MatrixRing (SpMatrix a), Fractional (Scalar (SpVector a))) =>
      SpMatrix a -> BCG a -> BCG a 
 bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
     aap = aa #> p
@@ -969,7 +969,7 @@ instance Show a => Show (BICGSTAB a) where
 
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equations.
-pinv :: (LinearSystem v, MonadThrow m, MonadIO m) =>
+pinv :: (LinearSystem v, MatrixRing (MatrixType v), MonadThrow m, MonadIO m) =>
      MatrixType v -> v -> m v
 pinv aa b = (aa #^# aa) <\> atb where
   atb = transpose aa #> b
@@ -1017,9 +1017,9 @@ linSolve0 method aa b x0
 
 -- | <\> uses the GMRES method as default
 
--- instance LinearSystem (SpVector Double) where
---   aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
---     where n = ncols aa
+instance LinearSystem (SpVector Double) where
+  aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
+    where n = ncols aa
 
 -- instance LinearSystem (SpVector (Complex Double)) where
 --   aa <\> b = linSolve0 GMRES_ aa b (mkSpVC n $ replicate n 0.1)
