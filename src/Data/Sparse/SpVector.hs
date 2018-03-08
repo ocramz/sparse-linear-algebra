@@ -118,11 +118,17 @@ instance VectorSpace a => VectorSpace (SpVector a) where
 instance InnerSpace a => InnerSpace (SpVector a) where
   v <.> w = sum $ liftI2 (<.>) v w
 
--- #define SpVectorInstance(t) \
---   instance Normed (SpVector (t)) where {type RealScalar (SpVector (t)) = t; type Magnitude (SpVector (t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)};\
---   instance Normed (SpVector (Complex t)) where {type RealScalar (SpVector (Complex t)) = t; type Magnitude (SpVector (Complex t)) = t; norm1 (SV _ v) = norm1 v; norm2Sq (SV _ v) = norm2Sq v ; normP p (SV _ v) = normP p v; normalize p (SV n v) = SV n (normalize p v); normalize2 (SV n v) = SV n (normalize2 v)}
--- SpVectorInstance(Double)
--- SpVectorInstance(Float)
+instance (Normed a, Magnitude a ~ RealScalar a, RealScalar a ~ Scalar a) => Normed (SpVector a) where
+  type Magnitude  (SpVector a) = Magnitude a
+  type RealScalar (SpVector a) = RealScalar a
+  norm1   = sum . fmap norm1
+  norm2Sq = sum . fmap norm2Sq
+  normP p v = (sum (fmap (\x -> normP p x ** p) v)) ** (1 / p)
+  normalize p v = v ./ normP p v
+  normalize2  v = v ./ norm2 v
+  normalize2' v = v ./ norm2' v
+  norm2  c = sqrt (norm2Sq c)
+  norm2' c = sqrt (norm2Sq c)
 
 
 dotS :: InnerSpace t => SpVector t -> SpVector t -> Scalar (IntM t)

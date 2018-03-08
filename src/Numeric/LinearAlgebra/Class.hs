@@ -161,42 +161,6 @@ normInftyC :: (Foldable t, RealFloat a, Functor t) => t (Complex a) -> a
 normInftyC x = maximum (magnitude <$> x)
 
 
-
-
-
--- instance Normed Double where
---   type Magnitude Double = Double
---   type RealScalar Double = Double
---   norm1 = abs
---   norm2Sq = abs
---   normP _ = abs
---   normalize _ _ = 1
---   normalize2 _ = 1
---   norm2 = abs
---   norm2' = abs
-
--- instance Normed (Complex Double) where
---   type Magnitude (Complex Double) = Double
---   type RealScalar (Complex Double) = Double
---   norm1 (r :+ i) = abs r + abs i
---   norm2Sq = (**2) . magnitude
---   normP p (r :+ i) = (r**p + i**p)**(1/p)
---   normalize p c = c ./ normP p c
---   normalize2 c = c ./ magnitude c
---   norm2 = magnitude
---   norm2' = magnitude
-  
-
-
-
-
-    
-
-
-
-
-
-
 -- | Lp inner product (p > 0)
 dotLp :: (Set t, Foldable t, Floating a) => a -> t a -> t a ->  a
 dotLp p v1 v2 = sum u**(1/p) where

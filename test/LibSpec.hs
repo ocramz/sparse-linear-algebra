@@ -43,12 +43,12 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "Numeric.LinearAlgebra.Sparse : Library" $ do
-    -- prop "Subtraction is cancellative" $ \(x :: SpVector Double) ->
-    --   norm2Sq (x ^-^ x) `shouldBe` zeroV
-    -- it "<.> : inner product (Real)" $
-    --   tv0 <.> tv0 `shouldBe` 61
     -- it "<.> : inner product (Complex)" $
     --   tvc2 <.> tvc3 `shouldBe` 2 :+ (-2)  
+    prop "Subtraction is cancellative" $ \(x :: SpVector Double) ->
+      norm2Sq (x ^-^ x) `shouldBe` zeroV
+    it "<.> : inner product (Real)" $
+      tv0 <.> tv0 `shouldBe` 61
     it "transpose : sparse matrix transpose" $
       transpose m1 `shouldBe` m1t
     -- it "(#>) : matrix-vector product (Real)" $

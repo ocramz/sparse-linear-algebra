@@ -81,14 +81,6 @@ instance AdditiveGroup a => AdditiveGroup (IntM a) where
   negateV = fmap negateV
   {-# INLINE negateV #-}
 
--- instance Normed (IntM Double) where
---   type RealScalar (IntM Double) = Double
---   type Magnitude (IntM Double) = Double
---   norm1 a = sum (abs <$> a)
---   norm2Sq a = sum $ liftI2 (*) a a
---   normP p v = sum u**(1/p) where u = fmap (**p) v
---   normalize p v = v ./ normP p v 
---   normalize2 v = v ./ norm2 v 
 instance VectorSpace a => VectorSpace (IntM a) where
   type Scalar (IntM a) = Scalar a
   n .* v = fmap (n .*) v
@@ -96,17 +88,17 @@ instance VectorSpace a => VectorSpace (IntM a) where
 instance InnerSpace a => InnerSpace (IntM a) where
   v <.> w = sum $ liftI2 (<.>) v w
 
-
-  
--- instance Normed (IntM (Complex Double)) where
---   type RealScalar (IntM (Complex Double)) = Double
---   type Magnitude (IntM (Complex Double)) = Double
---   norm1 a = realPart $ sum (abs <$> a)
---   norm2Sq a = realPart $ sum $ liftI2 (*) (conjugate <$> a) a
---   normP p v = realPart $ sum u**(1/(p :+ 0)) where u = fmap (**(p :+ 0)) v
---   normalize p v = v ./ toC (normP p v)
---   normalize2 v = v ./ toC (norm2 v)
-
+instance (Normed a, Magnitude a ~ RealScalar a, RealScalar a ~ Scalar a) => Normed (IntM a) where
+  type Magnitude  (IntM a) = Magnitude a
+  type RealScalar (IntM a) = RealScalar a
+  norm1   = sum . fmap norm1
+  norm2Sq = sum . fmap norm2Sq
+  normP p v = (sum (fmap (\x -> normP p x ** p) v)) ** (1 / p)
+  normalize p v = v ./ normP p v
+  normalize2  v = v ./ norm2 v
+  normalize2' v = v ./ norm2' v
+  norm2  c = sqrt (norm2Sq c)
+  norm2' c = sqrt (norm2Sq c)
 
 
 
