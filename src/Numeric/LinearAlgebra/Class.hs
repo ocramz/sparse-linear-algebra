@@ -64,6 +64,7 @@ class AdditiveGroup v where
   negateV :: v -> v
   -- | Group subtraction
   (^-^) :: v -> v -> v
+  (^-^) x y = x ^+^ negateV y
 
 
 infixr 7 .*

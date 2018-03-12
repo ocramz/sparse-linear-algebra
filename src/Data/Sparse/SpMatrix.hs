@@ -85,7 +85,6 @@ instance Num a => AdditiveGroup (SpMatrix a) where
   zeroV = SM (0,0) I.empty
   (^+^) = liftU2 (+)
   negateV = fmap negate
-  (^-^) = liftU2 (-)
 
 
 
