@@ -1,6 +1,9 @@
-Original author : Marco Zocca (@ocramz)
+# Original author 
 
-Contributors :
+Marco Zocca (@ocramz)
+
+# Contributors
 
 Gregory Schwartz (@GregorySchwartz)
-Joshua Moerman
+
+Joshua Moerman (@Jaxan)
