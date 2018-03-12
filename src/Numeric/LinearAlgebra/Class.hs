@@ -76,7 +76,7 @@ class (AdditiveGroup v, Num (Scalar v)) => VectorSpace v where
   (.*) :: Scalar v -> v -> v
 
 -- | Adds inner (dot) products.
-class (VectorSpace v, AdditiveGroup (Scalar v)) => InnerSpace v where
+class VectorSpace v => InnerSpace v where
   -- | Inner/dot product
   (<.>) :: v -> v -> Scalar v
 
@@ -161,42 +161,6 @@ normInftyC :: (Foldable t, RealFloat a, Functor t) => t (Complex a) -> a
 normInftyC x = maximum (magnitude <$> x)
 
 
-
-
-
--- instance Normed Double where
---   type Magnitude Double = Double
---   type RealScalar Double = Double
---   norm1 = abs
---   norm2Sq = abs
---   normP _ = abs
---   normalize _ _ = 1
---   normalize2 _ = 1
---   norm2 = abs
---   norm2' = abs
-
--- instance Normed (Complex Double) where
---   type Magnitude (Complex Double) = Double
---   type RealScalar (Complex Double) = Double
---   norm1 (r :+ i) = abs r + abs i
---   norm2Sq = (**2) . magnitude
---   normP p (r :+ i) = (r**p + i**p)**(1/p)
---   normalize p c = c ./ normP p c
---   normalize2 c = c ./ magnitude c
---   norm2 = magnitude
---   norm2' = magnitude
-  
-
-
-
-
-    
-
-
-
-
-
-
 -- | Lp inner product (p > 0)
 dotLp :: (Set t, Foldable t, Floating a) => a -> t a -> t a ->  a
 dotLp p v1 v2 = sum u**(1/p) where
@@ -255,7 +219,7 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
 
 -- * Linear vector space
 
-class (VectorSpace v, MatrixRing (MatrixType v)) => LinearVectorSpace v where
+class (VectorSpace v {-, MatrixRing (MatrixType v)-}) => LinearVectorSpace v where
   type MatrixType v :: *
   -- | Matrix-vector action
   (#>) :: MatrixType v -> v -> v
@@ -418,38 +382,17 @@ toC r = r :+ 0
 
 
 
--- -- | Instances for AdditiveGroup
--- instance Integral a => AdditiveGroup (Ratio a) where
---   {zero=0; (^+^) = (+); negated = negate}
-
--- instance (RealFloat v, AdditiveGroup v) => AdditiveGroup (Complex v) where
---   zero    = zero :+ zero
---   (^+^)   = (+)
---   negated = negate
-
--- -- | Standard instance for an applicative functor applied to a vector space.
--- instance AdditiveGroup v => AdditiveGroup (a -> v) where
---   zero    = pure   zero
---   (^+^)   = liftA2 (^+^)
---   negated = fmap   negated
-
-
--- -- | Instances for VectorSpace
--- instance (RealFloat v, VectorSpace v) => VectorSpace (Complex v) where
---   type Scalar (Complex v) = Scalar v
---   s .* (u :+ v) = s .* u :+ s .* v
-
-
-
--- #define ScalarType(t) \
---   instance AdditiveGroup (t) where {zero = 0; (^+^) = (+); negated = negate};\
---   instance VectorSpace (t) where {type Scalar (t) = (t); (.*) = (*) };\
---   instance Hilbert (t) where dot = (*)
+-- | Instances for builtin types
+#define ScalarType(t) \
+instance AdditiveGroup (t) where {zeroV = 0; (^+^) = (+); negateV = negate};\
+instance VectorSpace (t) where {type Scalar (t) = t; (.*) = (*) };
 
 -- ScalarType(Int)
 -- ScalarType(Integer)
--- ScalarType(Float)
--- ScalarType(Double)
+ScalarType(Float)
+ScalarType(Double)
+ScalarType(Complex Float)
+ScalarType(Complex Double)
 -- ScalarType(CSChar)
 -- ScalarType(CInt)
 -- ScalarType(CShort)
@@ -458,3 +401,39 @@ toC r = r :+ 0
 -- ScalarType(CIntMax)
 -- ScalarType(CFloat)
 -- ScalarType(CDouble)
+
+#undef ScalarType
+
+
+instance InnerSpace Float  where {(<.>) = (*)}
+instance InnerSpace Double where {(<.>) = (*)}
+instance InnerSpace (Complex Float)  where {x <.> y = x * conjugate y}
+instance InnerSpace (Complex Double) where {x <.> y = x * conjugate y}
+
+
+#define SimpleNormedInstance(t) \
+instance Normed (t) where {type Magnitude (t) = t; type RealScalar (t) = t;\
+ norm1 = abs; norm2Sq = (**2); normP _ = abs; normalize _ = signum;\
+ normalize2 = signum; normalize2' = signum; norm2 = abs; norm2' = abs; norm _ = abs};
+
+SimpleNormedInstance(Float)
+SimpleNormedInstance(Double)
+
+#undef SimpleNormedInstance
+
+#define ComplexNormedInstance(t) \
+instance Normed (Complex (t)) where {\
+ type Magnitude  (Complex (t)) = t;\
+ type RealScalar (Complex (t)) = t;\
+ norm1   (r :+ i) = abs r + abs i;\
+ norm2Sq (r :+ i) = r*r + i*i;\
+ normP p (r :+ i) = (r**p + i**p)**(1/p);\
+ normalize p c = toC (1 / normP p c) * c;\
+ normalize2  c = (1 / norm2' c) * c;\
+ norm2  = magnitude;\
+ norm2' = toC . magnitude;};
+
+ComplexNormedInstance(Float)
+ComplexNormedInstance(Double)
+
+#undef ComplexNormedInstance

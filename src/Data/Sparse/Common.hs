@@ -235,27 +235,18 @@ FIXME : matVec is more general than SpVector's :
   :: (Normed f1, Num b, Functor f) => f (f1 b) -> f1 b -> f b
 -}
 
--- instance LinearVectorSpace (SpVector Double) where
---   type MatrixType (SpVector Double) = SpMatrix Double
---   (#>) = matVecSD
---   (<#) = vecMatSD
+instance (InnerSpace t, Scalar t ~ t) => LinearVectorSpace (SpVector t) where
+  type MatrixType (SpVector t) = SpMatrix t
+  (#>) = matVecSD
+  (<#) = vecMatSD
 
--- instance LinearVectorSpace (SpVector (Complex Double)) where
---   type MatrixType (SpVector (Complex Double)) = SpMatrix (Complex Double)
---   (#>) = matVecSD
---   (<#) = vecMatSD
-
-  
-
-matVecSD :: InnerSpace (IntM t) =>
-     SpMatrix t -> SpVector t -> SpVector (Scalar (IntM t))
+matVecSD :: (InnerSpace t, Scalar t ~ t) => SpMatrix t -> SpVector t -> SpVector t
 matVecSD (SM (nr, nc) mdata) (SV n sv)
   | nc == n = SV nr $ fmap (`dot` sv) mdata
   | otherwise = error $ "matVec : mismatched dimensions " ++ show (nc, n)
 
 -- |Vector-on-matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
-vecMatSD :: InnerSpace (IntM t) =>
-     SpVector t -> SpMatrix t -> SpVector (Scalar (IntM t))
+vecMatSD :: (InnerSpace t, Scalar t ~ t) => SpVector t -> SpMatrix t -> SpVector t
 vecMatSD (SV n sv) (SM (nr, nc) mdata)
   | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
   | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)
