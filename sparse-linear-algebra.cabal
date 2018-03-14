@@ -1,5 +1,5 @@
 name:                sparse-linear-algebra
-version:             0.2.9.9
+version:             0.3
 synopsis:            Numerical computing in native Haskell
 description:
   /Overview/

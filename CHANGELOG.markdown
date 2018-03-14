@@ -1,7 +1,12 @@
-
+	0.3
+	* Fixed a number of instances, un-commented tests (Joshua Moerman)
+	
+	* Documented issues with complex number support (Joshua Moerman)
+	
 	0.2.9.9
-	Moved to IntMap.Strict (Gregory Schwartz)
-	Stackage LTS bump to 10.4 (GHC 8.2)
+	* Moved to IntMap.Strict (Gregory Schwartz)
+	
+	* Stackage LTS bump to 10.4 (GHC 8.2)
 	
 	0.2.9.7
 	Improved pretty printer:

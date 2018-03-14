@@ -174,9 +174,9 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
     it "chol (5 x 5 sparse)" $
       checkChol tm7 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Complex, symmetric pos.def.)" $ 
-    it "chol (4 x 4 dense)" $
-      checkChol (tmc5 ##^ tmc5) >>= (`shouldBe` True) 
+  -- describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Complex, symmetric pos.def.)" $ 
+  --   it "chol (4 x 4 dense)" $
+  --     checkChol (tmc5 ##^ tmc5) >>= (`shouldBe` True) 
   
       
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      

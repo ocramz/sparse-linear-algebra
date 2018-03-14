@@ -8,9 +8,15 @@ Numerical computation in native Haskell
 
 This library provides common numerical analysis functionality, without requiring any external bindings. It aims to serve as an experimental platform for scientific computation in a purely functional setting.
 
+
+## State of the library 
+
+Mar 14, 2018: Mostly functional, but there are still a few (documented) bugs. Complex number support is still incomplete, so the users are advised to not rely on that for the time being. The issues related to Complex number handling are tracked in #50, #51, #12, #30.
+
+
 ## News
 
-Oct 7., 2017: The library is evolving in a number of ways, to reflect performance observations and user requests:
+Oct 7, 2017: The library is evolving in a number of ways, to reflect performance observations and user requests:
 
 * typeclasses and instances for primitive types will become `sparse-linear-algebra-core`, along with a typeclass-oriented reformulation of the numerical algorithms that used to depend on the nested IntMap representation.
 This will let other developers build on top of this library, in the spirit of `vector-space` and `linear`.
