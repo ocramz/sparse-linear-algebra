@@ -15,7 +15,7 @@ addons:
 env:
 # - ARGS=""
 - ARGS="--resolver lts"
-- ARGS="--resolver nightly"
+# - ARGS="--resolver nightly"
 - ARGS="--resolver lts-9.6"
 
 before_install:
