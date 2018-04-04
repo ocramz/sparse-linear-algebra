@@ -1,4 +1,4 @@
-{-# language FlexibleInstances #-}
+{-# language FlexibleInstances, DefaultSignatures #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca, 2012-2015 Edward Kmett
@@ -29,9 +29,13 @@ import Foreign.C.Types (CFloat, CDouble)
 --
 -- >>> nearZero (1e-7 :: Float)
 -- True
-class (Floating a, Num a) => Epsilon a where
+class Epsilon a where
   -- | Determine if a quantity is near zero.
   nearZero :: a -> Bool
+  -- | Determine if two quantities are near.
+  near :: a -> a -> Bool
+  default near :: Num a => a -> a -> Bool
+  near x y = nearZero (x - y)
 
 -- | @'abs' a '<=' 1e-6@
 instance Epsilon Float where
@@ -72,8 +76,8 @@ instance Epsilon (Complex CDouble) where
 
 
 -- | Is this quantity close to 1 ?
-nearOne :: Epsilon a => a -> Bool
-nearOne x = nearZero (1 - x)
+nearOne :: (Epsilon a, Num a) => a -> Bool
+nearOne = near 1
 
 -- | Is this quantity distinguishable from 0 ?
 isNz :: Epsilon a => a -> Bool
@@ -83,7 +87,7 @@ withDefault :: (t -> Bool) -> t -> t -> t
 withDefault q d x | q x = d
                   | otherwise = x
 
-roundZero, roundOne, roundZeroOne :: Epsilon a => a -> a
+roundZero, roundOne, roundZeroOne :: (Epsilon a, Num a) => a -> a
 roundZero = withDefault nearZero (fromIntegral (0 :: Int))
 roundOne = withDefault nearOne (fromIntegral (1 :: Int))
 

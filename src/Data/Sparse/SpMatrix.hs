@@ -419,7 +419,7 @@ isUpperTriSM m = m == lm where
   lm = ifilterSM (\i j _ -> i <= j) m
 
 -- |Is the matrix orthogonal? i.e. Q^t ## Q == I
-isOrthogonalSM :: (Eq a, Epsilon a, MatrixRing (SpMatrix a)) => SpMatrix a -> Bool
+isOrthogonalSM :: (Eq a, Num a, Epsilon a, MatrixRing (SpMatrix a)) => SpMatrix a -> Bool
 isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
   rsm = roundZeroOneSM $ transpose sm ## sm
 
@@ -650,7 +650,7 @@ sparsifySM (SM d im) = SM d $ sparsifyIM2 im
 
 -- ** Value rounding
 -- | Round almost-0 and almost-1 to 0 and 1 respectively
-roundZeroOneSM :: Epsilon a => SpMatrix a -> SpMatrix a
+roundZeroOneSM :: (Num a, Epsilon a) => SpMatrix a -> SpMatrix a
 roundZeroOneSM (SM d im) = sparsifySM $ SM d $ mapIM2 roundZeroOne im  
 
 

@@ -598,7 +598,7 @@ tmc6 = fromListDenseSM 2 $ zipWith (:+) [1,2,3,4] [4,3,2,1]
 -- | Given a matrix A, a vector b and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (as the columns of matrix Q), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 arnoldi :: (MatrixType (SpVector a) ~ SpMatrix a, V (SpVector a) ,
-            Scalar (SpVector a) ~ a, Epsilon a, MonadThrow m) =>
+            Scalar (SpVector a) ~ a, Floating a, Epsilon a, MonadThrow m) =>
      SpMatrix a                    -- ^ System matrix
      -> SpVector a                 -- ^ r.h.s.
      -> Int                        -- ^ Max. # of iterations

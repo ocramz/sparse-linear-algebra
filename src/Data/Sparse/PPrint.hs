@@ -47,7 +47,7 @@ prdefC = PPOpts 4 2 16  -- complex values
 
 
 -- | Pretty print an array of real numbers
-printDN :: (PrintfArg a, Epsilon a, Ord a) =>
+printDN :: (PrintfArg a, Epsilon a, Ord a, Floating a) =>
      Int -> Int -> PPrintOptions -> [a] -> String
 printDN l n = printNpad l n f where
   f o x | isNz x = printf (prepD o x) x
@@ -55,7 +55,7 @@ printDN l n = printNpad l n f where
 
 
 -- | Pretty print an array of complex numbers
-printCN :: (PrintfArg a, Epsilon a, Epsilon (Complex a), Ord a) =>
+printCN :: (PrintfArg a, Floating a, Epsilon a, Epsilon (Complex a), Ord a) =>
      Int -> Int -> PPrintOptions -> [Complex a] -> String
 printCN l n = printNpad l n f where
   f o x | nearZero (re x) && isNz (imagPart x) =
@@ -99,7 +99,7 @@ printNpad llen nmax f o@PPOpts{..} xxl = commas [h,l] where
 
 
 -- | printf format string
-prepD :: (Ord t, Epsilon t) => PPrintOptions -> t -> String
+prepD :: (Ord t, Floating t, Epsilon t) => PPrintOptions -> t -> String
 prepD PPOpts{..} x = s where
   s | nearZero x  = "_"
     | abs x > magHi || abs x < magLo = s0 ++ "e"
@@ -115,7 +115,7 @@ prepD PPOpts{..} x = s where
 
 
 -- | printf format string for a Complex
-prepC :: (Epsilon t, Ord t) => PPrintOptions -> Complex t -> String
+prepC :: (Epsilon t, Floating t, Ord t) => PPrintOptions -> Complex t -> String
 prepC opts (r :+ i) = prepD opts r ++ oi where
   oi = concat [s, prepD opts i', "i"]
   s | signum i >= 0 = " + "

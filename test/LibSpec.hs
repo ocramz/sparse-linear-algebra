@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts, TypeFamilies #-}
 {-# language ScopedTypeVariables, FlexibleInstances #-}
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_GHC -Wno-missing-signatures -Wno-orphans #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -26,15 +27,23 @@ import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck
 
+import Laws
 
 main :: IO ()
 main = hspec spec
 
 spec :: Spec
 spec = do
+  describe "SpVector Double" $ do
+    prop "Addition is commutative"     $ commutative @(SpVector Double)
+    prop "Subtraction is cancellative" $ nearCancellative @(SpVector Double)
+    prop "Zero is neutral"             $ neutralZero @(SpVector Double)
+    prop "Addition is associative"     $ nearAssociative @(SpVector Double)
+    prop "Scalar multiplication is associative"    $ nearAssociativeScalar @(SpVector Double)
+    prop "Scalar multiplication is unital"         $ neutralScalar @(SpVector Double)
+    prop "Scalar multiplication is distributive"   $ nearDistributiveScalar @(SpVector Double)
+    prop "Scalar multiplication is distributive 2" $ nearDistributiveScalar2 @(SpVector Double)
   describe "Numeric.LinearAlgebra.Sparse : Library" $ do
-    prop "Subtraction is cancellative" $ \(x :: SpVector Double) ->
-      norm2Sq (x ^-^ x) `shouldBe` zeroV
     it "<.> : inner product (Real)" $
       tv0 <.> tv0 `shouldBe` 61
     it "<.> : inner product (Complex)" $
@@ -375,7 +384,7 @@ checkTriLowerSolve lmat rhs = do
 
 checkArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Normed (SpVector t), MatrixRing (SpMatrix t),
-      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
+      LinearVectorSpace (SpVector t), Floating t, Epsilon t, MonadThrow m) =>
      SpMatrix t -> Int -> m Bool
 checkArnoldi aa kn = do -- nearZero (normFrobenius $ lhs ^-^ rhs) where
   let b = onesSV (nrows aa)

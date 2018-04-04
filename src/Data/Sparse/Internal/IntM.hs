@@ -2,10 +2,12 @@
 module Data.Sparse.Internal.IntM where
 
 import Data.Sparse.Utils
+import Numeric.Eps
 import Numeric.LinearAlgebra.Class
 
 import GHC.Exts
 import Data.Complex
+import Data.Monoid (All(..))
 
 import qualified Data.IntMap.Strict as IM
 
@@ -100,6 +102,12 @@ instance (Normed a, Magnitude a ~ RealScalar a, RealScalar a ~ Scalar a) => Norm
   norm2  c = sqrt (norm2Sq c)
   norm2' c = sqrt (norm2Sq c)
 
+instance Epsilon a => Epsilon (IntM a) where
+  nearZero = getAll . foldMap (All . nearZero)
+  -- TODO: rewrite with generic merge combinator?
+  near (IntM x) (IntM y) = nearZero (IntM (IM.difference x y))
+                        && nearZero (IntM (IM.difference y x))
+                        && getAll (foldMap All (IM.intersectionWith (\a b -> a `near` b) x y))
 
 
 -- -- | list to IntMap

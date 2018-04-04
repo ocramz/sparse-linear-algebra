@@ -130,6 +130,9 @@ instance (Normed a, Magnitude a ~ RealScalar a, RealScalar a ~ Scalar a) => Norm
   norm2  c = sqrt (norm2Sq c)
   norm2' c = sqrt (norm2Sq c)
 
+instance Epsilon a => Epsilon (SpVector a) where
+  nearZero v = nearZero (svData v)
+  near v w = near (svData v) (svData w)
 
 dotS :: InnerSpace t => SpVector t -> SpVector t -> Scalar (IntM t)
 (SV m a) `dotS` (SV n b)
