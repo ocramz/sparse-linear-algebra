@@ -843,13 +843,15 @@ a #~#^ b = a #~# transpose b
 
 -- ** Partial inner product
 -- | Contract row `i` of A with column `j` of B up to an index `n`, i.e. summing over repeated indices: 
--- Aij Bjk , for j in [0 .. n] 
-contractSub :: Elt a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> Int -> a
+-- Aik Bkj , for k in [0 .. n] 
+contractSub :: Num a => SpMatrix a -> SpMatrix a -> IxRow -> IxCol -> Int -> a
 contractSub a b i j n
   | ncols a == nrows b &&
     isValidIxSM a (i,j) &&
-    n <= ncols a = sum $ map (\i' -> (a@@!(i,i'))*b@@!(i',j)) [0 .. n]
-  | otherwise = error "contractSub : n must be <= i"
+    n <= ncols a = case I.lookup i (smData a) of
+                     Nothing -> 0
+                     Just r  -> I.foldlWithKey' (\acc k x -> if k > n then acc else acc + x * b @@! (k, j)) 0 r
+  | otherwise = error "contractSub: matrices have incompatible dimensions or i,j,n are too big"
 
 
 
