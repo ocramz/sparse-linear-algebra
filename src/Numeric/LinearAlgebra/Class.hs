@@ -38,8 +38,10 @@ import Data.Sparse.Types
 
 
 
+
+
 -- * Matrix and vector elements (optionally Complex)
-class (Eq e , Fractional e, Floating e, Num (EltMag e), Ord (EltMag e)) => Elt e where
+class (Num (EltMag e)) => Elt e where
   type EltMag e :: *
   -- | Complex conjugate, or identity function if its input is real-valued
   conj :: e -> e
@@ -52,51 +54,8 @@ instance Elt Float where {type EltMag Float = Float; mag = id}
 instance (RealFloat e) => Elt (Complex e) where
   type EltMag (Complex e) = e
   conj = conjugate
-  mag = magnitude
-  
+  mag = magnitude  
 
-
-
--- infixl 6 ^+^, ^-^
-
--- -- * Additive group
--- class AdditiveGroup v where
---   -- | The zero element: identity for '(^+^)'
---   zeroV :: v
---   -- | Add vectors
---   (^+^) :: v -> v -> v
---   -- | Additive inverse
---   negateV :: v -> v
---   -- | Group subtraction
---   (^-^) :: v -> v -> v
---   (^-^) x y = x ^+^ negateV y
-
-
--- infixr 7 .*
-
--- -- * Vector space @v@.
--- class (Hilbert v a, Num (Scalar v)) => VectorSpace v where
---   type Scalar v :: *
---   -- | Scale a vector
---   (.*) :: Scalar v -> v -> v
-
--- -- | Adds inner (dot) products.
--- class VectorSpace v => InnerSpace v where
---   -- | Inner/dot product
---   (<.>) :: v -> v -> Scalar v
-
-  
-
--- infixr 7 ./
--- infixl 7 *.
-
--- | Scale a vector by the reciprocal of a number (e.g. for normalization)
--- (./) :: (VectorSpace v, s ~ Scalar v, Fractional s) => v -> s -> v
--- v ./ s = (recip s) .* v
-
--- -- | Vector multiplied by scalar
--- (*.) :: (VectorSpace v, s ~ Scalar v) => v -> s -> v
--- (*.) = flip (.*)  
 
 
 
@@ -113,10 +72,6 @@ cvx a u v = (u .* a) + (v .* (1 - a))
 hilbertDistSq :: (AdditiveGroup (r a), Hilbert r a) => r a -> r a -> a
 hilbertDistSq x y = t <.> t where
   t = x - y
-
-
-
-
 
 
 
@@ -153,9 +108,22 @@ hilbertDistSq x y = t <.> t where
 --     | p == 2 = norm2 v
 --     | otherwise = normP p v
 
+normP :: (ExpField a, Foldable t, Num a) => a -> t a -> a
+normP p v = foldr (\x xs -> (x ** p) + xs) zero v ** (1/p)
+
+norm1 :: (Additive a, Signed a, Foldable v, Functor v) => v a -> a
+norm1 = sum . fmap abs
+
+
+norm2Sq :: Hilbert r a => r a -> a
+norm2Sq x = x <.> x
+
 -- | L_2 norm
 norm2 :: (ExpField a, Hilbert r a) => r a -> a
-norm2 x = sqrt $ x <.> x
+norm2 = sqrt . norm2Sq
+
+-- sqrtSafe x | not (nearZero x) = Just $ sqrt x
+--            | otherwise = Nothing
 
 
 -- | Infinity-norm (Real)
@@ -226,12 +194,12 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
 
 -- * Linear vector space
 
--- class (Hilbert v {-, MatrixRing (MatrixType v)-}) => LinearVectorSpace v where
---   type MatrixType v :: *
---   -- | Matrix-vector action
---   (#>) :: MatrixType v -> v -> v
---   -- | Dual matrix-vector action
---   (<#) :: v -> MatrixType v -> v
+class (Hilbert v a {-, MatrixRing (MatrixType v)-}) => LinearVectorSpace v a where
+  type MatrixType v a :: *
+  -- | Matrix-vector action
+  (#>) :: MatrixType v a -> v a -> v a
+  -- | Dual matrix-vector action
+  (<#) :: v a -> MatrixType v a -> v a
 
 
 
@@ -246,12 +214,12 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
 
 -- ** Linear systems
   
--- class LinearVectorSpace v => LinearSystem v where
---   -- | Solve a linear system; uses GMRES internally as default method
---   (<\>) :: (MonadIO m, MonadThrow m) =>
---            MatrixType v   -- ^ System matrix
---         -> v              -- ^ Right-hand side
---         -> m v            -- ^ Result
+class LinearVectorSpace v a => LinearSystem v a where
+  -- | Solve a linear system; uses GMRES internally as default method
+  (<\>) :: (MonadIO m, MonadThrow m) =>
+           MatrixType v a  -- ^ System matrix
+        -> v a             -- ^ Right-hand side
+        -> m (v a)         -- ^ Result
 
 
 
