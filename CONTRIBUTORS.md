@@ -1,6 +1,6 @@
 # Original author 
 
-Marco Zocca (@ocramz)
+[Marco Zocca](https://github.com/ocramz)
 
 # Contributors
 
