@@ -39,22 +39,23 @@ import Data.Sparse.Types
 
 
 
+-- | `Elt e` is `Normed e b` for possibly complex e and real b 
 
--- * Matrix and vector elements (optionally Complex)
-class (Num (EltMag e)) => Elt e where
-  type EltMag e :: *
-  -- | Complex conjugate, or identity function if its input is real-valued
-  conj :: e -> e
-  conj = id
-  -- | Magnitude
-  mag :: e -> EltMag e
+-- -- * Matrix and vector elements (optionally Complex)
+-- class (AdditiveGroup e, MultiplicativeGroup e, AdditiveGroup (EltMag e), Num e, RealFloat e) => Elt e where
+--   type EltMag e :: *
+--   -- | Complex conjugate, or identity function if its input is real-valued
+--   conj :: e -> e
+--   conj = id
+--   -- | Magnitude
+--   mag :: e -> EltMag e
 
-instance Elt Double where {type EltMag Double = Double ; mag = id}
-instance Elt Float where {type EltMag Float = Float; mag = id}
-instance (RealFloat e) => Elt (Complex e) where
-  type EltMag (Complex e) = e
-  conj = conjugate
-  mag = magnitude  
+-- instance Elt Double where {type EltMag Double = Double ; mag = id}
+-- instance Elt Float where {type EltMag Float = Float; mag = id}
+-- instance (Elt e) => Elt (Complex e) where
+--   type EltMag (Complex e) = e
+--   conj = conjugate
+--   mag = magnitude  
 
 
 
@@ -108,13 +109,15 @@ hilbertDistSq x y = t <.> t where
 --     | p == 2 = norm2 v
 --     | otherwise = normP p v
 
+-- | L_p norm (p > 0)
 normP :: (ExpField a, Foldable t, Num a) => a -> t a -> a
 normP p v = foldr (\x xs -> (x ** p) + xs) zero v ** (1/p)
 
+-- | L_1 norm 
 norm1 :: (Additive a, Signed a, Foldable v, Functor v) => v a -> a
 norm1 = sum . fmap abs
 
-
+-- | Squared L_2 norm
 norm2Sq :: Hilbert r a => r a -> a
 norm2Sq x = x <.> x
 
