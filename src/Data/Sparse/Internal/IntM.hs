@@ -3,19 +3,27 @@
 module Data.Sparse.Internal.IntM where
 
 import Data.Sparse.Utils
-import Numeric.LinearAlgebra.Class (Set(..))
+import Numeric.LinearAlgebra.Class 
 
 import GHC.Exts
 -- import Data.Complex
 
 import NumHask.Algebra
-import Prelude hiding (sum, (+), (-), (*))
+import Prelude hiding (sum, (+), (-), (*), (/), sqrt)
 
 import qualified Data.IntMap.Strict as IM
 
 
 -- | A synonym for IntMap 
 newtype IntM a = IntM {unIM :: IM.IntMap a} deriving (Eq, Show, Functor, Foldable)
+
+fromListI :: [(IM.Key, a)] -> IntM a
+fromListI = IntM . IM.fromList
+
+-- instance IsList (IntM a) where
+--   type Item (IntM a) = (Int, a)
+--   fromList = IntM . IM.fromList
+--   toList = IM.toList . unIM
 
 empty :: IntM a
 empty = IntM IM.empty
@@ -68,35 +76,56 @@ findMax (IntM im) = IM.findMax im
 (!) :: IntM a -> IM.Key -> a
 (IntM im) ! i = im IM.! i
 
+instance Set IntM where
+  liftU2 f (IntM a) (IntM b) = IntM $ IM.unionWith f a b
+  liftI2 f (IntM a) (IntM b) = IntM $ IM.intersectionWith f a b
+
+instance Additive a => AdditiveMagma (IntM a) where
+  plus = liftU2 (+)
+
+instance Additive a => AdditiveUnital (IntM a) where
+  zero = fromListI []
+
+instance Additive a => AdditiveCommutative (IntM a) where
+
+instance Additive a => AdditiveAssociative (IntM a) where
+  
+instance Additive a => Additive (IntM a) where
+  (+) = plus
+
+instance (Multiplicative a, Additive a, Semiring a) => Hilbert IntM a where
+  (IntM a) <.> (IntM b) = sum $ IM.unionWith (*) a b
 
 
--- instance IsList (IntM a) where
---   type Item (IntM a) = (Int, a)
---   fromList = IntM . IM.fromList
---   toList = IM.toList . unIM
+instance ExpField a => Normed (IntM a) a where
+  size = norm2
 
 
 
--- instance Set IntM where
---   liftU2 f (IntM a) (IntM b) = IntM $ IM.unionWith f a b
---   liftI2 f (IntM a) (IntM b) = IntM $ IM.intersectionWith f a b
+
+
+
+
+
+
 
 
 -- instance AdditiveGroup a => AdditiveGroup (IntM a) where
-  -- zeroV = IntM IM.empty
-  -- {-# INLINE zeroV #-}
-  -- (^+^) = liftU2 (^+^)
-  -- {-# INLINE (^+^) #-}
-  -- negateV = fmap negateV
-  -- {-# INLINE negateV #-}
+-- zeroV = IntM IM.empty
+-- {-# INLINE zeroV #-}
+-- (^+^) = liftU2 (^+^)
+-- {-# INLINE (^+^) #-}
+-- negateV = fmap negateV
+-- {-# INLINE negateV #-}
 
 -- instance Hilbert IntM a where
 --   type Scalar (IntM a) = Scalar a
 --   n .* v = fmap (n .*) v
 
-instance (Multiplicative a, Additive a, Semiring a) => Hilbert IntM a where
-  (IntM a) <.> (IntM b) = sum $ IM.unionWith (*) a b
---   v <.> w = sum $ liftI2 (<.>) v w
+
+  
+
+
 
 
 

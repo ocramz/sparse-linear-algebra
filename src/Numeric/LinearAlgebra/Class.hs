@@ -85,9 +85,6 @@ instance (RealFloat e) => Elt (Complex e) where
 --   -- | Inner/dot product
 --   (<.>) :: v -> v -> Scalar v
 
--- | Inner product
--- dot :: InnerSpace v => v -> v -> Scalar v
--- dot = (<.>)
   
 
 -- infixr 7 ./
@@ -156,6 +153,9 @@ hilbertDistSq x y = t <.> t where
 --     | p == 2 = norm2 v
 --     | otherwise = normP p v
 
+-- | L_2 norm
+norm2 :: (ExpField a, Hilbert r a) => r a -> a
+norm2 x = sqrt $ x <.> x
 
 
 -- | Infinity-norm (Real)
