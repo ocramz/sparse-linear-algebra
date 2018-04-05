@@ -9,7 +9,7 @@ import GHC.Exts
 -- import Data.Complex
 
 import NumHask.Algebra
-import Prelude hiding (sum, (+), (-), (*), (/), sqrt)
+import Prelude hiding (sum, (+), (-), (*), (/), sqrt, (**))
 
 import qualified Data.IntMap.Strict as IM
 

@@ -169,7 +169,7 @@ normInftyC x = maximum (magnitude <$> x)
 
 -- | Lp inner product (p > 0)
 dotLp ::
-  (Set t, Foldable t, Multiplicative a, ExpField a, Num a) => a -> t a -> t a ->  a
+  (Set t, Foldable t, Multiplicative a, ExpField a, Num a) => a -> t a -> t a -> a
 dotLp p v1 v2 = sum u ** (1 / p) where
   f a b = (a * b) ** p
   u = liftI2 f v1 v2
