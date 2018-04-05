@@ -1,9 +1,9 @@
 # Original author 
 
-[Marco Zocca](https://github.com/ocramz)
+Marco Zocca (ocramz)
 
 # Contributors
 
-[Gregory Schwartz](https://github.com/GregorySchwartz)
+Gregory Schwartz (GregorySchwartz)
 
-[Joshua Moerman](https://github.com/Jaxan)
+Joshua Moerman (Jaxan)

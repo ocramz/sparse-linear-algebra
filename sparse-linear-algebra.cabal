@@ -72,18 +72,21 @@ library
                        Numeric.LinearAlgebra.LinearSolvers.Experimental
                        Numeric.LinearAlgebra.EigenSolvers.Experimental
   build-depends:       base >= 4.7 && < 5
-                     , primitive
                      -- , deepseq
                      , containers
+                     , exceptions                     
+                     , mtl >= 2.2.1                        
+                     , numhask
+                     , primitive
+                     , transformers                                      
                      , vector
                      , vector-algorithms
                      -- , hybrid-vectors
-                     , exceptions
-                     , mtl >= 2.2.1                     
-                     , transformers
                      -- , writer-cps-transformers
                      -- , monad-log == 0.1.1.0
                      -- , monad-par
+                     
+                     -- -- DEBUG
                      , QuickCheck >= 2.8.2
                      , hspec
                      -- , primitive >= 0.6.1.0

@@ -16,6 +16,9 @@
 -----------------------------------------------------------------------------
 module Numeric.LinearAlgebra.Class where
 
+import qualified NumHask.Algebra as NH
+-- import Prelude hiding (Bounded(..), Integral(..), (*), (**), (+), (-), (/), (^), (^^), abs, acos, acosh, asin, asinh, atan, atan2, atanh, ceiling, cos, cosh, exp, floor, fromInteger, fromIntegral, isNaN, log, logBase, negate, pi, product, recip, round, sin, sinh, sqrt, sum, tan, tanh, toInteger)
+
 -- import Control.Applicative
 import Data.Complex
 
