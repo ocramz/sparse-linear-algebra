@@ -1,3 +1,10 @@
+	0.3.1
+	* Changed `SpMatrix` to use `foldlWithKey'` for efficiency (Joshua Moerman)
+	
+	* Bumped LTS to 11.3 (GHC 8.2.2)
+	
+	* Removed unneeded dependencies from stack.yaml
+
 	0.3
 	* Fixed a number of instances, un-commented tests (Joshua Moerman)
 	
