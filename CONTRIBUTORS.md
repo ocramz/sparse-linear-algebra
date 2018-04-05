@@ -4,6 +4,6 @@ Marco Zocca (@ocramz)
 
 # Contributors
 
-Gregory Schwartz (@GregorySchwartz)
+[Gregory Schwartz](github.com/GregorySchwartz)
 
-Joshua Moerman (@Jaxan)
+[Joshua Moerman](github.com/Jaxan)

@@ -478,7 +478,7 @@ lu aa = do
       luInit | isNz u00 = return (1, l0, u0)
              | otherwise = oops (0 :: Int)
         where
-          l0 = insertCol (eye n) ((extractSubCol aa 0 (1, n-1)) ./ u00 ) 0
+          l0 = insertCol (eye n) (extractSubCol aa 0 (1, n-1) ./ u00 ) 0
           u0 = insertRow (zeroSM n n) (extractRow aa 0) 0   -- initial U
           u00 = u0 @@! (0,0)  -- make sure this is non-zero by applying permutation
       luUpd (i, l, u) = do -- (i + 1, l', u') 
