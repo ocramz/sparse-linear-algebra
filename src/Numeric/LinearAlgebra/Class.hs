@@ -16,8 +16,8 @@
 -----------------------------------------------------------------------------
 module Numeric.LinearAlgebra.Class where
 
-import qualified NumHask.Algebra as NH
--- import Prelude hiding (Bounded(..), Integral(..), (*), (**), (+), (-), (/), (^), (^^), abs, acos, acosh, asin, asinh, atan, atan2, atanh, ceiling, cos, cosh, exp, floor, fromInteger, fromIntegral, isNaN, log, logBase, negate, pi, product, recip, round, sin, sinh, sqrt, sum, tan, tanh, toInteger)
+import NumHask.Algebra -- (AdditiveGroup(..), Normed(..))
+import Prelude hiding (Bounded(..), Integral(..), (*), (**), (+), (-), (/), (^), (^^), abs, acos, acosh, asin, asinh, atan, atan2, atanh, ceiling, cos, cosh, exp, floor, fromInteger, fromIntegral, isNaN, log, logBase, negate, pi, product, recip, round, sin, sinh, sqrt, sum, tan, tanh, toInteger)
 
 -- import Control.Applicative
 import Data.Complex
@@ -32,7 +32,9 @@ import Control.Monad.IO.Class
 import qualified Data.Vector as V (Vector)
 
 import Data.Sparse.Types
-import Numeric.Eps
+
+
+-- import Numeric.Eps
 
 
 
@@ -55,65 +57,65 @@ instance (RealFloat e) => Elt (Complex e) where
 
 
 
-infixl 6 ^+^, ^-^
+-- infixl 6 ^+^, ^-^
 
--- * Additive group
-class AdditiveGroup v where
-  -- | The zero element: identity for '(^+^)'
-  zeroV :: v
-  -- | Add vectors
-  (^+^) :: v -> v -> v
-  -- | Additive inverse
-  negateV :: v -> v
-  -- | Group subtraction
-  (^-^) :: v -> v -> v
-  (^-^) x y = x ^+^ negateV y
+-- -- * Additive group
+-- class AdditiveGroup v where
+--   -- | The zero element: identity for '(^+^)'
+--   zeroV :: v
+--   -- | Add vectors
+--   (^+^) :: v -> v -> v
+--   -- | Additive inverse
+--   negateV :: v -> v
+--   -- | Group subtraction
+--   (^-^) :: v -> v -> v
+--   (^-^) x y = x ^+^ negateV y
 
 
-infixr 7 .*
+-- infixr 7 .*
 
--- * Vector space @v@.
-class (AdditiveGroup v, Num (Scalar v)) => VectorSpace v where
-  type Scalar v :: *
-  -- | Scale a vector
-  (.*) :: Scalar v -> v -> v
+-- -- * Vector space @v@.
+-- class (Hilbert v a, Num (Scalar v)) => VectorSpace v where
+--   type Scalar v :: *
+--   -- | Scale a vector
+--   (.*) :: Scalar v -> v -> v
 
--- | Adds inner (dot) products.
-class VectorSpace v => InnerSpace v where
-  -- | Inner/dot product
-  (<.>) :: v -> v -> Scalar v
+-- -- | Adds inner (dot) products.
+-- class VectorSpace v => InnerSpace v where
+--   -- | Inner/dot product
+--   (<.>) :: v -> v -> Scalar v
 
 -- | Inner product
-dot :: InnerSpace v => v -> v -> Scalar v
-dot = (<.>)
+-- dot :: InnerSpace v => v -> v -> Scalar v
+-- dot = (<.>)
   
 
-infixr 7 ./
-infixl 7 *.
+-- infixr 7 ./
+-- infixl 7 *.
 
 -- | Scale a vector by the reciprocal of a number (e.g. for normalization)
-(./) :: (VectorSpace v, s ~ Scalar v, Fractional s) => v -> s -> v
-v ./ s = (recip s) .* v
+-- (./) :: (VectorSpace v, s ~ Scalar v, Fractional s) => v -> s -> v
+-- v ./ s = (recip s) .* v
 
--- | Vector multiplied by scalar
-(*.) :: (VectorSpace v, s ~ Scalar v) => v -> s -> v
-(*.) = flip (.*)  
+-- -- | Vector multiplied by scalar
+-- (*.) :: (VectorSpace v, s ~ Scalar v) => v -> s -> v
+-- (*.) = flip (.*)  
 
 
 
 -- | Convex combination of two vectors (NB: 0 <= `a` <= 1). 
-cvx :: VectorSpace v => Scalar v -> v -> v -> v
-cvx a u v = a .* u ^+^ ((1-a) .* v)
-
+cvx :: (MultiplicativeModule r a, AdditiveGroup a, Num a, Additive (r a)) =>
+     a -> r a -> r a -> r a
+cvx a u v = (u .* a) + (v .* (1 - a))
 
 
 
 -- ** Hilbert-space distance function
 
 -- |`hilbertDistSq x y = || x - y ||^2` computes the squared L2 distance between two vectors
-hilbertDistSq :: InnerSpace v => v -> v -> Scalar v
+hilbertDistSq :: (AdditiveGroup (r a), Hilbert r a) => r a -> r a -> a
 hilbertDistSq x y = t <.> t where
-  t = x ^-^ y
+  t = x - y
 
 
 
@@ -124,40 +126,41 @@ hilbertDistSq x y = t <.> t where
 
 -- * Normed vector spaces
 
-class (InnerSpace v, Num (RealScalar v), Eq (RealScalar v), Epsilon (Magnitude v), Show (Magnitude v), Ord (Magnitude v)) => Normed v where
-  type Magnitude v :: *
-  type RealScalar v :: *
-  -- | L1 norm
-  norm1 :: v -> Magnitude v
-  -- | Euclidean (L2) norm squared
-  norm2Sq :: v -> Magnitude v
-  -- | Lp norm (p > 0)
-  normP :: RealScalar v -> v -> Magnitude v
-  -- | Normalize w.r.t. Lp norm
-  normalize :: RealScalar v -> v -> v
-  -- | Normalize w.r.t. L2 norm
-  normalize2 :: v -> v
-  -- | Normalize w.r.t. norm2' instead of norm2
-  normalize2' :: Floating (Scalar v) => v -> v 
-  normalize2' x = x ./ norm2' x
-  -- | Euclidean (L2) norm
-  norm2 :: Floating (Magnitude v) => v -> Magnitude v 
-  norm2 x = sqrt (norm2Sq x)
-  -- | Euclidean (L2) norm; returns a Complex (norm :+ 0) for Complex-valued vectors
-  norm2' :: Floating (Scalar v) => v -> Scalar v 
-  norm2' x = sqrt $ x <.> x
-  -- | Lp norm (p > 0)
-  norm :: Floating (Magnitude v) => RealScalar v -> v -> Magnitude v 
-  norm p v
-    | p == 1 = norm1 v
-    | p == 2 = norm2 v
-    | otherwise = normP p v
+-- class (InnerSpace v, Num (RealScalar v), Eq (RealScalar v), Epsilon (Magnitude v), Show (Magnitude v), Ord (Magnitude v)) => Normed v where
+--   type Magnitude v :: *
+--   type RealScalar v :: *
+--   -- | L1 norm
+--   norm1 :: v -> Magnitude v
+--   -- | Euclidean (L2) norm squared
+--   norm2Sq :: v -> Magnitude v
+--   -- | Lp norm (p > 0)
+--   normP :: RealScalar v -> v -> Magnitude v
+--   -- | Normalize w.r.t. Lp norm
+--   normalize :: RealScalar v -> v -> v
+--   -- | Normalize w.r.t. L2 norm
+--   normalize2 :: v -> v
+--   -- | Normalize w.r.t. norm2' instead of norm2
+--   normalize2' ::
+--     (N.ExpField (Scalar v), N.MultiplicativeInvertible (Scalar v)) => v -> v 
+--   normalize2' x = x ./ norm2' x
+--   -- | Euclidean (L2) norm
+--   norm2 :: N.ExpField (Magnitude v) => v -> Magnitude v 
+--   norm2 x = N.sqrt (norm2Sq x)
+--   -- | Euclidean (L2) norm; returns a Complex (norm :+ 0) for Complex-valued vectors
+--   norm2' :: N.ExpField (Scalar v) => v -> Scalar v 
+--   norm2' x = N.sqrt $ x <.> x
+--   -- | Lp norm (p > 0)
+--   norm :: N.ExpField (Magnitude v) => RealScalar v -> v -> Magnitude v 
+--   norm p v
+--     | p == 1 = norm1 v
+--     | p == 2 = norm2 v
+--     | otherwise = normP p v
 
 
 
 -- | Infinity-norm (Real)
 normInftyR :: (Foldable t, Ord a) => t a -> a
-normInftyR x = maximum x
+normInftyR = maximum
 
 -- | Infinity-norm (Complex)
 normInftyC :: (Foldable t, RealFloat a, Functor t) => t (Complex a) -> a
@@ -165,19 +168,20 @@ normInftyC x = maximum (magnitude <$> x)
 
 
 -- | Lp inner product (p > 0)
-dotLp :: (Set t, Foldable t, Floating a) => a -> t a -> t a ->  a
-dotLp p v1 v2 = sum u**(1/p) where
-  f a b = (a*b)**p
+dotLp ::
+  (Set t, Foldable t, Multiplicative a, ExpField a, Num a) => a -> t a -> t a ->  a
+dotLp p v1 v2 = sum u ** (1 / p) where
+  f a b = (a * b) ** p
   u = liftI2 f v1 v2
 
 
 -- | Reciprocal
-reciprocal :: (Functor f, Fractional b) => f b -> f b
+reciprocal :: (Functor f, MultiplicativeInvertible b) => f b -> f b
 reciprocal = fmap recip
 
 
 -- |Scale
-scale :: (Num b, Functor f) => b -> f b -> f b
+scale :: (Multiplicative b, Functor f) => b -> f b -> f b
 scale n = fmap (* n)
 
 
@@ -222,12 +226,12 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
 
 -- * Linear vector space
 
-class (VectorSpace v {-, MatrixRing (MatrixType v)-}) => LinearVectorSpace v where
-  type MatrixType v :: *
-  -- | Matrix-vector action
-  (#>) :: MatrixType v -> v -> v
-  -- | Dual matrix-vector action
-  (<#) :: v -> MatrixType v -> v
+-- class (Hilbert v {-, MatrixRing (MatrixType v)-}) => LinearVectorSpace v where
+--   type MatrixType v :: *
+--   -- | Matrix-vector action
+--   (#>) :: MatrixType v -> v -> v
+--   -- | Dual matrix-vector action
+--   (<#) :: v -> MatrixType v -> v
 
 
 
@@ -235,19 +239,19 @@ class (VectorSpace v {-, MatrixRing (MatrixType v)-}) => LinearVectorSpace v whe
 
 -- ** LinearVectorSpace + Normed
 
-type V v = (LinearVectorSpace v, Normed v) 
+-- type V v = (LinearVectorSpace v, Normed v) 
 
 
 
 
 -- ** Linear systems
   
-class LinearVectorSpace v => LinearSystem v where
-  -- | Solve a linear system; uses GMRES internally as default method
-  (<\>) :: (MonadIO m, MonadThrow m) =>
-           MatrixType v   -- ^ System matrix
-        -> v              -- ^ Right-hand side
-        -> m v            -- ^ Result
+-- class LinearVectorSpace v => LinearSystem v where
+--   -- | Solve a linear system; uses GMRES internally as default method
+--   (<\>) :: (MonadIO m, MonadThrow m) =>
+--            MatrixType v   -- ^ System matrix
+--         -> v              -- ^ Right-hand side
+--         -> m v            -- ^ Result
 
 
 
@@ -294,6 +298,8 @@ class Functor f => Set f where
 
   -- | Intersection binary lift : apply function on _intersection_ of two "sets"
   liftI2 :: (a -> a -> b) -> f a -> f a -> f b
+
+
 
 
 
@@ -374,69 +380,58 @@ toC r = r :+ 0
 
 
 
+-- -- | Instances for builtin types
+-- #define ScalarType(t) \
+-- instance AdditiveGroup (t) where {zeroV = 0; (^+^) = (+); negateV = negate};\
+-- instance VectorSpace (t) where {type Scalar (t) = t; (.*) = (*) };
+
+-- -- ScalarType(Int)
+-- -- ScalarType(Integer)
+-- ScalarType(Float)
+-- ScalarType(Double)
+-- ScalarType(Complex Float)
+-- ScalarType(Complex Double)
+-- -- ScalarType(CSChar)
+-- -- ScalarType(CInt)
+-- -- ScalarType(CShort)
+-- -- ScalarType(CLong)
+-- -- ScalarType(CLLong)
+-- -- ScalarType(CIntMax)
+-- -- ScalarType(CFloat)
+-- -- ScalarType(CDouble)
+
+-- #undef ScalarType
 
 
+-- instance InnerSpace Float  where {(<.>) = (N.*)}
+-- instance InnerSpace Double where {(<.>) = (N.*)}
+-- instance InnerSpace (Complex Float)  where {x <.> y = x N.* conjugate y}
+-- instance InnerSpace (Complex Double) where {x <.> y = x N.* conjugate y}
 
 
+-- #define SimpleNormedInstance(t) \
+-- instance Normed (t) where {type Magnitude (t) = t; type RealScalar (t) = t;\
+--  norm1 = N.abs; norm2Sq = (N.** 2); normP _ = N.abs; normalize _ = N.sign;\
+--  normalize2 = N.sign; normalize2' = N.sign; norm2 = N.abs; norm2' = N.abs; norm _ = N.abs};
 
+-- SimpleNormedInstance(Float)
+-- SimpleNormedInstance(Double)
 
+-- #undef SimpleNormedInstance
 
+-- #define ComplexNormedInstance(t) \
+-- instance Normed (Complex (t)) where {\
+--  type Magnitude  (Complex (t)) = t;\
+--  type RealScalar (Complex (t)) = t;\
+--  norm1   (r :+ i) = N.abs r N.+ N.abs i;\
+--  norm2Sq (r :+ i) = r N.* r N.+ i N.* i;\
+--  normP p (r :+ i) = (r N.** p N.+ i N.** p) N.** (1 N./ p);\
+--  normalize p c = toC (1 N./ normP p c) N.* c;\
+--  normalize2  c = (1 N./ norm2' c) N.* c;\
+--  norm2  = magnitude;\
+--  norm2' = toC . magnitude;};
 
+-- ComplexNormedInstance(Float)
+-- ComplexNormedInstance(Double)
 
-
-
--- | Instances for builtin types
-#define ScalarType(t) \
-instance AdditiveGroup (t) where {zeroV = 0; (^+^) = (+); negateV = negate};\
-instance VectorSpace (t) where {type Scalar (t) = t; (.*) = (*) };
-
--- ScalarType(Int)
--- ScalarType(Integer)
-ScalarType(Float)
-ScalarType(Double)
-ScalarType(Complex Float)
-ScalarType(Complex Double)
--- ScalarType(CSChar)
--- ScalarType(CInt)
--- ScalarType(CShort)
--- ScalarType(CLong)
--- ScalarType(CLLong)
--- ScalarType(CIntMax)
--- ScalarType(CFloat)
--- ScalarType(CDouble)
-
-#undef ScalarType
-
-
-instance InnerSpace Float  where {(<.>) = (*)}
-instance InnerSpace Double where {(<.>) = (*)}
-instance InnerSpace (Complex Float)  where {x <.> y = x * conjugate y}
-instance InnerSpace (Complex Double) where {x <.> y = x * conjugate y}
-
-
-#define SimpleNormedInstance(t) \
-instance Normed (t) where {type Magnitude (t) = t; type RealScalar (t) = t;\
- norm1 = abs; norm2Sq = (**2); normP _ = abs; normalize _ = signum;\
- normalize2 = signum; normalize2' = signum; norm2 = abs; norm2' = abs; norm _ = abs};
-
-SimpleNormedInstance(Float)
-SimpleNormedInstance(Double)
-
-#undef SimpleNormedInstance
-
-#define ComplexNormedInstance(t) \
-instance Normed (Complex (t)) where {\
- type Magnitude  (Complex (t)) = t;\
- type RealScalar (Complex (t)) = t;\
- norm1   (r :+ i) = abs r + abs i;\
- norm2Sq (r :+ i) = r*r + i*i;\
- normP p (r :+ i) = (r**p + i**p)**(1/p);\
- normalize p c = toC (1 / normP p c) * c;\
- normalize2  c = (1 / norm2' c) * c;\
- norm2  = magnitude;\
- norm2' = toC . magnitude;};
-
-ComplexNormedInstance(Float)
-ComplexNormedInstance(Double)
-
-#undef ComplexNormedInstance
+-- #undef ComplexNormedInstance
