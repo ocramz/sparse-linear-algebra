@@ -34,15 +34,21 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  describe "SpVector Double" $ do
-    prop "Addition is commutative"     $ commutative @(SpVector Double)
-    prop "Subtraction is cancellative" $ nearCancellative @(SpVector Double)
-    prop "Zero is neutral"             $ neutralZero @(SpVector Double)
-    prop "Addition is associative"     $ nearAssociative @(SpVector Double)
-    prop "Scalar multiplication is associative"    $ nearAssociativeScalar @(SpVector Double)
-    prop "Scalar multiplication is unital"         $ neutralScalar @(SpVector Double)
-    prop "Scalar multiplication is distributive"   $ nearDistributiveScalar @(SpVector Double)
-    prop "Scalar multiplication is distributive 2" $ nearDistributiveScalar2 @(SpVector Double)
+  describe "Additive group instance for SpVector Rational" $ do
+    prop "Addition is commutative"     $ commutative @(SpVector Rational)
+    prop "Subtraction is cancellative" $ cancellative @(SpVector Rational)
+    prop "Zero is neutral"             $ neutralZero @(SpVector Rational)
+    prop "Addition is associative"     $ associative @(SpVector Rational)
+  describe "Vector space instance for SpVector Rational" $ do
+    prop "Scalar multiplication is associative"    $ associativeScalar @(SpVector Rational)
+    prop "Scalar multiplication is unital"         $ neutralScalar @(SpVector Rational)
+    prop "Scalar multiplication is distributive"   $ distributiveScalar @(SpVector Rational)
+    prop "Scalar multiplication is distributive 2" $ distributiveScalar2 @(SpVector Rational)
+  describe "Inner space instance for SpVector Rational" $ do
+    prop "Inner product is linear in first arg"  $ innerProductBilinear @(SpVector Rational)
+    prop "Inner product is linear in first arg2" $ innerProductBilinear2 @(SpVector Rational)
+    prop "Inner product is commutative"          $ innerProductCommutative @(SpVector Rational)
+    prop "Inner product is semidefinite"         $ innerProductPositive @(SpVector Rational)
   describe "Numeric.LinearAlgebra.Sparse : Library" $ do
     it "<.> : inner product (Real)" $
       tv0 <.> tv0 `shouldBe` 61
@@ -531,7 +537,7 @@ genSpVDense n = do
 
 
 -- | An Arbitrary SpVector such that at least one entry is nonzero
-instance Arbitrary (SpVector Double) where
+instance (Arbitrary a, Epsilon a) => Arbitrary (SpVector a) where
   arbitrary = sized genSpV `suchThat` any isNz 
 
 

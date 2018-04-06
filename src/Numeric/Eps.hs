@@ -53,6 +53,8 @@ instance Epsilon CFloat where
 instance Epsilon CDouble where
   nearZero a = abs a <= 1e-12
 
+instance Epsilon Rational where
+  nearZero a = a == 0
 
 -- | @'magnitude' a '<=' 1e-6@
 instance Epsilon (Complex Float) where

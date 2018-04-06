@@ -391,6 +391,7 @@ instance VectorSpace (t) where {type Scalar (t) = t; (.*) = (*) };
 -- ScalarType(Integer)
 ScalarType(Float)
 ScalarType(Double)
+ScalarType(Rational)
 ScalarType(Complex Float)
 ScalarType(Complex Double)
 -- ScalarType(CSChar)
@@ -407,6 +408,7 @@ ScalarType(Complex Double)
 
 instance InnerSpace Float  where {(<.>) = (*)}
 instance InnerSpace Double where {(<.>) = (*)}
+instance InnerSpace Rational where {(<.>) = (*)}
 instance InnerSpace (Complex Float)  where {x <.> y = x * conjugate y}
 instance InnerSpace (Complex Double) where {x <.> y = x * conjugate y}
 

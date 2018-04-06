@@ -71,7 +71,7 @@ library
                        Control.Iterative
                        Numeric.LinearAlgebra.LinearSolvers.Experimental
                        Numeric.LinearAlgebra.EigenSolvers.Experimental
-  build-depends:       base >= 4.7 && < 5
+  build-depends:       base >= 4.8 && < 5
                      , primitive
                      -- , deepseq
                      , containers
@@ -108,7 +108,7 @@ test-suite spec
   other-modules:       LibSpec, Laws
   main-is:             Spec.hs
   build-depends:       QuickCheck >= 2.8.2
-                     , base
+                     , base >= 4.8 && < 5
                      , containers
                      -- , criterion == 1.1.4.0
                      , hspec
