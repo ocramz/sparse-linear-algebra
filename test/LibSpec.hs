@@ -49,6 +49,16 @@ spec = do
     prop "Inner product is linear in first arg2" $ innerProductBilinear2 @(SpVector Rational)
     prop "Inner product is commutative"          $ innerProductCommutative @(SpVector Rational)
     prop "Inner product is semidefinite"         $ innerProductPositive @(SpVector Rational)
+  describe "Additive group instance for SpMatrix Rational" $ do
+    prop "Addition is commutative"     $ commutative @(SpMatrix Rational)
+    prop "Subtraction is cancellative" $ cancellative @(SpMatrix Rational)
+    prop "Zero is neutral"             $ neutralZero @(SpMatrix Rational)
+    prop "Addition is associative"     $ associative @(SpMatrix Rational)
+  describe "Vector space instance for SpMatrix Rational" $ do
+    prop "Scalar multiplication is associative"    $ associativeScalar @(SpMatrix Rational)
+    prop "Scalar multiplication is unital"         $ neutralScalar @(SpMatrix Rational)
+    prop "Scalar multiplication is distributive"   $ distributiveScalar @(SpMatrix Rational)
+    prop "Scalar multiplication is distributive 2" $ distributiveScalar2 @(SpMatrix Rational)
   describe "Numeric.LinearAlgebra.Sparse : Library" $ do
     it "<.> : inner product (Real)" $
       tv0 <.> tv0 `shouldBe` 61
@@ -540,6 +550,10 @@ genSpVDense n = do
 instance (Arbitrary a, Epsilon a) => Arbitrary (SpVector a) where
   arbitrary = sized genSpV `suchThat` any isNz 
 
+instance (Arbitrary a, Epsilon a) => Arbitrary (SpMatrix a) where
+  arbitrary = sized2 $ \n m -> do
+                d <- choose (0, n*m)
+                genSpM0 n m d
 
 -- | An arbitrary square SpMatrix
 newtype PropMat0 a = PropMat0 (SpMatrix a) deriving (Eq, Show)
