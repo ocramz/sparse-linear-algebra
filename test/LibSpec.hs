@@ -150,31 +150,32 @@ spec = do
 --   -- --   it "luSolve (3 x 3 dense)" $ 
 --   -- --     checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True, True)) 
 
-specQR = do       
-  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
-    it "qr (3 x 3 dense)" $ 
-      checkQr tm2 >>= (`shouldBe` True)
-    it "qr (4 x 4 sparse)" $
-      checkQr tm4 >>= (`shouldBe` True)
-    it "qr (5 x 5 sparse)" $
-      checkQr tm7 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
-    it "qr (2 x 2 dense)" $
-      checkQr aa3cx >>= (`shouldBe` True)
-    it "qr (3 x 3 dense)" $
-      checkQr tmc4 >>= (`shouldBe` True)
+
+-- specQR = do       
+--   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
+--     it "qr (3 x 3 dense)" $ 
+--       checkQr tm2 >>= (`shouldBe` True)
+--     it "qr (4 x 4 sparse)" $
+--       checkQr tm4 >>= (`shouldBe` True)
+--     it "qr (5 x 5 sparse)" $
+--       checkQr tm7 >>= (`shouldBe` True)
+--   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
+--     it "qr (2 x 2 dense)" $
+--       checkQr aa3cx >>= (`shouldBe` True)
+--     it "qr (3 x 3 dense)" $
+--       checkQr tmc4 >>= (`shouldBe` True)
       
-specLu = do       
-  describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
-    it "lu (3 x 3 dense)" $
-      checkLu tm2 >>= (`shouldBe` True)
-    it "lu (4 x 4 dense)" $
-      checkLu tm6 >>= (`shouldBe` True)
-    it "lu (5 x 5 sparse)" $
-      checkLu tm7 >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ 
-    it "lu (3 x 3 dense)" $
-      checkLu tmc4 >>= (`shouldBe` True)
+-- specLu = do       
+--   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
+--     it "lu (3 x 3 dense)" $
+--       checkLu tm2 >>= (`shouldBe` True) 
+--     it "lu (4 x 4 dense)" $
+--       checkLu tm6 >>= (`shouldBe` True)
+--     it "lu (5 x 5 sparse)" $
+--       checkLu tm7 >>= (`shouldBe` True)
+--   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ 
+--     it "lu (3 x 3 dense)" $
+--       checkLu tmc4 >>= (`shouldBe` True)
 
 -- specChol =   
 --   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
@@ -184,15 +185,15 @@ specLu = do
 --   --   it "chol (4 x 4 dense)" $
 --   --     checkChol (tmc5 ##^ tmc5) >>= (`shouldBe` True) 
   
-specArnoldi =       
-  describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
-    it "arnoldi (4 x 4 dense)" $
-      checkArnoldi tm6 4 >>= (`shouldBe` True)
-    it "arnoldi (5 x 5 sparse)" $
-      checkArnoldi tm7 5 >>= (`shouldBe` True)
-  -- -- describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Complex)" $ do      
-  -- --   it "arnoldi (4 x 4 dense)" $
-  -- --     checkArnoldi tmc4 4 >>= (`shouldBe` True)      
+-- specArnoldi =       
+--   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
+--     it "arnoldi (4 x 4 dense)" $
+--       checkArnoldi tm6 4 >>= (`shouldBe` True)
+--     it "arnoldi (5 x 5 sparse)" $
+--       checkArnoldi tm7 5 >>= (`shouldBe` True)
+--   -- -- describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Complex)" $ do      
+--   -- --   it "arnoldi (4 x 4 dense)" $
+--   -- --     checkArnoldi tmc4 4 >>= (`shouldBe` True)      
 
 
 {- linear systems -}
@@ -274,8 +275,14 @@ checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
 checkQr = checkQr0 qr
 
 
+-- checkQr' :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a) ) =>
+--      SpMatrix a
+--      -> Either SomeException Bool
+-- checkQr' = checkQr0 qr
 
-checkQr0 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+
+
+checkQr0 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m, MonadLog String m) =>
      (SpMatrix a -> m (SpMatrix a, SpMatrix a))
      -> SpMatrix a
      -> m Bool
@@ -299,8 +306,11 @@ checkQr0 mfqr a = do
 {- LU -}
 
 checkLu :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
-      VectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
+      VectorSpace (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
      SpMatrix t -> m Bool
+-- checkLu :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
+--       VectorSpace (SpVector t), Epsilon t) =>
+--      SpMatrix t -> Either SomeException Bool
 checkLu a = do 
   (l, u) <- lu a
   let c1 = nearZero $ normFrobenius $ sparsifySM ((l ## u) ^-^ a)
@@ -381,7 +391,7 @@ checkTriLowerSolve lmat rhs = do
 
 checkArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Normed (SpVector t), MatrixRing (SpMatrix t),
-      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
+      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
      SpMatrix t -> Int -> m Bool
 checkArnoldi aa kn = do -- nearZero (normFrobenius $ lhs ^-^ rhs) where
   let b = onesSV (nrows aa)
