@@ -126,6 +126,7 @@ import Control.Iterative
 import Data.Sparse.Common
 
 import Control.Monad.Catch
+import Control.Monad.Log
 import Data.Typeable
 
 -- import Control.Applicative ((<|>))
@@ -152,7 +153,7 @@ type Num' x = (Epsilon x, Elt x, Show x, Ord x, Typeable x)
 -- * Matrix condition number
 
 -- | Matrix condition number: computes the QR factorization and extracts the extremal eigenvalues from the R factor
-conditionNumberSM :: (MonadThrow m, MonadIO m, MatrixRing (SpMatrix a),
+conditionNumberSM :: (MonadThrow m, MonadLog String m, MatrixRing (SpMatrix a),
                       PrintDense (SpMatrix a), Num' a) =>
      SpMatrix a -> m a
 conditionNumberSM m = do
@@ -293,7 +294,7 @@ However, we must also accumulate the `G_i` in order to build `Q`, and the presen
 -}
 {-# inline qr #-}
 qr :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a),
-      Epsilon a, MonadThrow m, MonadIO m) =>
+      Epsilon a, MonadThrow m, MonadLog String m) =>
      SpMatrix a
      -> m (SpMatrix a, SpMatrix a) -- ^ Q, R
 qr mm = do 
@@ -326,11 +327,11 @@ qr mm = do
 -- ** QR algorithm
 
 -- | `eigsQR n mm` performs at most `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues.
-eigsQR :: (MonadThrow m, MonadIO m, Num' a, Normed (SpVector a), MatrixRing (SpMatrix a), Typeable (Magnitude (SpVector a)), PrintDense (SpVector a), PrintDense (SpMatrix a)) =>
-        Int            -- ^ Max. # of iterations
-     -> Bool           -- ^ Print debug information        
-     -> SpMatrix a     -- ^ Operand matrix
-     -> m (SpVector a) -- ^ Eigenvalues {λ_i}
+-- eigsQR :: (MonadThrow m, MonadIO m, Num' a, Normed (SpVector a), MatrixRing (SpMatrix a), Typeable (Magnitude (SpVector a)), PrintDense (SpVector a), PrintDense (SpMatrix a)) =>
+--         Int            -- ^ Max. # of iterations
+--      -> Bool           -- ^ Print debug information        
+--      -> SpMatrix a     -- ^ Operand matrix
+--      -> m (SpVector a) -- ^ Eigenvalues {λ_i}
 eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
   where
     pf = extractDiagDense
@@ -348,7 +349,7 @@ eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
 -- | `eigsArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
 eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, V (SpVector t), Epsilon t, PrintDense (SpMatrix t),
-      MatrixRing (SpMatrix t), MonadThrow m, MonadIO m) =>
+      MatrixRing (SpMatrix t), MonadThrow m, MonadLog String m) =>
      Int
      -> SpMatrix t
      -> SpVector t
@@ -408,7 +409,7 @@ SVD of A, Golub-Kahan method
 
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
 -- | NB: The algorithm throws an exception if some diagonal element of A is zero.
-chol :: (Elt a, Epsilon a, MonadThrow m, MonadIO m, PrintDense (SpMatrix a)) =>
+chol :: (Elt a, Epsilon a, MonadThrow m, MonadLog String m, PrintDense (SpMatrix a)) =>
         SpMatrix a
      -> m (SpMatrix a)  -- ^ L
 chol aa = do
@@ -705,7 +706,7 @@ luSolveConfig = IterConf 0 False fst prd0
 
 -- | Direct solver based on a triangular factorization of the system matrix.
 luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t),
-            Epsilon t, PrintDense (SpVector t), MonadIO m) =>
+            Epsilon t, PrintDense (SpVector t), MonadLog String m) =>
      SpMatrix t    -- ^ Lower triangular
      -> SpMatrix t -- ^ Upper triangular
      -> SpVector t -- ^ r.h.s.
@@ -719,14 +720,14 @@ luSolve ll uu b
 -- | Forward substitution solver
 triLowerSolve
   :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadIO m) =>
+      PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
       SpMatrix t -> SpVector t -> m (SpVector t)
 triLowerSolve = triLowerSolve0 luSolveConfig
 
 
 
 triLowerSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      Epsilon t, MonadThrow m, MonadIO m) =>
+      Epsilon t, MonadThrow m, MonadLog String m) =>
         IterationConfig (SpVector t, IxRow) b
      -> SpMatrix t -> SpVector t -> m (SpVector t)  
 triLowerSolve0 config ll b = do
@@ -760,12 +761,12 @@ triLowerSolve0 config ll b = do
 -- | Backward substitution solver
 triUpperSolve
   :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadIO m) =>
+      PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
       SpMatrix t -> SpVector t -> m (SpVector t)
 triUpperSolve = triUpperSolve0 luSolveConfig
 
 triUpperSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      Epsilon t, MonadThrow m, MonadIO m) =>
+      Epsilon t, MonadThrow m, MonadLog String m) =>
      IterationConfig (SpVector t, IxRow) b
      -> SpMatrix t -> SpVector t -> m (SpVector t)  
 triUpperSolve0 conf uu w = do 
@@ -969,8 +970,8 @@ instance Show a => Show (BICGSTAB a) where
 
 -- * Moore-Penrose pseudoinverse
 -- | Least-squares approximation of a rectangular system of equations.
-pinv :: (LinearSystem v, MatrixRing (MatrixType v), MonadThrow m, MonadIO m) =>
-     MatrixType v -> v -> m v
+-- pinv :: (LinearSystem v, MatrixRing (MatrixType v), MonadThrow m, MonadIO m) =>
+--      MatrixType v -> v -> m v
 pinv aa b = (aa #^# aa) <\> atb where
   atb = transpose aa #> b
 

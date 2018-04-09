@@ -22,6 +22,7 @@ import Data.Complex
 -- import Control.Exception
 -- import Control.Exception.Common
 import Control.Monad.Catch
+import Control.Monad.Log
 import Control.Monad.IO.Class
 
 -- import Data.Typeable (Typeable)
@@ -241,7 +242,7 @@ type V v = (LinearVectorSpace v, Normed v)
   
 class LinearVectorSpace v => LinearSystem v where
   -- | Solve a linear system; uses GMRES internally as default method
-  (<\>) :: (MonadIO m, MonadThrow m) =>
+  (<\>) :: (MonadThrow m, MonadLog String m) =>
            MatrixType v   -- ^ System matrix
         -> v              -- ^ Right-hand side
         -> m v            -- ^ Result

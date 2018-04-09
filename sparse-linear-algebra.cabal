@@ -1,5 +1,5 @@
 name:                sparse-linear-algebra
-version:             0.3.1
+version:             0.3.2
 synopsis:            Numerical computing in native Haskell
 description:
   /Overview/
@@ -75,6 +75,7 @@ library
                      -- , deepseq
                      , containers
                      , exceptions
+                     , logging-effect
                      , mtl >= 2.2.1                                          
                      , primitive
                      , transformers                                      
@@ -116,6 +117,7 @@ test-suite spec
                      , hspec
                      , mtl >= 2.2.1
                      , exceptions
+                     , logging-effect
                      , mwc-random
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra

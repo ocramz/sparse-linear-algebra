@@ -32,6 +32,7 @@ import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM'
 import Data.Sparse.PPrint
 
 import Control.Monad.Catch (MonadThrow, throwM)
+import Control.Monad.Log
 import Control.Exception.Common
 
 import Control.Monad (when)
@@ -141,7 +142,7 @@ lookupWD rlu clu aa i j = fromMaybe 0 (rlu i aa >>= clu j)
 
 
 lu :: (Scalar (SpVector t) ~ t, Elt t, AdditiveGroup t, VectorSpace (SpVector t),
-      MonadThrow m, MonadIO m, PrintDense (SpMatrix t),
+      MonadThrow m, MonadLog String m, PrintDense (SpMatrix t),
       Epsilon t) =>
      SpMatrix t -> m (SpMatrix t, SpMatrix t) -- ^ L, U
 lu amat = do
@@ -226,12 +227,12 @@ fillSM (m,n) transpq tm = IM.foldlWithKey rowIns (zeroSM m n) tm where
 
 -- test data
 
-test mm = do
-  (l, u) <- lu mm
-  prd l
-  prd u
-  prd mm
-  prd $ l #~# u
+-- test mm = do
+--   (l, u) <- lu mm
+--   prd l
+--   prd u
+--   prd mm
+--   prd $ l #~# u
 
 
 
