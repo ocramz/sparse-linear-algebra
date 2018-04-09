@@ -114,9 +114,9 @@ spec = do
   --   --   prop_psd aa2 v
     
   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
-    -- it "TFQMR (2 x 2 dense)" $
+    -- -- it "TFQMR (2 x 2 dense)" $
     it "GMRES (2 x 2 dense)" $
-      checkLinSolveR GMRES_ aa0 b0 x0true `shouldBeM` True
+      checkLinSolveR GMRES_ aa0 b0 x0true >>= (`shouldBe` True)
     it "GMRES (3 x 3 sparse, symmetric pos.def.)" $
       checkLinSolveR GMRES_ aa2 b2 x2 >>= (`shouldBe` True)
     it "GMRES (4 x 4 sparse)" $
@@ -138,9 +138,9 @@ spec = do
     it "Moore-Penrose pseudoinverse (3 x 2 dense)" $
       checkPinv aa10 b10 x10 >>= (`shouldBe` True)
       
-  -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Complex)" $ do
-  --   it "<\\> (3 x 3 dense)" $
-  --     checkBackslash tmc4 tvc4 >>= (`shouldBe` True)
+  -- -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Complex)" $ do
+  -- --   it "<\\> (3 x 3 dense)" $
+  -- --     checkBackslash tmc4 tvc4 >>= (`shouldBe` True)
       
   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
     it "luSolve (4 x 4 sparse)" $ 
@@ -318,11 +318,11 @@ checkChol a = do -- c1 && c2 where
 
 {- direct linear solver -}
 
-checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
-      PrintDense (SpVector t),      
-      Epsilon t, MonadThrow m, MonadIO m) =>
-     SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
+-- checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+--       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
+--       PrintDense (SpVector t),      
+--       Epsilon t, MonadThrow m, MonadLog String m) =>
+--      SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
 checkLuSolve amat rhs = do
   (lmat, umat) <- lu amat
   (w, c1) <- checkTriLowerSolve lmat rhs -- U x = L^-1 b = w
@@ -403,7 +403,7 @@ checkArnoldi aa kn = do -- nearZero (normFrobenius $ lhs ^-^ rhs) where
 
 
 -- | monadic shouldBe
-shouldBeM :: (Eq a, Show a) => IO a -> a -> IO ()
+-- shouldBeM :: (Eq a, Show a) => IO a -> a -> IO ()
 shouldBeM x y = x >>= (`shouldBe` y)
 
 
@@ -707,13 +707,13 @@ prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 -- | QR decomposition
 prop_QR :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a), Epsilon a,
-            MonadThrow m, MonadIO m) =>
+            MonadThrow m, MonadLog String m) =>
      PropMatI a -> m Bool
 prop_QR (PropMatI m) = checkQr m
 
 
 -- | check a random linear system
-prop_linSolve :: (MonadIO m, MonadCatch m) => LinSolveMethod -> PropMatVec Double -> m Bool
+prop_linSolve :: (MonadLog String m, MonadCatch m) => LinSolveMethod -> PropMatVec Double -> m Bool
 prop_linSolve method (PropMatVec aa x) = do
   let
     aai = aa ^+^ eye (nrows aa) -- for invertibility

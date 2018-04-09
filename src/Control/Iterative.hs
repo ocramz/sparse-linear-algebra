@@ -22,6 +22,7 @@ import Control.Monad.Catch
 import Control.Monad.Log
 import Data.Typeable
 
+import Control.Exception
 import Control.Monad (when)
 -- import Control.Monad.Trans.Reader
 import Control.Monad.State.Strict
@@ -38,7 +39,8 @@ data ConvergenceStatus a = BufferNotReady
                          | Converged a
                          | Diverging a a
                          | NotConverged
-                           deriving (Eq, Show)
+                           deriving (Eq, Show, Typeable)
+instance (Typeable a, Show a) => Exception (ConvergenceStatus a)
 
      
 data IterationConfig a b =
