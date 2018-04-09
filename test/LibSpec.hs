@@ -112,43 +112,45 @@ spec = do
   --   -- prop "prop_linSolve GMRES" $ prop_linSolve GMRES_
   --     -- prop "aa2 is positive semidefinite" $ \(v :: SpVector Double) ->
   --   --   prop_psd aa2 v
-    
-  describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
-    -- -- it "TFQMR (2 x 2 dense)" $
-    it "GMRES (2 x 2 dense)" $
-      checkLinSolveR GMRES_ aa0 b0 x0true >>= (`shouldBe` True)
-    it "GMRES (3 x 3 sparse, symmetric pos.def.)" $
-      checkLinSolveR GMRES_ aa2 b2 x2 >>= (`shouldBe` True)
-    it "GMRES (4 x 4 sparse)" $
-      checkLinSolveR GMRES_ aa1 b1 x1 >>= (`shouldBe` True)
-    it "GMRES (5 x 5 sparse)" $
-      checkLinSolveR GMRES_ tm7 tvb7 tvx7 >>= (`shouldBe` True)  
-    it "BCG (2 x 2 dense)" $
-      checkLinSolveR BCG_ aa0 b0 x0true >>= (`shouldBe` True)
-    it "BCG (3 x 3 sparse, symmetric pos.def.)" $
-      checkLinSolveR BCG_ aa2 b2 x2 >>= (`shouldBe` True)
-    it "BiCGSTAB (2 x 2 dense)" $ 
-      checkLinSolveR BICGSTAB_ aa0 b0 x0true >>= (`shouldBe` True)
-    it "BiCGSTAB (3 x 3 sparse, symmetric pos.def.)" $ 
-      checkLinSolveR BICGSTAB_ aa2 b2 x2 >>= (`shouldBe` True)
-    it "CGS (2 x 2 dense)" $ 
-      checkLinSolveR CGS_ aa0 b0 x0true >>= (`shouldBe` True)
-    it "CGS (3 x 3 sparse, SPD)" $ 
-      checkLinSolveR CGS_ aa2 b2 x2 >>= (`shouldBe` True)
-    it "Moore-Penrose pseudoinverse (3 x 2 dense)" $
-      checkPinv aa10 b10 x10 >>= (`shouldBe` True)
-      
-  -- -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Complex)" $ do
-  -- --   it "<\\> (3 x 3 dense)" $
-  -- --     checkBackslash tmc4 tvc4 >>= (`shouldBe` True)
-      
-  describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
-    it "luSolve (4 x 4 sparse)" $ 
-      checkLuSolve aa1 b1 >>= (`shouldBe` (True, True, True))
-  -- -- describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Complex)" $ 
-  -- --   it "luSolve (3 x 3 dense)" $ 
-  -- --     checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True, True)) 
-      
+
+-- specLinSolve = 
+--   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
+--     -- -- it "TFQMR (2 x 2 dense)" $
+--     it "GMRES (2 x 2 dense)" $
+--       checkLinSolveR GMRES_ aa0 b0 x0true >>= (`shouldBe` True)
+--     it "GMRES (3 x 3 sparse, symmetric pos.def.)" $
+--       checkLinSolveR GMRES_ aa2 b2 x2 >>= (`shouldBe` True)
+--     it "GMRES (4 x 4 sparse)" $
+--       checkLinSolveR GMRES_ aa1 b1 x1 >>= (`shouldBe` True)
+--     it "GMRES (5 x 5 sparse)" $
+--       checkLinSolveR GMRES_ tm7 tvb7 tvx7 >>= (`shouldBe` True)  
+--     it "BCG (2 x 2 dense)" $
+--       checkLinSolveR BCG_ aa0 b0 x0true >>= (`shouldBe` True)
+--     it "BCG (3 x 3 sparse, symmetric pos.def.)" $
+--       checkLinSolveR BCG_ aa2 b2 x2 >>= (`shouldBe` True)
+--     it "BiCGSTAB (2 x 2 dense)" $ 
+--       checkLinSolveR BICGSTAB_ aa0 b0 x0true >>= (`shouldBe` True)
+--     it "BiCGSTAB (3 x 3 sparse, symmetric pos.def.)" $ 
+--       checkLinSolveR BICGSTAB_ aa2 b2 x2 >>= (`shouldBe` True)
+--     it "CGS (2 x 2 dense)" $ 
+--       checkLinSolveR CGS_ aa0 b0 x0true >>= (`shouldBe` True)
+--     it "CGS (3 x 3 sparse, SPD)" $ 
+--       checkLinSolveR CGS_ aa2 b2 x2 >>= (`shouldBe` True)
+--     it "Moore-Penrose pseudoinverse (3 x 2 dense)" $
+--       checkPinv aa10 b10 x10 >>= (`shouldBe` True)
+--   -- -- describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Complex)" $ do
+--   -- --   it "<\\> (3 x 3 dense)" $
+--   -- --     checkBackslash tmc4 tvc4 >>= (`shouldBe` True)
+
+-- specLuSolve =       
+--   describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Real)" $ 
+--     it "luSolve (4 x 4 sparse)" $ 
+--       checkLuSolve aa1 b1 >>= (`shouldBe` (True, True, True))
+--   -- -- describe "Numeric.LinearAlgebra.Sparse : Direct linear solvers (Complex)" $ 
+--   -- --   it "luSolve (3 x 3 dense)" $ 
+--   -- --     checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True, True)) 
+
+specQR = do       
   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
     it "qr (3 x 3 dense)" $ 
       checkQr tm2 >>= (`shouldBe` True)
@@ -160,7 +162,9 @@ spec = do
     it "qr (2 x 2 dense)" $
       checkQr aa3cx >>= (`shouldBe` True)
     it "qr (3 x 3 dense)" $
-      checkQr tmc4 >>= (`shouldBe` True)  
+      checkQr tmc4 >>= (`shouldBe` True)
+      
+specLu = do       
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
     it "lu (3 x 3 dense)" $
       checkLu tm2 >>= (`shouldBe` True)
@@ -171,15 +175,16 @@ spec = do
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ 
     it "lu (3 x 3 dense)" $
       checkLu tmc4 >>= (`shouldBe` True)
+
+-- specChol =   
+--   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
+--     it "chol (5 x 5 sparse)" $
+--       checkChol tm7 >>= (`shouldBe` True)
+--   -- describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Complex, symmetric pos.def.)" $ 
+--   --   it "chol (4 x 4 dense)" $
+--   --     checkChol (tmc5 ##^ tmc5) >>= (`shouldBe` True) 
   
-  describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
-    it "chol (5 x 5 sparse)" $
-      checkChol tm7 >>= (`shouldBe` True)
-  -- describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Complex, symmetric pos.def.)" $ 
-  --   it "chol (4 x 4 dense)" $
-  --     checkChol (tmc5 ##^ tmc5) >>= (`shouldBe` True) 
-  
-      
+specArnoldi =       
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
     it "arnoldi (4 x 4 dense)" $
       checkArnoldi tm6 4 >>= (`shouldBe` True)
@@ -318,11 +323,11 @@ checkChol a = do -- c1 && c2 where
 
 {- direct linear solver -}
 
--- checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
---       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
---       PrintDense (SpVector t),      
---       Epsilon t, MonadThrow m, MonadLog String m) =>
---      SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
+checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
+      PrintDense (SpVector t),      
+      Epsilon t, MonadThrow m, MonadLog String m) =>
+     SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
 checkLuSolve amat rhs = do
   (lmat, umat) <- lu amat
   (w, c1) <- checkTriLowerSolve lmat rhs -- U x = L^-1 b = w
