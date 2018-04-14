@@ -22,14 +22,14 @@ import Control.Monad.Reader
 import Control.Monad.State.Strict
 -- import Control.Monad.Trans.Writer.CPS
 import Control.Monad.Trans.Class (lift)
-import qualified Control.Monad.Trans.State.Strict  as MTS -- (runStateT)
+import qualified Control.Monad.Trans.State.Strict as MTS -- (runStateT)
 import Control.Monad.Catch
 import qualified Control.Monad.Log as L (MonadLog, LoggingT, runLoggingT, Handler, logMessage)
 
 import Data.Bool (bool)
 
 import Data.Typeable
-import Control.Exception 
+import qualified Control.Exception as E (Exception, Handler)
 
 import Data.Foldable (foldrM)
 
@@ -59,12 +59,14 @@ instance Show (IterationConfig a b) where
 newtype App c msg m a =
   App { unApp :: ReaderT c (L.LoggingT msg m) a} deriving (Functor, Applicative, Alternative, Monad)
 
+
 -- | Configure and log a computation
 runApp :: L.Handler m msg -> c -> App c msg m a -> m a
 runApp logHandler config m = L.runLoggingT (runReaderT (unApp m) config) logHandler
 
-
-
+-- | runApp, logging by printing to terminal
+runDebug :: Show a => c -> App c a IO b -> IO b
+runDebug = runApp print
 
 
 
