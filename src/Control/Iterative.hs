@@ -14,24 +14,26 @@
 -----------------------------------------------------------------------------
 module Control.Iterative where
 
-import Control.Exception.Common
-import Numeric.LinearAlgebra.Class
-import Numeric.Eps
+import Control.Applicative
 
-import Control.Monad.Catch
-import Control.Monad.Log
-import Data.Typeable
-
-import Control.Exception
 import Control.Monad (when)
 -- import Control.Monad.Trans.Reader
+import Control.Monad.Reader
 import Control.Monad.State.Strict
 -- import Control.Monad.Trans.Writer.CPS
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.State.Strict  as MTS -- (runStateT)
+import Control.Monad.Catch
+import qualified Control.Monad.Log as L (MonadLog, LoggingT, runLoggingT, Handler, logMessage)
+
+import Data.Typeable
+import Control.Exception 
+
 import Data.Foldable (foldrM)
 
-
+import Control.Exception.Common
+import Numeric.LinearAlgebra.Class
+import Numeric.Eps
 
 
 data ConvergenceStatus a = BufferNotReady
@@ -42,7 +44,7 @@ data ConvergenceStatus a = BufferNotReady
                            deriving (Eq, Show, Typeable)
 instance (Typeable a, Show a) => Exception (ConvergenceStatus a)
 
-     
+-- FIXME I don't like this; logging shouldn't be in IO, `iterationView` is too general, etc.
 data IterationConfig a b =
   IterConf { numIterationsMax :: Int     -- ^ Max.# of iterations
            , printDebugInfo :: Bool      -- ^ Print iteration info to stdout 
@@ -51,6 +53,14 @@ data IterationConfig a b =
 instance Show (IterationConfig a b) where
   show (IterConf n qd _ _) = unwords ["Max. # of iterations:",show n,", print debug information:", show qd]
   
+-- | Iterative algorithms need configuration and logging; here we use a transformer stack or ReaderT on top of LoggingT (from `logging-effect`).
+newtype App c msg m a =
+  App { unApp :: ReaderT c (L.LoggingT msg m) a} deriving (Functor, Applicative, Alternative, Monad)
+
+-- | Configure and log a computation
+runApp :: L.Handler m msg -> c -> App c msg m a -> m a
+runApp logHandler config m = L.runLoggingT (runReaderT (unApp m) config) logHandler
+
 
 
 -- * Control primitives for bounded iteration with convergence check
@@ -68,12 +78,12 @@ modifyUntilM q f = do
          else modifyUntilM q f   
 
 -- | modifyUntil with optional iteration logging to stdout
-modifyUntil' :: MonadLog String m =>
+modifyUntil' :: L.MonadLog String m =>
    IterationConfig a b -> (a -> Bool) -> (a -> a) -> a -> m a
 modifyUntil' config q f x0 = modifyUntilM' config q (pure . f) x0
 
 
-modifyUntilM' :: MonadLog String m =>
+modifyUntilM' :: L.MonadLog String m =>
    IterationConfig a b -> (a -> Bool) -> (a -> m a) -> a -> m a
 modifyUntilM' config q f x0 = MTS.execStateT (go 0) x0 where
   pf = iterationView config
@@ -81,7 +91,7 @@ modifyUntilM' config q f x0 = MTS.execStateT (go 0) x0 where
    x <- get
    y <- lift $ f x
    when (printDebugInfo config) $ do
-     logMessage $ unwords ["Iteration", show i, "\n"]
+     L.logMessage $ unwords ["Iteration", show i, "\n"]
    -- when (printDebugInfo config) $ liftIO $ do
    --   putStrLn $ unwords ["Iteration", show i, "\n"]
    --   printDebugIO config (pf y) 
@@ -94,7 +104,7 @@ modifyUntilM' config q f x0 = MTS.execStateT (go 0) x0 where
 
 
 -- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
-untilConvergedG0 :: (Normed v, MonadThrow m, MonadLog String m, Typeable (Magnitude v), Typeable s, Show s) =>
+untilConvergedG0 :: (Normed v, MonadThrow m, L.MonadLog String m, Typeable (Magnitude v), Typeable s, Show s) =>
      String
      -> IterationConfig s v
      -> v                    -- ^ Known value
@@ -109,7 +119,7 @@ untilConvergedG0 fname config xKnown f x0 =
 
 
 -- | This function makes some default choices on the `modifyInspectGuarded` machinery: convergence is assessed using the squared L2 distance between consecutive states, and divergence is detected when this function is increasing between pairs of measurements.
-untilConvergedG :: (Normed v, MonadThrow m, MonadLog String m, Typeable (Magnitude v), Typeable s, Show s) =>
+untilConvergedG :: (Normed v, MonadThrow m, L.MonadLog String m, Typeable (Magnitude v), Typeable s, Show s) =>
         String
      -> IterationConfig s v
      -> (v -> Bool)
@@ -122,7 +132,7 @@ untilConvergedG fname config =
 
 -- | ", monadic version
 untilConvergedGM ::
-  (Normed v, MonadThrow m, MonadLog String m, Typeable (Magnitude v), Typeable s, Show s) =>
+  (Normed v, MonadThrow m, L.MonadLog String m, Typeable (Magnitude v), Typeable s, Show s) =>
      String
      -> IterationConfig s v
      -> (v -> Bool)
@@ -138,7 +148,7 @@ untilConvergedGM fname config =
 
 -- | `modifyInspectGuarded` is a high-order abstraction of a numerical iterative process. It accumulates a rolling window of 3 states and compares a summary `q` of the latest 2 with that of the previous two in order to assess divergence (e.g. if `q latest2 > q prev2` then the function throws an exception and terminates). The process ends by either hitting an iteration budget or by relative convergence, whichever happens first. After the iterations stop, the function then assesses the final state with a predicate `qfinal` (e.g. for comparing the final state with a known one; if this is not available, the user can just supply `const True`)
 modifyInspectGuarded ::
-  (MonadThrow m, MonadLog String m, Typeable s, Typeable a, Show s, Show a) =>
+  (MonadThrow m, L.MonadLog String m, Typeable s, Typeable a, Show s, Show a) =>
         String              -- ^ Calling function name
      -> IterationConfig s v -- ^ Configuration
      -> ([v] -> a)          -- ^ State summary array projection
@@ -156,7 +166,7 @@ modifyInspectGuarded fname config sf qc qd qfin f x0 =
 
 -- | ", monadic version
 modifyInspectGuardedM ::
-  (MonadThrow m, MonadLog String m, Typeable s, Show s, Typeable a, Show a) =>
+  (MonadThrow m, L.MonadLog String m, Typeable s, Show s, Typeable a, Show a) =>
      String
      -> IterationConfig s v
      -> ([v] -> a)
@@ -186,7 +196,7 @@ modifyInspectGuardedM fname config sf qconverg qdiverg qfinal f x0
       x <- MTS.get
       y <- lift $ f x
       when (printDebugInfo config) $ do
-        logMessage $ unwords ["Iteration", show i]
+        L.logMessage $ unwords ["Iteration", show i]
       -- when (printDebugInfo config) $ liftIO $ do
       --   putStrLn $ unwords ["Iteration", show i]
       --   printDebugIO config (pf y) 
