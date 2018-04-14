@@ -26,6 +26,8 @@ import qualified Control.Monad.Trans.State.Strict  as MTS -- (runStateT)
 import Control.Monad.Catch
 import qualified Control.Monad.Log as L (MonadLog, LoggingT, runLoggingT, Handler, logMessage)
 
+import Data.Bool (bool)
+
 import Data.Typeable
 import Control.Exception 
 
@@ -63,6 +65,10 @@ runApp logHandler config m = L.runLoggingT (runReaderT (unApp m) config) logHand
 
 
 
+
+
+
+
 -- * Control primitives for bounded iteration with convergence check
 
 -- -- | transform state until a condition is met
@@ -75,8 +81,18 @@ modifyUntilM q f = do
   y <- f x
   put y
   if q y then return y
-         else modifyUntilM q f   
+         else modifyUntilM q f
 
+modifyUntilM_ :: MonadState s m => (s -> Bool) -> (s -> m s) -> m s
+modifyUntilM_ q f = do
+  x <- get
+  y <- f x
+  if q y
+    then pure y
+    else do
+        put y
+        modifyUntilM_ q f
+    
 -- | modifyUntil with optional iteration logging to stdout
 modifyUntil' :: L.MonadLog String m =>
    IterationConfig a b -> (a -> Bool) -> (a -> a) -> a -> m a
