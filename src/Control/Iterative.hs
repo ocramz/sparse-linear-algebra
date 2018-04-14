@@ -24,7 +24,7 @@ import Control.Monad.State.Strict
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.State.Strict as MTS -- (runStateT)
 import Control.Monad.Catch
-import qualified Control.Monad.Log as L (MonadLog, LoggingT, runLoggingT, Handler, logMessage)
+import qualified Control.Monad.Log as L (MonadLog, WithSeverity, LoggingT, runLoggingT, Handler, logMessage, logDebug, logInfo, logNotice)
 
 import Data.Bool (bool)
 
@@ -57,16 +57,33 @@ instance Show (IterationConfig a b) where
   
 -- | Iterative algorithms need configuration and logging; here we use a transformer stack or ReaderT on top of LoggingT (from `logging-effect`).
 newtype App c msg m a =
-  App { unApp :: ReaderT c (L.LoggingT msg m) a} deriving (Functor, Applicative, Alternative, Monad)
+  App {
+    unApp :: ReaderT c (L.LoggingT msg m) a
+      } deriving (Functor, Applicative, Alternative, Monad)
+
+liftApp :: (c -> L.LoggingT msg m a) -> App c msg m a
+liftApp = App . ReaderT
+
+testApp :: (Monad m, MonadState b (t m), MonadTrans t, L.MonadLog message (t m)) =>
+     (b -> m b) -> (t1 -> b -> message) -> t1 -> t m b
+testApp fm logf c = do
+  x <- get
+  y <- lift $ fm x
+  put y 
+  L.logMessage (logf c y)
+  return y
 
 
 -- | Configure and log a computation
 runApp :: L.Handler m msg -> c -> App c msg m a -> m a
 runApp logHandler config m = L.runLoggingT (runReaderT (unApp m) config) logHandler
 
--- | runApp, logging by printing to terminal
-runDebug :: Show a => c -> App c a IO b -> IO b
-runDebug = runApp print
+runLogDebug :: L.MonadLog (L.WithSeverity msg) m => c -> App c msg m a -> m a
+runLogDebug = runApp L.logDebug
+
+-- -- | runApp, logging by printing to terminal
+-- runDebug :: Show a => c -> App c a IO b -> IO b
+-- runDebug = runApp print
 
 
 
