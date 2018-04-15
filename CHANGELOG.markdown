@@ -1,3 +1,6 @@
+	0.3.2
+	* Introduced `logging-effect` as a more versatile alternative to debug logging in IO
+
 	0.3.1
 	* Changed `SpMatrix` to use `foldlWithKey'` for efficiency (Joshua Moerman)
 	

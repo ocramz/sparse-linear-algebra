@@ -1,8 +1,9 @@
 {-# language FlexibleContexts, GeneralizedNewtypeDeriving, DeriveFunctor #-}
+{-# language OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Control.Iterative
--- Copyright   :  (c) Marco Zocca 2017
+-- Copyright   :  (c) Marco Zocca 2017-2018
 -- License     :  GPL-style (see the file LICENSE)
 --
 -- Maintainer  :  zocca marco gmail
@@ -21,12 +22,13 @@ import Control.Monad (when)
 import Control.Monad.Reader
 import Control.Monad.State.Strict
 -- import Control.Monad.Trans.Writer.CPS
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Class (MonadTrans(..), lift)
 import qualified Control.Monad.Trans.State.Strict as MTS -- (runStateT)
 import Control.Monad.Catch
-import qualified Control.Monad.Log as L (MonadLog, WithSeverity, LoggingT, runLoggingT, Handler, logMessage, logDebug, logInfo, logNotice)
+import qualified Control.Monad.Log as L (MonadLog(..), WithSeverity(..), Severity(..), renderWithSeverity, LoggingT, runLoggingT, Handler, logMessage, logError, logDebug, logInfo, logNotice)
 
-import Data.Bool (bool)
+-- import Data.Bool (bool)
+import Data.Char (toUpper)
 
 import Data.Typeable
 import qualified Control.Exception as E (Exception, Handler)
@@ -61,11 +63,13 @@ newtype App c msg m a =
     unApp :: ReaderT c (L.LoggingT msg m) a
       } deriving (Functor, Applicative, Alternative, Monad)
 
+-- instance MonadTrans (App c msg) where
+
 liftApp :: (c -> L.LoggingT msg m a) -> App c msg m a
 liftApp = App . ReaderT
 
-testApp :: (Monad m, MonadState b (t m), MonadTrans t, L.MonadLog message (t m)) =>
-     (b -> m b) -> (t1 -> b -> message) -> t1 -> t m b
+testApp :: (Monad m, MonadState b (t m), MonadTrans t, L.MonadLog msg (t m)) =>
+     (b -> m b) -> (t1 -> b -> msg) -> t1 -> t m b
 testApp fm logf c = do
   x <- get
   y <- lift $ fm x
@@ -85,6 +89,66 @@ runLogDebug = runApp L.logDebug
 -- runDebug :: Show a => c -> App c a IO b -> IO b
 -- runDebug = runApp print
 
+-- | App1: LoggingT / ReaderT
+
+-- newtype App1 c msg m a = App1 { unApp1 :: L.LoggingT msg (ReaderT c m) a } deriving (Functor, Applicative, Alternative, Monad)
+
+-- liftApp1 logf f = App1 $ do
+--   c <- ask
+--   y <- lift . lift $ f c
+--   L.logMessage (logf y)
+--   return y
+
+
+-- | App2: ReaderT / LoggingT / StateT
+
+newtype App2 c msg s m a = App2 {
+  unApp2 :: ReaderT c (L.LoggingT msg (StateT s m)) a
+  } deriving (Functor, Applicative, Alternative, Monad)
+
+runApp2 lh r x0 m = runStateT (L.runLoggingT (runReaderT (unApp2 m) r) lh) x0
+
+-- app2 :: Monad m =>
+--         (c -> a -> log)  -- ^ Builds a log entry from the configuration and the current state
+--      -> (r -> t) -- ^ Builds
+--      -> (r -> c)
+--      -> (a -> t -> m a)
+--      -> App2 r log a m a
+app2 logf cconf lconf fm = App2 $ do
+  x <- get
+  cc <- asks cconf
+  lc <- asks lconf
+  y <- lift . lift . lift $ fm x cc
+  L.logMessage (logf lc y)
+  put y
+  return y
+
+
+-- logging test
+
+-- -- logApp :: L.MonadLog (L.WithSeverity String) m => m ()
+logApp = do
+  L.logError "moo"
+  L.logInfo "info"
+
+asdf = L.runLoggingT logApp (putStrLn . withSeverity id)
+
+-- -- renderWithSeverity k (L.WithSeverity u a)
+
+bracketsUpp :: Show a => a -> String
+bracketsUpp p = unwords ["[", map toUpper (show p), "]"]
+
+withSeverity :: (t -> String) -> L.WithSeverity t -> String
+withSeverity k (L.WithSeverity u a ) = unwords [bracketsUpp u, k a]
+
+
+
+-- -- >>> renderWithSeverity id (WithSeverity Informational "Flux capacitor is functional")
+-- -- [Informational] Flux capacitor is functional
+-- renderWithSeverity
+--   :: (a -> PP.Doc) -> (WithSeverity a -> PP.Doc)
+-- renderWithSeverity k (WithSeverity u a) =
+--   PP.brackets (PP.pretty u) PP.<+> PP.align (k a)
 
 
 
