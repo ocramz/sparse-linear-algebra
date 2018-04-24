@@ -78,54 +78,27 @@ mkIterativeT flog fs = IterativeT $  do
   return a  
 
 
-data IterConfig msg s a = IterConfig {
-    icLogFunc :: a -> s -> WithSeverity msg   -- ^ Log creation function
-  , icLogFlag :: Bool
+-- | Configuration data and diagnostic functions for the iterative process
+data IterConfig s t = IterConfig {
+    icFunctionName :: String -- ^ Name of calling function, for logging purposes
+  , icLogLevelConvergence :: Maybe Severity
+  , icLogLevelDivergence :: Maybe Severity
   , icNumIterationsMax :: Int -- ^ Max # of iterations
-  , icLengthWindow :: Int     -- ^ # of states used to assess convergence/divergence
-                             }
+  , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
+  , icStateSummary :: [s] -> Maybe t  -- ^ Produce a summary from a list of states
+  , icStateConverging :: t -> Bool
+  , icStateDiverging :: t -> t -> Bool
+  , icStateFinal :: s -> Bool  
+                                           }
 
-
-  
--- newtype Buffer v = Buffer { getBuffer :: [v] }
-
--- lengthBuffer :: Buffer a -> Int
--- lengthBuffer = length . getBuffer
-
--- consBuffer (Buffer b) x = Buffer $ x : b
-
--- initBuffer (Buffer b) = Buffer $ init b
-
-
--- mkIter2 ::
---   Monad m => (s -> (a, s)) -> IterativeT (IterConfig msg s m1 a) msg s m a
-mkIter2 fs = IterativeT $ do
-  s <- get
-  flog <- asks icLogFunc
-  let (a, s') = fs s
-  logMessage $ flog a s'
-  put s'
-  return a  
-
-goIter :: (Show i, Monad m) =>
-          (s -> (a, s))
-       -> i
-       -> IterativeT (IterConfig String s a) (WithSeverity String) s m ()  
-goIter fs i = IterativeT $ do
-  s <- get
-  logf <- asks icLogFunc
-  logq <- asks icLogFlag
-  let (a, s') = fs s
-  when logq $ do
-    logInfo $ unwords ["Iteration", show i]
-    logMessage $ logf a s'
-  
-  
-
-
-
-
-checkConvergStatus nitermax qfinal qconverg lwindow sf pf y i ll
+-- modifyInspectGuardedM_IterT :: MonadThrow m => IterativeT ()
+modifyInspectGuardedM_IterT iterconfig lh f x0 = 
+  when (nitermax <= 0) $ throwM (NonNegError fname nitermax)
+  runIterativeT lh (go 0 []) iterconfig x0
+  where
+    nitermax = icNumIterationsMax iterconfig
+    fname = icFunctionName iterconfig
+    checkConvergStatus y i ll
       | length ll < lwindow = BufferNotReady
       | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
       | qconverg qi || qfinal (pf y) = Converged qi
@@ -134,6 +107,42 @@ checkConvergStatus nitermax qfinal qconverg lwindow sf pf y i ll
       where llf = pf <$> ll
             qi = sf $ init llf         -- summary of latest 2 states
             qt = sf $ tail llf         -- "       "  previous 2 states
+    go i ll = do
+      x <- get
+      y <- lift $ f x
+      -- when (printDebugInfo config) $ do
+      --   logMessage $ unwords ["Iteration", show i]
+      case checkConvergStatus y i ll of
+        BufferNotReady -> do  
+          put y
+          let ll' = y : ll    -- cons current state to buffer
+          go (i + 1) ll'
+        Converged qi -> put y
+        Diverging qi qt -> do
+          put y
+          throwM (DivergingE fname i qi qt)
+        Converging -> do
+          put y
+          let ll' = init (y : ll) -- rolling state window
+          go (i + 1) ll'
+        NotConverged -> do
+          put y
+          throwM (NotConvergedE fname nitermax y)            
+  
+
+
+-- goIter fs i = IterativeT $ do
+--   s <- get
+--   -- logf <- asks icLogFunc
+--   logq <- asks icLogFlag
+--   let (a, s') = fs s
+--   -- when logq $ do
+--   --   logInfo $ unwords ["Iteration", show i]
+--     -- logMessage $ logf s'
+--   put s'
+--   return a
+  
+
 
 
 
