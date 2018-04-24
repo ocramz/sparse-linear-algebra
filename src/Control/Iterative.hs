@@ -55,84 +55,87 @@ data IterationConfig a b =
            , printDebugIO :: b -> IO ()} -- ^ print function for type `b`
 instance Show (IterationConfig a b) where
   show (IterConf n qd _ _) = unwords ["Max. # of iterations:",show n,", print debug information:", show qd]
+
+
+-- | Iterative algorithms need configuration, state and logging; here we use a transformer stack of ReaderT / StateT / LoggingT (from `logging-effect`)
+newtype IterativeT c msg s m a =
+  IterativeT { unIterativeT :: ReaderT c (StateT s (LoggingT msg m)) a } deriving (Functor, Applicative, Monad)
+
+runIterativeT :: Handler m message -> IterativeT r message s m a -> r -> s -> m (a, s)
+runIterativeT lh m c x0 =
+  runLoggingT (runStateT (runReaderT (unIterativeT m) c) x0) lh
+
+mkIterativeT :: Monad m =>
+          (a -> s -> message)
+       -> (s -> r -> (a, s))
+       -> IterativeT r message s m a
+mkIterativeT flog fs = IterativeT $  do
+  s <- get
+  c <- ask
+  let (a, s') = fs s c
+  logMessage $ flog a s'
+  put s'
+  return a  
+
+
+data IterConfig msg s a = IterConfig {
+    icLogFunc :: a -> s -> WithSeverity msg   -- ^ Log creation function
+  , icLogFlag :: Bool
+  , icNumIterationsMax :: Int -- ^ Max # of iterations
+  , icLengthWindow :: Int     -- ^ # of states used to assess convergence/divergence
+                             }
+
+
   
--- | Iterative algorithms need configuration and logging; here we use a transformer stack or ReaderT on top of LoggingT (from `logging-effect`).
-newtype App c msg m a =
-  App {
-    unApp :: ReaderT c (LoggingT msg m) a
-      } deriving (Functor, Applicative, Alternative, Monad)
+-- newtype Buffer v = Buffer { getBuffer :: [v] }
 
--- instance MonadTrans (App c msg) where
+-- lengthBuffer :: Buffer a -> Int
+-- lengthBuffer = length . getBuffer
 
-liftApp :: (c -> LoggingT msg m a) -> App c msg m a
-liftApp = App . ReaderT
+-- consBuffer (Buffer b) x = Buffer $ x : b
 
-testApp :: (Monad m, MonadState b (t m), MonadTrans t, MonadLog msg (t m)) =>
-     (b -> m b) -> (t1 -> b -> msg) -> t1 -> t m b
-testApp fm logf c = do
-  x <- get
-  y <- lift $ fm x
-  put y 
-  logMessage (logf c y)
-  return y
+-- initBuffer (Buffer b) = Buffer $ init b
 
 
--- | Configure and log a computation
-runApp :: Handler m msg -> c -> App c msg m a -> m a
-runApp logHandler config m = runLoggingT (runReaderT (unApp m) config) logHandler
+-- mkIter2 ::
+--   Monad m => (s -> (a, s)) -> IterativeT (IterConfig msg s m1 a) msg s m a
+mkIter2 fs = IterativeT $ do
+  s <- get
+  flog <- asks icLogFunc
+  let (a, s') = fs s
+  logMessage $ flog a s'
+  put s'
+  return a  
 
-runLogDebug :: MonadLog (WithSeverity msg) m => c -> App c msg m a -> m a
-runLogDebug = runApp logDebug
-
--- -- | runApp, logging by printing to terminal
--- runDebug :: Show a => c -> App c a IO b -> IO b
--- runDebug = runApp print
-
--- | App1: LoggingT / ReaderT
-
--- newtype App1 c msg m a = App1 { unApp1 :: L.LoggingT msg (ReaderT c m) a } deriving (Functor, Applicative, Alternative, Monad)
-
--- liftApp1 logf f = App1 $ do
---   c <- ask
---   y <- lift . lift $ f c
---   L.logMessage (logf y)
---   return y
-
-
--- | App2: ReaderT / LoggingT / StateT
-
-newtype App2 c msg s m a = App2 {
-  unApp2 :: ReaderT c (LoggingT msg (StateT s m)) a
-  } deriving (Functor, Applicative, Alternative, Monad)
-
-runApp2 lh r x0 m = runStateT (runLoggingT (runReaderT (unApp2 m) r) lh) x0
-
--- app2 :: Monad m =>
---         (c -> a -> log)  -- ^ Builds a log entry from the configuration and the current state
---      -> (r -> t) -- ^ Builds
---      -> (r -> c)
---      -> (a -> t -> m a)
---      -> App2 r log a m a
-app2 logf cconf lconf fm = App2 $ do
-  x <- get
-  cc <- asks cconf
-  lc <- asks lconf
-  y <- lift . lift . lift $ fm x cc
-  logMessage (logf lc y)
-  put y
-  return y
+goIter :: (Show i, Monad m) =>
+          (s -> (a, s))
+       -> i
+       -> IterativeT (IterConfig String s a) (WithSeverity String) s m ()  
+goIter fs i = IterativeT $ do
+  s <- get
+  logf <- asks icLogFunc
+  logq <- asks icLogFlag
+  let (a, s') = fs s
+  when logq $ do
+    logInfo $ unwords ["Iteration", show i]
+    logMessage $ logf a s'
+  
+  
 
 
--- logging test
 
--- -- logApp :: L.MonadLog (L.WithSeverity String) m => m ()
-logApp = do
-  logError "moo"
-  logInfo "info"
 
-asdf = runLoggingT logApp (putStrLn . withSeverity id)
+checkConvergStatus nitermax qfinal qconverg lwindow sf pf y i ll
+      | length ll < lwindow = BufferNotReady
+      | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
+      | qconverg qi || qfinal (pf y) = Converged qi
+      | i == nitermax - 1 = NotConverged         
+      | otherwise = Converging
+      where llf = pf <$> ll
+            qi = sf $ init llf         -- summary of latest 2 states
+            qt = sf $ tail llf         -- "       "  previous 2 states
 
--- -- renderWithSeverity k (L.WithSeverity u a)
+
 
 bracketsUpp :: Show a => a -> String
 bracketsUpp p = unwords ["[", map toUpper (show p), "]"]
@@ -400,73 +403,3 @@ norm2Diff _ = 1/0
 
 
 
--- test data
-
-data S = S {unS1 :: Double, unS2 :: String} deriving (Eq, Show)
-liftS1 f (S x i) = S (f x) i
-s0 = S 1 "blah"
-ic1 = IterConf 2 True unS1 print
-
-
-
-
-
--- playground
-
--- instance MonadThrow m => MonadThrow (WriterT w m) where
---   throwM = lift . throwM
-
--- -- | iter0 also accepts a configuration, e.g. for optional printing of debug info
--- -- iter0 :: MonadIO m =>
--- --      Int -> (s -> m s) -> (s -> String) -> IterationConfig s -> s -> m s
--- iter0 nmax f sf config x0 = flip runReaderT config $ MTS.execStateT (go (0 :: Int)) x0
---  where
---   go i = do
---     x <- get
---     c <- lift $ asks printDebugInfo  -- neat
---     y <- lift . lift $ f x           -- not neat
---     when c $ liftIO $ putStrLn $ sf y 
---     put y
---     unless (i >= nmax) (go $ i + 1)
- 
-
--- -- | iter1 prints output at every iteration until the loop terminates OR is interrupted by an exception, whichever happens first
--- -- iter1 :: (MonadThrow m, MonadIO m, Typeable t, Show t) =>
--- --      (t -> m t) -> (t -> String) -> (t -> Bool) -> (t -> Bool) -> t -> m t
--- iter1 f wf qe qx x0 = execStateT (go 0) x0 where
---  go i = do
---    x <- get
---    y <- lift $ f x
---    _ <- liftIO $ wf y
---    when (qx y) $ throwM (NotConvergedE "bla" (i+1)  y)
---    put y
---    unless (qe y) $ go (i + 1) 
-
-
--- -- | iter2 concatenates output with WriterT but does NOT `tell` any output if an exception is raised before the end of the loop
--- iter2 :: (MonadThrow m, Monoid w, Typeable t, Show t) => (t -> m t)
---      -> (t -> w) -> (t -> Bool) -> (t -> Bool) -> t -> m (t, w)
--- iter2 f wf qe qx x0 = runWriterT $ execStateT (go 0) x0 where
---  go i = do
---    x <- get
---    y <- lift . lift $ f x
---    lift $ tell $ wf y
---    when (qx y) $ throwM (NotConvergedE "bla" (i+1)  y)
---    put y
---    unless (qe y) $ go (i + 1) 
-
-
--- -- test :: IO (Int, [String])
--- test :: IO Int
--- -- test :: IO ()
--- test = do
---   (yt, w ) <- iter2 f wf qe qexc x0
---   putStrLn w
---   return yt
---   -- iter1 f wf qe qexc x0
---   where
---     f = pure . (+ 1)
---     wf v = unwords ["state =", show v]
---     qe = (== 5)
---     qexc = (== 3)
---     x0 = 0 :: Int
