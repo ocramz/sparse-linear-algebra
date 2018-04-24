@@ -85,19 +85,17 @@ data IterConfig s t = IterConfig {
   , icLogLevelDivergence :: Maybe Severity
   , icNumIterationsMax :: Int -- ^ Max # of iterations
   , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
-  , icStateSummary :: [s] -> Maybe t  -- ^ Produce a summary from a list of states
+  , icStateSummary :: [s] -> t  -- ^ Produce a summary from a list of states
   , icStateConverging :: t -> Bool
   , icStateDiverging :: t -> t -> Bool
   , icStateFinal :: s -> Bool  
                                            }
 
 -- modifyInspectGuardedM_IterT :: MonadThrow m => IterativeT ()
-modifyInspectGuardedM_IterT iterconfig lh f x0 = 
+modifyInspectGuardedM_IterT itc@(IterConfig fname llconv lldiv nitermax lwindow sf qconverg qdiverg qfinal) lh f x0 = 
   when (nitermax <= 0) $ throwM (NonNegError fname nitermax)
-  runIterativeT lh (go 0 []) iterconfig x0
+  runIterativeT lh (go 0 []) itc x0
   where
-    nitermax = icNumIterationsMax iterconfig
-    fname = icFunctionName iterconfig
     checkConvergStatus y i ll
       | length ll < lwindow = BufferNotReady
       | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
