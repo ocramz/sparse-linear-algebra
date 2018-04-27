@@ -33,6 +33,11 @@ main = hspec spec
 
 spec :: Spec
 spec = do
+  describe "Data.Sparse.Commond" $ do
+    it "fromRowsL assembles a SpMatrix from a list of SpVector rows" $
+      fromRowsL [x42, y42] `shouldBe` m42
+    it "fromColsL assembles a SpMatrix from a list of SpVector columns" $
+      fromColsL [x42, y42] `shouldBe` transposeSM m42      
   describe "Numeric.LinearAlgebra.Sparse : Library" $ do
     prop "Subtraction is cancellative" $ \(x :: SpVector Double) ->
       norm2Sq (x ^-^ x) `shouldBe` zeroV
@@ -1168,3 +1173,5 @@ x42, y42 :: SpVector Double
 x42 = fromListSV 4 [(2,3)] 
 y42 = fromListSV 4 [(0,3)] 
 
+m42 :: SpMatrix Double
+m42 = fromListSM (2, 4) [(1,0,3), (0,2,3)]
