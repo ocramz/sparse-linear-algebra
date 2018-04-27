@@ -59,27 +59,27 @@ instance Show (IterationConfig a b) where
 
 -- | Iterative algorithms need configuration, state and logging; here we use a transformer stack of ReaderT / StateT / LoggingT (from `logging-effect`)
 newtype IterativeT c msg s m a =
-  IterativeT { unIterativeT :: ReaderT c (StateT s (LoggingT msg m)) a } deriving (Functor, Applicative, Monad)
+  IterativeT { unIterativeT :: ReaderT c (StateT s (LoggingT msg m)) a } deriving (Functor, Applicative, Monad, MonadReader c, MonadState s, MonadLog msg)
 
-runIterativeT :: Handler m message -> IterativeT r message s m a -> r -> s -> m (a, s)
-runIterativeT lh m c x0 =
+runIterativeT :: Handler m message -> r -> s -> IterativeT r message s m a -> m (a, s)
+runIterativeT lh c x0 m =
   runLoggingT (runStateT (runReaderT (unIterativeT m) c) x0) lh
 
-runNIterativeT :: Monad m =>
-                  Handler m message
-               -> IterativeT r message s m a
-               -> r
-               -> Int       -- ^ # of iterations
-               -> s
-               -> m ([a], s)
-runNIterativeT lh m c n x0 =
-  runLoggingT (runStateT (replicateM n (runReaderT (unIterativeT m) c)) x0) lh
+-- runNIterativeT :: Monad m =>
+--                   Handler m message
+--                -> IterativeT r message s m a
+--                -> r
+--                -> Int       -- ^ # of iterations
+--                -> s
+--                -> m ([a], s)
+-- runNIterativeT lh m c n x0 =
+--   runLoggingT (runStateT (replicateM n (runReaderT (unIterativeT m) c)) x0) lh
 
 mkIterativeT :: Monad m =>
           (a -> s -> message)
        -> (s -> r -> (a, s))
        -> IterativeT r message s m a
-mkIterativeT flog fs = IterativeT $  do
+mkIterativeT flog fs = IterativeT $ do
   s <- get
   c <- ask
   let (a, s') = fs s c
@@ -89,13 +89,16 @@ mkIterativeT flog fs = IterativeT $  do
 
 
 -- | Configuration data for the iterative process
-data IterConfig s t = IterConfig {
+data IterConfig = IterConfig {
     icFunctionName :: String -- ^ Name of calling function, for logging purposes
   , icLogLevelConvergence :: Maybe Severity
   , icLogLevelDivergence :: Maybe Severity
   , icNumIterationsMax :: Int -- ^ Max # of iterations
   , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
   } deriving (Eq, Show)
+
+
+asdf lh config s0 = fst <$> runIterativeT lh config s0 (asks icFunctionName)
 
 -- | Diagnostic functions for the iterative process
 data IterDiagnostics s t a = IterDiagnostics {
@@ -106,10 +109,10 @@ data IterDiagnostics s t a = IterDiagnostics {
   , icStateFinal :: s -> Bool  
                                            }
 
--- iterMonitor (IterDiagnostics sproj ssumm qconverg qdiverg qfinal) y i ll = undefined where
---   llf = sproj `map` ll
---   qi = ssumm $ init llf
---   qt = ssumm $ tail llf
+iterMonitor (IterDiagnostics sproj ssumm qconverg qdiverg qfinal) y i ll = undefined where
+  llf = sproj `map` ll
+  qi = ssumm $ init llf
+  qt = ssumm $ tail llf
 
 
 updateBuffer :: Int -> a -> [a] -> [a]

@@ -51,10 +51,12 @@ spec = do
       nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
     it "(<#) : vector-matrix product (Real)" $
       nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True
-    -- it "(#>) : matrix-vector product (Complex)" $
-    --   nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
-    -- it "(<#) : vector-matrix product (Complex)" $
-    --   nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True
+    it "(#>) : matrix-vector product (Complex)" $ do
+      let v = (aa0c #> b0c) ^-^ c0c
+      nearZero (v <.> v) `shouldBe` True 
+    it "(<#) : vector-matrix product (Complex)" $ do
+      let w = (b0c <# aa0c) ^-^ c0c'
+      nearZero (w <.> w) `shouldBe` True
     it "(##) : matrix-matrix product (Real, square)" $ 
       (m1 ## m2) `shouldBe` m1m2
     it "(##) : matrix-matrix product (Real, rectangular)" $ do
@@ -922,6 +924,13 @@ aa0c :: SpMatrix (Complex Double)
 aa0c = fromListDenseSM 2 [ 3 :+ 1, (-3) :+ 2, (-2) :+ (-1), 1 :+ (-2)]
 
 b0c = mkSpVC 2 [3 :+ (-4), (-1) :+ 0.5]
+
+-- | c0c == aa0c #> b0c
+c0c :: SpVector (Complex Double)
+c0c = mkSpVC 2 [15.5 :+ (-9), (-1) :+ 20.5]
+-- | c0c' == b0c <# aa0c
+c0c' :: SpVector (Complex Double)
+c0c' = mkSpVC 2 [15 :+ (-12.5), (-10) :+ 7.5]
 
 x1c = mkSpVC 2 [2 :+ 2, 2 :+ 3]
 b1c = mkSpVC 2 [4 :+ (-2), (-10) :+ 1]
