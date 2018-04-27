@@ -372,17 +372,6 @@ toC r = r :+ 0
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 -- | Instances for builtin types
 #define ScalarType(t) \
 instance AdditiveGroup (t) where {zeroV = 0; (^+^) = (+); negateV = negate};\

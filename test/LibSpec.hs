@@ -33,7 +33,7 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  describe "Data.Sparse.Commond" $ do
+  describe "Data.Sparse.Common" $ do
     it "fromRowsL assembles a SpMatrix from a list of SpVector rows" $
       fromRowsL [x42, y42] `shouldBe` m42
     it "fromColsL assembles a SpMatrix from a list of SpVector columns" $
@@ -51,7 +51,10 @@ spec = do
       nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
     it "(<#) : vector-matrix product (Real)" $
       nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True
-  
+    -- it "(#>) : matrix-vector product (Complex)" $
+    --   nearZero ( norm2Sq ((aa0 #> x0true) ^-^ b0 )) `shouldBe` True
+    -- it "(<#) : vector-matrix product (Complex)" $
+    --   nearZero ( norm2Sq ((x0true <# aa0) ^-^ aa0tx0 ))`shouldBe` True
     it "(##) : matrix-matrix product (Real, square)" $ 
       (m1 ## m2) `shouldBe` m1m2
     it "(##) : matrix-matrix product (Real, rectangular)" $ do

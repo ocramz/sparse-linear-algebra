@@ -242,15 +242,18 @@ instance (InnerSpace t, Scalar t ~ t) => LinearVectorSpace (SpVector t) where
 
 matVecSD :: (InnerSpace t, Scalar t ~ t) => SpMatrix t -> SpVector t -> SpVector t
 matVecSD (SM (nr, nc) mdata) (SV n sv)
-  | nc == n = SV nr $ fmap (`dot` sv) mdata
+  | nc == n = SV nr $ fmap (`dotu` sv) mdata
   | otherwise = error $ "matVec : mismatched dimensions " ++ show (nc, n)
 
 -- |Vector-on-matrix (FIXME : transposes matrix: more costly than `matVec`, I think)
 vecMatSD :: (InnerSpace t, Scalar t ~ t) => SpVector t -> SpMatrix t -> SpVector t
 vecMatSD (SV n sv) (SM (nr, nc) mdata)
-  | n == nr = SV nc $ fmap (`dot` sv) (transposeIM2 mdata)
+  | n == nr = SV nc $ fmap (`dotu` sv) (transposeIM2 mdata)
   | otherwise = error $ "vecMat : mismatching dimensions " ++ show (n, nr)
 
+-- | Un-conjugated inner product, to be used in matrix-vector product
+dotu :: (Foldable t, Num a, Set t) => t a -> t a -> a
+dotu u v = sum $ liftI2 (*) u v 
 
 
 

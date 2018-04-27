@@ -98,12 +98,23 @@ data IterConfig s t = IterConfig {
   } deriving (Eq, Show)
 
 -- | Diagnostic functions for the iterative process
-data IterDiagnostics s t = IterDiagnostics {  
-    icStateSummary :: [s] -> t  -- ^ Produce a summary from a list of states
-  , icStateConverging :: t -> Bool
-  , icStateDiverging :: t -> t -> Bool
+data IterDiagnostics s t a = IterDiagnostics {
+    icStateProj :: s -> t
+  , icStateSummary :: [t] -> a  -- ^ Produce a summary from a list of states
+  , icStateConverging :: a -> Bool
+  , icStateDiverging :: a -> a -> Bool
   , icStateFinal :: s -> Bool  
                                            }
+
+-- iterMonitor (IterDiagnostics sproj ssumm qconverg qdiverg qfinal) y i ll = undefined where
+--   llf = sproj `map` ll
+--   qi = ssumm $ init llf
+--   qt = ssumm $ tail llf
+
+
+updateBuffer :: Int -> a -> [a] -> [a]
+updateBuffer n y ll = take n $ y : ll
+  
 
 -- -- modifyInspectGuardedM_IterT :: MonadThrow m => IterativeT ()
 -- modifyInspectGuardedM_IterT itc@(IterConfig fname llconv lldiv nitermax lwindow sf qconverg qdiverg qfinal) lh f x0 = 
