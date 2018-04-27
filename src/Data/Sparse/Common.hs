@@ -73,10 +73,10 @@ mapKeysSV fk (SV d sv) = SV d $ I.mapKeys fk sv
 
 -- | Insert row , using the provided row index transformation function
 insertRowWith :: (IxCol -> IxCol) -> SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
-insertRowWith fj (SM (m,n) im) (SV d sv) i
-  | not (inBounds0 m i) = error "insertRowSM : index out of bounds"
+insertRowWith fj (SM (m, n) im) (SV d sv) i
+  | not (inBounds0 m i) = error "insertRowWith : index out of bounds"
   | n >= d = SM (m,n) $ I.insert i (insertOrUnion i sv' im) im
-  | otherwise = error $ "insertRowSM : incompatible dimensions " ++ show (n, d)
+  | otherwise = error $ "insertRowWith : incompatible dimensions " ++ show (n, d)
     where sv' = I.mapKeys fj sv
           insertOrUnion i' sv' im' = maybe sv' (I.union sv') (I.lookup i' im')
 
@@ -87,9 +87,9 @@ insertRow = insertRowWith id
 -- | Insert column, using the provided row index transformation function
 insertColWith :: (IxRow -> IxRow) -> SpMatrix a -> SpVector a -> IxCol -> SpMatrix a
 insertColWith fi smm sv j
-  | not (inBounds0 n j) = error "insertColSM : index out of bounds"
+  | not (inBounds0 n j) = error "insertColWith : index out of bounds"
   | m >= mv = insIM2 smm vl j
-  | otherwise = error $ "insertColSM : incompatible dimensions " ++ show (m,mv) where
+  | otherwise = error $ "insertColWith : incompatible dimensions " ++ show (m,mv) where
       (m, n) = dim smm
       mv = dim sv
       vl = toListSV sv
@@ -321,8 +321,8 @@ fromColsV qv = V.ifoldl' ins (zeroSM m n) qv where
 -- | Pack a V.Vector of SpVectors as rows of an SpMatrix
 fromRowsV :: V.Vector (SpVector a) -> SpMatrix a
 fromRowsV qv = V.ifoldl' ins (zeroSM m n) qv where
-  n = V.length qv
-  m = svDim $ V.head qv
+  m = V.length qv 
+  n = dim $ V.head qv
   ins mm i c = insertRow mm c i
 
 

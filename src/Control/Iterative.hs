@@ -17,7 +17,7 @@ module Control.Iterative where
 
 import Control.Applicative
 
-import Control.Monad (when)
+import Control.Monad (when, replicateM)
 import Control.Monad.Reader (MonadReader(..), asks)
 import Control.Monad.State.Strict (MonadState(..), get, put)
 import Control.Monad.Trans.Class (MonadTrans(..), lift)
@@ -65,6 +65,16 @@ runIterativeT :: Handler m message -> IterativeT r message s m a -> r -> s -> m 
 runIterativeT lh m c x0 =
   runLoggingT (runStateT (runReaderT (unIterativeT m) c) x0) lh
 
+runNIterativeT :: Monad m =>
+                  Handler m message
+               -> IterativeT r message s m a
+               -> r
+               -> Int       -- ^ # of iterations
+               -> s
+               -> m ([a], s)
+runNIterativeT lh m c n x0 =
+  runLoggingT (runStateT (replicateM n (runReaderT (unIterativeT m) c)) x0) lh
+
 mkIterativeT :: Monad m =>
           (a -> s -> message)
        -> (s -> r -> (a, s))
@@ -78,54 +88,59 @@ mkIterativeT flog fs = IterativeT $  do
   return a  
 
 
--- | Configuration data and diagnostic functions for the iterative process
+-- | Configuration data for the iterative process
 data IterConfig s t = IterConfig {
     icFunctionName :: String -- ^ Name of calling function, for logging purposes
   , icLogLevelConvergence :: Maybe Severity
   , icLogLevelDivergence :: Maybe Severity
   , icNumIterationsMax :: Int -- ^ Max # of iterations
   , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
-  , icStateSummary :: [s] -> t  -- ^ Produce a summary from a list of states
+  } deriving (Eq, Show)
+
+-- | Diagnostic functions for the iterative process
+data IterDiagnostics s t = IterDiagnostics {  
+    icStateSummary :: [s] -> t  -- ^ Produce a summary from a list of states
   , icStateConverging :: t -> Bool
   , icStateDiverging :: t -> t -> Bool
   , icStateFinal :: s -> Bool  
                                            }
 
--- modifyInspectGuardedM_IterT :: MonadThrow m => IterativeT ()
-modifyInspectGuardedM_IterT itc@(IterConfig fname llconv lldiv nitermax lwindow sf qconverg qdiverg qfinal) lh f x0 = 
-  when (nitermax <= 0) $ throwM (NonNegError fname nitermax)
-  runIterativeT lh (go 0 []) itc x0
-  where
-    checkConvergStatus y i ll
-      | length ll < lwindow = BufferNotReady
-      | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
-      | qconverg qi || qfinal (pf y) = Converged qi
-      | i == nitermax - 1 = NotConverged         
-      | otherwise = Converging
-      where llf = pf <$> ll
-            qi = sf $ init llf         -- summary of latest 2 states
-            qt = sf $ tail llf         -- "       "  previous 2 states
-    go i ll = do
-      x <- get
-      y <- lift $ f x
-      -- when (printDebugInfo config) $ do
-      --   logMessage $ unwords ["Iteration", show i]
-      case checkConvergStatus y i ll of
-        BufferNotReady -> do  
-          put y
-          let ll' = y : ll    -- cons current state to buffer
-          go (i + 1) ll'
-        Converged qi -> put y
-        Diverging qi qt -> do
-          put y
-          throwM (DivergingE fname i qi qt)
-        Converging -> do
-          put y
-          let ll' = init (y : ll) -- rolling state window
-          go (i + 1) ll'
-        NotConverged -> do
-          put y
-          throwM (NotConvergedE fname nitermax y)            
+-- -- modifyInspectGuardedM_IterT :: MonadThrow m => IterativeT ()
+-- modifyInspectGuardedM_IterT itc@(IterConfig fname llconv lldiv nitermax lwindow sf qconverg qdiverg qfinal) lh f x0 = 
+--   when (nitermax <= 0) $ throwM (NonNegError fname nitermax)
+--   runIterativeT lh (go 0 []) itc x0
+--   where
+--     checkConvergStatus y i ll
+--       | length ll < lwindow = BufferNotReady
+--       | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
+--       | qconverg qi || qfinal (pf y) = Converged qi
+--       | i == nitermax - 1 = NotConverged         
+--       | otherwise = Converging
+--       where llf = pf <$> ll
+--             qi = sf $ init llf         -- summary of latest 2 states
+--             qt = sf $ tail llf         -- "       "  previous 2 states
+--     go i ll = do
+--       x <- get
+--       y <- lift $ f x
+--       -- when (printDebugInfo config) $ do
+--       --   logMessage $ unwords ["Iteration", show i]
+--       case checkConvergStatus y i ll of
+--         BufferNotReady -> do  
+--           put y
+--           let ll' = y : ll    -- cons current state to buffer
+--           go (i + 1) ll'
+--         Converged qi -> put y
+--         Diverging qi qt -> do
+--           put y
+--           throwM (DivergingE fname i qi qt)
+--         Converging -> do
+--           put y
+--           let ll' = init (y : ll) -- rolling state window
+--           go (i + 1) ll'
+--         NotConverged -> do
+--           put y
+--           throwM (NotConvergedE fname nitermax y)    
+        
   
 
 

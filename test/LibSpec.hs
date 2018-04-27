@@ -1160,3 +1160,11 @@ b10 = aa10 #> x10
 -- m2 = toCSR 4 4 $ V.fromList [(0,0,1), (0,2,5), (2,0,4), (2,3,1), (3,2,2)]
 -- m3 = toCSR 4 4 $ V.fromList [(1,0,5), (1,1,8), (2,2,3), (3,1,6)]
 
+
+
+-- | Test data for issue #42
+
+x42, y42 :: SpVector Double
+x42 = fromListSV 4 [(2,3)] 
+y42 = fromListSV 4 [(0,3)] 
+
