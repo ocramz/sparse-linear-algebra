@@ -61,19 +61,48 @@ instance Show (IterationConfig a b) where
 newtype IterativeT c msg s m a =
   IterativeT { unIterativeT :: ReaderT c (StateT s (LoggingT msg m)) a } deriving (Functor, Applicative, Monad, MonadReader c, MonadState s, MonadLog msg)
 
-runIterativeT :: Handler m message -> r -> s -> IterativeT r message s m a -> m (a, s)
+runIterativeT :: Handler m message
+              -> r
+              -> s
+              -> IterativeT r message s m a
+              -> m (a, s)
 runIterativeT lh c x0 m =
   runLoggingT (runStateT (runReaderT (unIterativeT m) c) x0) lh
 
--- runNIterativeT :: Monad m =>
---                   Handler m message
---                -> IterativeT r message s m a
---                -> r
---                -> Int       -- ^ # of iterations
---                -> s
---                -> m ([a], s)
--- runNIterativeT lh m c n x0 =
---   runLoggingT (runStateT (replicateM n (runReaderT (unIterativeT m) c)) x0) lh
+
+foo = runIterativeT (logConditional Informational) "moo" 0 $ go 0 where
+  go i = do
+    x <- get
+    let x' = x + 1
+    -- logMessage $ WithSeverity Informational $ unwords ["State: ", show i]
+    logWith i $ \ii -> if ii < 3
+      then
+        WithSeverity Informational $ unwords ["State: ", show i]
+      else
+        WithSeverity Notice "Shutting down"
+      -- put x'
+    if i == 3
+      then
+        do
+          -- logMessage $ WithSeverity Notice "Shutting down"
+          put x
+          return x
+      else
+        do
+          -- logMessage $ WithSeverity Debug "Loop"
+          put x'
+          go (i + 1)
+
+logWith :: MonadLog (WithSeverity b) m => a -> (a -> WithSeverity b) -> m ()
+logWith x f = logMessage ws where
+  ws@(WithSeverity _ _) = f x
+
+-- | Output logs conditionally if more severe than a threshold
+logConditional :: Severity -> WithSeverity String -> IO ()
+logConditional smin ws
+  | msgSeverity ws > smin = return ()
+  | otherwise = putStrLn $ withSeverity id ws
+      
 
 mkIterativeT :: Monad m =>
           (a -> s -> message)
