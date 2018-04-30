@@ -70,31 +70,25 @@ runIterativeT lh c x0 m =
   runLoggingT (runStateT (runReaderT (unIterativeT m) c) x0) lh
 
 
-foo = runIterativeT (logConditional Informational) "moo" 0 $ go 0 where
+foo = runIterativeT (logConditional Debug) "moo" 0 $ go 0 where
+  flog ii | ii < 3 = WithSeverity Informational $ unwords ["State: ", show ii]
+          | otherwise = WithSeverity Notice "Shutting down"
   go i = do
     x <- get
     let x' = x + 1
-    -- logMessage $ WithSeverity Informational $ unwords ["State: ", show i]
-    logWith i $ \ii -> if ii < 3
-      then
-        WithSeverity Informational $ unwords ["State: ", show i]
-      else
-        WithSeverity Notice "Shutting down"
-      -- put x'
+    logWith flog i 
     if i == 3
       then
         do
-          -- logMessage $ WithSeverity Notice "Shutting down"
           put x
-          return x
+          return (x ** 2)
       else
         do
-          -- logMessage $ WithSeverity Debug "Loop"
           put x'
           go (i + 1)
 
-logWith :: MonadLog (WithSeverity b) m => a -> (a -> WithSeverity b) -> m ()
-logWith x f = logMessage ws where
+logWith :: MonadLog (WithSeverity b) m => (a -> WithSeverity b) -> a -> m ()
+logWith f x = logMessage ws where
   ws@(WithSeverity _ _) = f x
 
 -- | Output logs conditionally if more severe than a threshold

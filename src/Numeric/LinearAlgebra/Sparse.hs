@@ -15,7 +15,7 @@ module Numeric.LinearAlgebra.Sparse
          (<\>),
          -- -- ** Preconditioners
          -- jacobiPre, ilu0Pre, mSsorPre,   
-         -- ** Moore-Penrose pseudoinverse
+         -- *** Moore-Penrose pseudoinverse
          pinv,
          -- ** Direct methods
          luSolve,
@@ -233,7 +233,7 @@ hhRefl = hhMat 2
 -- 
 -- NB: The Givens' matrix differs from Identity in 4 entries
 -- 
--- NB2: The form of a Complex rotation matrix in R^2 is as follows (`*` indicates complex conjugation):
+-- NB2: The form of a Complex rotation matrix in R^2 is as follows (@*@ indicates complex conjugation):
 --
 -- @
 --     ( c    s )
@@ -326,12 +326,7 @@ qr mm = do
 
 -- ** QR algorithm
 
--- | `eigsQR n mm` performs at most `n` iterations of the QR algorithm on matrix `mm`, and returns a SpVector containing all eigenvalues.
--- eigsQR :: (MonadThrow m, MonadIO m, Num' a, Normed (SpVector a), MatrixRing (SpMatrix a), Typeable (Magnitude (SpVector a)), PrintDense (SpVector a), PrintDense (SpMatrix a)) =>
---         Int            -- ^ Max. # of iterations
---      -> Bool           -- ^ Print debug information        
---      -> SpMatrix a     -- ^ Operand matrix
---      -> m (SpVector a) -- ^ Eigenvalues {λ_i}
+-- | @eigsQR n mm@ performs at most @n@ iterations of the QR algorithm on matrix @mm@, and returns a 'SpVector' containing all eigenvalues.
 eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
   where
     pf = extractDiagDense
@@ -346,7 +341,9 @@ eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
 
 -- ** Arnoldi-QR
 
--- | `eigsArnoldi n aa b` computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H. After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
+-- | @eigsArnoldi n aa b@ computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H.
+--
+-- After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
 eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Elt t, V (SpVector t), Epsilon t, PrintDense (SpMatrix t),
       MatrixRing (SpMatrix t), MonadThrow m, MonadLog String m) =>
@@ -467,7 +464,9 @@ chol aa = do
 
 -- * LU factorization
 
--- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A . Implements the Doolittle algorithm, which sets the diagonal of the L matrix to ones and expects all diagonal entries of A to be nonzero. Apply pivoting (row or column permutation) to enforce a nonzero diagonal of the A matrix (the algorithm throws an appropriate exception otherwise).
+-- | Given a matrix A, returns a pair of matrices (L, U) where L is lower triangular and U is upper triangular such that L U = A .
+-- 
+-- Implements the Doolittle algorithm, which sets the diagonal of the L matrix to ones and expects all diagonal entries of A to be nonzero. Apply pivoting (row or column permutation) to enforce a nonzero diagonal of the A matrix (the algorithm throws an appropriate exception otherwise).
 lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t), Epsilon t,
         MonadThrow m) =>
      SpMatrix t
@@ -597,6 +596,7 @@ tmc6 = fromListDenseSM 2 $ zipWith (:+) [1,2,3,4] [4,3,2,1]
 -- * Arnoldi iteration
 
 -- | Given a matrix A, a vector b and a positive integer `n`, this procedure finds the basis of an order `n` Krylov subspace (as the columns of matrix Q), along with an upper Hessenberg matrix H, such that A = Q^T H Q.
+-- 
 -- At the i`th iteration, it finds (i + 1) coefficients (the i`th column of the Hessenberg matrix H) and the (i + 1)`th Krylov vector.
 arnoldi :: (MatrixType (SpVector a) ~ SpMatrix a, V (SpVector a) ,
             Scalar (SpVector a) ~ a, Epsilon a, MonadThrow m) =>
