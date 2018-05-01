@@ -27,7 +27,7 @@ data-dir:            test/data
 data-files:          e05r0000.mtx
                      e05r0000_rhs1.mtx
 cabal-version:       >=1.10
-tested-with:         GHC == 8.0.2, GHC == 8.2.2
+tested-with:         GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.2
 
 source-repository head
   type:     git
@@ -41,7 +41,7 @@ library
   default-language:    Haskell2010
   ghc-options:
               -- -O2 -Wall
-              -O2 -Wno-name-shadowing -Wno-unused-top-binds -Wno-missing-signatures -Wno-unused-imports
+              -O2 -Wno-name-shadowing -Wno-unused-top-binds -Wno-unused-local-binds -Wno-missing-signatures -Wno-unused-imports
 
   if flag(dump)
     ghc-options: -ddump-simpl -ddump-stg -ddump-to-file
@@ -73,14 +73,14 @@ library
                        Numeric.LinearAlgebra.EigenSolvers.Experimental
   build-depends:       base >= 4.7 && < 5
                      -- , deepseq
-                     , containers
-                     , exceptions
-                     , logging-effect
+                     , containers >= 0.5.7.1
+                     , exceptions >= 0.8.3
+                     , logging-effect >= 1.2.0
                      , mtl >= 2.2.1                                          
-                     , primitive
-                     , transformers                                      
-                     , vector
-                     , vector-algorithms
+                     , primitive >= 0.6.2.0
+                     , transformers >= 0.5.2.0                    
+                     , vector >= 0.12.0.1
+                     , vector-algorithms >= 0.7.0.1
                      -- , hybrid-vectors
                      -- , writer-cps-transformers
                      -- , monad-log == 0.1.1.0
