@@ -175,24 +175,26 @@ checkConvergStatus y i ll = do
   return res
 
 
-modifyInspectGuardedM_Iter ::
-  (MonadReader (IterConfig s t a) m, MonadThrow m, Show s, Typeable s) =>
-     Handler m (WithSeverity String)
-  -> IterConfig s t a
-  -> (s -> m s)
-  -> s
-  -> m s
-modifyInspectGuardedM_Iter lh r f x0 = procOutput
-  where
-    procOutput = do
-      nitermax <- asks icNumIterationsMax
-      (aLast, sLast) <- runIterativeT lh r x0 (go 0 [])
-      case aLast of
-        Left (NotConverged' y) -> throwM $ NotConvergedE "bla" nitermax y
-        Right x -> pure x
-      -- return aLast
-      -- -- either throwM pure aLast  
 
+-- TODO : add configuration 
+-- TODO : add input validation
+-- TODO : add logging 
+-- TODO : add exception throwing (throwM upon Diverged, NotConverged)
+modifyInspectGuardedM_Iter :: Monad f =>
+                              Handler f (WithSeverity String)
+                           -> IterConfig b t a
+                           -> (b -> f b)
+                           -> b
+                           -> f (Either (ConvergenceStatus' a b) b)
+modifyInspectGuardedM_Iter lh r f x0 = fst <$> runIterativeT lh r x0 (go 0 [])
+  -- procOutput
+  where
+    -- procOutput = do
+    --   nitermax <- asks icNumIterationsMax
+    --   (aLast, sLast) <- runIterativeT lh r x0 (go 0 [])
+    --   case aLast of
+    --     Left (NotConverged' y) -> throwM $ NotConvergedE "bla" nitermax y
+    --     Right x -> pure x
     go i ll = do
       x <- get
       y <- lift $ f x
