@@ -61,6 +61,11 @@ instance Show (IterationConfig a b) where
 newtype IterativeT c msg s m a =
   IterativeT { unIterativeT :: ReaderT c (StateT s (LoggingT msg m)) a } deriving (Functor, Applicative, Monad, MonadReader c, MonadState s, MonadLog msg)
 
+-- instance MonadTrans (IterativeT c msg s) where
+
+-- instance MonadThrow m => MonadThrow (IterativeT c msg s m) where
+--   throwM e = lift $ throwM e
+
 runIterativeT :: Handler m message
               -> r
               -> s
@@ -69,27 +74,17 @@ runIterativeT :: Handler m message
 runIterativeT lh c x0 m =
   runLoggingT (runStateT (runReaderT (unIterativeT m) c) x0) lh
 
+execIterativeT :: Functor m =>
+                  Handler m message
+               -> r
+               -> s
+               -> IterativeT r message s m a
+               -> m s
+execIterativeT lh c x0 m = snd <$> runIterativeT lh c x0 m
 
-foo = runIterativeT (logConditional Debug) "moo" 0 $ go 0 where
-  flog ii | ii < 3 = WithSeverity Informational $ unwords ["State: ", show ii]
-          | otherwise = WithSeverity Notice "Shutting down"
-  go i = do
-    x <- get
-    let x' = x + 1
-    logWith flog i 
-    if i == 3
-      then
-        do
-          put x
-          return (x ** 2)
-      else
-        do
-          put x'
-          go (i + 1)
-
-logWith :: MonadLog (WithSeverity b) m => (a -> WithSeverity b) -> a -> m ()
-logWith f x = logMessage ws where
-  ws@(WithSeverity _ _) = f x
+logWith :: MonadLog (WithSeverity a) m => (p -> (Severity, a)) -> p -> m ()
+logWith f x = logMessage (WithSeverity sev sevMsg) where
+  (sev, sevMsg) = f x
 
 -- | Output logs conditionally if more severe than a threshold
 logConditional :: Severity -> WithSeverity String -> IO ()
@@ -111,42 +106,102 @@ mkIterativeT flog fs = IterativeT $ do
   return a  
 
 
+
+
+
+
 -- | Configuration data for the iterative process
-data IterConfig = IterConfig {
+data IterConfig s t a = IterConfig {
     icFunctionName :: String -- ^ Name of calling function, for logging purposes
   , icLogLevelConvergence :: Maybe Severity
   , icLogLevelDivergence :: Maybe Severity
   , icNumIterationsMax :: Int -- ^ Max # of iterations
   , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
-  } deriving (Eq, Show)
-
-
-asdf lh config s0 = fst <$> runIterativeT lh config s0 (asks icFunctionName)
-
--- | Diagnostic functions for the iterative process
-data IterDiagnostics s t a = IterDiagnostics {
-    icStateProj :: s -> t
-  , icStateSummary :: [t] -> a  -- ^ Produce a summary from a list of states
-  , icStateConverging :: a -> Bool
+  , icStateProj :: s -> t          -- ^ Project the state
+  , icStateSummary :: [t] -> a     -- ^ Produce a summary from a list of states
+  , icStateConverging :: a -> Bool 
   , icStateDiverging :: a -> a -> Bool
-  , icStateFinal :: s -> Bool  
-                                           }
+  , icStateFinal :: t -> Bool }
 
-iterMonitor (IterDiagnostics sproj ssumm qconverg qdiverg qfinal) y i ll = undefined where
-  llf = sproj `map` ll
-  qi = ssumm $ init llf
-  qt = ssumm $ tail llf
 
 
 updateBuffer :: Int -> a -> [a] -> [a]
 updateBuffer n y ll = take n $ y : ll
-  
 
--- -- modifyInspectGuardedM_IterT :: MonadThrow m => IterativeT ()
--- modifyInspectGuardedM_IterT itc@(IterConfig fname llconv lldiv nitermax lwindow sf qconverg qdiverg qfinal) lh f x0 = 
---   when (nitermax <= 0) $ throwM (NonNegError fname nitermax)
---   runIterativeT lh (go 0 []) itc x0
+
+checkConvergStatus :: MonadReader (IterConfig s t a) m =>
+                      s
+                   -> Int
+                   -> [s]
+                   -> m (ConvergenceStatus a)
+checkConvergStatus y i ll = do
+  lwindow <- asks icStateWindowLength
+  qdiverg <- asks icStateDiverging
+  qconverg <- asks icStateConverging
+  qfinal <- asks icStateFinal
+  nitermax <- asks icNumIterationsMax
+  pf <- asks icStateProj
+  sf <- asks icStateSummary
+  let
+    llf = pf <$> ll
+    qi = sf $ init llf  -- summary of [lwindow + 1 .. 0] states
+    qt = sf $ tail llf  -- "       "  [lwindow     .. 1] states
+    res | length ll < lwindow = BufferNotReady
+        | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
+        | qconverg qi || qfinal (pf y) = Converged qi
+        | i == nitermax - 1 = NotConverged         
+        | otherwise = Converging
+  return res
+
+sqDiffPairs :: Num a => (v -> v -> a) -> [v] -> a
+sqDiffPairs f uu = sqDiff f (init uu) (tail uu)
+
+sqDiff :: Num a => (u -> v -> a) -> [u] -> [v] -> a
+sqDiff f uu vv = sum $ zipWith f uu vv
+
+
+
+modifyInspectGuardedM_Iter lh r f x0 = undefined
+  where
+    procOutput = do
+      (aLast, sLast) <- runIterativeT lh r x0 (go 0 [])
+      either throwM pure aLast
+    go i ll = do
+      x <- get
+      let y = f x
+      -- y <- f x
+      fname <- asks icFunctionName
+      nitermax <- asks icNumIterationsMax
+      status <- checkConvergStatus y i ll 
+      case status of
+        BufferNotReady -> do  
+          put y
+          let ll' = y : ll    -- cons current state to buffer
+          go (i + 1) ll'
+        Converged qi -> do
+          -- put y
+          return $ Right y
+        Diverging qi qt -> do
+          -- put y
+          return $ Left (DivergingE fname i qi qt)
+        Converging -> do
+          put y
+          let ll' = init (y : ll) -- rolling state window
+          go (i + 1) ll'
+        NotConverged -> do
+          -- put y
+          return $ Left (NotConvergedE fname nitermax y)   
+    
+
+
+
+-- modifyInspectGuardedM_Iter lh config fname sf qconverg qdiverg qfinal f x0 
+--   | nitermax > 0 = execIterativeT lh r x0 (go 0 [])
+--   | otherwise = throwM (NonNegError fname nitermax)
 --   where
+--     lwindow = 3
+--     nitermax = numIterationsMax config
+--     -- pf = iterationView config
 --     checkConvergStatus y i ll
 --       | length ll < lwindow = BufferNotReady
 --       | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
@@ -161,6 +216,9 @@ updateBuffer n y ll = take n $ y : ll
 --       y <- lift $ f x
 --       -- when (printDebugInfo config) $ do
 --       --   logMessage $ unwords ["Iteration", show i]
+--       -- when (printDebugInfo config) $ liftIO $ do
+--       --   putStrLn $ unwords ["Iteration", show i]
+--       --   printDebugIO config (pf y) 
 --       case checkConvergStatus y i ll of
 --         BufferNotReady -> do  
 --           put y
@@ -176,22 +234,12 @@ updateBuffer n y ll = take n $ y : ll
 --           go (i + 1) ll'
 --         NotConverged -> do
 --           put y
---           throwM (NotConvergedE fname nitermax y)    
-        
-  
+--           throwM (NotConvergedE fname nitermax y)
 
 
--- goIter fs i = IterativeT $ do
---   s <- get
---   -- logf <- asks icLogFunc
---   logq <- asks icLogFlag
---   let (a, s') = fs s
---   -- when logq $ do
---   --   logInfo $ unwords ["Iteration", show i]
---     -- logMessage $ logf s'
---   put s'
---   return a
+
   
+
 
 
 
@@ -272,7 +320,7 @@ untilConvergedG0 :: (Normed v, MonadThrow m, MonadLog String m, Typeable (Magnit
      -> s
      -> m s
 untilConvergedG0 fname config xKnown f x0 = 
-  modifyInspectGuarded fname config norm2Diff nearZero qdiverg qfin f x0
+  modifyInspectGuarded fname config norm2Diff nearZero (>) qfin f x0
    where
     qfin s = nearZero $ norm2 (xKnown ^-^ s)
   
@@ -287,7 +335,7 @@ untilConvergedG :: (Normed v, MonadThrow m, MonadLog String m, Typeable (Magnitu
      -> s 
      -> m s
 untilConvergedG fname config =
-  modifyInspectGuarded fname config norm2Diff nearZero qdiverg
+  modifyInspectGuarded fname config norm2Diff nearZero (>)
 
 
 -- | ", monadic version
@@ -300,7 +348,7 @@ untilConvergedGM ::
      -> s
      -> m s
 untilConvergedGM fname config =
-  modifyInspectGuardedM fname config norm2Diff nearZero qdiverg
+  modifyInspectGuardedM fname config norm2Diff nearZero (>)
 
 
 
@@ -451,8 +499,8 @@ relTol a b = norm2 (a ^-^ b) / m where
   m = 1 + min (norm2 a) (norm2 b)
 
 
-qdiverg :: Ord a => a -> a -> Bool
-qdiverg = (>)
+-- qdiverg :: Ord a => a -> a -> Bool
+-- qdiverg = (>)
 
 norm2Diff [s1, s0] = norm2 (s1 ^-^ s0)
 norm2Diff _ = 1/0
