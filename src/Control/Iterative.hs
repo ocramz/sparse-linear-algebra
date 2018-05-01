@@ -132,9 +132,6 @@ data IterConfig s t a = IterConfig {
 
 
 
-
-
-
 sqDiffPairs :: Num a => (v -> v -> a) -> [v] -> a
 sqDiffPairs f uu = sqDiff f (init uu) (tail uu)
 
@@ -178,15 +175,27 @@ checkConvergStatus y i ll = do
   return res
 
 
-modifyInspectGuarded_Iter lh r f x0 = undefined
+modifyInspectGuardedM_Iter ::
+  (MonadReader (IterConfig s t a) m, MonadThrow m, Show s, Typeable s) =>
+     Handler m (WithSeverity String)
+  -> IterConfig s t a
+  -> (s -> m s)
+  -> s
+  -> m s
+modifyInspectGuardedM_Iter lh r f x0 = procOutput
   where
-    -- procOutput = do
-    --   (aLast, sLast) <- runIterativeT lh r x0 (go 0 [])
-    --   either throwM pure aLast
+    procOutput = do
+      nitermax <- asks icNumIterationsMax
+      (aLast, sLast) <- runIterativeT lh r x0 (go 0 [])
+      case aLast of
+        Left (NotConverged' y) -> throwM $ NotConvergedE "bla" nitermax y
+        Right x -> pure x
+      -- return aLast
+      -- -- either throwM pure aLast  
+
     go i ll = do
       x <- get
       y <- lift $ f x
-      -- let y = f x
       status <- checkConvergStatus y i ll 
       case status of
         BufferNotReady' -> do  
@@ -202,11 +211,15 @@ modifyInspectGuarded_Iter lh r f x0 = undefined
         Converging' -> do
           put y
           let ll' = init (y : ll) -- rolling state window
+          logMessage $ WithSeverity Debug ("Converging" :: String)
           go (i + 1) ll'
         NotConverged' y -> do
           -- put y
           return $ Left (NotConverged' y) -- (NotConvergedE fname nitermax y)   
-    
+
+
+
+
 
 
 
