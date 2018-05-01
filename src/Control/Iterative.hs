@@ -24,7 +24,7 @@ import Control.Monad.Trans.Class (MonadTrans(..), lift)
 import Control.Monad.Trans.State.Strict (StateT(..), runStateT, execStateT)
 import Control.Monad.Trans.Reader (ReaderT(..), runReaderT)
 import Control.Monad.Catch (Exception(..), MonadThrow(..), throwM)
-import Control.Monad.Log (MonadLog(..), WithSeverity(..), Severity(..), renderWithSeverity, LoggingT, runLoggingT, Handler, logMessage, logError, logDebug, logInfo, logNotice)
+import Control.Monad.Log (MonadLog(..), WithSeverity(..), Severity(..), renderWithSeverity, LoggingT(..), runLoggingT, Handler, logMessage, logError, logDebug, logInfo, logNotice)
 
 -- import Data.Bool (bool)
 import Data.Char (toUpper)
@@ -61,8 +61,15 @@ instance Show (IterationConfig a b) where
 newtype IterativeT c msg s m a =
   IterativeT { unIterativeT :: ReaderT c (StateT s (LoggingT msg m)) a } deriving (Functor, Applicative, Monad, MonadReader c, MonadState s, MonadLog msg)
 
--- instance MonadTrans (IterativeT c msg s) where
+instance MonadTrans (IterativeT c msg s) where
+  lift = liftIterativeT
 
+liftIterativeT :: Monad m => m a -> IterativeT c msg s m a
+liftIterativeT m = IterativeT . lift . lift $ LoggingT mlog
+  where mlog = ReaderT (const m)
+    
+
+  
 -- instance MonadThrow m => MonadThrow (IterativeT c msg s m) where
 --   throwM e = lift $ throwM e
 
@@ -125,15 +132,32 @@ data IterConfig s t a = IterConfig {
 
 
 
-updateBuffer :: Int -> a -> [a] -> [a]
-updateBuffer n y ll = take n $ y : ll
 
+
+
+sqDiffPairs :: Num a => (v -> v -> a) -> [v] -> a
+sqDiffPairs f uu = sqDiff f (init uu) (tail uu)
+
+sqDiff :: Num a => (u -> v -> a) -> [u] -> [v] -> a
+sqDiff f uu vv = sum $ zipWith f uu vv
+
+updateBuffer :: a -> [a] -> [a]
+updateBuffer y ll = init $ y : ll
+
+data ConvergenceStatus' a b =
+  BufferNotReady'
+  | Converging'
+  | Converged' a
+  | Diverging' a a
+  | NotConverged' b
+  deriving (Eq, Show, Typeable)
+instance (Typeable a, Show a, Typeable b, Show b) => Exception (ConvergenceStatus' a b)
 
 checkConvergStatus :: MonadReader (IterConfig s t a) m =>
                       s
                    -> Int
                    -> [s]
-                   -> m (ConvergenceStatus a)
+                   -> m (ConvergenceStatus' a s)
 checkConvergStatus y i ll = do
   lwindow <- asks icStateWindowLength
   qdiverg <- asks icStateDiverging
@@ -146,51 +170,42 @@ checkConvergStatus y i ll = do
     llf = pf <$> ll
     qi = sf $ init llf  -- summary of [lwindow + 1 .. 0] states
     qt = sf $ tail llf  -- "       "  [lwindow     .. 1] states
-    res | length ll < lwindow = BufferNotReady
-        | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
-        | qconverg qi || qfinal (pf y) = Converged qi
-        | i == nitermax - 1 = NotConverged         
-        | otherwise = Converging
+    res | length ll < lwindow = BufferNotReady'
+        | qdiverg qi qt && not (qconverg qi) = Diverging' qi qt        
+        | qconverg qi || qfinal (pf y) = Converged' qi
+        | i == nitermax - 1 = NotConverged' y
+        | otherwise = Converging' 
   return res
 
-sqDiffPairs :: Num a => (v -> v -> a) -> [v] -> a
-sqDiffPairs f uu = sqDiff f (init uu) (tail uu)
 
-sqDiff :: Num a => (u -> v -> a) -> [u] -> [v] -> a
-sqDiff f uu vv = sum $ zipWith f uu vv
-
-
-
-modifyInspectGuardedM_Iter lh r f x0 = undefined
+modifyInspectGuarded_Iter lh r f x0 = undefined
   where
-    procOutput = do
-      (aLast, sLast) <- runIterativeT lh r x0 (go 0 [])
-      either throwM pure aLast
+    -- procOutput = do
+    --   (aLast, sLast) <- runIterativeT lh r x0 (go 0 [])
+    --   either throwM pure aLast
     go i ll = do
       x <- get
-      let y = f x
-      -- y <- f x
-      fname <- asks icFunctionName
-      nitermax <- asks icNumIterationsMax
+      y <- lift $ f x
+      -- let y = f x
       status <- checkConvergStatus y i ll 
       case status of
-        BufferNotReady -> do  
+        BufferNotReady' -> do  
           put y
           let ll' = y : ll    -- cons current state to buffer
           go (i + 1) ll'
-        Converged qi -> do
+        Converged' qi -> do
           -- put y
           return $ Right y
-        Diverging qi qt -> do
+        Diverging' qi qt -> do
           -- put y
-          return $ Left (DivergingE fname i qi qt)
-        Converging -> do
+          return $ Left (Diverging' qi qt) -- (DivergingE fname i qi qt)
+        Converging' -> do
           put y
           let ll' = init (y : ll) -- rolling state window
           go (i + 1) ll'
-        NotConverged -> do
+        NotConverged' y -> do
           -- put y
-          return $ Left (NotConvergedE fname nitermax y)   
+          return $ Left (NotConverged' y) -- (NotConvergedE fname nitermax y)   
     
 
 
