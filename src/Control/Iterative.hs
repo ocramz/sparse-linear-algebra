@@ -167,8 +167,7 @@ data IterConfig s t msg a = IterConfig {
     }
 
 
--- TODO : remove Show, Typeable constraints from 's'
-modifyInspectGuardedM_Iter :: (MonadThrow m, Show s, Show a, Typeable s, Typeable a) =>
+modifyInspectGuardedM_Iter :: (MonadThrow m, Show a, Typeable a, Show t, Typeable t) =>
                               Handler m (WithSeverity msg)
                            -> IterConfig s t msg a
                            -> (s -> m s)
@@ -201,7 +200,7 @@ modifyInspectGuardedM_Iter lh r@(IterConfig fname nitermax lwindow pf sf qconver
         status | length ll < lwindow =                BufferNotReady'
                | qdiverg qi qt && not (qconverg qi) = Diverging' qi qt        
                | qconverg qi || qfinal (pf y) =       Converged' qi
-               | i == nitermax - 1 =                  NotConverged' y
+               | i == nitermax - 1 =                  NotConverged' $ pf y
                | otherwise =                          Converging'         
       case status of
         BufferNotReady' -> do

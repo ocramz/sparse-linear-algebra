@@ -11,7 +11,7 @@ This library provides common numerical analysis functionality, without requiring
 
 ## State of the library 
 
-Mar 14, 2018: Mostly functional, but there are still a few (documented) bugs. Complex number support is still incomplete, so the users are advised to not rely on that for the time being. The issues related to Complex number handling are tracked in #50, #51, #12, #30.
+Mar 14, 2018: Mostly functional, but there are still a few (documented) bugs. Complex number support is still incomplete, so the users are advised to not rely on that for the time being. The issues related to Complex number handling are tracked in #51, #12, #30.
 
 
 ## News
