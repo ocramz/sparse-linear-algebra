@@ -89,15 +89,10 @@ execIterativeT :: Functor m =>
                -> m s
 execIterativeT lh c x0 m = snd <$> runIterativeT lh c x0 m
 
+-- | Log with a function that computes a severity and a message from the input
 logWith :: MonadLog (WithSeverity a) m => (p -> (Severity, a)) -> p -> m ()
 logWith f x = logMessage (WithSeverity sev sevMsg) where
   (sev, sevMsg) = f x
-
--- | Output logs conditionally if more severe than a threshold
-logConditional :: Severity -> WithSeverity String -> IO ()
-logConditional smin ws
-  | msgSeverity ws > smin = return ()
-  | otherwise = putStrLn $ withSeverity id ws
       
 
 mkIterativeT :: Monad m =>
@@ -117,18 +112,7 @@ mkIterativeT flog fs = IterativeT $ do
 
 
 
--- | Configuration data for the iterative process
-data IterConfig s t a = IterConfig {
-    icFunctionName :: String -- ^ Name of calling function, for logging purposes
-  , icLogLevelConvergence :: Maybe Severity
-  , icLogLevelDivergence :: Maybe Severity
-  , icNumIterationsMax :: Int -- ^ Max # of iterations
-  , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
-  , icStateProj :: s -> t          -- ^ Project the state
-  , icStateSummary :: [t] -> a     -- ^ Produce a summary from a list of states
-  , icStateConverging :: a -> Bool 
-  , icStateDiverging :: a -> a -> Bool
-  , icStateFinal :: t -> Bool }
+
 
 
 
@@ -138,8 +122,27 @@ sqDiffPairs f uu = sqDiff f (init uu) (tail uu)
 sqDiff :: Num a => (u -> v -> a) -> [u] -> [v] -> a
 sqDiff f uu vv = sum $ zipWith f uu vv
 
-updateBuffer :: a -> [a] -> [a]
-updateBuffer y ll = init $ y : ll
+
+
+
+
+
+data LoopState s = LoopState { lsCounter :: !Int
+                             , lsPrevStates :: [s]
+                             , lsCurrentState :: s } deriving (Eq, Show)
+
+-- | Reconstruct state buffers for convergence/divergence estimation
+getBuffers :: Int -> LoopState a -> Maybe ([a], [a])
+getBuffers n (LoopState _ ls s)
+  | length ls < n = Nothing
+  | otherwise = Just (curr, prev) where
+      curr = s : take (n - 1) ls
+      prev = take n ls
+
+mkLoopState :: s -> LoopState s
+mkLoopState = LoopState 0 []
+
+
 
 data ConvergenceStatus' a b =
   BufferNotReady'
@@ -150,94 +153,75 @@ data ConvergenceStatus' a b =
   deriving (Eq, Show, Typeable)
 instance (Typeable a, Show a, Typeable b, Show b) => Exception (ConvergenceStatus' a b)
 
-checkConvergStatus :: MonadReader (IterConfig s t a) m =>
-                      s
-                   -> Int
-                   -> [s]
-                   -> m (ConvergenceStatus' a s)
-checkConvergStatus y i ll = do
-  lwindow <- asks icStateWindowLength
-  qdiverg <- asks icStateDiverging
-  qconverg <- asks icStateConverging
-  qfinal <- asks icStateFinal
-  nitermax <- asks icNumIterationsMax
-  pf <- asks icStateProj
-  sf <- asks icStateSummary
-  let
-    llf = pf <$> ll
-    qi = sf $ init llf  -- summary of [lwindow + 1 .. 0] states
-    qt = sf $ tail llf  -- "       "  [lwindow     .. 1] states
-    res | length ll < lwindow = BufferNotReady'
-        | qdiverg qi qt && not (qconverg qi) = Diverging' qi qt        
-        | qconverg qi || qfinal (pf y) = Converged' qi
-        | i == nitermax - 1 = NotConverged' y
-        | otherwise = Converging' 
-  return res
+-- | Configuration data for the iterative process
+data IterConfig s t msg a = IterConfig {
+    icFunctionName :: String -- ^ Name of calling function, for logging purposes
+  , icNumIterationsMax :: Int -- ^ Max # of iterations
+  , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
+  , icStateProj :: s -> t          -- ^ Project the state
+  , icStateSummary :: [t] -> a     -- ^ Produce a summary from a list of states
+  , icStateConverging :: a -> Bool  -- ^ Are we converging ?
+  , icStateDiverging :: a -> a -> Bool -- ^ Are we diverging ?
+  , icStateFinal :: t -> Bool -- ^ Has the state converged ?
+  , icLogWith :: s -> (Severity, msg) -- ^ Compute log severity and message
+    }
 
 
-
-data LoopState s = LoopState { lsCounter :: !Int
-                             , lsPrevStates :: [s]
-                             , lsCurrentState :: s } deriving (Eq, Show)
-
-mkLoopState :: s -> LoopState s
-mkLoopState = LoopState 0 []
-
-updState :: s -> LoopState s -> LoopState s
-updState snew (LoopState i lss s) = LoopState (i + 1) (s : lss) snew
-
-
--- TODO : add configuration 
--- TODO : add input validation
--- TODO : add logging 
--- TODO : add exception throwing (throwM upon Diverged, NotConverged)
--- modifyInspectGuardedM_Iter :: Monad f =>
---                               Handler f (WithSeverity String)
---                            -> IterConfig b t a
---                            -> (b -> f b)
---                            -> b
---                            -> f (Either (ConvergenceStatus' a b) b)
-modifyInspectGuardedM_Iter lh r f x0 = run
-  -- procOutput
+-- TODO : remove Show, Typeable constraints from 's'
+modifyInspectGuardedM_Iter :: (MonadThrow m, Show s, Show a, Typeable s, Typeable a) =>
+                              Handler m (WithSeverity msg)
+                           -> IterConfig s t msg a
+                           -> (s -> m s)
+                           -> s
+                           -> m a
+modifyInspectGuardedM_Iter lh r@(IterConfig fname nitermax lwindow pf sf qconverg qdiverg qfinal lwf) f x0
+  | nitermax > 0 = run
+  | otherwise = throwM (NonNegError fname nitermax)
   where
+    updStateN snew (LoopState i lss s) = LoopState (i + 1) lssUpd snew
+      where
+        lss' = s : lss
+        lssUpd | length lss < lwindow = lss'
+               | otherwise = take lwindow lss'    
     run = do
-      aLast <- fst <$> runIterativeT lh r x0 (loop 0 [])
-      let nitermax = icNumIterationsMax r
-          fname = icFunctionName r
+      let s0 = mkLoopState x0 
+      (aLast, sLast) <- runIterativeT lh r s0 loop -- (loop 0 [])
+      let i = lsCounter sLast
       case aLast of
         Left (NotConverged' y) -> throwM $ NotConvergedE fname nitermax y
-        -- Left (Diverging' qi qt) -> throwM $ DivergingE fname i qi qt
+        Left (Diverging' qi qt) -> throwM $ DivergingE fname i qi qt
         Right x -> pure x
-    -- procOutput = do
-    --   
-    --   (aLast, sLast) <- runIterativeT lh r x0 (go 0 [])
-    --   case aLast of
-    --     Left (NotConverged' y) -> throwM $ NotConvergedE "bla" nitermax y
-    --     Right x -> pure x
-    loop i ll = do
-      x <- get
-      y <- lift $ f x
-      status <- checkConvergStatus y i ll 
+    loop = do
+      s@(LoopState i ll x) <- get
+      y <- lift $ f x 
+      let
+        llf = pf `map` ll
+        qi = sf $ init llf  -- summary of [lwindow + 1 .. 0] states
+        qt = sf $ tail llf  -- "       "  [lwindow     .. 1] states
+        status | length ll < lwindow =                BufferNotReady'
+               | qdiverg qi qt && not (qconverg qi) = Diverging' qi qt        
+               | qconverg qi || qfinal (pf y) =       Converged' qi
+               | i == nitermax - 1 =                  NotConverged' y
+               | otherwise =                          Converging'         
       case status of
-        BufferNotReady' -> do  
-          put y
-          let ll' = y : ll    -- cons current state to buffer
-          loop (i + 1) ll'
-        Converged' qi -> do
-          -- put y
-          return $ Right y
-        Diverging' qi qt -> do
-          -- put y
-          return $ Left (Diverging' qi qt) -- (DivergingE fname i qi qt)
+        BufferNotReady' -> do
+          let s' = updStateN y s
+          -- logMessage $ WithSeverity Debug ("Buffer not ready") 
+          put s'
+          loop 
         Converging' -> do
-          put y
-          let ll' = init (y : ll) -- rolling state window
-          logMessage $ WithSeverity Debug ("Converging" :: String)
-          loop (i + 1) ll'
-        NotConverged' y -> do
-          -- put y
-          return $ Left (NotConverged' y) -- (NotConvergedE fname nitermax y)   
-
+          let s' = updStateN y s
+          -- logMessage $ WithSeverity Informational "Converging"
+          logWith lwf y          
+          put s'
+          loop 
+        Diverging' qi qt -> 
+          pure $ Left (Diverging' qi qt) -- (DivergingE fname i qi qt)
+        Converged' qi -> 
+          pure $ Right qi
+        NotConverged' y -> 
+          pure $ Left (NotConverged' y) -- (NotConvergedE fname nitermax y)           
+    
 
 
 
