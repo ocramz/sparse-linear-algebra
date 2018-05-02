@@ -699,8 +699,8 @@ mSsorPre aa omega = (l, r) where
 
 -- * Linear solver, LU-based
 
-luSolveConfig :: PrintDense (SpVector t) => IterationConfig (SpVector t, IxRow) (SpVector t)
-luSolveConfig = IterConf 0 False fst prd0
+-- luSolveConfig :: PrintDense (SpVector t) => IterationConfig (SpVector t, IxRow) (SpVector t)
+-- luSolveConfig = IterConf 0 False fst prd0
 
 
 
@@ -726,10 +726,10 @@ triLowerSolve = triLowerSolve0 luSolveConfig
 
 
 
-triLowerSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      Epsilon t, MonadThrow m, MonadLog String m) =>
-        IterationConfig (SpVector t, IxRow) b
-     -> SpMatrix t -> SpVector t -> m (SpVector t)  
+-- triLowerSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+--       Epsilon t, MonadThrow m, MonadLog String m) =>
+--         IterationConfig (SpVector t, IxRow) b
+--      -> SpMatrix t -> SpVector t -> m (SpVector t)  
 triLowerSolve0 config ll b = do
   let q (_, i) = i == nb
       nb = svDim b
@@ -759,16 +759,16 @@ triLowerSolve0 config ll b = do
 
 -- NB in the computation of `xi` we must rebalance the subrow indices (extractSubRow_RK) because `dropSV` does that too, in order to take the inner product with consistent index pairs
 -- | Backward substitution solver
-triUpperSolve
-  :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
-      SpMatrix t -> SpVector t -> m (SpVector t)
+-- triUpperSolve
+--   :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+--       PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
+--       SpMatrix t -> SpVector t -> m (SpVector t)
 triUpperSolve = triUpperSolve0 luSolveConfig
 
-triUpperSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      Epsilon t, MonadThrow m, MonadLog String m) =>
-     IterationConfig (SpVector t, IxRow) b
-     -> SpMatrix t -> SpVector t -> m (SpVector t)  
+-- triUpperSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+--       Epsilon t, MonadThrow m, MonadLog String m) =>
+--      IterationConfig (SpVector t, IxRow) b
+--      -> SpMatrix t -> SpVector t -> m (SpVector t)  
 triUpperSolve0 conf uu w = do 
   let q (_, i) = i == (- 1)
       nw = svDim w

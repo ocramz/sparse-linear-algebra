@@ -12,15 +12,15 @@ import Control.Monad.State.Strict
 
 -- | `eigRayleigh n mm` performs `n` iterations of the Rayleigh algorithm on matrix `mm` and returns the eigenpair closest to the initialization. It displays cubic-order convergence, but it also requires an educated guess on the initial eigenpair.
 
-eigRayleigh nitermax debq prntf m = untilConvergedGM "eigRayleigh" config (const True) (rayStep m)
-  where
-    ii = eye (nrows m)
-    config = IterConf nitermax debq fst prntf
-    rayStep aa (b, mu) = do
-      nom <- (m ^-^ (mu `matScale` ii)) <\> b
-      let b' = normalize2' nom
-          mu' = (b' <.> (aa #> b')) / (b' <.> b')
-      return (b', mu')
+-- eigRayleigh nitermax debq prntf m = untilConvergedGM "eigRayleigh" config (const True) (rayStep m)
+--   where
+--     ii = eye (nrows m)
+--     config = IterConf nitermax debq fst prntf
+--     rayStep aa (b, mu) = do
+--       nom <- (m ^-^ (mu `matScale` ii)) <\> b
+--       let b' = normalize2' nom
+--           mu' = (b' <.> (aa #> b')) / (b' <.> b')
+--       return (b', mu')
 
       
 

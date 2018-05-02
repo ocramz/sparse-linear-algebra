@@ -28,7 +28,7 @@ import Data.Sparse.Internal.SVector
 import qualified Data.Sparse.Internal.SVector.Mutable as SMV
 import Data.Sparse.SpMatrix (fromListSM, fromListDenseSM, insertSpMatrix, zeroSM, transposeSM, sparsifySM)
 import Data.Sparse.Common (prd, prd0, (@@!), nrows, ncols, lookupSM, extractRow, extractCol, SpVector, SpMatrix, foldlWithKeySV, (##), (#~#))
-import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM')
+-- import Control.Iterative (IterationConfig(IterConf), modifyUntilM, modifyUntilM')
 import Data.Sparse.PPrint
 
 import Control.Monad.Catch (MonadThrow, throwM)
@@ -141,38 +141,38 @@ lookupWD rlu clu aa i j = fromMaybe 0 (rlu i aa >>= clu j)
 {- | LU factorization : store L and U^T in TriMatrix format -}
 
 
-lu :: (Scalar (SpVector t) ~ t, Elt t, AdditiveGroup t, VectorSpace (SpVector t),
-      MonadThrow m, MonadLog String m, PrintDense (SpMatrix t),
-      Epsilon t) =>
-     SpMatrix t -> m (SpMatrix t, SpMatrix t) -- ^ L, U
-lu amat = do
-  let d@(m,n) = (nrows amat, ncols amat)
-      q (_, _, i) = i == m    -- stopping criterion
-      luInit = (lmat0, umat0, 1) where
-         urow0 = extractRow amat 0                 -- first row of U
-         lcol0 = extractCol amat 0 ./ (urow0 @@ 0) -- first col of L, div by U00
-         umat0 = foldlWithKeySV ins (emptyIMSL n) urow0 -- populate umat0
-         lmat0 = IM.insert 0 (SL [(0, 1)]) l0 where     -- populate lmat0
-           l0 = foldlWithKeySV ins (emptyIMSL m) lcol0 
-         ins acc i x = appendIM i (0, x) acc
-      luStep (lmat, umat, i) = do
-          let (umat', uii) = uStep amat lmat umat i  -- new U
-          when (nearZero uii) $
-             throwM (NeedsPivoting "LU" (unwords ["U", show (i,i)]) :: MatrixException Double)
-          let lmat' = lStep amat lmat umat' uii i  -- new L
-          return (lmat', umat', i + 1)             
-  -- (lfin, ufin, _) <- execStateT (modifyUntilM q luStep) luInit
-  (lfin, ufin, _) <- modifyUntilM' (luConfig d) q luStep luInit  
-  let uu = fillSM d True ufin
-      ll = fillSM d False lfin
-  return (ll, uu)
+-- lu :: (Scalar (SpVector t) ~ t, Elt t, AdditiveGroup t, VectorSpace (SpVector t),
+--       MonadThrow m, MonadLog String m, PrintDense (SpMatrix t),
+--       Epsilon t) =>
+--      SpMatrix t -> m (SpMatrix t, SpMatrix t) -- ^ L, U
+-- lu amat = do
+--   let d@(m,n) = (nrows amat, ncols amat)
+--       q (_, _, i) = i == m    -- stopping criterion
+--       luInit = (lmat0, umat0, 1) where
+--          urow0 = extractRow amat 0                 -- first row of U
+--          lcol0 = extractCol amat 0 ./ (urow0 @@ 0) -- first col of L, div by U00
+--          umat0 = foldlWithKeySV ins (emptyIMSL n) urow0 -- populate umat0
+--          lmat0 = IM.insert 0 (SL [(0, 1)]) l0 where     -- populate lmat0
+--            l0 = foldlWithKeySV ins (emptyIMSL m) lcol0 
+--          ins acc i x = appendIM i (0, x) acc
+--       luStep (lmat, umat, i) = do
+--           let (umat', uii) = uStep amat lmat umat i  -- new U
+--           when (nearZero uii) $
+--              throwM (NeedsPivoting "LU" (unwords ["U", show (i,i)]) :: MatrixException Double)
+--           let lmat' = lStep amat lmat umat' uii i  -- new L
+--           return (lmat', umat', i + 1)             
+--   -- (lfin, ufin, _) <- execStateT (modifyUntilM q luStep) luInit
+--   (lfin, ufin, _) <- modifyUntilM' (luConfig d) q luStep luInit  
+--   let uu = fillSM d True ufin
+--       ll = fillSM d False lfin
+--   return (ll, uu)
 
 
-luConfig d = IterConf 0 True vf prf where
-        vf (l, u, _) = (l, u)
-        prf (l, u) = do
-          prd0 $ fillSM d False l
-          prd0 $ fillSM d True u
+-- luConfig d = IterConf 0 True vf prf where
+--         vf (l, u, _) = (l, u)
+--         prf (l, u) = do
+--           prd0 $ fillSM d False l
+--           prd0 $ fillSM d True u
 
 
 
