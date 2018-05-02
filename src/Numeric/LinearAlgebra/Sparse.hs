@@ -18,29 +18,29 @@ module Numeric.LinearAlgebra.Sparse
          -- *** Moore-Penrose pseudoinverse
          pinv,
          -- ** Direct methods
-         luSolve,
+         -- luSolve,
          -- *** Forward substitution
-         triLowerSolve,
+         -- triLowerSolve,
          -- *** Backward substitution
-         triUpperSolve,
+         -- triUpperSolve,
          -- * Eigensolvers
-         eigsQR,
+         -- eigsQR,
          -- eigRayleigh,
-         eigsArnoldi,
+         -- eigsArnoldi,
          -- * Matrix factorization algorithms
          -- ** QR
-         qr, 
+         -- qr, 
          -- ** LU
          lu,
          -- ** Cholesky
-         chol, 
+         -- chol, 
          -- ** Arnoldi iteration
          arnoldi,    
          -- * Utilities
          -- ** Givens' rotation
          givens,
          -- ** Condition number
-         conditionNumberSM,
+         -- conditionNumberSM,
          -- ** Householder reflection
          hhRefl,
          -- -- * Householder bidiagonalization
@@ -108,11 +108,14 @@ module Numeric.LinearAlgebra.Sparse
          -- * Pretty-printing
          prd, prd0,
          -- * Iteration combinators
-         untilConvergedG0, untilConvergedG, untilConvergedGM,
-         modifyInspectGuarded, modifyInspectGuardedM, IterationConfig (..),
+         untilConvergedG0,
+         -- untilConvergedG, untilConvergedGM,
+         modifyInspectGuarded, modifyInspectGuardedM,
+         -- IterationConfig (..),
          modifyUntil, modifyUntilM,
          -- * Internal
-         linSolve0, LinSolveMethod(..),
+         -- linSolve0,
+         LinSolveMethod(..),
          -- * Exceptions
          PartialFunctionError,InputError, OutOfBoundsIndexError,
          OperandSizeMismatch, MatrixException, IterationException
@@ -153,19 +156,17 @@ type Num' x = (Epsilon x, Elt x, Show x, Ord x, Typeable x)
 -- * Matrix condition number
 
 -- | Matrix condition number: computes the QR factorization and extracts the extremal eigenvalues from the R factor
-conditionNumberSM :: (MonadThrow m, MonadLog String m, MatrixRing (SpMatrix a),
-                      PrintDense (SpMatrix a), Num' a) =>
-     SpMatrix a -> m a
-conditionNumberSM m = do
-  (_, r) <- qr m
-  let
-   u = extractDiagDense r 
-   lmax = abs (maximum u)
-   lmin = abs (minimum u)
-   kappa = lmax / lmin                     
-  if nearZero lmin
-  then throwM (HugeConditionNumber "conditionNumberSM" kappa)
-  else return kappa 
+
+-- conditionNumberSM m = do
+--   (_, r) <- qr m
+--   let
+--    u = extractDiagDense r 
+--    lmax = abs (maximum u)
+--    lmin = abs (minimum u)
+--    kappa = lmax / lmin                     
+--   if nearZero lmin
+--   then throwM (HugeConditionNumber "conditionNumberSM" kappa)
+--   else return kappa 
                           
 
 
@@ -292,29 +293,30 @@ NB: at each iteration `i` we multiply the Givens matrix `G_i` by the previous pa
 
 However, we must also accumulate the `G_i` in order to build `Q`, and the present formulation follows this definition closely.
 -}
-{-# inline qr #-}
-qr :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a),
-      Epsilon a, MonadThrow m, MonadLog String m) =>
-     SpMatrix a
-     -> m (SpMatrix a, SpMatrix a) -- ^ Q, R
-qr mm = do 
-     (qt, r, _) <- modifyUntilM' config haltf qrstepf gminit
-     return (transpose qt, r) 
-  where
-    gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
-    haltf (_, _, iis) = null iis
-    config = IterConf 0 False fst2 prd2 where
-      fst2 (x,y,_) = (x,y)
-      prd2 (x,y) = do
-        prd0 x
-        prd0 y
-    qrstepf (qmatt, m, iis) = do
-        let (i, j) = head iis
-        g <- givens m i j
-        let
-          qmatt' = g #~# qmatt  -- update Q'
-          m' = g #~# m          -- update R
-        return (qmatt', m', tail iis)    
+
+-- {-# inline qr #-}
+-- qr :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a),
+--       Epsilon a, MonadThrow m, MonadLog String m) =>
+--      SpMatrix a
+--      -> m (SpMatrix a, SpMatrix a) -- ^ Q, R
+-- qr mm = do 
+--      (qt, r, _) <- modifyUntilM' config haltf qrstepf gminit
+--      return (transpose qt, r) 
+--   where
+--     gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
+--     haltf (_, _, iis) = null iis
+--     config = IterConf 0 False fst2 prd2 where
+--       fst2 (x,y,_) = (x,y)
+--       prd2 (x,y) = do
+--         prd0 x
+--         prd0 y
+--     qrstepf (qmatt, m, iis) = do
+--         let (i, j) = head iis
+--         g <- givens m i j
+--         let
+--           qmatt' = g #~# qmatt  -- update Q'
+--           m' = g #~# m          -- update R
+--         return (qmatt', m', tail iis)    
 
 
 
@@ -327,13 +329,14 @@ qr mm = do
 -- ** QR algorithm
 
 -- | @eigsQR n mm@ performs at most @n@ iterations of the QR algorithm on matrix @mm@, and returns a 'SpVector' containing all eigenvalues.
-eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
-  where
-    pf = extractDiagDense
-    c = IterConf nitermax debq pf prd
-    stepf mm = do
-      (q, _) <- qr mm
-      return $ q #~^# (m ## q) -- r #~# q
+
+-- eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
+--   where
+--     pf = extractDiagDense
+--     c = IterConf nitermax debq pf prd
+--     stepf mm = do
+--       (q, _) <- qr mm
+--       return $ q #~^# (m ## q) -- r #~# q
 
 
 
@@ -344,17 +347,18 @@ eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
 -- | @eigsArnoldi n aa b@ computes at most n iterations of the Arnoldi algorithm to find a Krylov subspace of (A, b), denoted Q, along with a Hessenberg matrix of coefficients H.
 --
 -- After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
-eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, V (SpVector t), Epsilon t, PrintDense (SpMatrix t),
-      MatrixRing (SpMatrix t), MonadThrow m, MonadLog String m) =>
-     Int
-     -> SpMatrix t
-     -> SpVector t
-     -> m (SpMatrix t, SpMatrix t, SpVector t) -- ^ Q, O, {λ_i}
-eigsArnoldi nitermax aa b = do
-  (q, h) <- arnoldi aa b nitermax
-  (o, r) <- qr h
-  return (q, o, extractDiagDense r)
+
+-- eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+--       Elt t, V (SpVector t), Epsilon t, PrintDense (SpMatrix t),
+--       MatrixRing (SpMatrix t), MonadThrow m, MonadLog String m) =>
+--      Int
+--      -> SpMatrix t
+--      -> SpVector t
+--      -> m (SpMatrix t, SpMatrix t, SpVector t) -- ^ Q, O, {λ_i}
+-- eigsArnoldi nitermax aa b = do
+--   (q, h) <- arnoldi aa b nitermax
+--   (o, r) <- qr h
+--   return (q, o, extractDiagDense r)
   
 
 
@@ -406,45 +410,46 @@ SVD of A, Golub-Kahan method
 
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
 -- | NB: The algorithm throws an exception if some diagonal element of A is zero.
-chol :: (Elt a, Epsilon a, MonadThrow m, MonadLog String m, PrintDense (SpMatrix a)) =>
-        SpMatrix a
-     -> m (SpMatrix a)  -- ^ L
-chol aa = do
-  let n = nrows aa
-      q (i, _) = i == n
-      config = IterConf 0 False snd prd0
-  l0 <- cholUpd aa (0, zeroSM n n)
-  (_, lfin) <- modifyUntilM' config q (cholUpd aa) l0
-  return lfin
-  where
-   oops i = throwM (NeedsPivoting "chol" (unwords ["L", show (i,i)]) :: MatrixException Double)
-   cholUpd aa (i, ll) = do 
-     sd <- cholSDRowUpd aa ll i  -- update subdiagonal entries
-     ll' <- cholDiagUpd aa sd i  -- update diagonal entries
-     return (i + 1, ll')
-   cholSDRowUpd aa ll i = do 
-     lrs <- fromListSV (i + 1) <$> onRangeSparseM cholSubDiag [0 .. i-1]
-     return $ insertRow ll lrs i where
-       cholSubDiag j | isNz ljj = return $ 1/ljj*(aij - inn)
-                     | otherwise = oops j
-        where
-          ljj = ll @@! (j, j)
-          aij = aa @@! (i, j)
-          inn = contractSub ll ll i j (j - 1)
-   cholDiagUpd aa ll i = do
-     cd <- cholDiag 
-     return $ insertSpMatrix i i cd ll where
-       cholDiag | i == 0 = sqrt <$> aai
-                | otherwise = do
-                    a <- aai
-                    let l = sum (fmap (**2) lrow)
-                    return $ sqrt (a - l)
-         where
-          lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
-          aai | isNz aaii = return aaii
-              | otherwise = oops i
-            where
-             aaii = aa @@! (i,i)
+
+-- chol :: (Elt a, Epsilon a, MonadThrow m, MonadLog String m, PrintDense (SpMatrix a)) =>
+--         SpMatrix a
+--      -> m (SpMatrix a)  -- ^ L
+-- chol aa = do
+--   let n = nrows aa
+--       q (i, _) = i == n
+--       config = IterConf 0 False snd prd0
+--   l0 <- cholUpd aa (0, zeroSM n n)
+--   (_, lfin) <- modifyUntilM' config q (cholUpd aa) l0
+--   return lfin
+--   where
+--    oops i = throwM (NeedsPivoting "chol" (unwords ["L", show (i,i)]) :: MatrixException Double)
+--    cholUpd aa (i, ll) = do 
+--      sd <- cholSDRowUpd aa ll i  -- update subdiagonal entries
+--      ll' <- cholDiagUpd aa sd i  -- update diagonal entries
+--      return (i + 1, ll')
+--    cholSDRowUpd aa ll i = do 
+--      lrs <- fromListSV (i + 1) <$> onRangeSparseM cholSubDiag [0 .. i-1]
+--      return $ insertRow ll lrs i where
+--        cholSubDiag j | isNz ljj = return $ 1/ljj*(aij - inn)
+--                      | otherwise = oops j
+--         where
+--           ljj = ll @@! (j, j)
+--           aij = aa @@! (i, j)
+--           inn = contractSub ll ll i j (j - 1)
+--    cholDiagUpd aa ll i = do
+--      cd <- cholDiag 
+--      return $ insertSpMatrix i i cd ll where
+--        cholDiag | i == 0 = sqrt <$> aai
+--                 | otherwise = do
+--                     a <- aai
+--                     let l = sum (fmap (**2) lrow)
+--                     return $ sqrt (a - l)
+--          where
+--           lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
+--           aai | isNz aaii = return aaii
+--               | otherwise = oops i
+--             where
+--              aaii = aa @@! (i,i)
                  
 
 
@@ -513,47 +518,47 @@ lu aa = do
 
 
 
-lu' aa = do
-  let oops j = throwM (NeedsPivoting "solveForLij" ("U" ++ show (j, j)) :: MatrixException Double)
-      n = nrows aa
-      q (i, _, _) = i == n - 1
-      luInit | isNz u00 = return (1, l0, u0)
-             | otherwise = oops (0 :: Int)
-        where
-          l0 = insertCol (eye n) ((extractSubCol aa 0 (1, n-1)) ./ u00 ) 0
-          u0 = insertRow (zeroSM n n) (extractRow aa 0) 0   -- initial U
-          u00 = u0 @@! (0,0)  -- make sure this is non-zero by applying permutation
-      luUpd (i, l, u) = do -- (i + 1, l', u') 
-        u' <- uUpd aa n (i, l, u)  -- update U
-        l' <- lUpd (i, l, u') -- update L
-        return (i + 1, l', u')
-      uUpd aa n (ix, lmat, umat) = do
-        let us = onRangeSparse (solveForUij ix) [ix .. n - 1]
-            solveForUij i j = a - p where
-              a = aa @@! (i, j)
-              p = contractSub lmat umat i j (i - 1)
-        return $ insertRow umat (fromListSV n us) ix
-      lUpd (ix, lmat, umat) = do -- insertCol lmat (fromListSV n ls) ix
-        ls <- lsm
-        return $ insertCol lmat (fromListSV n ls) ix
-        where
-          lsm = onRangeSparseM (`solveForLij` ix) [ix + 1 .. n - 1]
-          solveForLij i j
-            | isNz ujj = return $ (a - p)/ujj
-            | otherwise = oops j
-            where
-             a = aa @@! (i, j)
-             ujj = umat @@! (j , j)   -- NB this must be /= 0
-             p = contractSub lmat umat i j (i - 1)    
-  s0 <- luInit
-  let config = IterConf 0 True vf prd2 where
-        vf (_, l, u) = (l, u)
-        prd2 (x, y) = do
-          prd0 x
-          prd0 y
-  (ixf, lf, uf) <- modifyUntilM' config q luUpd s0
-  ufin <- uUpd aa n (ixf, lf, uf)   -- final U update
-  return (lf, ufin)
+-- lu' aa = do
+--   let oops j = throwM (NeedsPivoting "solveForLij" ("U" ++ show (j, j)) :: MatrixException Double)
+--       n = nrows aa
+--       q (i, _, _) = i == n - 1
+--       luInit | isNz u00 = return (1, l0, u0)
+--              | otherwise = oops (0 :: Int)
+--         where
+--           l0 = insertCol (eye n) ((extractSubCol aa 0 (1, n-1)) ./ u00 ) 0
+--           u0 = insertRow (zeroSM n n) (extractRow aa 0) 0   -- initial U
+--           u00 = u0 @@! (0,0)  -- make sure this is non-zero by applying permutation
+--       luUpd (i, l, u) = do -- (i + 1, l', u') 
+--         u' <- uUpd aa n (i, l, u)  -- update U
+--         l' <- lUpd (i, l, u') -- update L
+--         return (i + 1, l', u')
+--       uUpd aa n (ix, lmat, umat) = do
+--         let us = onRangeSparse (solveForUij ix) [ix .. n - 1]
+--             solveForUij i j = a - p where
+--               a = aa @@! (i, j)
+--               p = contractSub lmat umat i j (i - 1)
+--         return $ insertRow umat (fromListSV n us) ix
+--       lUpd (ix, lmat, umat) = do -- insertCol lmat (fromListSV n ls) ix
+--         ls <- lsm
+--         return $ insertCol lmat (fromListSV n ls) ix
+--         where
+--           lsm = onRangeSparseM (`solveForLij` ix) [ix + 1 .. n - 1]
+--           solveForLij i j
+--             | isNz ujj = return $ (a - p)/ujj
+--             | otherwise = oops j
+--             where
+--              a = aa @@! (i, j)
+--              ujj = umat @@! (j , j)   -- NB this must be /= 0
+--              p = contractSub lmat umat i j (i - 1)    
+--   s0 <- luInit
+--   let config = IterConf 0 True vf prd2 where
+--         vf (_, l, u) = (l, u)
+--         prd2 (x, y) = do
+--           prd0 x
+--           prd0 y
+--   (ixf, lf, uf) <- modifyUntilM' config q luUpd s0
+--   ufin <- uUpd aa n (ixf, lf, uf)   -- final U update
+--   return (lf, ufin)
          
 
 
@@ -704,94 +709,81 @@ mSsorPre aa omega = (l, r) where
 
 
 
--- | Direct solver based on a triangular factorization of the system matrix.
-luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t),
-            Epsilon t, PrintDense (SpVector t), MonadLog String m) =>
-     SpMatrix t    -- ^ Lower triangular
-     -> SpMatrix t -- ^ Upper triangular
-     -> SpVector t -- ^ r.h.s.
-     -> m (SpVector t)
-luSolve ll uu b
-  | isLowerTriSM ll && isUpperTriSM uu = do
-      w <- triLowerSolve0 luSolveConfig ll b
-      triUpperSolve0 luSolveConfig uu w
-  | otherwise = throwM (NonTriangularException "luSolve")
+-- -- | Direct solver based on a triangular factorization of the system matrix.
+-- luSolve :: (Scalar (SpVector t) ~ t, MonadThrow m, Elt t, InnerSpace (SpVector t),
+--             Epsilon t, PrintDense (SpVector t), MonadLog String m) =>
+--      SpMatrix t    -- ^ Lower triangular
+--      -> SpMatrix t -- ^ Upper triangular
+--      -> SpVector t -- ^ r.h.s.
+--      -> m (SpVector t)
+-- luSolve ll uu b
+--   | isLowerTriSM ll && isUpperTriSM uu = do
+--       w <- triLowerSolve0 luSolveConfig ll b
+--       triUpperSolve0 luSolveConfig uu w
+--   | otherwise = throwM (NonTriangularException "luSolve")
 
 -- | Forward substitution solver
-triLowerSolve
-  :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
-      PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
-      SpMatrix t -> SpVector t -> m (SpVector t)
-triLowerSolve = triLowerSolve0 luSolveConfig
+
+-- triLowerSolve = triLowerSolve0 luSolveConfig
 
 
 
--- triLowerSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
---       Epsilon t, MonadThrow m, MonadLog String m) =>
---         IterationConfig (SpVector t, IxRow) b
---      -> SpMatrix t -> SpVector t -> m (SpVector t)  
-triLowerSolve0 config ll b = do
-  let q (_, i) = i == nb
-      nb = svDim b
-      oops i = throwM (NeedsPivoting "triLowerSolve" (unwords ["L", show (i, i)]) :: MatrixException Double)
-      lStep (ww, i) = do -- (ww', i + 1) where
-        let
-          lii = ll @@ (i, i)
-          bi = b @@ i
-          wi = (bi - r)/lii where
-            r = extractSubRow ll i (0, i-1) `dot` takeSV i ww
-        if isNz lii
-          then return (insertSpVector i wi ww, i + 1)
-          else oops i
-      lInit = do -- (ww0, 1) where
-        let
-          l00 = ll @@ (0, 0)
-          b0 = b @@ 0
-          w0 = b0 / l00
-        if isNz l00
-          then return (insertSpVector 0 w0 $ zeroSV (dim b), 1)
-          else oops (0 :: Int)
-  l0 <- lInit             
-  (v, _) <- modifyUntilM' config q lStep l0
-  return $ sparsifySV v
+
+-- triLowerSolve0 config ll b = do
+--   let q (_, i) = i == nb
+--       nb = svDim b
+--       oops i = throwM (NeedsPivoting "triLowerSolve" (unwords ["L", show (i, i)]) :: MatrixException Double)
+--       lStep (ww, i) = do -- (ww', i + 1) where
+--         let
+--           lii = ll @@ (i, i)
+--           bi = b @@ i
+--           wi = (bi - r)/lii where
+--             r = extractSubRow ll i (0, i-1) `dot` takeSV i ww
+--         if isNz lii
+--           then return (insertSpVector i wi ww, i + 1)
+--           else oops i
+--       lInit = do -- (ww0, 1) where
+--         let
+--           l00 = ll @@ (0, 0)
+--           b0 = b @@ 0
+--           w0 = b0 / l00
+--         if isNz l00
+--           then return (insertSpVector 0 w0 $ zeroSV (dim b), 1)
+--           else oops (0 :: Int)
+--   l0 <- lInit             
+--   (v, _) <- modifyUntilM' config q lStep l0
+--   return $ sparsifySV v
 
 
 
 -- NB in the computation of `xi` we must rebalance the subrow indices (extractSubRow_RK) because `dropSV` does that too, in order to take the inner product with consistent index pairs
 -- | Backward substitution solver
--- triUpperSolve
---   :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
---       PrintDense (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
---       SpMatrix t -> SpVector t -> m (SpVector t)
-triUpperSolve = triUpperSolve0 luSolveConfig
 
--- triUpperSolve0 :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
---       Epsilon t, MonadThrow m, MonadLog String m) =>
---      IterationConfig (SpVector t, IxRow) b
---      -> SpMatrix t -> SpVector t -> m (SpVector t)  
-triUpperSolve0 conf uu w = do 
-  let q (_, i) = i == (- 1)
-      nw = svDim w
-      oops i = throwM (NeedsPivoting "triUpperSolve" (unwords ["U", show (i, i)]) :: MatrixException Double)
-      uStep (xx, i) = do
-        let uii = uu @@ (i, i) 
-            wi = w @@ i
-            r = extractSubRow_RK uu i (i + 1, nw - 1) `dot` dropSV (i + 1) xx  
-            xi = (wi - r) / uii
-        if isNz uii
-          then return (insertSpVector i xi xx, i - 1)
-          else oops i 
-      uInit = do 
-        let i = nw - 1
-            u00 = uu @@! (i, i)
-            w0 = w @@ i
-            x0 = w0 / u00
-        if isNz u00
-          then return (insertSpVector i x0 (zeroSV nw), i - 1)
-          else oops (0 :: Int)
-  u0 <- uInit             
-  (x, _) <- modifyUntilM' conf q uStep u0
-  return $ sparsifySV x      
+-- triUpperSolve = triUpperSolve0 luSolveConfig
+
+-- triUpperSolve0 conf uu w = do 
+--   let q (_, i) = i == (- 1)
+--       nw = svDim w
+--       oops i = throwM (NeedsPivoting "triUpperSolve" (unwords ["U", show (i, i)]) :: MatrixException Double)
+--       uStep (xx, i) = do
+--         let uii = uu @@ (i, i) 
+--             wi = w @@ i
+--             r = extractSubRow_RK uu i (i + 1, nw - 1) `dot` dropSV (i + 1) xx  
+--             xi = (wi - r) / uii
+--         if isNz uii
+--           then return (insertSpVector i xi xx, i - 1)
+--           else oops i 
+--       uInit = do 
+--         let i = nw - 1
+--             u00 = uu @@! (i, i)
+--             w0 = w @@ i
+--             x0 = w0 / u00
+--         if isNz u00
+--           then return (insertSpVector i x0 (zeroSV nw), i - 1)
+--           else oops (0 :: Int)
+--   u0 <- uInit             
+--   (x, _) <- modifyUntilM' conf q uStep u0
+--   return $ sparsifySV x      
 
 
 
@@ -817,22 +809,18 @@ triUpperSolve0 conf uu w = do
 --
 -- A common optimization involves interleaving the QR factorization (and the subsequent triangular solve) with the Arnoldi process (and employing an updating QR factorization which only requires one Givens' rotation at every update). 
 
--- gmres :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
---       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
---       MonadThrow m) =>
---      SpMatrix t -> SpVector t -> m (SpVector t)
-gmres aa b = do
-  let m = ncols aa
-  (qa, ha) <- arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
-    -- b' = (transposeSe qa) #> b
-  let b' = norm2' b .* ei mp1 1  -- b rotated back to canonical basis by Q^T
-        where mp1 = nrows ha     -- = 1 + (# Arnoldi iterations)
-  (qh, rh) <- qr ha
-  let rhs' = takeSV (dim b' - 1) (transpose qh #> b')
-      rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
-  yhat <- triUpperSolve rh' rhs'
-  let qa' = takeCols (ncols qa - 1) qa  -- we don't use last column of Krylov basis   
-  return $ qa' #> yhat
+-- gmres aa b = do
+--   let m = ncols aa
+--   (qa, ha) <- arnoldi aa b m   -- at most m steps of Arnoldi (aa, b)
+--     -- b' = (transposeSe qa) #> b
+--   let b' = norm2' b .* ei mp1 1  -- b rotated back to canonical basis by Q^T
+--         where mp1 = nrows ha     -- = 1 + (# Arnoldi iterations)
+--   (qh, rh) <- qr ha
+--   let rhs' = takeSV (dim b' - 1) (transpose qh #> b')
+--       rh' = takeRows (nrows rh - 1) rh -- last row of `rh` is 0
+--   yhat <- triUpperSolve rh' rhs'
+--   let qa' = takeCols (ncols qa - 1) qa  -- we don't use last column of Krylov basis   
+--   return $ qa' #> yhat
 
 
 
@@ -989,42 +977,42 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
                     | BICGSTAB_ -- ^ BiConjugate Gradient Stabilized
                     deriving (Eq, Show)
 
--- | Interface method to individual linear solvers
-linSolve0 method aa b x0
-  | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
-  | otherwise = solve aa b where
-     solve aa' b' | isDiagonalSM aa' = return $ reciprocal aa' #> b' -- diagonal solve
-                  | otherwise = xHat
-     xHat = case method of
-       BICGSTAB_ -> solver "BICGSTAB" nits _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
-       BCG_ -> solver "BCG" nits _xBcg (bcgStep aa) (bcgInit aa b x0)
-       CGS_ -> solver "CGS" nits _x  (cgsStep aa r0hat) (cgsInit aa b x0)
-       GMRES_ -> gmres aa b            
-       CGNE_ -> solver "CGNE" nits _xCgne (cgneStep aa) (cgneInit aa b x0)
-     r0hat = b ^-^ (aa #> x0)
-     nits = 200
-     dm@(m,n) = dim aa
-     nb = dim b
-     solver fname nitermax fproj stepf initf = do
-      xf <- untilConvergedG fname config (const True) stepf initf
-      return $ fproj xf
-       where
-         config =  IterConf nitermax False fproj prd0
+-- -- | Interface method to individual linear solvers
+-- linSolve0 method aa b x0
+--   | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
+--   | otherwise = solve aa b where
+--      solve aa' b' | isDiagonalSM aa' = return $ reciprocal aa' #> b' -- diagonal solve
+--                   | otherwise = xHat
+--      xHat = case method of
+--        BICGSTAB_ -> solver "BICGSTAB" nits _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
+--        BCG_ -> solver "BCG" nits _xBcg (bcgStep aa) (bcgInit aa b x0)
+--        CGS_ -> solver "CGS" nits _x  (cgsStep aa r0hat) (cgsInit aa b x0)
+--        GMRES_ -> gmres aa b            
+--        CGNE_ -> solver "CGNE" nits _xCgne (cgneStep aa) (cgneInit aa b x0)
+--      r0hat = b ^-^ (aa #> x0)
+--      nits = 200
+--      dm@(m,n) = dim aa
+--      nb = dim b
+--      solver fname nitermax fproj stepf initf = do
+--       xf <- untilConvergedG fname config (const True) stepf initf
+--       return $ fproj xf
+--        where
+--          config =  IterConf nitermax False fproj prd0
 
         
   
 
 
 
--- | <\> uses the GMRES method as default
+-- -- | <\> uses the GMRES method as default
 
-instance LinearSystem (SpVector Double) where
-  aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
-    where n = ncols aa
-
--- instance LinearSystem (SpVector (Complex Double)) where
---   aa <\> b = linSolve0 GMRES_ aa b (mkSpVC n $ replicate n 0.1)
+-- instance LinearSystem (SpVector Double) where
+--   aa <\> b = linSolve0 GMRES_ aa b (mkSpVR n $ replicate n 0.1)
 --     where n = ncols aa
+
+-- -- instance LinearSystem (SpVector (Complex Double)) where
+-- --   aa <\> b = linSolve0 GMRES_ aa b (mkSpVC n $ replicate n 0.1)
+-- --     where n = ncols aa
 
 
 
