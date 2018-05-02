@@ -35,6 +35,8 @@ import qualified Control.Exception as E (Exception, Handler)
 import Data.Foldable (foldrM)
 
 import Control.Exception.Common
+import Control.Iterative.Internal
+
 import Numeric.LinearAlgebra.Class
 import Numeric.Eps
 
@@ -57,62 +59,17 @@ instance Show (IterationConfig a b) where
   show (IterConf n qd _ _) = unwords ["Max. # of iterations:",show n,", print debug information:", show qd]
 
 
--- | Iterative algorithms need configuration, state and logging; here we use a transformer stack of ReaderT / StateT / LoggingT (from `logging-effect`)
-newtype IterativeT c msg s m a =
-  IterativeT { unIterativeT :: ReaderT c (StateT s (LoggingT msg m)) a } deriving (Functor, Applicative, Monad, MonadReader c, MonadState s, MonadLog msg)
 
-instance MonadTrans (IterativeT c msg s) where
-  lift = liftIterativeT
 
-liftIterativeT :: Monad m => m a -> IterativeT c msg s m a
-liftIterativeT m = IterativeT . lift . lift $ LoggingT mlog
-  where mlog = ReaderT (const m)
-    
 
-  
--- instance MonadThrow m => MonadThrow (IterativeT c msg s m) where
---   throwM e = lift $ throwM e
 
-runIterativeT :: Handler m message
-              -> r
-              -> s
-              -> IterativeT r message s m a
-              -> m (a, s)
-runIterativeT lh c x0 m =
-  runLoggingT (runStateT (runReaderT (unIterativeT m) c) x0) lh
 
-execIterativeT :: Functor m =>
-                  Handler m message
-               -> r
-               -> s
-               -> IterativeT r message s m a
-               -> m s
-execIterativeT lh c x0 m = snd <$> runIterativeT lh c x0 m
+
 
 -- | Log with a function that computes a severity and a message from the input
 logWith :: MonadLog (WithSeverity a) m => (p -> (Severity, a)) -> p -> m ()
 logWith f x = logMessage (WithSeverity sev sevMsg) where
   (sev, sevMsg) = f x
-      
-
-mkIterativeT :: Monad m =>
-          (a -> s -> message)
-       -> (s -> r -> (a, s))
-       -> IterativeT r message s m a
-mkIterativeT flog fs = IterativeT $ do
-  s <- get
-  c <- ask
-  let (a, s') = fs s c
-  logMessage $ flog a s'
-  put s'
-  return a  
-
-
-
-
-
-
-
 
 
 
@@ -127,20 +84,7 @@ sqDiff f uu vv = sum $ zipWith f uu vv
 
 
 
-data LoopState s = LoopState { lsCounter :: !Int
-                             , lsPrevStates :: [s]
-                             , lsCurrentState :: s } deriving (Eq, Show)
 
--- | Reconstruct state buffers for convergence/divergence estimation
-getBuffers :: Int -> LoopState a -> Maybe ([a], [a])
-getBuffers n (LoopState _ ls s)
-  | length ls < n = Nothing
-  | otherwise = Just (curr, prev) where
-      curr = s : take (n - 1) ls
-      prev = take n ls
-
-mkLoopState :: s -> LoopState s
-mkLoopState = LoopState 0 []
 
 
 
@@ -167,12 +111,27 @@ data IterConfig s t msg a = IterConfig {
     }
 
 
-modifyInspectGuardedM_Iter :: (MonadThrow m, Show a, Typeable a, Show t, Typeable t) =>
-                              Handler m (WithSeverity msg)
-                           -> IterConfig s t msg a
-                           -> (s -> m s)
-                           -> s
-                           -> m a
+data LoopState s = LoopState { lsCounter :: !Int
+                             , lsPrevStates :: [s]
+                             , lsCurrentState :: s } deriving (Eq, Show)
+
+-- | Reconstruct state buffer for convergence/divergence estimation
+getBuffers :: Int -> LoopState a -> Maybe [a]
+getBuffers n (LoopState _ ls s)
+  | length ls < n || n <= 0 = Nothing
+  | otherwise = Just buffer where
+      buffer = s : take n ls
+-- | Construct the initial LoopState with 'lsCounter' = 0, 'lsPrevStates' = []
+mkLoopState :: s -> LoopState s
+mkLoopState = LoopState 0 []
+
+
+-- modifyInspectGuardedM_Iter :: (MonadThrow m, Show a, Typeable a) =>
+--                               Handler m (WithSeverity msg)
+--                            -> IterConfig s t msg a
+--                            -> (s -> m s)
+--                            -> s
+--                            -> m a
 modifyInspectGuardedM_Iter lh r@(IterConfig fname nitermax lwindow pf sf qconverg qdiverg qfinal lwf) f x0
   | nitermax > 0 = run
   | otherwise = throwM (NonNegError fname nitermax)
@@ -191,25 +150,27 @@ modifyInspectGuardedM_Iter lh r@(IterConfig fname nitermax lwindow pf sf qconver
         Left (Diverging' qi qt) -> throwM $ DivergingE fname i qi qt
         Right x -> pure x
     loop = do
-      s@(LoopState i ll x) <- get
+      s@(LoopState i _ x) <- get
       y <- lift $ f x 
       let
-        llf = pf `map` ll
-        qi = sf $ init llf  -- summary of [lwindow + 1 .. 0] states
-        qt = sf $ tail llf  -- "       "  [lwindow     .. 1] states
-        status | length ll < lwindow =                BufferNotReady'
-               | qdiverg qi qt && not (qconverg qi) = Diverging' qi qt        
-               | qconverg qi || qfinal (pf y) =       Converged' qi
-               | i == nitermax - 1 =                  NotConverged' $ pf y
-               | otherwise =                          Converging'         
+        s' = updStateN y s        
+        status = case getBuffers lwindow s' of
+          Nothing -> BufferNotReady'
+          Just buffer -> stat
+            where
+              llf = pf `map` buffer
+              qi = sf $ init llf  -- summary of [lwindow + 1 .. 0] states
+              qt = sf $ tail llf  -- "       "  [lwindow     .. 1] states
+              stat | qdiverg qi qt && not (qconverg qi) = Diverging' qi qt
+                   | qconverg qi || qfinal (pf y) =       Converged' qi
+                   | i == nitermax - 1 =                  NotConverged' $ pf y
+                   | otherwise =                          Converging'  
       case status of
         BufferNotReady' -> do
-          let s' = updStateN y s
           -- logMessage $ WithSeverity Debug ("Buffer not ready") 
           put s'
           loop 
         Converging' -> do
-          let s' = updStateN y s
           -- logMessage $ WithSeverity Informational "Converging"
           logWith lwf y          
           put s'

@@ -53,7 +53,8 @@ library
                        Data.Sparse.SpVector
                        Data.Sparse.SpMatrix
                        Data.Sparse.Common
-                       Control.Exception.Common                       
+                       Control.Exception.Common
+                              
   other-modules:       Data.Sparse.Internal.IntMap2
                        Data.Sparse.Internal.IntM
                        Data.Sparse.Internal.Utils
@@ -69,6 +70,7 @@ library
                        Data.Sparse.PPrint
                        Data.Sparse.Types
                        Control.Iterative
+                       Control.Iterative.Internal 
                        Numeric.LinearAlgebra.LinearSolvers.Experimental
                        Numeric.LinearAlgebra.EigenSolvers.Experimental
   build-depends:       base >= 4.7 && < 5
