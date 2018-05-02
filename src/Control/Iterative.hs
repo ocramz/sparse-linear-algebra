@@ -19,7 +19,7 @@ import Control.Applicative
 
 import Control.Monad (when, replicateM)
 import Control.Monad.Reader (MonadReader(..), asks)
-import Control.Monad.State.Strict (MonadState(..), get, put)
+import Control.Monad.State.Strict (MonadState(..), get, put, gets)
 import Control.Monad.Trans.Class (MonadTrans(..), lift)
 import Control.Monad.Trans.State.Strict (StateT(..), runStateT, execStateT)
 import Control.Monad.Trans.Reader (ReaderT(..), runReaderT)
@@ -176,26 +176,45 @@ checkConvergStatus y i ll = do
 
 
 
+data LoopState s = LoopState { lsCounter :: !Int
+                             , lsPrevStates :: [s]
+                             , lsCurrentState :: s } deriving (Eq, Show)
+
+mkLoopState :: s -> LoopState s
+mkLoopState = LoopState 0 []
+
+updState :: s -> LoopState s -> LoopState s
+updState snew (LoopState i lss s) = LoopState (i + 1) (s : lss) snew
+
+
 -- TODO : add configuration 
 -- TODO : add input validation
 -- TODO : add logging 
 -- TODO : add exception throwing (throwM upon Diverged, NotConverged)
-modifyInspectGuardedM_Iter :: Monad f =>
-                              Handler f (WithSeverity String)
-                           -> IterConfig b t a
-                           -> (b -> f b)
-                           -> b
-                           -> f (Either (ConvergenceStatus' a b) b)
-modifyInspectGuardedM_Iter lh r f x0 = fst <$> runIterativeT lh r x0 (go 0 [])
+-- modifyInspectGuardedM_Iter :: Monad f =>
+--                               Handler f (WithSeverity String)
+--                            -> IterConfig b t a
+--                            -> (b -> f b)
+--                            -> b
+--                            -> f (Either (ConvergenceStatus' a b) b)
+modifyInspectGuardedM_Iter lh r f x0 = run
   -- procOutput
   where
+    run = do
+      aLast <- fst <$> runIterativeT lh r x0 (loop 0 [])
+      let nitermax = icNumIterationsMax r
+          fname = icFunctionName r
+      case aLast of
+        Left (NotConverged' y) -> throwM $ NotConvergedE fname nitermax y
+        -- Left (Diverging' qi qt) -> throwM $ DivergingE fname i qi qt
+        Right x -> pure x
     -- procOutput = do
-    --   nitermax <- asks icNumIterationsMax
+    --   
     --   (aLast, sLast) <- runIterativeT lh r x0 (go 0 [])
     --   case aLast of
     --     Left (NotConverged' y) -> throwM $ NotConvergedE "bla" nitermax y
     --     Right x -> pure x
-    go i ll = do
+    loop i ll = do
       x <- get
       y <- lift $ f x
       status <- checkConvergStatus y i ll 
@@ -203,7 +222,7 @@ modifyInspectGuardedM_Iter lh r f x0 = fst <$> runIterativeT lh r x0 (go 0 [])
         BufferNotReady' -> do  
           put y
           let ll' = y : ll    -- cons current state to buffer
-          go (i + 1) ll'
+          loop (i + 1) ll'
         Converged' qi -> do
           -- put y
           return $ Right y
@@ -214,7 +233,7 @@ modifyInspectGuardedM_Iter lh r f x0 = fst <$> runIterativeT lh r x0 (go 0 [])
           put y
           let ll' = init (y : ll) -- rolling state window
           logMessage $ WithSeverity Debug ("Converging" :: String)
-          go (i + 1) ll'
+          loop (i + 1) ll'
         NotConverged' y -> do
           -- put y
           return $ Left (NotConverged' y) -- (NotConvergedE fname nitermax y)   
