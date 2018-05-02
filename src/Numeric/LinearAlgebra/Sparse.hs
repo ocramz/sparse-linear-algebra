@@ -1060,55 +1060,7 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
 
 
 
--- -- * Random arrays
 
--- randArray :: PrimMonad m => Int -> Double -> Double -> m [Double]
--- randArray n mu sig = do
---   g <- MWC.create
---   replicateM n (MWC.normal mu sig g)
-  
-
-
-
--- -- * Random matrices and vectors
-
--- -- |Dense SpMatrix
--- randMat :: PrimMonad m => Int -> m (SpMatrix Double)
--- randMat n = do
---   g <- MWC.create
---   aav <- replicateM (n^2) (MWC.normal 0 1 g)
---   let ii_ = [0 .. n-1]
---       (ix_,iy_) = unzip $ concatMap (zip ii_ . replicate n) ii_
---   return $ fromListSM (n,n) $ zip3 ix_ iy_ aav
-
--- -- | Dense SpVector  
--- randVec :: PrimMonad m => Int -> m (SpVector Double)
--- randVec n = do
---   g <- MWC.create
---   bv <- replicateM n (MWC.normal 0 1 g)
---   let ii_ = [0..n-1]
---   return $ fromListSV n $ zip ii_ bv
-
-
-
--- -- | Sparse SpMatrix
--- randSpMat :: Int -> Int -> IO (SpMatrix Double)
--- randSpMat n nsp | nsp > n^2 = error "randSpMat : nsp must be < n^2 "
---                 | otherwise = do
---   g <- MWC.create
---   aav <- replicateM nsp (MWC.normal 0 1 g)
---   ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
---   jj <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
---   return $ fromListSM (n,n) $ zip3 ii jj aav
-
--- -- | Sparse SpVector
--- randSpVec :: Int -> Int -> IO (SpVector Double)
--- randSpVec n nsp | nsp > n = error "randSpVec : nsp must be < n"
---                 | otherwise = do
---   g <- MWC.create
---   aav <- replicateM nsp (MWC.normal 0 1 g)
---   ii <- replicateM nsp (MWC.uniformR (0, n-1) g :: IO Int)
---   return $ fromListSV n $ zip ii aav
 
 
 

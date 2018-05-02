@@ -75,6 +75,7 @@ library
   build-depends:       base >= 4.7 && < 5
                      -- , deepseq
                      , containers >= 0.5.7.1
+                     -- , data-default-class
                      , exceptions >= 0.8.3
                      , logging-effect >= 1.2.0
                      , mtl >= 2.2.1                                          
@@ -119,7 +120,6 @@ test-suite spec
                      , mtl >= 2.2.1
                      , exceptions
                      , logging-effect
-                     , mwc-random
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra
                      , scientific

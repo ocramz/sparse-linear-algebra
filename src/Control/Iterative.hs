@@ -1,4 +1,4 @@
-{-# language FlexibleContexts, GeneralizedNewtypeDeriving, DeriveFunctor #-}
+{-# language FlexibleContexts, GeneralizedNewtypeDeriving, DeriveFunctor, DeriveGeneric #-}
 {-# language OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
@@ -34,6 +34,8 @@ import qualified Control.Exception as E (Exception, Handler)
 
 import Data.Foldable (foldrM)
 
+import GHC.Generics
+
 import Control.Exception.Common
 import Control.Iterative.Internal
 
@@ -41,61 +43,17 @@ import Numeric.LinearAlgebra.Class
 import Numeric.Eps
 
 
--- data ConvergenceStatus a = BufferNotReady
---                          | Converging
---                          | Converged a
---                          | Diverging a a
---                          | NotConverged
---                            deriving (Eq, Show, Typeable)
--- instance (Typeable a, Show a) => Exception (ConvergenceStatus a)
 
--- -- FIXME I don't like this; logging shouldn't be in IO, `iterationView` is too general, etc.
--- data IterationConfig a b =
---   IterConf { numIterationsMax :: Int     -- ^ Max.# of iterations
---            , printDebugInfo :: Bool      -- ^ Print iteration info to stdout 
---            , iterationView :: a -> b     -- ^ Project state to a type `b`
---            , printDebugIO :: b -> IO ()} -- ^ print function for type `b`
--- instance Show (IterationConfig a b) where
---   show (IterConf n qd _ _) = unwords ["Max. # of iterations:",show n,", print debug information:", show qd]
+-- * ITERATION
 
-
-
-
-
-
-
-
-
--- | Log with a function that computes a severity and a message from the input
-logWith :: MonadLog (WithSeverity a) m => (p -> (Severity, a)) -> p -> m ()
-logWith f x = logMessage (WithSeverity sev sevMsg) where
-  (sev, sevMsg) = f x
-
-
-
-sqDiffPairs :: Num a => (v -> v -> a) -> [v] -> a
-sqDiffPairs f uu = sqDiff f (init uu) (tail uu)
-
-sqDiff :: Num a => (u -> v -> a) -> [u] -> [v] -> a
-sqDiff f uu vv = sum $ zipWith f uu vv
-
-
-
-
-
-
-
-
-
-
-data ConvergenceStatus' a b =
-  BufferNotReady'
-  | Converging'
-  | Converged' a
-  | Diverging' a a
-  | NotConverged' b
-  deriving (Eq, Show, Typeable)
-instance (Typeable a, Show a, Typeable b, Show b) => Exception (ConvergenceStatus' a b)
+-- | Iteration state machine
+data ConvergenceStatus s a =
+  BufferNotReady
+  | Converging
+  | Converged s
+  | Diverging a a
+  | NotConverged s
+  deriving (Eq, Show)
 
 -- | Configuration data for the iterative process
 data IterConfig s t msg a = IterConfig {
@@ -103,14 +61,28 @@ data IterConfig s t msg a = IterConfig {
   , icNumIterationsMax :: Int -- ^ Max # of iterations
   , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
   , icStateProj :: s -> t          -- ^ Project the state
-  , icStateSummary :: [t] -> a     -- ^ Produce a summary from a list of states
+  , icStateSummary :: [t] -> a     -- ^ Produce a summary from a list of state projections
   , icStateConverging :: a -> Bool  -- ^ Are we converging ?
   , icStateDiverging :: a -> a -> Bool -- ^ Are we diverging ?
   , icStateFinal :: t -> Bool -- ^ Has the state converged ?
   , icLogWith :: s -> (Severity, msg) -- ^ Compute log severity and message
-    }
+    } deriving Generic
 
+-- | Build an 'IterConfig'
+mkIterConfig :: String
+             -> Int
+             -> Int
+             -> (s -> t)
+             -> ([t] -> a)
+             -> (a -> Bool)
+             -> (a -> a -> Bool)
+             -> (t -> Bool)
+             -> (s -> (Severity, msg))
+             -> IterConfig s t msg a
+mkIterConfig = IterConfig     
 
+  
+-- | A record to keep track of the current iteration, a list of the prior states and the current state.
 data LoopState s = LoopState { lsCounter :: !Int
                              , lsPrevStates :: [s]
                              , lsCurrentState :: s } deriving (Eq, Show)
@@ -121,18 +93,18 @@ getBuffers n (LoopState _ ls s)
   | length ls < n || n <= 0 = Nothing
   | otherwise = Just buffer where
       buffer = s : take n ls
+      
 -- | Construct the initial LoopState with 'lsCounter' = 0, 'lsPrevStates' = []
 mkLoopState :: s -> LoopState s
 mkLoopState = LoopState 0 []
 
-
--- FIXME : return the final state instead
-modifyInspectGuardedM :: (MonadThrow m, Show t, Show a, Typeable t, Typeable a) =>
+-- | Configurable iteration combinator, with convergence monitoring and logging
+modifyInspectGuardedM :: (MonadThrow m, Show a, Typeable a, Show t, Typeable t) =>
                          Handler m (WithSeverity msg)
                       -> IterConfig s t msg a
                       -> (s -> m s)
                       -> s
-                      -> m a
+                      -> m s
 modifyInspectGuardedM lh r@(IterConfig fname nitermax lwindow pf sf qconverg qdiverg qfinal lwf) f x0
   | nitermax > 0 = run
   | otherwise = throwM (NonNegError fname nitermax)
@@ -147,8 +119,8 @@ modifyInspectGuardedM lh r@(IterConfig fname nitermax lwindow pf sf qconverg qdi
       (aLast, sLast) <- runIterativeT lh r s0 loop -- (loop 0 [])
       let i = lsCounter sLast
       case aLast of
-        Left (NotConverged' y) -> throwM $ NotConvergedE fname nitermax y
-        Left (Diverging' qi qt) -> throwM $ DivergingE fname i qi qt
+        Left (NotConverged y) -> throwM $ NotConvergedE fname nitermax (pf y)
+        Left (Diverging qi qt) -> throwM $ DivergingE fname i qi qt
         Right x -> pure x
         -- _ -> throwM $ IterE fname "asdf"
     loop = do
@@ -157,56 +129,32 @@ modifyInspectGuardedM lh r@(IterConfig fname nitermax lwindow pf sf qconverg qdi
       let
         s' = updStateN y s        
         status = case getBuffers lwindow s' of
-          Nothing -> BufferNotReady'
+          Nothing -> BufferNotReady
           Just buffer -> stat
             where
               llf = pf `map` buffer
               qi = sf $ init llf  -- summary of [lwindow + 1 .. 0] states
               qt = sf $ tail llf  -- "       "  [lwindow     .. 1] states
-              stat | qdiverg qi qt && not (qconverg qi) = Diverging' qi qt
-                   | qconverg qi || qfinal (pf y) =       Converged' qi
-                   | i == nitermax - 1 =                  NotConverged' $ pf y
-                   | otherwise =                          Converging'  
+              stat | qdiverg qi qt && not (qconverg qi) = Diverging qi qt
+                   | qconverg qi || qfinal (pf y) =       Converged y
+                   | i == nitermax - 1 =                  NotConverged y
+                   | otherwise =                          Converging 
       case status of
-        BufferNotReady' -> do
-          -- logMessage $ WithSeverity Debug ("Buffer not ready") 
+        BufferNotReady -> do
           put s'
           loop 
-        Converging' -> do
-          -- logMessage $ WithSeverity Informational "Converging"
+        Converging -> do
           logWith lwf y          
           put s'
           loop 
-        Diverging' qi qt -> 
-          pure $ Left (Diverging' qi qt) -- (DivergingE fname i qi qt)
-        Converged' qi -> 
+        Diverging qi qt -> 
+          pure $ Left (Diverging qi qt) 
+        Converged qi -> 
           pure $ Right qi
-        NotConverged' y -> 
-          pure $ Left (NotConverged' y) -- (NotConvergedE fname nitermax y)           
+        NotConverged y -> 
+          pure $ Left (NotConverged y)
     
 
-
-
-  
-
-
-
-
-
-bracketsUpp :: Show a => a -> String
-bracketsUpp p = unwords ["[", map toUpper (show p), "]"]
-
-withSeverity :: (t -> String) -> WithSeverity t -> String
-withSeverity k (WithSeverity u a ) = unwords [bracketsUpp u, k a]
-
-
-
--- -- >>> renderWithSeverity id (WithSeverity Informational "Flux capacitor is functional")
--- -- [Informational] Flux capacitor is functional
--- renderWithSeverity
---   :: (a -> PP.Doc) -> (WithSeverity a -> PP.Doc)
--- renderWithSeverity k (WithSeverity u a) =
---   PP.brackets (PP.pretty u) PP.<+> PP.align (k a)
 
 
 
@@ -240,28 +188,28 @@ modifyUntilM_ q f = do
 -- modifyUntil' config q f x0 = modifyUntilM' config q (pure . f) x0
 
 
--- -- modifyUntilM' :: MonadLog String m =>
--- --    IterationConfig a b -> (a -> Bool) -> (a -> m a) -> a -> m a
--- modifyUntilM' config q f x0 = execStateT (go 0) x0 where
---   pf = iterationView config
---   go i = do
---    x <- get
---    y <- lift $ f x
---    when (printDebugInfo config) $ do
---      logMessage $ unwords ["Iteration", show i, "\n"]
---    -- when (printDebugInfo config) $ liftIO $ do
---    --   putStrLn $ unwords ["Iteration", show i, "\n"]
---    --   printDebugIO config (pf y) 
---    put y
---    if q y
---      then return y
---      else go (i + 1)
+-- modifyUntilM' :: MonadLog String m =>
+--    IterationConfig a b -> (a -> Bool) -> (a -> m a) -> a -> m a
+modifyUntilM' config q f x0 = execStateT (go 0) x0 where
+  -- logf ii = (Informational, unwords ["Iteration", show ii, "\n"])
+  go i = do
+   x <- get
+   y <- lift $ f x
+   logWith (icLogWith config) i
+   put y
+   if q y
+     then return y
+     else go (i + 1)
 
 
 
 
--- -- -- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
-
+-- | `untilConvergedG0` is a special case of `untilConvergedG` that assesses convergence based on the L2 distance to a known solution `xKnown`
+-- untilConvergedG0 :: (Show p, MonadThrow m, Typeable v, Typeable (Magnitude v),
+--                      Normed v) =>
+--                     Handler m (WithSeverity msg)
+--                  -> IterConfig s v msg a
+--                  -> v -> (s -> s) -> s -> m s
 untilConvergedG0 lh config xKnown f x0 = 
   modifyInspectGuarded lh config' f x0
    where
@@ -274,17 +222,44 @@ untilConvergedG0 lh config xKnown f x0 =
   
 
 
--- -- -- | This function makes some default choices on the `modifyInspectGuarded` machinery: convergence is assessed using the squared L2 distance between consecutive states, and divergence is detected when this function is increasing between pairs of measurements.
+-- | This function makes some default choices on the `modifyInspectGuarded` machinery: convergence is assessed using the squared L2 distance between consecutive states, and divergence is detected when this function is increasing between pairs of measurements.
+untilConvergedG :: (Show t, Epsilon t, MonadThrow m, Typeable t, Typeable (Magnitude t), Normed t) =>
+                   Handler m (WithSeverity msg)
+                -> String
+                -> Int
+                -> Int
+                -> (s -> t)
+                -> (s -> (Severity, msg))
+                -> (s -> s)
+                -> s
+                -> m s
+untilConvergedG lh fname nitermax lwindow fp flog =
+  modifyInspectGuarded lh config
+  where
+    config = mkL2ConvergenceIterConf fname nitermax lwindow fp qfinal flog
+    qfinal = nearZero
 
--- untilConvergedG fname config =
---   modifyInspectGuarded fname config norm2Diff nearZero (>)
 
-
--- -- -- | ", monadic version
--- -- untilConvergedGM ::
 
 -- untilConvergedGM fname config =
 --   modifyInspectGuardedM fname config norm2Diff nearZero (>)
+
+-- | Create a configuration for L2 convergence:
+--
+-- state summary : squared distance of vector sequence
+-- convergence criterion : " ~= zero
+-- divergence criterion : current summary is > previous one 
+mkL2ConvergenceIterConf :: Normed v =>
+                           String      -- ^ Function name
+                        -> Int         -- ^ Max # iterations
+                        -> Int         -- ^ Buffer size
+                        -> (s -> v)    -- ^ State projection 
+                        -> (v -> Bool) -- ^ Termination criterion
+                        -> (s -> (Severity, msg)) -- ^ Log formatting
+                        -> IterConfig s v msg (Magnitude v)
+mkL2ConvergenceIterConf fname nitermax lwindow fp =
+  mkIterConfig fname nitermax lwindow fp norm2Diff nearZero (>)
+
 
 
 modifyInspectGuarded :: (MonadThrow m, Show t, Show a, Typeable t, Typeable a) =>
@@ -292,64 +267,34 @@ modifyInspectGuarded :: (MonadThrow m, Show t, Show a, Typeable t, Typeable a) =
                      -> IterConfig s t msg a         -- ^ Configuration
                      -> (s -> s)                     -- ^ State evolution
                      -> s                            -- ^ Initial state
-                     -> m a                          -- ^ Final result
+                     -> m s                          -- ^ Final state
 modifyInspectGuarded lh config f x0 = modifyInspectGuardedM lh config (pure . f) x0
   
 
 
--- -- -- | ", monadic version
--- -- modifyInspectGuardedM ::
--- --   (MonadThrow m, MonadLog String m, Typeable s, Show s, Typeable a, Show a) =>
--- --      String
--- --      -> IterationConfig s v
--- --      -> ([v] -> a)
--- --      -> (a -> Bool)
--- --      -> (a -> a -> Bool)
--- --      -> (v -> Bool)
--- --      -> (s -> m s)
--- --      -> s
--- --      -> m s
--- modifyInspectGuardedM fname config sf qconverg qdiverg qfinal f x0 
---   | nitermax > 0 = execStateT (go 0 []) x0
---   | otherwise = throwM (NonNegError fname nitermax)
---   where
---     lwindow = 3
---     nitermax = numIterationsMax config
---     pf = iterationView config
---     checkConvergStatus y i ll
---       | length ll < lwindow = BufferNotReady
---       | qdiverg qi qt && not (qconverg qi) = Diverging qi qt        
---       | qconverg qi || qfinal (pf y) = Converged qi
---       | i == nitermax - 1 = NotConverged         
---       | otherwise = Converging
---       where llf = pf <$> ll
---             qi = sf $ init llf         -- summary of latest 2 states
---             qt = sf $ tail llf         -- "       "  previous 2 states
---     go i ll = do
---       x <- get
---       y <- lift $ f x
---       when (printDebugInfo config) $ do
---         logMessage $ unwords ["Iteration", show i]
---       -- when (printDebugInfo config) $ liftIO $ do
---       --   putStrLn $ unwords ["Iteration", show i]
---       --   printDebugIO config (pf y) 
---       case checkConvergStatus y i ll of
---         BufferNotReady -> do  
---           put y
---           let ll' = y : ll    -- cons current state to buffer
---           go (i + 1) ll'
---         Converged qi -> put y
---         Diverging qi qt -> do
---           put y
---           throwM (DivergingE fname i qi qt)
---         Converging -> do
---           put y
---           let ll' = init (y : ll) -- rolling state window
---           go (i + 1) ll'
---         NotConverged -> do
---           put y
---           throwM (NotConvergedE fname nitermax y)
-             
+
+
+-- * LOGGING
+
+-- | Log with a function that computes a severity and a message from the input
+logWith :: MonadLog (WithSeverity a) m => (p -> (Severity, a)) -> p -> m ()
+logWith f x = logMessage (WithSeverity sev sevMsg) where
+  (sev, sevMsg) = f x
+
+bracketsUpp :: Show a => a -> String
+bracketsUpp p = unwords ["[", map toUpper (show p), "]"]
+
+withSeverity :: (t -> String) -> WithSeverity t -> String
+withSeverity k (WithSeverity u a ) = unwords [bracketsUpp u, k a]
+
+-- -- >>> renderWithSeverity id (WithSeverity Informational "Flux capacitor is functional")
+-- -- [Informational] Flux capacitor is functional
+-- renderWithSeverity
+--   :: (a -> PP.Doc) -> (WithSeverity a -> PP.Doc)
+-- renderWithSeverity k (WithSeverity u a) =
+--   PP.brackets (PP.pretty u) PP.<+> PP.align (k a)
+
+                                      
 
 
 -- | Some useful combinators
@@ -397,6 +342,14 @@ combx g f x = g <$> f x
 
 -- | Helpers
 
+sqDiffPairs :: Num a => (v -> v -> a) -> [v] -> a
+sqDiffPairs f uu = sqDiff f (init uu) (tail uu)
+
+sqDiff :: Num a => (u -> v -> a) -> [u] -> [v] -> a
+sqDiff f uu vv = sum $ zipWith f uu vv
+
+
+
 -- | Relative residual
 relRes :: (Normed t, LinearVectorSpace t) =>
      MatrixType t -> t -> t -> Magnitude t
@@ -424,14 +377,11 @@ relTol a b = norm2 (a ^-^ b) / m where
   m = 1 + min (norm2 a) (norm2 b)
 
 
--- qdiverg :: Ord a => a -> a -> Bool
--- qdiverg = (>)
 
-norm2Diff [s1, s0] = norm2 (s1 ^-^ s0)
-norm2Diff _ = 1/0
-
-
-
-
-
+-- | NB: use it on a list of >= 2 elements !!
+norm2Diff :: Normed v => [v] -> Magnitude v 
+norm2Diff v = sum $ zipWith f va vb where
+  f v1 v2 = norm2 $ v1 ^-^ v2
+  va = init v
+  vb = tail v
 
