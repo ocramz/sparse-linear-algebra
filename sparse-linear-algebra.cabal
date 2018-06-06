@@ -69,7 +69,8 @@ library
                        Data.Sparse.PPrint
                        Data.Sparse.Types
                        Control.Iterative
-                       Control.Iterative.Internal 
+                       Control.Iterative.Internal
+                       Control.Misc
                        Numeric.LinearAlgebra.LinearSolvers.Experimental
                        Numeric.LinearAlgebra.EigenSolvers.Experimental
   build-depends:       base >= 4.7 && < 5

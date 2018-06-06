@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
-{-# language ApplicativeDo #-}
+{-# language RankNTypes #-}
+-- {-# language ApplicativeDo #-}
 -- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
 {-|
 
@@ -128,13 +129,14 @@ import Control.Exception.Common
 import Control.Iterative
 import Data.Sparse.Common
 
-import Control.Monad.Catch
-import Control.Monad.Log
+import Control.Monad.Catch 
+import qualified Control.Monad.Log as L (Handler, WithSeverity(..), Severity(..))
 import Data.Typeable
 
 -- import Control.Applicative ((<|>))
 
 import Control.Monad.State.Strict
+import Control.Monad.Log (Handler)
 import qualified Control.Monad.Trans.State  as MTS 
 import Data.Complex
 
@@ -978,28 +980,34 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
                     deriving (Eq, Show)
 
 -- -- | Interface method to individual linear solvers
--- linSolve0 method aa b x0
+-- linSolve0 fh flog method aa b x0
 --   | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
 --   | otherwise = solve aa b where
---      solve aa' b' | isDiagonalSM aa' = return $ reciprocal aa' #> b' -- diagonal solve
+--      solve aa' b' | isDiagonalSM aa' =
+--                         return $ reciprocal aa' #> b' -- diagonal solve
 --                   | otherwise = xHat
 --      xHat = case method of
---        BICGSTAB_ -> solver "BICGSTAB" nits _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
---        BCG_ -> solver "BCG" nits _xBcg (bcgStep aa) (bcgInit aa b x0)
+--        -- BICGSTAB_ -> solver "BICGSTAB" nits _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
+--        -- BCG_ -> solver "BCG" nits _xBcg (bcgStep aa) (bcgInit aa b x0)
 --        CGS_ -> solver "CGS" nits _x  (cgsStep aa r0hat) (cgsInit aa b x0)
---        GMRES_ -> gmres aa b            
+--        -- GMRES_ -> gmres aa b          
 --        CGNE_ -> solver "CGNE" nits _xCgne (cgneStep aa) (cgneInit aa b x0)
 --      r0hat = b ^-^ (aa #> x0)
 --      nits = 200
---      dm@(m,n) = dim aa
+--      dm@(m, _) = dim aa
 --      nb = dim b
---      solver fname nitermax fproj stepf initf = do
---       xf <- untilConvergedG fname config (const True) stepf initf
---       return $ fproj xf
---        where
---          config =  IterConf nitermax False fproj prd0
+--      lwindow = 3
+--      solver fname nitermax fproj stepf initf =
+--        solver' fname fh flog nitermax lwindow fproj stepf initf
 
-        
+
+
+solver' name fh flog nitermax lwindow fproj stepf initf = do
+  xf <- untilConvergedG fh name nitermax lwindow fproj (flog . fproj) stepf initf
+  return $ fproj xf    
+
+class IterativeSolver s where
+  -- solver :: 
   
 
 
@@ -1052,18 +1060,4 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
 
 -- aa4c :: SpMatrix (Complex Double)
 -- aa4c = toC <$> aa4
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
