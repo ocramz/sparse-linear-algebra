@@ -21,6 +21,7 @@ updNE n s (NE sc scs lbuf)
   | lbuf < n = NE s (sc : scs) (lbuf + 1)
   | otherwise = NE s (sc : init scs) lbuf
 
+-- | Reconstruct the most recent list of states from a 'NonEmpty' record
 getNE :: Int -> NonEmpty a -> Maybe [a]
 getNE n (NE sc scs lbuf)
   | lbuf < n - 1 = Nothing
