@@ -109,9 +109,10 @@ module Numeric.LinearAlgebra.Sparse
          -- * Pretty-printing
          prd, prd0,
          -- * Iteration combinators
-         untilConvergedG0,
-         -- untilConvergedG, untilConvergedGM,
-         modifyInspectGuarded, modifyInspectGuardedM,
+         -- untilConvergedG0,
+         -- -- untilConvergedG, untilConvergedGM,
+         -- modifyInspectGuarded, modifyInspectGuardedM,
+         modifyInspectGuardedM, 
          -- IterationConfig (..),
          modifyUntil, modifyUntilM,
          -- * Internal
@@ -1002,9 +1003,9 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
 
 
 
-solver' name fh flog nitermax lwindow fproj stepf initf = do
-  xf <- untilConvergedG fh name nitermax lwindow fproj (flog . fproj) stepf initf
-  return $ fproj xf    
+-- solver' name fh flog nitermax lwindow fproj stepf initf = do
+--   xf <- untilConvergedG fh name nitermax lwindow fproj (flog . fproj) stepf initf
+--   return $ fproj xf    
 
 class IterativeSolver s where
   -- solver :: 

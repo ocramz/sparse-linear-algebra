@@ -3,11 +3,13 @@ module Data.NonEmpty (NonEmpty, initNE, updNE, getNE) where
 -- | A non-empty container for stuff of type a is an item of type a along with a (possibly empty) list of the same type
 --
 -- Is this already defined somewhere ?
-data NonEmpty a = NE
-  !a   -- ^ Current state
-  ![a] -- ^ Buffer of previous states
-  !Int -- ^ Length of buffer
-  deriving (Eq, Show)
+-- data NonEmpty a = NE
+--   !a   -- ^ Current state
+--   [a] -- ^ Buffer of previous states
+--   !Int -- ^ Length of buffer
+--   deriving (Eq, Show)
+
+data NonEmpty a = NE !a [a] !Int deriving (Eq, Show)
 
 initNE :: a -> NonEmpty a
 initNE a = NE a [] 0
@@ -37,7 +39,7 @@ getNE n (NE sc scs lbuf)
 
 data NEFun a = NEFun
                  { neFunUpdate :: a -> NonEmpty a -> NonEmpty a
-                 , neFunGet :: NonEmpty a -> Maybe [a]}
+                 , neFunGet :: NonEmpty a -> Maybe [a]} 
 
 mkNEfun :: Int -> NEFun a
 mkNEfun n = NEFun (updNE n) (getNE n)
