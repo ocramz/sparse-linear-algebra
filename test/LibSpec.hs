@@ -206,33 +206,34 @@ spec = do
 --   -- --     checkArnoldi tmc4 4 >>= (`shouldBe` True)      
 
 
-{- linear systems -}
+-- * Linear systems
 
--- checkLinSolve method aa b x x0r =
---   either
---     (error . show)
---     (\xhat -> nearZero (norm2Sq (x ^-^ xhat)))
---     (linSolve0 method aa b x0r)
+-- -- checkLinSolve method aa b x x0r =
+-- --   either
+-- --     (error . show)
+-- --     (\xhat -> nearZero (norm2Sq (x ^-^ xhat)))
+-- --     (linSolve0 method aa b x0r)
 
-checkLinSolve' method aa b x x0r =
-  nearZero . norm2 <$> linSolve0 method aa b x0r -- `catch` eh
-  -- where
-  --   eh (NotConvergedE _ i xhat) = return $ xhat ^-^ x
+-- checkLinSolve' method aa b x x0r =
+--   nearZero . norm2 <$> linSolve0 method aa b x0r -- `catch` eh
+--   -- where
+--   --   eh (NotConvergedE _ i xhat) = return $ xhat ^-^ x
 
-checkLinSolve method aa b x x0r = do
-  xhat <- linSolve0 method aa b x0r
-  return $ nearZero $ norm2 (x ^-^ xhat)
+-- checkLinSolve method aa b x x0r = do
+--   xhat <- linSolve0 method aa b x0r
+--   return $ nearZero $ norm2 (x ^-^ xhat)
+  
 
-checkLinSolveR
-  :: (MonadLog String m, MonadCatch m) =>
-     LinSolveMethod 
-     -> SpMatrix Double        -- ^ operator
-     -> SpVector Double        -- ^ r.h.s
-     -> SpVector Double        -- ^ candidate solution
-     -> m Bool
-checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
-  x0r = mkSpVR n $ replicate n 0.1
-  n = ncols aa
+-- checkLinSolveR
+--   :: (MonadLog String m, MonadCatch m) =>
+--      LinSolveMethod 
+--      -> SpMatrix Double        -- ^ operator
+--      -> SpVector Double        -- ^ r.h.s
+--      -> SpVector Double        -- ^ candidate solution
+--      -> m Bool
+-- checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
+--   x0r = mkSpVR n $ replicate n 0.1
+--   n = ncols aa
 
 -- checkLinSolveC
 --   :: (MonadIO m, MonadCatch m) =>
@@ -276,19 +277,19 @@ checkGivens1 tm i j = do -- (rij, nearZero rij) where
   return (rij, nearZero rij)
 
 
-{- QR-}
+-- | QR
 
-checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
-            MonadThrow m, MonadLog String m) =>
-     SpMatrix a
-     -> m Bool
-checkQr = checkQr0 qr
-
-
--- checkQr' :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a) ) =>
+-- checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
+--             MonadThrow m, MonadLog String m) =>
 --      SpMatrix a
---      -> Either SomeException Bool
--- checkQr' = checkQr0 qr
+--      -> m Bool
+-- checkQr = checkQr0 qr
+
+
+-- -- checkQr' :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a) ) =>
+-- --      SpMatrix a
+-- --      -> Either SomeException Bool
+-- -- checkQr' = checkQr0 qr
 
 
 
@@ -313,7 +314,7 @@ checkQr0 mfqr a = do
   
 
 
-{- LU -}
+-- | LU
 
 checkLu :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
       VectorSpace (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
@@ -329,75 +330,73 @@ checkLu a = do
 
 
 
-{- Cholesky -}
+-- | Cholesky
 
-checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
-              MonadThrow m, MonadLog String m) =>
-     SpMatrix a -> m Bool
-checkChol a = do -- c1 && c2 where
-  l <- chol a
-  let c1 = nearZero $ normFrobenius $ sparsifySM ((l ##^ l) ^-^ a)
-      c2 = isLowerTriSM l
-  return $ c1 && c2
+-- checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
+--               MonadThrow m, MonadLog String m) =>
+--      SpMatrix a -> m Bool
+-- checkChol a = do -- c1 && c2 where
+--   l <- chol a
+--   let c1 = nearZero $ normFrobenius $ sparsifySM ((l ##^ l) ^-^ a)
+--       c2 = isLowerTriSM l
+--   return $ c1 && c2
 
 
-{- direct linear solver -}
+-- | direct linear solver 
 
-checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
-      PrintDense (SpVector t),      
-      Epsilon t, MonadThrow m, MonadLog String m) =>
-     SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
-checkLuSolve amat rhs = do
-  (lmat, umat) <- lu amat
-  (w, c1) <- checkTriLowerSolve lmat rhs -- U x = L^-1 b = w
-  (x, c2) <- checkTriUpperSolve umat w   -- x = U^-1 w
-  let r  = (amat #> x) ^-^ rhs
-      c3 = nearZero $ norm2 r
-  return (c1, c2, c3)
+-- checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+--       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
+--       PrintDense (SpVector t),      
+--       Epsilon t, MonadThrow m, MonadLog String m) =>
+--      SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
+-- checkLuSolve amat rhs = do
+--   (lmat, umat) <- lu amat
+--   (w, c1) <- checkTriLowerSolve lmat rhs -- U x = L^-1 b = w
+--   (x, c2) <- checkTriUpperSolve umat w   -- x = U^-1 w
+--   let r  = (amat #> x) ^-^ rhs
+--       c3 = nearZero $ norm2 r
+--   return (c1, c2, c3)
   
-
-
-checkLuSolve' amat rhs = do
-  (lmat, umat) <- lu amat
-  (w, c1) <- checkTriLowerSolve lmat rhs
-  (x, c2) <- checkTriUpperSolve umat w
-  let r  = (amat #> x) ^-^ rhs
-      c3 = nearZero $ norm2 r
-  return (w, x, c1, c2, c3)
+-- checkLuSolve' amat rhs = do
+--   (lmat, umat) <- lu amat
+--   (w, c1) <- checkTriLowerSolve lmat rhs
+--   (x, c2) <- checkTriUpperSolve umat w
+--   let r  = (amat #> x) ^-^ rhs
+--       c3 = nearZero $ norm2 r
+--   return (w, x, c1, c2, c3)
 
 
 
 
-{- triangular solvers -}
+-- | triangular solvers 
 
-checkTriUpperSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
-      PrintDense (SpVector t),
-      MonadThrow m, MonadLog String m) =>
-     SpMatrix t -> SpVector t -> m (SpVector t, Bool)
-checkTriUpperSolve umat rhs = do
-  xhat <- triUpperSolve umat rhs
-  let r = (umat #> xhat) ^-^ rhs
-      flag = nearZero $ norm2 r
-  return (xhat, flag)
+-- checkTriUpperSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+--       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
+--       PrintDense (SpVector t),
+--       MonadThrow m, MonadLog String m) =>
+--      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
+-- checkTriUpperSolve umat rhs = do
+--   xhat <- triUpperSolve umat rhs
+--   let r = (umat #> xhat) ^-^ rhs
+--       flag = nearZero $ norm2 r
+--   return (xhat, flag)
 
-checkTriLowerSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
-      Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
-      PrintDense (SpVector t),      
-      MonadThrow m, MonadLog String m) =>
-     SpMatrix t -> SpVector t -> m (SpVector t, Bool)
-checkTriLowerSolve lmat rhs = do
-  xhat <- triLowerSolve lmat rhs
-  let r = (lmat #> xhat) ^-^ rhs
-      flag = nearZero $ norm2 r
-  return (xhat, flag)
+-- checkTriLowerSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+--       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
+--       PrintDense (SpVector t),      
+--       MonadThrow m, MonadLog String m) =>
+--      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
+-- checkTriLowerSolve lmat rhs = do
+--   xhat <- triLowerSolve lmat rhs
+--   let r = (lmat #> xhat) ^-^ rhs
+--       flag = nearZero $ norm2 r
+--   return (xhat, flag)
 
 
 
     
   
-{- Arnoldi iteration -}
+-- | Arnoldi iteration 
 
 checkArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Normed (SpVector t), MatrixRing (SpMatrix t),
@@ -730,20 +729,20 @@ prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 -- prop_Cholesky (PropMatSPD m) = checkChol m
 
 
--- | QR decomposition
-prop_QR :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a), Epsilon a,
-            MonadThrow m, MonadLog String m) =>
-     PropMatI a -> m Bool
-prop_QR (PropMatI m) = checkQr m
+-- -- | QR decomposition
+-- prop_QR :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a), Epsilon a,
+--             MonadThrow m, MonadLog String m) =>
+--      PropMatI a -> m Bool
+-- prop_QR (PropMatI m) = checkQr m
 
 
--- | check a random linear system
-prop_linSolve :: (MonadLog String m, MonadCatch m) => LinSolveMethod -> PropMatVec Double -> m Bool
-prop_linSolve method (PropMatVec aa x) = do
-  let
-    aai = aa ^+^ eye (nrows aa) -- for invertibility
-    b = aai #> x
-  checkLinSolveR method aai b x
+-- -- | check a random linear system
+-- prop_linSolve :: (MonadLog String m, MonadCatch m) => LinSolveMethod -> PropMatVec Double -> m Bool
+-- prop_linSolve method (PropMatVec aa x) = do
+--   let
+--     aai = aa ^+^ eye (nrows aa) -- for invertibility
+--     b = aai #> x
+--   checkLinSolveR method aai b x
 
 
 
