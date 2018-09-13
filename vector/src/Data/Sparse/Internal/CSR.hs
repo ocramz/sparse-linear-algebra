@@ -1,4 +1,4 @@
-{-# language TypeFamilies, FlexibleInstances, MultiParamTypeClasses, CPP #-}
+{-# language TypeFamilies, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, CPP #-}
 module Data.Sparse.Internal.CSR where
 
 -- import qualified Data.Foldable as F -- (foldl')
@@ -14,6 +14,7 @@ import Control.Monad (when, forM_)
 -- import Data.Sparse.Types
 -- import Data.Sparse.Internal.SVector
 import Data.Sparse.Internal.Vector.Utils
+import Data.Sparse.Utils (sortWith)
 
 import Numeric.LinearAlgebra.Class
 -- import Data.Sparse.Common
@@ -55,9 +56,13 @@ instance Foldable CsrMatrix where
   foldr f z cm = foldr f z (csrVal cm)
 
 
+instance HasData (CsrMatrix a) where
+
+instance Sparse (CsrMatrix a) where
+
 -- instance Set CsrMatrix where -- TODO: efficiency of intersection and union of sparse matrices depends on internal representation
 
-instance Show a => Show (CsrMatrix a) where
+instance (Show a) => Show (CsrMatrix a) where
   show m'@(CsrM m n nz cix rp x) = szs where
     szs = unwords ["CSR (",show m, "x", show n,"),",show nz, "NZ ( sparsity",show (spy m'),"), column indices:",show cix,", row pointers:", show rp,", data:",show x]
 
@@ -140,9 +145,10 @@ transposeCSR mm = toCSR n m $ V.zip3 jj ii xx where
 
 -- some /sparse-linear-algebra/ instances
 
-instance FiniteDim CsrMatrix where
-  type FDSize CsrMatrix = (Int, Int)
+instance FiniteDim (CsrMatrix a) where
+  type FDSize (CsrMatrix a) = (Int, Int)
   dim m = (csrNrows m, csrNcols m)
+  
 
 -- instance HasData CsrMatrix a where
 --   nnz = csrNz

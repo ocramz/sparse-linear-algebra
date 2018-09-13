@@ -1,8 +1,10 @@
-module Data.Sparse.Utils where
+module Data.Sparse.Utils (unionWithD, intersectWithD, indexed, indexed2, minTup, maxTup, LB, UB, inBounds0, inBounds02, sortWith) where
 
 -- import Control.Arrow (first, second)
 import Data.Ord
 import qualified Data.Vector as V
+
+import Data.Sparse.Internal.Utils
 
 -- * Misc. utilities
 

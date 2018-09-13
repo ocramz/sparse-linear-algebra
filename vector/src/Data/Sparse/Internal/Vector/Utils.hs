@@ -24,3 +24,8 @@ csPtrV eqf n xs = V.create createf where
                               loop v (V.drop lp ll) (succ i) count'
     loop vm xs 0 c
     return vm
+
+
+
+fst3 :: (a, b, c) -> a
+fst3 (x, _, _) = x
