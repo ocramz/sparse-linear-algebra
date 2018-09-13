@@ -53,6 +53,7 @@ library
                        Data.Sparse.SpVector
                        Data.Sparse.SpMatrix
                        Data.Sparse.Common
+                       Data.Sparse.Utils
                        Control.Exception.Common
   other-modules:       Data.Sparse.Internal.IntMap2
                        Data.Sparse.Internal.IntM
@@ -65,7 +66,7 @@ library
                        Data.Sparse.Internal.TriMatrix
                        -- Data.Sparse.Internal.CSB
                        -- Data.Sparse.Internal.CSC           
-                       Data.Sparse.Utils
+                       -- Data.Sparse.Utils
                        Data.Sparse.PPrint
                        Data.Sparse.Types
                        Control.Iterative
