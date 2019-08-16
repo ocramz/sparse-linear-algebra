@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Data.Sparse.Utils (unionWithD, intersectWithD, indexed, indexed2, minTup, maxTup, LB, UB, inBounds0, inBounds02, sortWith) where
 
 -- import Control.Arrow (first, second)
@@ -83,8 +85,8 @@ safe q f v | q v = Nothing
 -- | Componentwise tuple operations
 -- TODO : use semilattice properties instead
 maxTup, minTup :: Ord t => (t, t) -> (t, t) -> (t, t)
-maxTup (x1,y1) (x2,y2) = (max x1 x2, max y1 y2)
-minTup (x1,y1) (x2,y2) = (min x1 x2, min y1 y2)
+maxTup (!x1,!y1) (!x2,!y2) = (max x1 x2, max y1 y2)
+minTup (!x1,!y1) (!x2,!y2) = (min x1 x2, min y1 y2)
 
 
 
