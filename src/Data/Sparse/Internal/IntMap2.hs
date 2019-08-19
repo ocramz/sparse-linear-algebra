@@ -23,9 +23,10 @@ import GHC.Exts
 --   IM.Key -> IM.Key -> a -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 insertIM2
   :: IM.Key -> IM.Key -> a -> I.IntM (I.IntM a) -> I.IntM (I.IntM a)
-insertIM2 i j x imm = I.insert i ro imm where
-  ro = maybe (I.singleton j x) (I.insert j x) (I.lookup i imm)
-{-# inline insertIM2 #-}  
+insertIM2 i j x (I.IntM imm) = I.IntM $ IM.alter ro i imm where
+  ro Nothing = Just $ I.singleton j x
+  ro (Just m) = Just $ I.insert j x m
+{-# inline insertIM2 #-}
 
 -- * Lookup
 
