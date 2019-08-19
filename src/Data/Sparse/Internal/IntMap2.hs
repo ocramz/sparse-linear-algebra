@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Data.Sparse.Internal.IntMap2 where
 
 import qualified Data.Sparse.Internal.IntM as I
@@ -63,8 +65,8 @@ ifoldlIM2' f empty mm = I.foldlWithKey' accRow empty mm where
 --   IM.IntMap (IM.IntMap t) ->  
 --   IM.IntMap a
 ifoldlIM2 f m         = I.foldlWithKey' accRow I.empty m where
-  accRow    acc i row = I.foldlWithKey' (accElem i) acc row
-  accElem i acc j x   = f i j x acc
+  accRow    !acc i row = I.foldlWithKey' (accElem i) acc row
+  accElem i !acc j x   = f i j x acc
 {-# inline ifoldlIM2 #-}  
 
 -- |Left fold over an IM2, with general accumulator

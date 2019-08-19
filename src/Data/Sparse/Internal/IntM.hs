@@ -1,4 +1,4 @@
-{-# language DeriveFunctor, DeriveFoldable, TypeFamilies #-}
+{-# language DeriveFunctor, DeriveFoldable, TypeFamilies, BangPatterns #-}
 module Data.Sparse.Internal.IntM where
 
 import Data.Sparse.Utils
@@ -58,7 +58,7 @@ findMin (IntM im) = IM.findMin im
 findMax (IntM im) = IM.findMax im
 
 (!) :: IntM a -> IM.Key -> a
-(IntM im) ! i = im IM.! i
+(!) (IntM im) i = im IM.! i
 
 
 instance IsList (IntM a) where
@@ -69,8 +69,8 @@ instance IsList (IntM a) where
 
 
 instance Set IntM where
-  liftU2 f (IntM a) (IntM b) = IntM $ IM.unionWith f a b
-  liftI2 f (IntM a) (IntM b) = IntM $ IM.intersectionWith f a b
+  liftU2 f (IntM !a) (IntM !b) = IntM $ IM.unionWith f a b
+  liftI2 f (IntM !a) (IntM !b) = IntM $ IM.intersectionWith f a b
 
 
 instance AdditiveGroup a => AdditiveGroup (IntM a) where
