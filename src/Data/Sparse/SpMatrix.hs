@@ -1,5 +1,5 @@
 {-# language FlexibleInstances, FlexibleContexts, TypeFamilies #-}
-{-# language DeriveFunctor, DeriveFoldable #-}
+{-# language DeriveFunctor, DeriveFoldable, BangPatterns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -203,11 +203,11 @@ mkSubDiagonal n o xx | abs o < n = if o >= 0
 
 -- | Insert an element in a preexisting Spmatrix at the specified indices
 insertSpMatrix :: IxRow -> IxCol -> a -> SpMatrix a -> SpMatrix a
-insertSpMatrix i j x s
-  | inBounds02 d (i,j) = SM d $ insertIM2 i j x smd 
+insertSpMatrix !i !j !x s
+  | inBounds02 d (i,j) = SM d $! insertIM2 i j x smd 
   | otherwise = error "insertSpMatrix : index out of bounds" where
-      smd = immSM s
-      d = dim s
+      !smd = immSM s
+      !d = dim s
 
 
 
@@ -232,7 +232,8 @@ mkSpMC :: Foldable t =>
    (Int, Int) -> t (IxRow, IxCol, Complex Double) -> SpMatrix (Complex Double)
 mkSpMC d ixv = fromListSM d ixv :: SpMatrix (Complex Double)
 
-
+unsafeMkSp :: (Int, Int) -> IM.IntMap (IM.IntMap a) -> SpMatrix a
+unsafeMkSp dims = SM dims . IntM . fmap IntM
 
 
 -- | Create new SpMatrix assuming contiguous, 0-based indexing of elements
@@ -707,7 +708,7 @@ swapRowsSafe i1 i2 m
 -- ** Matrix transpose
 -- | transposeSM : Matrix transpose
 transposeSM :: SpMatrix a -> SpMatrix a
-transposeSM (SM (m, n) im) = SM (n, m) (transposeIM2 im)
+transposeSM (SM (m, n) im) = SM (n, m) $! transposeIM2 im
 
 -- | Hermitian conjugate
 hermitianConj :: Num a => SpMatrix (Complex a) -> SpMatrix (Complex a)
@@ -780,13 +781,13 @@ matMat_ pt mm1 mm2 =
   case pt of AB -> matMatCheck (matMatUnsafeWith transposeIM2) mm1 mm2
              ABt -> matMatCheck (matMatUnsafeWith id) mm1 (trDim mm2)
    where
-     trDim (SM (a, b) x) = SM (b, a) x
+     trDim (SM (!a, !b) x) = SM (b, a) x
      matMatCheck mmf m1 m2
        | c1 == r2 = mmf m1 m2
        | otherwise = error $ "matMat : incompatible matrix sizes" ++ show (d1, d2)
          where
-           d1@(_, c1) = dim m1
-           d2@(r2, _) = dim m2
+           d1@(_, !c1) = dim m1
+           d2@(!r2, _) = dim m2
 
 
 -- | Matrix product without dimension checks
@@ -796,9 +797,9 @@ matMat_ pt mm1 mm2 =
 --    SpMatrix a ->
 --    SpMatrix a ->
 --    SpMatrix a
-matMatUnsafeWith ff2 m1 m2 = SM (nrows m1, ncols m2) (overRows2 <$> immSM m1) where
-          overRows2 vm1 = (`dott` vm1) <$> ff2 (immSM m2)
-          dott x y = sum $ liftI2 (*) x y    -- NB !! no complex conjugation
+matMatUnsafeWith ff2 !m1 !m2 = SM (nrows m1, ncols m2) (fmap overRows2 $! immSM m1) where
+          overRows2 !vm1 = fmap (`dott` vm1) $! ff2 (immSM m2)
+          dott !x !y = foldl' (\acc x -> acc + x) 0 $! liftI2 (*) x y    -- NB !! no complex conjugation
 
 
 

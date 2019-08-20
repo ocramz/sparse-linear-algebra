@@ -8,13 +8,17 @@ import GHC.Exts
 import Data.Complex
 
 import qualified Data.IntMap.Strict as IM
+import qualified Data.IntMap.Merge.Strict as IM
 
 
 
 
 
 -- | A synonym for IntMap 
-newtype IntM a = IntM {unIM :: IM.IntMap a} deriving (Eq, Show, Functor, Foldable)
+newtype IntM a = IntM {unIM :: IM.IntMap a} deriving (Eq, Show, Foldable)
+
+instance Functor IntM where
+  fmap f (IntM m) = IntM $! IM.map f m
 
 empty :: IntM a
 empty = IntM IM.empty
@@ -69,8 +73,8 @@ instance IsList (IntM a) where
 
 
 instance Set IntM where
-  liftU2 f (IntM !a) (IntM !b) = IntM $ IM.unionWith f a b
-  liftI2 f (IntM !a) (IntM !b) = IntM $ IM.intersectionWith f a b
+  liftU2 f (IntM !a) (IntM !b) = IntM $! IM.unionWith f a b
+  liftI2 f (IntM !a) (IntM !b) = IntM $! IM.intersectionWith f a b
 
 
 instance AdditiveGroup a => AdditiveGroup (IntM a) where

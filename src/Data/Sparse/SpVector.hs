@@ -280,7 +280,7 @@ fromListSV d iix = SV d $ foldr insf empty iix where
 
 
 createv :: [a] -> SpVector a
-createv ll = fromListSV n $ indexed ll where n = length ll
+createv ll = SV n . fromList $ indexed ll where n = length ll
 
 -- | Create a /dense/ SpVector from a list of Double's
 vr :: [Double] -> SpVector Double 
@@ -306,7 +306,7 @@ toDenseListSV (SV d (IntM im)) = fmap (\i -> IM.findWithDefault 0 i im) [0 .. d-
 
 -- | Indexed fold over SpVector
 ifoldSV :: (IM.Key -> a -> b -> b) -> b -> SpVector a -> b
-ifoldSV f e (SV _ (IntM im)) = IM.foldrWithKey f e im
+ifoldSV f e (SV _ (IntM im)) = IM.foldrWithKey' f e im
 
 
 

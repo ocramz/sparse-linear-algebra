@@ -8,6 +8,7 @@ import qualified Data.Sparse.Internal.IntM as I
 import qualified Data.IntMap.Strict as IM
 import Data.Sparse.Types
 
+import Data.List (foldl')
 import Data.Maybe
 import GHC.Exts
 
@@ -24,8 +25,8 @@ import GHC.Exts
 insertIM2
   :: IM.Key -> IM.Key -> a -> I.IntM (I.IntM a) -> I.IntM (I.IntM a)
 insertIM2 i j x (I.IntM imm) = I.IntM $ IM.alter ro i imm where
-  ro Nothing = Just $ I.singleton j x
-  ro (Just m) = Just $ I.insert j x m
+  ro Nothing = Just $! I.singleton j x
+  ro (Just m) = Just $! I.insert j x m
 {-# inline insertIM2 #-}
 
 -- * Lookup
@@ -47,7 +48,7 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 -- fromListIM2 ::
 --   Foldable t =>
 --      t (IM.Key, IM.Key, a) -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
-fromListIM2 iix sm = foldl ins sm iix where
+fromListIM2 iix sm = foldl' ins sm iix where
   ins t (i,j,x) = insertIM2 i j x t
 
 
@@ -72,8 +73,8 @@ ifoldlIM2 f m         = I.foldlWithKey' accRow I.empty m where
 
 -- |Left fold over an IM2, with general accumulator
 -- foldlIM2 :: (a -> b -> b) -> b -> IM.IntMap (IM.IntMap a) -> b
-foldlIM2 f empty mm = foldl accRow empty mm where
-  accRow acc r = foldl accElem acc r
+foldlIM2 f empty mm = foldl' accRow empty mm where
+  accRow acc r = foldl' accElem acc r
   accElem acc x = f x acc
 {-# inline foldlIM2 #-}
 

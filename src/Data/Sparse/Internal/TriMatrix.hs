@@ -218,7 +218,7 @@ lStep amat lmat umat udiag j = foldr ins lmat [j .. m-1] where
 
 
 fillSM :: (Rows, Cols) -> Bool -> IM.IntMap (SList a) -> SpMatrix a
-fillSM (m,n) transpq tm = IM.foldlWithKey rowIns (zeroSM m n) tm where
+fillSM (m,n) transpq tm = IM.foldlWithKey' rowIns (zeroSM m n) tm where
   rowIns accRow i row = foldr ins accRow (unSL row) where
     ins (j, x) acc | transpq = insertSpMatrix j i x acc   -- transposed fill
                    | otherwise = insertSpMatrix i j x acc
