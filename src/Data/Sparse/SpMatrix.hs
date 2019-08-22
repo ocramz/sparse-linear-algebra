@@ -797,9 +797,10 @@ matMat_ pt mm1 mm2 =
 --    SpMatrix a ->
 --    SpMatrix a ->
 --    SpMatrix a
-matMatUnsafeWith ff2 !m1 !m2 = SM (nrows m1, ncols m2) (fmap overRows2 $! immSM m1) where
-          overRows2 !vm1 = fmap (`dott` vm1) $! ff2 (immSM m2)
-          dott !x !y = foldl' (\acc x -> acc + x) 0 $! liftI2 (*) x y    -- NB !! no complex conjugation
+matMatUnsafeWith ff2 !m1 !m2 = SM (nrows m1, ncols m2) (fmap overRows2 $ immSM m1) where
+          transformedM2 = ff2 $ immSM m2
+          overRows2 vm1 = fmap (`dott` vm1) transformedM2
+          dott x y = foldl' (\acc a -> acc + a) 0 $ liftI2 (*) x y    -- NB !! no complex conjugation
 
 
 
