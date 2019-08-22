@@ -8,7 +8,6 @@ import GHC.Exts
 import Data.Complex
 
 import qualified Data.IntMap.Strict as IM
-import qualified Data.IntMap.Merge.Strict as IM
 
 
 
