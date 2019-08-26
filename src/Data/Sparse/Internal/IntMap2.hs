@@ -143,7 +143,7 @@ mapIM2 = fmap . fmap
 --   IM.IntMap (IM.IntMap a) ->
 --   IM.IntMap (IM.IntMap b)
 imapIM2 f im = I.mapWithKey ff im where
-  ff j x = I.mapWithKey (`f` j) x
+  ff i x = I.mapWithKey (\j -> f i j) x
 
 
 
