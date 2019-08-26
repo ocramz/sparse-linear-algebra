@@ -6,6 +6,7 @@ import qualified Data.Sparse.Internal.IntM as I
 import qualified Data.IntMap.Strict as IM
 import Data.Sparse.Types
 
+import Data.List (foldl')
 import Data.Maybe
 import GHC.Exts
 
@@ -70,8 +71,8 @@ ifoldlIM2 f m         = I.foldlWithKey' accRow I.empty m where
 
 -- |Left fold over an IM2, with general accumulator
 -- foldlIM2 :: (a -> b -> b) -> b -> IM.IntMap (IM.IntMap a) -> b
-foldlIM2 f empty mm = foldl accRow empty mm where
-  accRow acc r = foldl accElem acc r
+foldlIM2 f empty mm = foldl' accRow empty mm where
+  accRow acc r = foldl' accElem acc r
   accElem acc x = f x acc
 {-# inline foldlIM2 #-}
 
