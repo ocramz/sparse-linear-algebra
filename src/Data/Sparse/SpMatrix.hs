@@ -594,7 +594,10 @@ fromBlocksDiag mml = fromListSM (n, n) lstot where
 ifilterSM :: (IM.Key -> IM.Key -> a -> Bool) -> SpMatrix a -> SpMatrix a
 ifilterSM f (SM d im) = SM d $ ifilterIM2 f im
 
- 
+-- | Indexed map over SpMatrix
+{-# INLINE imapSM #-}
+imapSM :: (IM.Key -> IM.Key -> a -> b) -> SpMatrix a -> SpMatrix b
+imapSM f (SM d im) = SM d $ imapIM2 f im
 
 -- | Left fold over SpMatrix
 {-# INLINE foldlSM #-}
