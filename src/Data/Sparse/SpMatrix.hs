@@ -1,5 +1,5 @@
 {-# language FlexibleInstances, FlexibleContexts, TypeFamilies #-}
-{-# language DeriveFunctor, DeriveFoldable, BangPatterns #-}
+{-# language DeriveFunctor, DeriveFoldable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -217,7 +217,7 @@ insertSpMatrix i j x s
 -- | Add to existing SpMatrix using data from list (row, col, value)
 fromListSM' :: Foldable t => t (IxRow, IxCol, a) -> SpMatrix a -> SpMatrix a
 fromListSM' iix sm = foldl' ins sm iix where
-  ins t (!i,!j,!x) = insertSpMatrix i j x t
+  ins t (i,j,x) = insertSpMatrix i j x t
 
 -- | Create new SpMatrix using data from a Foldable (e.g. a list) in (row, col, value) form
 fromListSM :: Foldable t => (Int, Int) -> t (IxRow, IxCol, a) -> SpMatrix a
@@ -240,6 +240,10 @@ fromListDenseSM :: Int -> [a] -> SpMatrix a
 fromListDenseSM m ll = fromListSM (m, n) $ indexed2 m ll where
   n = length ll `div` m
 
+-- | Return the SpMatrix from the dimensions and internal IntMap of IntMap
+-- representation.
+unsafeFromImmSM' :: (Int, Int) -> IM.IntMap (IM.IntMap a) -> SpMatrix a
+unsafeFromImmSM' dims m = SM dims . IntM . fmap IntM $ m
 
 -- ** toList
 
