@@ -242,8 +242,8 @@ fromListDenseSM m ll = fromListSM (m, n) $ indexed2 m ll where
 
 -- | Return the SpMatrix from the dimensions and internal IntMap of IntMap
 -- representation.
-unsafeFromImmSM' :: (Int, Int) -> IM.IntMap (IM.IntMap a) -> SpMatrix a
-unsafeFromImmSM' dims m = SM dims . IntM . fmap IntM $ m
+unsafeFromImmSM :: (Int, Int) -> IM.IntMap (IM.IntMap a) -> SpMatrix a
+unsafeFromImmSM dims m = SM dims . IntM . fmap IntM $ m
 
 -- ** toList
 
