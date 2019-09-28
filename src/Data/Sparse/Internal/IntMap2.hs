@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Data.Sparse.Internal.IntMap2 where
 
 import qualified Data.Sparse.Internal.IntM as I
@@ -6,6 +8,7 @@ import qualified Data.Sparse.Internal.IntM as I
 import qualified Data.IntMap.Strict as IM
 import Data.Sparse.Types
 
+import Data.List (foldl')
 import Data.Maybe
 import GHC.Exts
 
@@ -21,9 +24,10 @@ import GHC.Exts
 --   IM.Key -> IM.Key -> a -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
 insertIM2
   :: IM.Key -> IM.Key -> a -> I.IntM (I.IntM a) -> I.IntM (I.IntM a)
-insertIM2 i j x imm = I.insert i ro imm where
-  ro = maybe (I.singleton j x) (I.insert j x) (I.lookup i imm)
-{-# inline insertIM2 #-}  
+insertIM2 i j x (I.IntM imm) = I.IntM $ IM.alter ro i imm where
+  ro Nothing = Just $ I.singleton j x
+  ro (Just m) = Just $ I.insert j x m
+{-# inline insertIM2 #-}
 
 -- * Lookup
 
@@ -63,14 +67,14 @@ ifoldlIM2' f empty mm = I.foldlWithKey' accRow empty mm where
 --   IM.IntMap (IM.IntMap t) ->  
 --   IM.IntMap a
 ifoldlIM2 f m         = I.foldlWithKey' accRow I.empty m where
-  accRow    acc i row = I.foldlWithKey' (accElem i) acc row
-  accElem i acc j x   = f i j x acc
+  accRow    !acc !i !row = I.foldlWithKey' (accElem i) acc row
+  accElem !i !acc !j !x   = f i j x acc
 {-# inline ifoldlIM2 #-}  
 
 -- |Left fold over an IM2, with general accumulator
 -- foldlIM2 :: (a -> b -> b) -> b -> IM.IntMap (IM.IntMap a) -> b
-foldlIM2 f empty mm = foldl accRow empty mm where
-  accRow acc r = foldl accElem acc r
+foldlIM2 f empty mm = foldl' accRow empty mm where
+  accRow acc r = foldl' accElem acc r
   accElem acc x = f x acc
 {-# inline foldlIM2 #-}
 
@@ -142,7 +146,7 @@ mapIM2 = fmap . fmap
 --   IM.IntMap (IM.IntMap a) ->
 --   IM.IntMap (IM.IntMap b)
 imapIM2 f im = I.mapWithKey ff im where
-  ff j x = I.mapWithKey (`f` j) x
+  ff i x = I.mapWithKey (\j -> f i j) x
 
 
 

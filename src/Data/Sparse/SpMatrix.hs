@@ -240,6 +240,10 @@ fromListDenseSM :: Int -> [a] -> SpMatrix a
 fromListDenseSM m ll = fromListSM (m, n) $ indexed2 m ll where
   n = length ll `div` m
 
+-- | Return the SpMatrix from the dimensions and internal IntMap of IntMap
+-- representation.
+unsafeFromImmSM :: (Int, Int) -> IM.IntMap (IM.IntMap a) -> SpMatrix a
+unsafeFromImmSM dims m = SM dims . IntM . fmap IntM $ m
 
 -- ** toList
 
@@ -594,7 +598,10 @@ fromBlocksDiag mml = fromListSM (n, n) lstot where
 ifilterSM :: (IM.Key -> IM.Key -> a -> Bool) -> SpMatrix a -> SpMatrix a
 ifilterSM f (SM d im) = SM d $ ifilterIM2 f im
 
- 
+-- | Indexed map over SpMatrix
+{-# INLINE imapSM #-}
+imapSM :: (IM.Key -> IM.Key -> a -> b) -> SpMatrix a -> SpMatrix b
+imapSM f (SM d im) = SM d $ imapIM2 f im
 
 -- | Left fold over SpMatrix
 {-# INLINE foldlSM #-}
