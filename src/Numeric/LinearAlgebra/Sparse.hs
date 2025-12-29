@@ -480,7 +480,7 @@ lu :: (Scalar (SpVector t) ~ t, Elt t, VectorSpace (SpVector t), Epsilon t,
 lu aa = do
   let oops j = throwM (NeedsPivoting "solveForLij" ("U" ++ show (j, j)) :: MatrixException Double)
       n = nrows aa
-      q (i, _, _) = i == n - 1
+      q (i, _, _) = i == n
       luInit | isNz u00 = return (1, l0, u0)
              | otherwise = oops (0 :: Int)
         where
@@ -511,8 +511,7 @@ lu aa = do
              p = contractSub lmat umat i j (i - 1)    
   s0 <- luInit
   (ixf, lf, uf) <- MTS.execStateT (modifyUntilM q luUpd) s0
-  ufin <- uUpd aa n (ixf, lf, uf)   -- final U update
-  return (lf, ufin)
+  return (lf, uf)
     
 
 
