@@ -15,12 +15,12 @@ module LibSpec where
 import Control.Exception.Common
 import Data.Sparse.Common
 import Numeric.LinearAlgebra.Sparse
-import Control.Iterative (MonadLog(..))
 -- import Numeric.LinearAlgebra.Class
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class
-import Control.Monad.Writer.Strict (WriterT, runWriterT)
+import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
+import Control.Monad.Writer.Class (MonadWriter)
 
 import Data.Complex
        
@@ -32,10 +32,6 @@ import Control.Monad.Writer.Class (tell)
 -- Helper to wrap IO computations with logging for tests
 runWithLogs :: WriterT [String] IO a -> IO a
 runWithLogs m = fst <$> runWriterT m
-
--- MonadLog instance for WriterT when the log type matches
-instance (Monad m, Monoid w) => MonadLog w (WriterT w m) where
-  logMessage = tell
 
 
 main :: IO ()
@@ -210,7 +206,7 @@ specArnoldi =
   
 
 -- checkLinSolveR
---   :: (MonadLog String m, MonadCatch m) =>
+--   :: (MonadWriter [String] m, MonadCatch m) =>
 --      LinSolveMethod 
 --      -> SpMatrix Double        -- ^ operator
 --      -> SpVector Double        -- ^ r.h.s
@@ -245,7 +241,7 @@ checkBackslash' aa x = do
 
 
 -- | NB : we compare the norm _squared_ of the residual, since `pinv` squares the condition number
-checkPinv :: (Normed v, LinearSystem v, MatrixRing (MatrixType v), MonadThrow m, MonadLog String m) =>
+checkPinv :: (Normed v, LinearSystem v, MatrixRing (MatrixType v), MonadThrow m, MonadWriter [String] m) =>
      MatrixType v -> v -> v -> m Bool
 checkPinv aa b x = do
   xhat <- aa `pinv` b
@@ -265,7 +261,7 @@ checkGivens1 tm i j = do -- (rij, nearZero rij) where
 -- | QR
 
 -- checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
---             MonadThrow m, MonadLog String m) =>
+--             MonadThrow m, MonadWriter [String] m) =>
 --      SpMatrix a
 --      -> m Bool
 -- checkQr = checkQr0 qr
@@ -278,7 +274,7 @@ checkGivens1 tm i j = do -- (rij, nearZero rij) where
 
 
 
-checkQr0 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m, MonadLog String m) =>
+checkQr0 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m, MonadWriter [String] m) =>
      (SpMatrix a -> m (SpMatrix a, SpMatrix a))
      -> SpMatrix a
      -> m Bool
@@ -302,7 +298,7 @@ checkQr0 mfqr a = do
 -- | LU
 
 checkLu :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
-      VectorSpace (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
+      VectorSpace (SpVector t), Epsilon t, MonadThrow m, MonadWriter [String] m) =>
      SpMatrix t -> m Bool
 -- checkLu :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
 --       VectorSpace (SpVector t), Epsilon t) =>
@@ -318,7 +314,7 @@ checkLu a = do
 -- | Cholesky
 
 -- checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
---               MonadThrow m, MonadLog String m) =>
+--               MonadThrow m, MonadWriter [String] m) =>
 --      SpMatrix a -> m Bool
 -- checkChol a = do -- c1 && c2 where
 --   l <- chol a
@@ -332,7 +328,7 @@ checkLu a = do
 -- checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
 --       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
 --       PrintDense (SpVector t),      
---       Epsilon t, MonadThrow m, MonadLog String m) =>
+--       Epsilon t, MonadThrow m, MonadWriter [String] m) =>
 --      SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
 -- checkLuSolve amat rhs = do
 --   (lmat, umat) <- lu amat
@@ -358,7 +354,7 @@ checkLu a = do
 -- checkTriUpperSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
 --       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
 --       PrintDense (SpVector t),
---       MonadThrow m, MonadLog String m) =>
+--       MonadThrow m, MonadWriter [String] m) =>
 --      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 -- checkTriUpperSolve umat rhs = do
 --   xhat <- triUpperSolve umat rhs
@@ -369,7 +365,7 @@ checkLu a = do
 -- checkTriLowerSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
 --       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
 --       PrintDense (SpVector t),      
---       MonadThrow m, MonadLog String m) =>
+--       MonadThrow m, MonadWriter [String] m) =>
 --      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 -- checkTriLowerSolve lmat rhs = do
 --   xhat <- triLowerSolve lmat rhs
@@ -385,7 +381,7 @@ checkLu a = do
 
 checkArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Normed (SpVector t), MatrixRing (SpMatrix t),
-      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m, MonadLog String m) =>
+      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m, MonadWriter [String] m) =>
      SpMatrix t -> Int -> m Bool
 checkArnoldi aa kn = do -- nearZero (normFrobenius $ lhs ^-^ rhs) where
   let b = onesSV (nrows aa)
@@ -716,13 +712,13 @@ prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 -- -- | QR decomposition
 -- prop_QR :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a), Epsilon a,
---             MonadThrow m, MonadLog String m) =>
+--             MonadThrow m, MonadWriter [String] m) =>
 --      PropMatI a -> m Bool
 -- prop_QR (PropMatI m) = checkQr m
 
 
 -- -- | check a random linear system
--- prop_linSolve :: (MonadLog String m, MonadCatch m) => LinSolveMethod -> PropMatVec Double -> m Bool
+-- prop_linSolve :: (MonadWriter [String] m, MonadCatch m) => LinSolveMethod -> PropMatVec Double -> m Bool
 -- prop_linSolve method (PropMatVec aa x) = do
 --   let
 --     aai = aa ^+^ eye (nrows aa) -- for invertibility

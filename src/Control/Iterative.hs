@@ -17,10 +17,6 @@
 --
 -----------------------------------------------------------------------------
 module Control.Iterative (
-  -- * Re-exports from Control.Iterative.Internal
-  MonadLog(..),
-  -- * Logging types
-  Severity(..), WithSeverity(..),
   -- * Iteration types
   ConvergenceStatus(..), IterConfig(..), ConvergConfig(..), LoopState(..),
   convergenceL2,
@@ -29,7 +25,6 @@ module Control.Iterative (
   modifyUntilM',
   -- * Helpers
   getBuffers, mkLoopState,
-  logWith, bracketsUpp, withSeverity,
   onRangeSparse, onRangeSparseM, unfoldZipM0, unfoldZipM, combx,
   sqDiffPairs, sqDiff, relRes, diffSqL, relTol, norm2Diff
 ) where
@@ -65,25 +60,6 @@ import Numeric.LinearAlgebra.Class
 import Numeric.Eps
 
 
--- * Logging types
-
--- | Severity level for logging messages (replacing logging-effect's Severity)
-data Severity = 
-    Debug
-  | Informational
-  | Notice
-  | Warning
-  | Error
-  | Critical
-  | Alert
-  | Emergency
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
-
--- | A message with a severity level (replacing logging-effect's WithSeverity)
-data WithSeverity a = WithSeverity Severity a
-  deriving (Eq, Show, Functor)
-
-
 
 -- * ITERATION
 
@@ -97,13 +73,12 @@ data ConvergenceStatus s a =
   deriving (Eq, Show)
 
 -- | Configuration data for the iterative process
-data IterConfig s t msg = IterConfig {
+data IterConfig s t = IterConfig {
     icFunctionName :: String -- ^ Name of calling function, for logging purposes
   , icNumIterationsMax :: Int -- ^ Max # of iterations
   , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
   , icStateProj :: s -> t     -- ^ Project the state
-  -- Note: Handler removed - logging is now pure via Writer monad
-  -- , icLogWith :: s -> (Severity, msg) -- ^ Compute log severity and message
+  -- Note: Logging is now done via MonadWriter - no handler needed
     } deriving Generic
 
 -- | Configuration for numerical convergence
@@ -191,10 +166,10 @@ getBuffers n (LoopState _ ls s)
 mkLoopState :: s -> LoopState s
 mkLoopState = LoopState 0 []
 
--- | Configurable iteration combinator, with convergence monitoring and logging
-modifyInspectGuardedM :: forall m a t s msg. (MonadThrow m, Show a, Typeable a, Show t, Typeable t, Monoid msg) =>
+-- | Configurable iteration combinator, with convergence monitoring and logging via MonadWriter
+modifyInspectGuardedM :: forall m a t s w. (MonadThrow m, MonadWriter w m, Show a, Typeable a, Show t, Typeable t) =>
                          ConvergConfig t a 
-                      -> IterConfig s t msg
+                      -> IterConfig s t
                       -> (s -> m s)
                       -> s
                       -> m s
@@ -212,14 +187,14 @@ modifyInspectGuardedM (ConvergConfig sf qconverg qdiverg qfinal) r f x0
     run = do
       let s0 = mkLoopState x0 
       -- Run in WriterT to collect logs, then discard them
-      ((aLast, sLast), _logs) <- runWriterT $ runIterativeT r s0 (loop :: IterativeT (IterConfig s t msg) msg (LoopState s) (WriterT msg m) (Either (ConvergenceStatus s a) s))
+      ((aLast, sLast), _logs) <- runWriterT $ runIterativeT r s0 (loop :: IterativeT (IterConfig s t) (LoopState s) (WriterT w m) (Either (ConvergenceStatus s a) s))
       let i = lsCounter sLast
       case aLast of
         Left (NotConverged y) -> throwM $ NotConvergedE fname nitermax (pf y)
         Left (Diverging qi qt) -> throwM $ DivergingE fname i qi qt
         Right x -> pure x
         -- _ -> throwM $ IterE fname "asdf"
-    loop :: IterativeT (IterConfig s t msg) msg (LoopState s) (WriterT msg m) (Either (ConvergenceStatus s a) s)
+    loop :: IterativeT (IterConfig s t) (LoopState s) (WriterT w m) (Either (ConvergenceStatus s a) s)
     loop = do
       s@(LoopState i _ x) <- get
       y <- lift $ lift $ f x 
@@ -241,7 +216,7 @@ modifyInspectGuardedM (ConvergConfig sf qconverg qdiverg qfinal) r f x0
           put s'
           loop 
         Converging -> do
-          -- logWith lwf y           
+          -- Could log here via MonadWriter tell if needed
           put s'
           loop 
         Diverging qi qt -> 
@@ -380,28 +355,10 @@ modifyUntilM' config q f x0 = execStateT (go 0) x0 where
 
 
 
+-- * REMOVED LOGGING FUNCTIONS
+-- Logging levels (Severity, WithSeverity) have been removed.
+-- Use MonadWriter directly with tell for logging.
 
--- * LOGGING
-
--- | Log with a function that computes a severity and a message from the input
-logWith :: MonadLog (WithSeverity a) m => (p -> (Severity, a)) -> p -> m ()
-logWith f x = logMessage (WithSeverity sev sevMsg) where
-  (sev, sevMsg) = f x
-
-bracketsUpp :: Show a => a -> String
-bracketsUpp p = unwords ["[", map toUpper (show p), "]"]
-
-withSeverity :: (t -> String) -> WithSeverity t -> String
-withSeverity k (WithSeverity u a ) = unwords [bracketsUpp u, k a]
-
--- -- >>> renderWithSeverity id (WithSeverity Informational "Flux capacitor is functional")
--- -- [Informational] Flux capacitor is functional
--- renderWithSeverity
---   :: (a -> PP.Doc) -> (WithSeverity a -> PP.Doc)
--- renderWithSeverity k (WithSeverity u a) =
---   PP.brackets (PP.pretty u) PP.<+> PP.align (k a)
-
-                                      
 
 
 -- | Some useful combinators
