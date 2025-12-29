@@ -2,6 +2,7 @@
 {-# language OverloadedStrings #-}
 {-# language MultiParamTypeClasses #-}
 {-# language FlexibleInstances #-}
+{-# language ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Control.Iterative
@@ -38,6 +39,8 @@ import Control.Applicative
 import Control.Monad (when, replicateM)
 import Control.Monad.Reader (MonadReader(..), asks)
 import Control.Monad.State.Strict (MonadState(..), get, put, gets)
+import Control.Monad.Writer.Class (MonadWriter)
+import Control.Monad.Writer.Strict (WriterT, runWriterT)
 import Control.Monad.Trans.Class (MonadTrans(..), lift)
 import Control.Monad.Trans.State.Strict (StateT(..), runStateT, execStateT)
 import Control.Monad.Trans.Reader (ReaderT(..), runReaderT)
@@ -189,7 +192,7 @@ mkLoopState :: s -> LoopState s
 mkLoopState = LoopState 0 []
 
 -- | Configurable iteration combinator, with convergence monitoring and logging
-modifyInspectGuardedM :: (MonadThrow m, Show a, Typeable a, Show t, Typeable t) =>
+modifyInspectGuardedM :: forall m a t s msg. (MonadThrow m, Show a, Typeable a, Show t, Typeable t, Monoid msg) =>
                          ConvergConfig t a 
                       -> IterConfig s t msg
                       -> (s -> m s)
@@ -205,18 +208,21 @@ modifyInspectGuardedM (ConvergConfig sf qconverg qdiverg qfinal) r f x0
         lss' = s : lss
         lssUpd | length lss < lwindow = lss'
                | otherwise            = take lwindow lss'    
+    run :: m s
     run = do
       let s0 = mkLoopState x0 
-      ((aLast, sLast), _logs) <- runIterativeT r s0 loop 
+      -- Run in WriterT to collect logs, then discard them
+      ((aLast, sLast), _logs) <- runWriterT $ runIterativeT r s0 (loop :: IterativeT (IterConfig s t msg) msg (LoopState s) (WriterT msg m) (Either (ConvergenceStatus s a) s))
       let i = lsCounter sLast
       case aLast of
         Left (NotConverged y) -> throwM $ NotConvergedE fname nitermax (pf y)
         Left (Diverging qi qt) -> throwM $ DivergingE fname i qi qt
         Right x -> pure x
         -- _ -> throwM $ IterE fname "asdf"
+    loop :: IterativeT (IterConfig s t msg) msg (LoopState s) (WriterT msg m) (Either (ConvergenceStatus s a) s)
     loop = do
       s@(LoopState i _ x) <- get
-      y <- lift $ f x 
+      y <- lift $ lift $ f x 
       let
         s' = updState y s        
         status = case getBuffers lwindow s' of
