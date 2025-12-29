@@ -32,7 +32,6 @@ import Data.Sparse.Common (prd, prd0, (@@!), nrows, ncols, lookupSM, extractRow,
 import Data.Sparse.PPrint
 
 import Control.Monad.Catch (MonadThrow, throwM)
-import Control.Monad.Log
 import Control.Exception.Common
 
 import Control.Monad (when)

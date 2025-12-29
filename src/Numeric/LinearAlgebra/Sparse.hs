@@ -131,13 +131,11 @@ import Control.Iterative
 import Data.Sparse.Common
 
 import Control.Monad.Catch 
-import qualified Control.Monad.Log as L (Handler, WithSeverity(..), Severity(..))
 import Data.Typeable
 
 -- import Control.Applicative ((<|>))
 
 import Control.Monad.State.Strict
-import Control.Monad.Log (Handler)
 import qualified Control.Monad.Trans.State  as MTS 
 import Data.Complex
 

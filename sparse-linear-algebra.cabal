@@ -27,7 +27,7 @@ data-dir:            test/data
 data-files:          e05r0000.mtx
                      e05r0000_rhs1.mtx
 cabal-version:       >=1.10
-tested-with:         GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.2
+tested-with:         GHC == 9.4.8, GHC == 9.6.6, GHC == 9.8.2
 
 source-repository head
   type:     git
@@ -55,6 +55,7 @@ library
                        Data.Sparse.Common
                        Data.Sparse.Utils
                        Control.Exception.Common
+                       Control.Iterative
   other-modules:       Data.Sparse.Internal.IntMap2
                        Data.Sparse.Internal.IntM
                        Data.Sparse.Internal.Utils
@@ -69,7 +70,6 @@ library
                        -- Data.Sparse.Utils
                        Data.Sparse.PPrint
                        Data.Sparse.Types
-                       Control.Iterative
                        Control.Iterative.Internal
                        Control.Misc
                        Data.NonEmpty
@@ -80,7 +80,6 @@ library
                      , containers >= 0.5.7.1
                      -- , data-default-class
                      , exceptions >= 0.8.3
-                     , logging-effect >= 1.2.0
                      , mtl >= 2.2.1                                          
                      , primitive >= 0.6.2.0
                      , transformers >= 0.5.2.0                    
@@ -122,7 +121,6 @@ test-suite spec
                      , hspec
                      , mtl >= 2.2.1
                      , exceptions
-                     , logging-effect
                      , primitive >= 0.6.1.0
                      , sparse-linear-algebra
                      , scientific

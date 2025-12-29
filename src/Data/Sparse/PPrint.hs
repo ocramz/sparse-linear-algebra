@@ -55,7 +55,7 @@ printDN l n = printNpad l n f where
 
 
 -- | Pretty print an array of complex numbers
-printCN :: (PrintfArg a, Epsilon a, Epsilon (Complex a), Ord a) =>
+printCN :: (PrintfArg a, RealFloat a, Epsilon a, Epsilon (Complex a), Ord a) =>
      Int -> Int -> PPrintOptions -> [Complex a] -> String
 printCN l n = printNpad l n f where
   f o x | nearZero (re x) && isNz (imagPart x) =

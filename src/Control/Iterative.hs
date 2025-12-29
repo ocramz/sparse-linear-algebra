@@ -2,6 +2,7 @@
 {-# language OverloadedStrings #-}
 {-# language MultiParamTypeClasses #-}
 {-# language FlexibleInstances #-}
+{-# language ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Control.Iterative
@@ -15,18 +16,30 @@
 -- Combinators and helper functions for iterative algorithms, with support for monitoring and exceptions.
 --
 -----------------------------------------------------------------------------
-module Control.Iterative where
+module Control.Iterative (
+  -- * Iteration types
+  ConvergenceStatus(..), IterConfig(..), ConvergConfig(..), LoopState(..),
+  convergenceL2,
+  -- * Iteration combinators
+  modifyInspectGuardedM, modifyUntil, modifyUntilM, modifyUntilM_,
+  modifyUntilM',
+  -- * Helpers
+  getBuffers, mkLoopState,
+  onRangeSparse, onRangeSparseM, unfoldZipM0, unfoldZipM, combx,
+  sqDiffPairs, sqDiff, relRes, diffSqL, relTol, norm2Diff
+) where
 
 import Control.Applicative
 
 import Control.Monad (when, replicateM)
 import Control.Monad.Reader (MonadReader(..), asks)
 import Control.Monad.State.Strict (MonadState(..), get, put, gets)
+import Control.Monad.Writer.Class (MonadWriter)
+import Control.Monad.Writer.Strict (WriterT, runWriterT)
 import Control.Monad.Trans.Class (MonadTrans(..), lift)
 import Control.Monad.Trans.State.Strict (StateT(..), runStateT, execStateT)
 import Control.Monad.Trans.Reader (ReaderT(..), runReaderT)
 import Control.Monad.Catch (Exception(..), MonadThrow(..), throwM)
-import Control.Monad.Log (MonadLog(..), WithSeverity(..), Severity(..), renderWithSeverity, LoggingT(..), runLoggingT, Handler, logMessage, logError, logDebug, logInfo, logNotice)
 
 -- import Data.Bool (bool)
 import Data.Char (toUpper)
@@ -60,13 +73,12 @@ data ConvergenceStatus s a =
   deriving (Eq, Show)
 
 -- | Configuration data for the iterative process
-data IterConfig s t msg m = IterConfig {
+data IterConfig s t = IterConfig {
     icFunctionName :: String -- ^ Name of calling function, for logging purposes
   , icNumIterationsMax :: Int -- ^ Max # of iterations
   , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
   , icStateProj :: s -> t     -- ^ Project the state
-  , icLogHandler :: Handler m (WithSeverity msg) -- ^ Logging handler
-  -- , icLogWith :: s -> (Severity, msg) -- ^ Compute log severity and message
+  -- Note: Logging is now done via MonadWriter - no handler needed
     } deriving Generic
 
 -- | Configuration for numerical convergence
@@ -154,10 +166,10 @@ getBuffers n (LoopState _ ls s)
 mkLoopState :: s -> LoopState s
 mkLoopState = LoopState 0 []
 
--- | Configurable iteration combinator, with convergence monitoring and logging
-modifyInspectGuardedM :: (MonadThrow m, Show a, Typeable a, Show t, Typeable t) =>
+-- | Configurable iteration combinator, with convergence monitoring and logging via MonadWriter
+modifyInspectGuardedM :: forall m a t s w. (MonadThrow m, MonadWriter w m, Show a, Typeable a, Show t, Typeable t) =>
                          ConvergConfig t a 
-                      -> IterConfig s t msg m
+                      -> IterConfig s t
                       -> (s -> m s)
                       -> s
                       -> m s
@@ -165,24 +177,27 @@ modifyInspectGuardedM (ConvergConfig sf qconverg qdiverg qfinal) r f x0
   | nitermax > 0 = run
   | otherwise = throwM (NonNegError fname nitermax)
   where
-    (IterConfig fname nitermax lwindow pf lh) = r
+    (IterConfig fname nitermax lwindow pf) = r
     updState snew (LoopState i lss s) = LoopState (i + 1) lssUpd snew
       where
         lss' = s : lss
         lssUpd | length lss < lwindow = lss'
                | otherwise            = take lwindow lss'    
+    run :: m s
     run = do
       let s0 = mkLoopState x0 
-      (aLast, sLast) <- runIterativeT lh r s0 loop 
+      -- Run in WriterT to collect logs, then discard them
+      ((aLast, sLast), _logs) <- runWriterT $ runIterativeT r s0 (loop :: IterativeT (IterConfig s t) (LoopState s) (WriterT w m) (Either (ConvergenceStatus s a) s))
       let i = lsCounter sLast
       case aLast of
         Left (NotConverged y) -> throwM $ NotConvergedE fname nitermax (pf y)
         Left (Diverging qi qt) -> throwM $ DivergingE fname i qi qt
         Right x -> pure x
         -- _ -> throwM $ IterE fname "asdf"
+    loop :: IterativeT (IterConfig s t) (LoopState s) (WriterT w m) (Either (ConvergenceStatus s a) s)
     loop = do
       s@(LoopState i _ x) <- get
-      y <- lift $ f x 
+      y <- lift $ lift $ f x 
       let
         s' = updState y s        
         status = case getBuffers lwindow s' of
@@ -201,7 +216,7 @@ modifyInspectGuardedM (ConvergConfig sf qconverg qdiverg qfinal) r f x0
           put s'
           loop 
         Converging -> do
-          -- logWith lwf y           
+          -- Could log here via MonadWriter tell if needed
           put s'
           loop 
         Diverging qi qt -> 
@@ -340,28 +355,10 @@ modifyUntilM' config q f x0 = execStateT (go 0) x0 where
 
 
 
+-- * REMOVED LOGGING FUNCTIONS
+-- Logging levels (Severity, WithSeverity) have been removed.
+-- Use MonadWriter directly with tell for logging.
 
--- * LOGGING
-
--- | Log with a function that computes a severity and a message from the input
-logWith :: MonadLog (WithSeverity a) m => (p -> (Severity, a)) -> p -> m ()
-logWith f x = logMessage (WithSeverity sev sevMsg) where
-  (sev, sevMsg) = f x
-
-bracketsUpp :: Show a => a -> String
-bracketsUpp p = unwords ["[", map toUpper (show p), "]"]
-
-withSeverity :: (t -> String) -> WithSeverity t -> String
-withSeverity k (WithSeverity u a ) = unwords [bracketsUpp u, k a]
-
--- -- >>> renderWithSeverity id (WithSeverity Informational "Flux capacitor is functional")
--- -- [Informational] Flux capacitor is functional
--- renderWithSeverity
---   :: (a -> PP.Doc) -> (WithSeverity a -> PP.Doc)
--- renderWithSeverity k (WithSeverity u a) =
---   PP.brackets (PP.pretty u) PP.<+> PP.align (k a)
-
-                                      
 
 
 -- | Some useful combinators
