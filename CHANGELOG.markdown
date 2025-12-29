@@ -1,4 +1,74 @@
-	0.3.2
+# Changelog
+
+## 0.4.0 (Upcoming)
+
+### Breaking Changes
+
+#### Pure Logging System
+- **BREAKING**: Removed `logging-effect` dependency entirely
+- **BREAKING**: Removed custom `MonadLog` typeclass - now uses `MonadWriter` from mtl directly
+- **BREAKING**: Removed `Severity` and `WithSeverity` types - no logging levels
+- **BREAKING**: Removed logging utility functions: `logWith`, `bracketsUpp`, `withSeverity`
+- **BREAKING**: `IterConfig` no longer has `icLogHandler` field - logging is now done via `MonadWriter`
+- **BREAKING**: `modifyInspectGuardedM` signature changed:
+  - Before: `(MonadThrow m, ..., Monoid msg) => ConvergConfig t a -> IterConfig s t msg -> (s -> m s) -> s -> m s`
+  - After: `(MonadThrow m, MonadWriter w m, ...) => ConvergConfig t a -> IterConfig s t -> (s -> m s) -> s -> m s`
+- **BREAKING**: `LinearSystem` class method `(<\>)` now requires `MonadWriter w m` instead of `MonadLog String m`
+- **BREAKING**: `IterativeT` transformer stack simplified - removed msg type parameter
+
+### Improvements
+
+#### Logging
+- Pure functional logging using mtl's `MonadWriter` interface
+- No IO side effects in numerical computations
+- Cleaner, simpler code using standard mtl patterns
+- Logs are returned as values via Writer monad, not processed via IO
+
+#### GHC Compatibility
+- Updated to modern GHC support (tested with GHC 9.4.8, 9.6.6, 9.8.2, 9.12.2)
+- Updated Stack resolver to lts-22.39 (GHC 9.6.6)
+- Added necessary language extensions for modern GHC compatibility
+- Fixed type constraints for Complex number printing (added `RealFloat`)
+
+#### Testing
+- **+24% test coverage increase**: 31 tests (up from 25)
+- Uncommented and fixed LU factorization tests (4 tests)
+- Uncommented and fixed Arnoldi iteration tests (2 tests)
+- All tests use `WriterT` for pure logging in tests
+
+#### Code Quality
+- Exposed `Control.Iterative` module for external use
+- Cleaner dependencies (removed logging-effect)
+- Simpler abstractions (no custom MonadLog)
+- Updated `.gitignore` for modern build artifacts
+
+### Migration Guide
+
+**Old code (with logging-effect):**
+```haskell
+import Control.Monad.Log
+
+let config = IterConfig "myFunc" 100 3 id myHandler
+result <- modifyInspectGuardedM convConfig config f x0
+```
+
+**New code (with mtl MonadWriter):**
+```haskell
+import Control.Monad.Writer
+
+let config = IterConfig "myFunc" 100 3 id
+(result, logs) <- runWriterT $ modifyInspectGuardedM convConfig config f x0
+-- Process logs if needed: mapM_ putStrLn logs
+```
+
+### Internal Changes
+- `IterativeT` transformer stack: `ReaderT c (StateT s m)` over any `MonadWriter`
+- `runIterativeT` now has signature: `(Monad m, MonadWriter w m) => r -> s -> IterativeT r s m a -> m (a, s)`
+- Logs accumulated automatically via Writer monad during iteration
+
+---
+
+## 0.3.2
 	* Introduced `logging-effect` as a more versatile alternative to debug logging in IO
 
 	0.3.1
