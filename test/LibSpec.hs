@@ -158,13 +158,21 @@ spec = do
 specLu :: Spec
 specLu = do       
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
+    it "lu (2 x 2 dense)" $
+      runWithLogs (checkLu aa0) >>= (`shouldBe` True)
+    it "lu (2 x 2 sparse)" $
+      runWithLogs (checkLu tm0) >>= (`shouldBe` True)
     it "lu (3 x 3 dense)" $
       runWithLogs (checkLu tm2) >>= (`shouldBe` True) 
     it "lu (4 x 4 dense)" $
       runWithLogs (checkLu tm6) >>= (`shouldBe` True)
     it "lu (5 x 5 sparse)" $
       runWithLogs (checkLu tm7) >>= (`shouldBe` True)
-  describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ 
+  describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ do
+    it "lu (2 x 2 dense, type 1)" $
+      runWithLogs (checkLu aa0c) >>= (`shouldBe` True)
+    it "lu (2 x 2 dense, type 2)" $
+      runWithLogs (checkLu aa3c) >>= (`shouldBe` True)
     it "lu (3 x 3 dense)" $
       runWithLogs (checkLu tmc4) >>= (`shouldBe` True)
 
