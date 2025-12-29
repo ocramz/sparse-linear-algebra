@@ -15,7 +15,23 @@
 -- Combinators and helper functions for iterative algorithms, with support for monitoring and exceptions.
 --
 -----------------------------------------------------------------------------
-module Control.Iterative where
+module Control.Iterative (
+  -- * Re-exports from Control.Iterative.Internal
+  MonadLog(..),
+  -- * Logging types
+  Severity(..), WithSeverity(..),
+  -- * Iteration types
+  ConvergenceStatus(..), IterConfig(..), ConvergConfig(..), LoopState(..),
+  convergenceL2,
+  -- * Iteration combinators
+  modifyInspectGuardedM, modifyUntil, modifyUntilM, modifyUntilM_,
+  modifyUntilM',
+  -- * Helpers
+  getBuffers, mkLoopState,
+  logWith, bracketsUpp, withSeverity,
+  onRangeSparse, onRangeSparseM, unfoldZipM0, unfoldZipM, combx,
+  sqDiffPairs, sqDiff, relRes, diffSqL, relTol, norm2Diff
+) where
 
 import Control.Applicative
 
@@ -26,7 +42,6 @@ import Control.Monad.Trans.Class (MonadTrans(..), lift)
 import Control.Monad.Trans.State.Strict (StateT(..), runStateT, execStateT)
 import Control.Monad.Trans.Reader (ReaderT(..), runReaderT)
 import Control.Monad.Catch (Exception(..), MonadThrow(..), throwM)
-import Control.Monad.Log (MonadLog(..), WithSeverity(..), Severity(..), renderWithSeverity, LoggingT(..), runLoggingT, Handler, logMessage, logError, logDebug, logInfo, logNotice)
 
 -- import Data.Bool (bool)
 import Data.Char (toUpper)
@@ -47,6 +62,25 @@ import Numeric.LinearAlgebra.Class
 import Numeric.Eps
 
 
+-- * Logging types
+
+-- | Severity level for logging messages (replacing logging-effect's Severity)
+data Severity = 
+    Debug
+  | Informational
+  | Notice
+  | Warning
+  | Error
+  | Critical
+  | Alert
+  | Emergency
+  deriving (Eq, Ord, Show, Read, Enum, Bounded)
+
+-- | A message with a severity level (replacing logging-effect's WithSeverity)
+data WithSeverity a = WithSeverity Severity a
+  deriving (Eq, Show, Functor)
+
+
 
 -- * ITERATION
 
@@ -60,12 +94,12 @@ data ConvergenceStatus s a =
   deriving (Eq, Show)
 
 -- | Configuration data for the iterative process
-data IterConfig s t msg m = IterConfig {
+data IterConfig s t msg = IterConfig {
     icFunctionName :: String -- ^ Name of calling function, for logging purposes
   , icNumIterationsMax :: Int -- ^ Max # of iterations
   , icStateWindowLength :: Int -- ^ # of states used to assess convergence/divergence
   , icStateProj :: s -> t     -- ^ Project the state
-  , icLogHandler :: Handler m (WithSeverity msg) -- ^ Logging handler
+  -- Note: Handler removed - logging is now pure via Writer monad
   -- , icLogWith :: s -> (Severity, msg) -- ^ Compute log severity and message
     } deriving Generic
 
@@ -157,7 +191,7 @@ mkLoopState = LoopState 0 []
 -- | Configurable iteration combinator, with convergence monitoring and logging
 modifyInspectGuardedM :: (MonadThrow m, Show a, Typeable a, Show t, Typeable t) =>
                          ConvergConfig t a 
-                      -> IterConfig s t msg m
+                      -> IterConfig s t msg
                       -> (s -> m s)
                       -> s
                       -> m s
@@ -165,7 +199,7 @@ modifyInspectGuardedM (ConvergConfig sf qconverg qdiverg qfinal) r f x0
   | nitermax > 0 = run
   | otherwise = throwM (NonNegError fname nitermax)
   where
-    (IterConfig fname nitermax lwindow pf lh) = r
+    (IterConfig fname nitermax lwindow pf) = r
     updState snew (LoopState i lss s) = LoopState (i + 1) lssUpd snew
       where
         lss' = s : lss
@@ -173,7 +207,7 @@ modifyInspectGuardedM (ConvergConfig sf qconverg qdiverg qfinal) r f x0
                | otherwise            = take lwindow lss'    
     run = do
       let s0 = mkLoopState x0 
-      (aLast, sLast) <- runIterativeT lh r s0 loop 
+      ((aLast, sLast), _logs) <- runIterativeT r s0 loop 
       let i = lsCounter sLast
       case aLast of
         Left (NotConverged y) -> throwM $ NotConvergedE fname nitermax (pf y)

@@ -1,16 +1,20 @@
-{-# language DeriveFunctor, GeneralizedNewtypeDeriving #-}
-module Control.Iterative.Internal (IterativeT(..), runIterativeT) where
+{-# language DeriveFunctor, GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances #-}
+module Control.Iterative.Internal (IterativeT(..), runIterativeT, MonadLog(..)) where
 
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State.Strict (MonadState(..), get, put)
 import Control.Monad.Trans.Class (MonadTrans(..), lift)
 import Control.Monad.Trans.State.Strict (StateT(..), runStateT)
 import Control.Monad.Trans.Reader (ReaderT(..), runReaderT)
-import Control.Monad.Log (MonadLog(..), LoggingT(..), runLoggingT, Handler, logMessage)
+import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), runWriterT)
 import Control.Monad.Catch (MonadThrow(..), throwM)
 
 
--- | Iterative algorithms need configuration, state and logging; here we use a transformer stack of ReaderT + StateT + LoggingT (from `logging-effect`).
+-- | Pure logging typeclass, replacing logging-effect's MonadLog
+class Monad m => MonadLog msg m where
+  logMessage :: msg -> m ()
+
+-- | Iterative algorithms need configuration, state and logging; here we use a transformer stack of ReaderT + StateT + WriterT.
 --
 -- The idea is to compose the plumbing of iterative programs from 'MonadState', 'MonadReader' and 'MonadLog' instructions (the "specification" of the effects to be used), which is usually referred to as the "@mtl@ style".
 --
@@ -31,34 +35,35 @@ import Control.Monad.Catch (MonadThrow(..), throwM)
 -- @
 --
 newtype IterativeT c msg s m a =
-  IterativeT { unIterativeT :: ReaderT c (StateT s (LoggingT msg m)) a } deriving (Functor, Applicative, Monad, MonadReader c, MonadState s, MonadLog msg)
+  IterativeT { unIterativeT :: ReaderT c (StateT s (WriterT [msg] m)) a } deriving (Functor, Applicative, Monad, MonadReader c, MonadState s)
+
+instance Monad m => MonadLog msg (IterativeT c msg s m) where
+  logMessage msg = IterativeT $ lift $ lift $ tell [msg]
 
 instance MonadTrans (IterativeT c msg s) where
   lift = liftIterativeT
 
 liftIterativeT :: Monad m => m a -> IterativeT c msg s m a
-liftIterativeT m = IterativeT . lift . lift $ LoggingT mlog
-  where mlog = ReaderT (const m)
+liftIterativeT = IterativeT . lift . lift . lift
     
 instance MonadThrow m => MonadThrow (IterativeT c msg s m) where
   throwM e = lift $ throwM e
 
--- | Run an 'IterativeT' computation, return result and final state
-runIterativeT :: Handler m message -- ^ Logging handler
-              -> r  -- ^ Configuration
+-- | Run an 'IterativeT' computation, return result, final state, and log messages
+runIterativeT :: Monad m
+              => r  -- ^ Configuration
               -> s  -- ^ Initial state
               -> IterativeT r message s m a 
-              -> m (a, s) -- ^ (result, final state)
-runIterativeT lh c x0 m =
-  runLoggingT (runStateT (runReaderT (unIterativeT m) c) x0) lh
+              -> m ((a, s), [message]) -- ^ ((result, final state), log messages)
+runIterativeT c x0 m =
+  runWriterT (runStateT (runReaderT (unIterativeT m) c) x0)
 
-execIterativeT :: Functor m =>
-                  Handler m message
-               -> r
+execIterativeT :: (Monad m, Functor m) =>
+                  r
                -> s
                -> IterativeT r message s m a
                -> m s
-execIterativeT lh c x0 m = snd <$> runIterativeT lh c x0 m
+execIterativeT c x0 m = snd . fst <$> runIterativeT c x0 m
 
 
       

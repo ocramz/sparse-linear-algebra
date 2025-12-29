@@ -22,8 +22,8 @@ import Data.Complex
 -- import Control.Exception
 -- import Control.Exception.Common
 import Control.Monad.Catch
-import Control.Monad.Log
 import Control.Monad.IO.Class
+import Control.Iterative.Internal (MonadLog)
 
 -- import Data.Typeable (Typeable)
 

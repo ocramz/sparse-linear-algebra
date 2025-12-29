@@ -15,11 +15,11 @@ module LibSpec where
 import Control.Exception.Common
 import Data.Sparse.Common
 import Numeric.LinearAlgebra.Sparse
+import Control.Iterative (MonadLog)
 -- import Numeric.LinearAlgebra.Class
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class
-import Control.Monad.Log
 
 import Data.Complex
        
