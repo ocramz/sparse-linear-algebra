@@ -201,6 +201,10 @@ specTriangularSolve = do
 specChol :: Spec
 specChol = do
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization properties (Real)" $ do
+    it "chol: specific test case (3x3 SPD matrix)" $
+      runWithLogs (checkChol testSPD3x3) >>= (`shouldBe` True)
+    it "chol: specific test case (5x5 sparse tridiagonal)" $
+      runWithLogs (checkChol tm7spd) >>= (`shouldBe` True)
     prop "chol: L L^T = A for symmetric positive definite matrices (Real)" $
       \(PropMatSPD m) -> runWithLogs (prop_Cholesky_reconstruction m)
     prop "chol: L is lower triangular (Real)" $
@@ -208,6 +212,10 @@ specChol = do
     prop "chol: diagonal elements are positive (Real)" $
       \(PropMatSPD m) -> runWithLogs (prop_Cholesky_positive_diagonal m)
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization properties (Complex)" $ do
+    it "chol: specific test case (2x2 HPD matrix)" $
+      runWithLogs (checkChol testHPD2x2) >>= (`shouldBe` True)
+    it "chol: specific test case (3x3 HPD matrix)" $
+      runWithLogs (checkChol testHPD3x3) >>= (`shouldBe` True)
     prop "chol: L L^H = A for Hermitian positive definite matrices (Complex)" $
       \(PropMatHPD m) -> runWithLogs (prop_Cholesky_reconstruction_complex m)
     prop "chol: L is lower triangular (Complex)" $
@@ -402,14 +410,15 @@ checkTriLowerSolveC lmat rhs = do
 
 -- | Cholesky
 
--- checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
---               MonadThrow m, MonadWriter [String] m) =>
---      SpMatrix a -> m Bool
--- checkChol a = do -- c1 && c2 where
---   l <- chol a
---   let c1 = nearZero $ normFrobenius $ sparsifySM ((l ##^ l) ^-^ a)
---       c2 = isLowerTriSM l
---   return $ c1 && c2
+-- | Generic Cholesky check function
+checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a,
+              MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix a -> m Bool
+checkChol a = do
+  l <- chol a
+  let c1 = nearZero $ normFrobenius $ sparsifySM ((l ##^ l) ^-^ a)
+      c2 = isLowerTriSM l
+  return $ c1 && c2
 
 
 -- | Cholesky property tests
@@ -1343,6 +1352,32 @@ utri1c = fromListSM (3,3) [(0,0,2:+0), (0,1,1:+1), (0,2,1:+0), (1,1,3:+0), (1,2,
 
 b_utri1c :: SpVector (Complex Double)
 b_utri1c = fromListDenseSV 3 [5:+1, 5:+(-1), 2:+1]  -- utri1c #> [1, 1, 1]
+
+-- | Test data for Cholesky factorization
+
+-- | 3x3 symmetric positive definite matrix (Real)
+testSPD3x3 :: SpMatrix Double
+testSPD3x3 = fromListDenseSM 3 [4, 2, 1, 2, 5, 3, 1, 3, 6]
+
+-- | 5x5 symmetric positive definite tridiagonal matrix (Real)
+tm7spd :: SpMatrix Double
+tm7spd = a ^+^ b ^+^ c where
+  n = 5
+  a = mkSubDiagonal n 1 $ replicate n (-1)
+  b = mkSubDiagonal n 0 $ replicate n 3  -- Changed from 2 to 3 to ensure SPD
+  c = mkSubDiagonal n (-1) $ replicate n (-1)
+
+-- | 2x2 Hermitian positive definite matrix (Complex)
+testHPD2x2 :: SpMatrix (Complex Double)
+testHPD2x2 = fromListDenseSM 2 [2:+0, 1:+1, 1:+(-1), 3:+0]
+
+-- | 3x3 Hermitian positive definite matrix (Complex)
+testHPD3x3 :: SpMatrix (Complex Double)
+testHPD3x3 = fromListDenseSM 3 [
+  4:+0,     1:+1,     0:+(-1),
+  1:+(-1),  5:+0,     1:+2,
+  0:+1,     1:+(-2),  6:+0
+  ]
 
 -- | Example 5.4.2 from G & VL
 -- aa1 :: SpMatrix Double
