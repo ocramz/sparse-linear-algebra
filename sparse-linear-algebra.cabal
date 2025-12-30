@@ -75,19 +75,14 @@ library
                        Numeric.LinearAlgebra.LinearSolvers.Experimental
                        Numeric.LinearAlgebra.EigenSolvers.Experimental
   build-depends:       base >= 4.7 && < 5
-                     -- , deepseq
                      , containers >= 0.5.7.1
-                     -- , data-default-class
                      , exceptions >= 0.8.3
                      , mtl >= 2.2.1                                          
                      , primitive >= 0.6.2.0
                      , transformers >= 0.5.2.0                    
                      , vector >= 0.12.0.1
                      , vector-algorithms >= 0.7.0.1
-                     -- , hybrid-vectors
-                     -- , writer-cps-transformers
-                     -- , monad-log == 0.1.1.0
-                     -- , monad-par
+
 
                      -- -- DEBUG
                      , QuickCheck >= 2.8.2
@@ -96,19 +91,10 @@ library
                      -- , mwc-random                     
 
 
--- executable perf
---   default-language:    Haskell2010
---   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
---   hs-source-dirs:      perf
---   main-is:             Main.hs
---   build-depends:       base
---                      , sparse-linear-algebra
---                      , matrix-market-attoparsec
---                      , scientific
   
 test-suite spec
   default-language:    Haskell2010
-  ghc-options:         -Wall
+  ghc-options:         -Wall -Wno-unused-imports  -Wno-type-defaults
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   other-modules:       LibSpec
