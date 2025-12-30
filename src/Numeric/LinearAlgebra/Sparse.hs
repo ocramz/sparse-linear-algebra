@@ -977,12 +977,12 @@ instance Show a => Show (BICGSTAB a) where
 
 
 -- * Moore-Penrose pseudoinverse
--- | Least-squares approximation of a rectangular system of equations.
--- pinv :: (LinearSystem v, MatrixRing (MatrixType v), MonadThrow m, MonadIO m) =>
---      MatrixType v -> v -> m v
-pinv aa b = (aa #^# aa) <\> atb where
-  atb = transpose aa #> b
-
+-- -- | Least-squares approximation of a rectangular system of equations.
+-- -- pinv :: (LinearSystem v, MatrixRing (MatrixType v), MonadThrow m, MonadIO m) =>
+-- --      MatrixType v -> v -> m v
+-- pinv aa b = (aa #^# aa) <\> atb where
+--   atb = transpose aa #> b
+-- 
 
 
 
@@ -1024,10 +1024,10 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
 --   xf <- untilConvergedG fh name nitermax lwindow fproj (flog . fproj) stepf initf
 --   return $ fproj xf    
 
-class IterativeSolver s where
-  -- solver :: 
-  
-
+-- class IterativeSolver s where
+--   -- solver :: 
+--   
+-- 
 
 
 -- -- | <\> uses the GMRES method as default
