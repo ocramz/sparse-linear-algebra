@@ -2,7 +2,8 @@
 
 Numerical computation in native Haskell
 
-[![Hackage](https://img.shields.io/hackage/v/sparse-linear-algebra.svg)](https://hackage.haskell.org/package/sparse-linear-algebra)  [![Build Status](https://travis-ci.org/ocramz/sparse-linear-algebra.png)](https://travis-ci.org/ocramz/sparse-linear-algebra)
+[![CI](https://github.com/ocramz/sparse-linear-algebra/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/ocramz/sparse-linear-algebra/actions/workflows/ci.yml)
+[![Hackage](https://img.shields.io/hackage/v/sparse-linear-algebra.svg)](https://hackage.haskell.org/package/sparse-linear-algebra)  
 [![sparse-linear-algebra](http://stackage.org/package/sparse-linear-algebra/badge/lts)](http://stackage.org/lts/package/sparse-linear-algebra)
 [![sparse-linear-algebra](http://stackage.org/package/sparse-linear-algebra/badge/nightly)](http://stackage.org/nightly/package/sparse-linear-algebra)
 
