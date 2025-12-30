@@ -369,6 +369,9 @@ checkTriUpperSolveC :: (MonadThrow m, MonadWriter [String] m) =>
 checkTriUpperSolveC umat rhs = do
   xhat <- triUpperSolve umat rhs
   let r = (umat #> xhat) ^-^ rhs
+      -- For Complex vectors, use mag (r <.> r) instead of norm2 r because
+      -- Normed instance for SpVector Complex has incompatible constraints
+      -- (requires RealScalar ~ Scalar, but for Complex: Double ~ Complex Double)
       normSq = mag (r <.> r)
       flag = nearZero normSq
   return flag
@@ -378,6 +381,9 @@ checkTriLowerSolveC :: (MonadThrow m, MonadWriter [String] m) =>
 checkTriLowerSolveC lmat rhs = do
   xhat <- triLowerSolve lmat rhs
   let r = (lmat #> xhat) ^-^ rhs
+      -- For Complex vectors, use mag (r <.> r) instead of norm2 r because
+      -- Normed instance for SpVector Complex has incompatible constraints
+      -- (requires RealScalar ~ Scalar, but for Complex: Double ~ Complex Double)
       normSq = mag (r <.> r)
       flag = nearZero normSq
   return flag
