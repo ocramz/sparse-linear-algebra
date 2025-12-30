@@ -99,11 +99,24 @@ spec = do
       \p@(PropMatIC (m :: SpMatrix (Complex Double))) -> monadicIO $ do
         result <- run $ prop_QR_complex p
         assert result
+    prop "prop_eigsQR: eigsQR produces correct dimension output (Real)" $
+      \p@(PropMatI (m :: SpMatrix Double)) -> monadicIO $ do
+        result <- run $ prop_eigsQR p
+        assert result
+    prop "prop_eigsQR_complex: eigsQR produces correct dimension output (Complex)" $
+      \p@(PropMatIC (m :: SpMatrix (Complex Double))) -> monadicIO $ do
+        result <- run $ prop_eigsQR_complex p
+        assert result
+    prop "prop_eigsArnoldi: eigsArnoldi produces correct dimension output (Real)" $
+      \p@(PropMatI (m :: SpMatrix Double)) -> monadicIO $ do
+        result <- run $ prop_eigsArnoldi p
+        assert result
   specLu
   specTriangularSolve
   specArnoldi
   specQR
   specEigsQR
+  specEigsArnoldi
   specChol  -- Cholesky property tests
 
 -- specLinSolve = 
@@ -174,6 +187,26 @@ specEigsQR = do
   describe "Numeric.LinearAlgebra.Sparse : QR eigenvalue algorithm (Complex)" $ do
     it "eigsQR (2 x 2 dense)" $
       checkEigsQR aa3cx 50 >>= (`shouldBe` True)
+
+specEigsArnoldi :: Spec
+specEigsArnoldi = do
+  describe "Numeric.LinearAlgebra.Sparse : Arnoldi-QR eigenvalue algorithm (Real)" $ do
+    it "eigsArnoldi (3 x 3 matrix with known eigenvalues)" $
+      checkEigsArnoldi aa4 3 >>= (`shouldBe` True)
+    it "eigsArnoldi (4 x 4 issue test case)" $
+      checkEigsArnoldi issueMatrix 4 >>= (`shouldBe` True)
+    it "eigsArnoldi (2 x 2 dense)" $
+      checkEigsArnoldi aa0 2 >>= (`shouldBe` True)
+    it "eigsArnoldi (5 x 5 sparse)" $
+      checkEigsArnoldi tm7 4 >>= (`shouldBe` True)
+  -- Complex tests are not possible because Normed (SpVector (Complex Double)) requires
+  -- RealScalar ~ Scalar, but for Complex: RealScalar (Complex Double) = Double, 
+  -- Scalar (Complex Double) = Complex Double, so the constraint cannot be satisfied.
+  -- describe "Numeric.LinearAlgebra.Sparse : Arnoldi-QR eigenvalue algorithm (Complex)" $ do
+  --   it "eigsArnoldi (2 x 2 dense)" $
+  --     checkEigsArnoldi (aa0c :: SpMatrix (Complex Double)) 2 >>= (`shouldBe` True)
+  --   it "eigsArnoldi (3 x 3 dense)" $
+  --     checkEigsArnoldi (aa4c :: SpMatrix (Complex Double)) 3 >>= (`shouldBe` True)
       
 specLu :: Spec
 specLu = do       
@@ -404,6 +437,22 @@ checkEigsQR mat niter = do
   let n = nrows mat
       eigsDim = dim eigs
   return $ eigsDim == n
+
+-- | Check that eigsArnoldi runs without throwing an exception and produces output
+checkEigsArnoldi :: forall a m. (MatrixType (SpVector a) ~ SpMatrix a, Scalar (SpVector a) ~ a,
+     V (SpVector a), Elt a, AdditiveGroup a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     SpMatrix a -> Int -> m Bool
+checkEigsArnoldi mat niter = do
+  let b = onesSV (nrows mat) :: SpVector a
+  (q, o, eigs) <- eigsArnoldi niter mat b
+  -- Check that it completes and produces outputs with right dimensions
+  let n = nrows mat
+      eigsDim = dim eigs
+      (qm, qn) = dim q
+      (om, on) = dim o
+  -- Just check that dimensions are reasonable (not checking exact values as 
+  -- Arnoldi can terminate early)
+  return $ eigsDim > 0 && qm == n && qn > 0 && om > 0 && on > 0
 
 -- stepQR a = do
 --   (q, r) <- qr a
@@ -1046,6 +1095,20 @@ prop_QR (PropMatI m) = checkQr0 qr m
 
 prop_QR_complex :: (MonadThrow m) => PropMatIC (Complex Double) -> m Bool
 prop_QR_complex (PropMatIC m) = checkQr0 qr m
+
+-- | eigsQR property tests
+prop_eigsQR :: (MonadThrow m) => PropMatI Double -> m Bool
+prop_eigsQR (PropMatI m) = checkEigsQR m 50
+
+prop_eigsQR_complex :: (MonadThrow m) => PropMatIC (Complex Double) -> m Bool
+prop_eigsQR_complex (PropMatIC m) = checkEigsQR m 50
+
+-- | eigsArnoldi property tests  
+prop_eigsArnoldi :: (MonadThrow m) => PropMatI Double -> m Bool
+prop_eigsArnoldi (PropMatI m) = 
+  let n = nrows m
+      niter = max 1 (min 5 (n - 1))  -- Ensure at least 1 iteration, at most 5 or n-1
+  in checkEigsArnoldi m niter
 -- prop_QR :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a), Epsilon a,
 --             MonadThrow m) =>
 --      PropMatI a -> m Bool

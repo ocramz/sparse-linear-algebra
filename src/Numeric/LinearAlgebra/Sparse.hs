@@ -25,7 +25,7 @@ module Numeric.LinearAlgebra.Sparse
          -- * Eigensolvers
          eigsQR,
          -- eigRayleigh,
-         -- eigsArnoldi,
+         eigsArnoldi,
          -- * Matrix factorization algorithms
          -- ** QR
          qr, 
@@ -354,17 +354,16 @@ eigsQR nitermax _debq m = pf <$> eigsQRLoop nitermax m
 --
 -- After that, it computes the QR decomposition of H, denoted (O, R) and the eigenvalues {λ_i} of A are listed on the diagonal of the R factor.
 
--- eigsArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
---       Elt t, V (SpVector t), Epsilon t, PrintDense (SpMatrix t),
---       MatrixRing (SpMatrix t), MonadThrow m, MonadLog String m) =>
---      Int
---      -> SpMatrix t
---      -> SpVector t
---      -> m (SpMatrix t, SpMatrix t, SpVector t) -- ^ Q, O, {λ_i}
--- eigsArnoldi nitermax aa b = do
---   (q, h) <- arnoldi aa b nitermax
---   (o, r) <- qr h
---   return (q, o, extractDiagDense r)
+eigsArnoldi :: (MatrixType (SpVector t) ~ SpMatrix t, V (SpVector t),
+     Scalar (SpVector t) ~ t, Elt t, AdditiveGroup t, MatrixRing (SpMatrix t), Epsilon t, MonadThrow m) =>
+     Int                        -- ^ Max. # of iterations
+     -> SpMatrix t              -- ^ System matrix
+     -> SpVector t              -- ^ r.h.s.
+     -> m (SpMatrix t, SpMatrix t, SpVector t) -- ^ Q, O, {λ_i}
+eigsArnoldi nitermax aa b = do
+  (q, h) <- arnoldi aa b nitermax
+  (o, r) <- qr h
+  return (q, o, extractDiagDense r)
   
 
 
