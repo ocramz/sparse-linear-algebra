@@ -101,7 +101,7 @@ spec = do
   specTriangularSolve
   specArnoldi
   -- specQR -- QR functions not yet implemented
-  -- specChol  -- Cholesky functions not yet implemented
+  specChol  -- Cholesky property tests
 
 -- specLinSolve = 
 --   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
@@ -198,12 +198,22 @@ specTriangularSolve = do
     it "triUpperSolve (3 x 3 dense)" $
       runWithLogs (checkTriUpperSolveC utri1c b_utri1c) >>= (`shouldBe` True)
 
--- specChol commented out - Cholesky not yet implemented
--- specChol :: Spec
--- specChol =   
---   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization (Real, symmetric pos.def.)" $ 
---     it "chol (5 x 5 sparse)" $
---       checkChol tm7 >>= (`shouldBe` True)
+specChol :: Spec
+specChol = do
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization properties (Real)" $ do
+    prop "chol: L L^T = A for symmetric positive definite matrices (Real)" $
+      \(PropMatSPD m) -> runWithLogs (prop_Cholesky_reconstruction m)
+    prop "chol: L is lower triangular (Real)" $
+      \(PropMatSPD m) -> runWithLogs (prop_Cholesky_lower_triangular m)
+    prop "chol: diagonal elements are positive (Real)" $
+      \(PropMatSPD m) -> runWithLogs (prop_Cholesky_positive_diagonal m)
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization properties (Complex)" $ do
+    prop "chol: L L^H = A for Hermitian positive definite matrices (Complex)" $
+      \(PropMatHPD m) -> runWithLogs (prop_Cholesky_reconstruction_complex m)
+    prop "chol: L is lower triangular (Complex)" $
+      \(PropMatHPD m) -> runWithLogs (prop_Cholesky_lower_triangular_complex m)
+    prop "chol: diagonal elements have positive real parts (Complex)" $
+      \(PropMatHPD m) -> runWithLogs (prop_Cholesky_positive_diagonal_complex m)
   
 specArnoldi :: Spec
 specArnoldi =       
@@ -400,6 +410,59 @@ checkTriLowerSolveC lmat rhs = do
 --   let c1 = nearZero $ normFrobenius $ sparsifySM ((l ##^ l) ^-^ a)
 --       c2 = isLowerTriSM l
 --   return $ c1 && c2
+
+
+-- | Cholesky property tests
+
+-- | Test that L L^T = A for symmetric positive definite matrices (Real)
+prop_Cholesky_reconstruction :: (MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix Double -> m Bool
+prop_Cholesky_reconstruction a = do
+  l <- chol a
+  let reconstruction = l ##^ l
+      residual = normFrobenius $ sparsifySM (reconstruction ^-^ a)
+  return $ nearZero residual
+
+-- | Test that L is lower triangular (Real)
+prop_Cholesky_lower_triangular :: (MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix Double -> m Bool
+prop_Cholesky_lower_triangular a = do
+  l <- chol a
+  return $ isLowerTriSM l
+
+-- | Test that diagonal elements of L are positive (Real)
+prop_Cholesky_positive_diagonal :: (MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix Double -> m Bool
+prop_Cholesky_positive_diagonal a = do
+  l <- chol a
+  let diag = extractDiagDense l
+      allPositive = all (> 0) (toListSV diag)
+  return allPositive
+
+-- | Test that L L^H = A for Hermitian positive definite matrices (Complex)
+prop_Cholesky_reconstruction_complex :: (MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix (Complex Double) -> m Bool
+prop_Cholesky_reconstruction_complex a = do
+  l <- chol a
+  let reconstruction = l ##^ l
+      residual = normFrobenius $ sparsifySM (reconstruction ^-^ a)
+  return $ nearZero residual
+
+-- | Test that L is lower triangular (Complex)
+prop_Cholesky_lower_triangular_complex :: (MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix (Complex Double) -> m Bool
+prop_Cholesky_lower_triangular_complex a = do
+  l <- chol a
+  return $ isLowerTriSM l
+
+-- | Test that diagonal elements have positive real parts (Complex)
+prop_Cholesky_positive_diagonal_complex :: (MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix (Complex Double) -> m Bool
+prop_Cholesky_positive_diagonal_complex a = do
+  l <- chol a
+  let diag = extractDiagDense l
+      allPositiveReal = all (\x -> realPart x > 0) (toListSV diag)
+  return allPositiveReal
 
 
 -- | direct linear solver 
@@ -608,6 +671,9 @@ genSpVDense n = do
 
 -- | An Arbitrary SpVector such that at least one entry is nonzero
 instance Arbitrary (SpVector Double) where
+  arbitrary = sized genSpV `suchThat` any isNz
+
+instance Arbitrary (SpVector (Complex Double)) where
   arbitrary = sized genSpV `suchThat` any isNz 
 
 
@@ -689,16 +755,37 @@ genSpMI m = do
 
 
 
--- -- | A symmetric, positive-definite matrix
--- newtype PropMatSPD a = PropMatSPD {unPropMatSPD :: SpMatrix a} deriving (Show)
--- instance Arbitrary (PropMatSPD Double) where
---   arbitrary = sized genSpM_SPD `suchThat` ((> 2) . nrows . unPropMatSPD)
+-- | A symmetric, positive-definite matrix (Real)
+newtype PropMatSPD a = PropMatSPD {unPropMatSPD :: SpMatrix a} deriving (Show)
 
--- genSpM_SPD :: Int -> Gen (PropMatSPD Double)
--- genSpM_SPD n = do
---   q <- genUnitary n 
---   d <- genSpMDiagonal (all (> 0)) n          -- positive diagonal
---   return $ PropMatSPD ( q ## (d ##^ q) )
+instance Arbitrary (PropMatSPD Double) where
+  arbitrary = sized genSpM_SPD `suchThat` ((>= 2) . nrows . unPropMatSPD)
+
+-- | Generate a symmetric positive definite matrix via A^T A + I construction
+genSpM_SPD :: Int -> Gen (PropMatSPD Double)
+genSpM_SPD n = do
+  -- Generate a random matrix
+  m <- genSpM n n
+  -- Make it SPD by computing m^T m + ε*I (ensures positive definiteness)
+  let epsilon = 0.1
+      spd = (m #^# m) ^+^ (epsilon .* eye n)
+  return $ PropMatSPD spd
+
+-- | A Hermitian, positive-definite matrix (Complex)
+newtype PropMatHPD a = PropMatHPD {unPropMatHPD :: SpMatrix a} deriving (Show)
+
+instance Arbitrary (PropMatHPD (Complex Double)) where
+  arbitrary = sized genSpM_HPD `suchThat` ((>= 2) . nrows . unPropMatHPD)
+
+-- | Generate a Hermitian positive definite matrix via A^H A + I construction
+genSpM_HPD :: Int -> Gen (PropMatHPD (Complex Double))
+genSpM_HPD n = do
+  -- Generate a random complex matrix
+  m <- genSpM n n
+  -- Make it HPD by computing m^H m + ε*I (ensures positive definiteness)
+  let epsilon = 0.1 :+ 0
+      hpd = (m #^# m) ^+^ (epsilon .* eye n)
+  return $ PropMatHPD hpd
 
 
 
