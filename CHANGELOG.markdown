@@ -34,6 +34,8 @@
 - **+24% test coverage increase**: 31 tests (up from 25)
 - Uncommented and fixed LU factorization tests (4 tests)
 - Uncommented and fixed Arnoldi iteration tests (2 tests)
+- **Uncommented and fixed QR decomposition tests** (5 specific cases, 2 property tests)
+- **Added eigsQR eigenvalue algorithm tests** (5 specific cases)
 - All tests use `WriterT` for pure logging in tests
 - Added 4 new tests for 2x2 LU factorization (both Real and Complex)
 
@@ -42,12 +44,19 @@
 - Cleaner dependencies (removed logging-effect)
 - Simpler abstractions (no custom MonadLog)
 - Updated `.gitignore` for modern build artifacts
+- **Uncommented and enabled QR decomposition (`qr`) function**
+- **Uncommented and enabled eigsQR eigenvalue algorithm**
 
 ### Bug Fixes
 - **Fixed LU factorization infinite loop**: Corrected termination condition in `lu` function that caused hangs for all matrix sizes, especially noticeable with 2x2 matrices
   - Changed loop termination from `i == n - 1` to `i == n` to properly process all matrix rows/columns
   - Removed redundant final U matrix update that was masking the incorrect termination
   - Issue affected both Real and Complex matrix types
+- **Fixed QR decomposition Givens rotation error**: Resolved "no compatible rows" exception that occurred with certain sparse matrix structures
+  - Modified `givens` function to return `Maybe (SpMatrix a)` instead of throwing exception when no compatible row exists
+  - Added check for already-zero elements before attempting Givens rotation
+  - QR algorithm now gracefully skips elements that cannot be rotated or are already zero
+  - Fixes issue where eigsQR failed on sparse matrices like `[0,1,1,0; 1,0,0,0; 1,0,0,1; 0,0,1,0]`
 
 ### Migration Guide
 

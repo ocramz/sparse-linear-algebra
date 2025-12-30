@@ -19,19 +19,13 @@ import Numeric.LinearAlgebra.Sparse
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class
-import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
-import Control.Monad.Writer.Class (MonadWriter)
 
 import Data.Complex
        
 import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck
-import Control.Monad.Writer.Class (tell)
-
--- Helper to wrap IO computations with logging for tests
-runWithLogs :: WriterT [String] IO a -> IO a
-runWithLogs m = fst <$> runWriterT m
+import Test.QuickCheck.Monadic (monadicIO, run, assert)
 
 
 main :: IO ()
@@ -97,10 +91,19 @@ spec = do
       \p@(PropMatMat (_ :: SpMatrix Double) _) -> prop_matMat1 p
     prop "prop_matMat2 : M^T ##^ M == M #^# M^T" $
       \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
+    prop "prop_QR: Q R = A, Q is orthogonal, R is upper triangular (Real)" $
+      \p@(PropMatI (m :: SpMatrix Double)) -> monadicIO $ do
+        result <- run $ prop_QR p
+        assert result
+    prop "prop_QR_complex: Q R = A, Q is orthogonal, R is upper triangular (Complex)" $
+      \p@(PropMatIC (m :: SpMatrix (Complex Double))) -> monadicIO $ do
+        result <- run $ prop_QR_complex p
+        assert result
   specLu
   specTriangularSolve
   specArnoldi
-  -- specQR -- QR functions not yet implemented
+  specQR
+  specEigsQR
   specChol  -- Cholesky property tests
 
 -- specLinSolve = 
@@ -140,96 +143,124 @@ spec = do
 --   -- --   it "luSolve (3 x 3 dense)" $ 
 --   -- --     checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True, True)) 
 
--- specQR and specChol commented out - QR and Cholesky not yet implemented
--- specQR :: Spec
--- specQR = do       
---   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
---     it "qr (3 x 3 dense)" $ 
---       checkQr0 qr tm2 >>= (`shouldBe` True)
---     it "qr (4 x 4 sparse)" $
---       checkQr0 qr tm4 >>= (`shouldBe` True)
---     it "qr (5 x 5 sparse)" $
---       checkQr0 qr tm7 >>= (`shouldBe` True)
---   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
---     it "qr (2 x 2 dense)" $
---       checkQr0 qr aa3cx >>= (`shouldBe` True)
---     it "qr (3 x 3 dense)" $
---       checkQr0 qr tmc4 >>= (`shouldBe` True)
+specQR :: Spec
+specQR = do       
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
+    it "qr (3 x 3 dense)" $ 
+      checkQr0 qr tm2 >>= (`shouldBe` True)
+    it "qr (4 x 4 sparse)" $
+      checkQr0 qr tm4 >>= (`shouldBe` True)
+    it "qr (4 x 4 dense)" $
+      checkQr0 qr tm6 >>= (`shouldBe` True)
+    it "qr (issue test case: 4x4 matrix)" $
+      checkQr0 qr issueMatrix >>= (`shouldBe` True)
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
+    it "qr (2 x 2 dense)" $
+      checkQr0 qr aa3cx >>= (`shouldBe` True)
+    it "qr (3 x 3 dense)" $
+      checkQr0 qr tmc4 >>= (`shouldBe` True)
+
+specEigsQR :: Spec
+specEigsQR = do
+  describe "Numeric.LinearAlgebra.Sparse : QR eigenvalue algorithm (Real)" $ do
+    it "eigsQR (3 x 3 matrix with known eigenvalues)" $
+      checkEigsQR aa4 100 >>= (`shouldBe` True)
+    it "eigsQR (4 x 4 issue test case)" $
+      checkEigsQR issueMatrix 100 >>= (`shouldBe` True)
+    it "eigsQR (2 x 2 dense)" $
+      checkEigsQR aa0 50 >>= (`shouldBe` True)
+    it "eigsQR (3 x 3 dense)" $
+      checkEigsQR tm2 100 >>= (`shouldBe` True)
+  describe "Numeric.LinearAlgebra.Sparse : QR eigenvalue algorithm (Complex)" $ do
+    it "eigsQR (2 x 2 dense)" $
+      checkEigsQR aa3cx 50 >>= (`shouldBe` True)
       
 specLu :: Spec
 specLu = do       
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
     it "lu (2 x 2 dense)" $
-      runWithLogs (checkLu aa0) >>= (`shouldBe` True)
+      checkLu aa0 >>= (`shouldBe` True)
     it "lu (2 x 2 sparse)" $
-      runWithLogs (checkLu tm0) >>= (`shouldBe` True)
+      checkLu tm0 >>= (`shouldBe` True)
     it "lu (3 x 3 dense)" $
-      runWithLogs (checkLu tm2) >>= (`shouldBe` True) 
+      checkLu tm2 >>= (`shouldBe` True) 
     it "lu (4 x 4 dense)" $
-      runWithLogs (checkLu tm6) >>= (`shouldBe` True)
+      checkLu tm6 >>= (`shouldBe` True)
     it "lu (5 x 5 sparse)" $
-      runWithLogs (checkLu tm7) >>= (`shouldBe` True)
+      checkLu tm7 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ do
     it "lu (2 x 2 dense, type 1)" $
-      runWithLogs (checkLu aa0c) >>= (`shouldBe` True)
+      checkLu aa0c >>= (`shouldBe` True)
     it "lu (2 x 2 dense, type 2)" $
-      runWithLogs (checkLu aa3c) >>= (`shouldBe` True)
+      checkLu aa3c >>= (`shouldBe` True)
     it "lu (3 x 3 dense)" $
-      runWithLogs (checkLu tmc4) >>= (`shouldBe` True)
+      checkLu tmc4 >>= (`shouldBe` True)
 
 specTriangularSolve :: Spec
 specTriangularSolve = do
   describe "Numeric.LinearAlgebra.Sparse : Triangular solvers (Real)" $ do
     it "triLowerSolve (2 x 2 dense)" $
-      runWithLogs (checkTriLowerSolve ltri0 b_ltri0) >>= (`shouldBe` True)
+      checkTriLowerSolve ltri0 b_ltri0 >>= (`shouldBe` True)
     it "triUpperSolve (2 x 2 dense)" $
-      runWithLogs (checkTriUpperSolve utri0 b_utri0) >>= (`shouldBe` True)
+      checkTriUpperSolve utri0 b_utri0 >>= (`shouldBe` True)
     it "triLowerSolve (3 x 3 sparse)" $
-      runWithLogs (checkTriLowerSolve ltri1 b_ltri1) >>= (`shouldBe` True)
+      checkTriLowerSolve ltri1 b_ltri1 >>= (`shouldBe` True)
     it "triUpperSolve (3 x 3 sparse)" $
-      runWithLogs (checkTriUpperSolve utri1 b_utri1) >>= (`shouldBe` True)
+      checkTriUpperSolve utri1 b_utri1 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : Triangular solvers (Complex)" $ do
     it "triLowerSolve (2 x 2 dense)" $
-      runWithLogs (checkTriLowerSolveC ltri0c b_ltri0c) >>= (`shouldBe` True)
+      checkTriLowerSolveC ltri0c b_ltri0c >>= (`shouldBe` True)
     it "triUpperSolve (2 x 2 dense)" $
-      runWithLogs (checkTriUpperSolveC utri0c b_utri0c) >>= (`shouldBe` True)
+      checkTriUpperSolveC utri0c b_utri0c >>= (`shouldBe` True)
     it "triLowerSolve (3 x 3 dense)" $
-      runWithLogs (checkTriLowerSolveC ltri1c b_ltri1c) >>= (`shouldBe` True)
+      checkTriLowerSolveC ltri1c b_ltri1c >>= (`shouldBe` True)
     it "triUpperSolve (3 x 3 dense)" $
-      runWithLogs (checkTriUpperSolveC utri1c b_utri1c) >>= (`shouldBe` True)
+      checkTriUpperSolveC utri1c b_utri1c >>= (`shouldBe` True)
 
 specChol :: Spec
 specChol = do
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization properties (Real)" $ do
     it "chol: specific test case (3x3 SPD matrix)" $
-      runWithLogs (checkChol testSPD3x3) >>= (`shouldBe` True)
+      checkChol testSPD3x3 >>= (`shouldBe` True)
     it "chol: specific test case (5x5 sparse tridiagonal)" $
-      runWithLogs (checkChol tm7spd) >>= (`shouldBe` True)
+      checkChol tm7spd >>= (`shouldBe` True)
     prop "chol: L L^T = A for symmetric positive definite matrices (Real)" $
-      \(PropMatSPD m) -> runWithLogs (prop_Cholesky_reconstruction m)
+      \(PropMatSPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_reconstruction m
+        assert result
     prop "chol: L is lower triangular (Real)" $
-      \(PropMatSPD m) -> runWithLogs (prop_Cholesky_lower_triangular m)
+      \(PropMatSPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_lower_triangular m
+        assert result
     prop "chol: diagonal elements are positive (Real)" $
-      \(PropMatSPD m) -> runWithLogs (prop_Cholesky_positive_diagonal m)
+      \(PropMatSPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_positive_diagonal m
+        assert result
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization properties (Complex)" $ do
     it "chol: specific test case (2x2 HPD matrix)" $
-      runWithLogs (checkChol testHPD2x2) >>= (`shouldBe` True)
+      checkChol testHPD2x2 >>= (`shouldBe` True)
     it "chol: specific test case (3x3 HPD matrix)" $
-      runWithLogs (checkChol testHPD3x3) >>= (`shouldBe` True)
+      checkChol testHPD3x3 >>= (`shouldBe` True)
     prop "chol: L L^H = A for Hermitian positive definite matrices (Complex)" $
-      \(PropMatHPD m) -> runWithLogs (prop_Cholesky_reconstruction_complex m)
+      \(PropMatHPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_reconstruction_complex m
+        assert result
     prop "chol: L is lower triangular (Complex)" $
-      \(PropMatHPD m) -> runWithLogs (prop_Cholesky_lower_triangular_complex m)
+      \(PropMatHPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_lower_triangular_complex m
+        assert result
     prop "chol: diagonal elements have positive real parts (Complex)" $
-      \(PropMatHPD m) -> runWithLogs (prop_Cholesky_positive_diagonal_complex m)
+      \(PropMatHPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_positive_diagonal_complex m
+        assert result
   
 specArnoldi :: Spec
 specArnoldi =       
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
     it "arnoldi (4 x 4 dense)" $
-      runWithLogs (checkArnoldi aa4 3) >>= (`shouldBe` True)
+      checkArnoldi aa4 3 >>= (`shouldBe` True)
     it "arnoldi (5 x 5 sparse)" $
-      runWithLogs (checkArnoldi tm7 4) >>= (`shouldBe` True)
+      checkArnoldi tm7 4 >>= (`shouldBe` True)
 --   -- -- describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Complex)" $ do      
 --   -- --   it "arnoldi (4 x 4 dense)" $
 --   -- --     checkArnoldi tmc4 4 >>= (`shouldBe` True)      
@@ -254,7 +285,7 @@ specArnoldi =
   
 
 -- checkLinSolveR
---   :: (MonadWriter [String] m, MonadCatch m) =>
+--   :: (MonadCatch m) =>
 --      LinSolveMethod 
 --      -> SpMatrix Double        -- ^ operator
 --      -> SpVector Double        -- ^ r.h.s
@@ -289,27 +320,30 @@ checkBackslash' aa x = do
 
 
 -- | NB : we compare the norm _squared_ of the residual, since `pinv` squares the condition number
-checkPinv :: (Normed v, LinearSystem v, MatrixRing (MatrixType v), MonadThrow m, MonadWriter [String] m) =>
-     MatrixType v -> v -> v -> m Bool
-checkPinv aa b x = do
-  xhat <- aa `pinv` b
-  return $ nearZero $ norm2Sq (x ^-^ xhat) 
+-- checkPinv :: (Normed v, LinearSystem v, MatrixRing (MatrixType v), MonadThrow m) =>
+--      MatrixType v -> v -> v -> m Bool
+-- checkPinv aa b x = do
+--   xhat <- aa `pinv` b
+--   return $ nearZero $ norm2Sq (x ^-^ xhat) 
 
 
 -- {- Givens rotation-}
-checkGivens1 :: (MonadThrow m, Elt a, MatrixRing (SpMatrix a), Epsilon a) =>
+checkGivens1 :: (MonadThrow m, Elt a, AdditiveGroup a, MatrixRing (SpMatrix a), Epsilon a) =>
      SpMatrix a -> IxRow -> IxCol -> m (a, Bool)
-checkGivens1 tm i j = do -- (rij, nearZero rij) where
-  g <- givens tm i j
-  let r = g ## tm
-      rij = r @@ (i, j)
-  return (rij, nearZero rij)
+checkGivens1 tm i j = do
+  mg <- givens tm i j
+  case mg of
+    Nothing -> return (zeroV, True)  -- No rotation needed/possible, element is already zero
+    Just g -> do
+      let r = g ## tm
+          rij = r @@ (i, j)
+      return (rij, nearZero rij)
 
 
 -- | QR
 
 -- checkQr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, PrintDense (SpMatrix a),
---             MonadThrow m, MonadWriter [String] m) =>
+--             MonadThrow m) =>
 --      SpMatrix a
 --      -> m Bool
 -- checkQr = checkQr0 qr
@@ -322,7 +356,7 @@ checkGivens1 tm i j = do -- (rij, nearZero rij) where
 
 
 
-checkQr0 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m, MonadWriter [String] m) =>
+checkQr0 :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
      (SpMatrix a -> m (SpMatrix a, SpMatrix a))
      -> SpMatrix a
      -> m Bool
@@ -332,6 +366,16 @@ checkQr0 mfqr a = do
       c2 = isOrthogonalSM q
       c3 = isUpperTriSM r
   return $ c1 && c2 && c3
+
+-- | Check that eigsQR runs without throwing an exception and produces output
+checkEigsQR :: (Elt a, AdditiveGroup a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     SpMatrix a -> Int -> m Bool
+checkEigsQR mat niter = do
+  eigs <- eigsQR niter False mat
+  -- Just check that it completes and produces the right dimension
+  let n = nrows mat
+      eigsDim = dim eigs
+  return $ eigsDim == n
 
 -- stepQR a = do
 --   (q, r) <- qr a
@@ -346,7 +390,7 @@ checkQr0 mfqr a = do
 -- | LU
 
 checkLu :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
-      VectorSpace (SpVector t), Epsilon t, MonadThrow m, MonadWriter [String] m) =>
+      VectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
      SpMatrix t -> m Bool
 -- checkLu :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
 --       VectorSpace (SpVector t), Epsilon t) =>
@@ -363,7 +407,7 @@ checkLu a = do
 checkTriUpperSolve :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
       Normed (SpVector t), InnerSpace (SpVector t), InnerSpace t,
       VectorSpace (SpVector t), Epsilon t,
-      MonadThrow m, MonadWriter [String] m) =>
+      MonadThrow m) =>
      SpMatrix t -> SpVector t -> m Bool
 checkTriUpperSolve umat rhs = do
   xhat <- triUpperSolve umat rhs
@@ -374,7 +418,7 @@ checkTriUpperSolve umat rhs = do
 checkTriLowerSolve :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
       Normed (SpVector t), InnerSpace (SpVector t), InnerSpace t,
       VectorSpace (SpVector t), Epsilon t,
-      MonadThrow m, MonadWriter [String] m) =>
+      MonadThrow m) =>
      SpMatrix t -> SpVector t -> m Bool
 checkTriLowerSolve lmat rhs = do
   xhat <- triLowerSolve lmat rhs
@@ -382,7 +426,7 @@ checkTriLowerSolve lmat rhs = do
       flag = nearZero $ norm2 r
   return flag
 
-checkTriUpperSolveC :: (MonadThrow m, MonadWriter [String] m) =>
+checkTriUpperSolveC :: (MonadThrow m) =>
      SpMatrix (Complex Double) -> SpVector (Complex Double) -> m Bool
 checkTriUpperSolveC umat rhs = do
   xhat <- triUpperSolve umat rhs
@@ -394,7 +438,7 @@ checkTriUpperSolveC umat rhs = do
       flag = nearZero normSq
   return flag
 
-checkTriLowerSolveC :: (MonadThrow m, MonadWriter [String] m) =>
+checkTriLowerSolveC :: (MonadThrow m) =>
      SpMatrix (Complex Double) -> SpVector (Complex Double) -> m Bool
 checkTriLowerSolveC lmat rhs = do
   xhat <- triLowerSolve lmat rhs
@@ -412,7 +456,7 @@ checkTriLowerSolveC lmat rhs = do
 
 -- | Generic Cholesky check function
 checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a,
-              MonadThrow m, MonadWriter [String] m) =>
+              MonadThrow m) =>
      SpMatrix a -> m Bool
 checkChol a = do
   l <- chol a
@@ -424,7 +468,7 @@ checkChol a = do
 -- | Cholesky property tests
 
 -- | Test that L L^T = A for symmetric positive definite matrices (Real)
-prop_Cholesky_reconstruction :: (MonadThrow m, MonadWriter [String] m) =>
+prop_Cholesky_reconstruction :: (MonadThrow m) =>
      SpMatrix Double -> m Bool
 prop_Cholesky_reconstruction a = do
   l <- chol a
@@ -433,23 +477,23 @@ prop_Cholesky_reconstruction a = do
   return $ nearZero residual
 
 -- | Test that L is lower triangular (Real)
-prop_Cholesky_lower_triangular :: (MonadThrow m, MonadWriter [String] m) =>
+prop_Cholesky_lower_triangular :: (MonadThrow m) =>
      SpMatrix Double -> m Bool
 prop_Cholesky_lower_triangular a = do
   l <- chol a
   return $ isLowerTriSM l
 
 -- | Test that diagonal elements of L are positive (Real)
-prop_Cholesky_positive_diagonal :: (MonadThrow m, MonadWriter [String] m) =>
+prop_Cholesky_positive_diagonal :: (MonadThrow m) =>
      SpMatrix Double -> m Bool
 prop_Cholesky_positive_diagonal a = do
   l <- chol a
   let diag = extractDiagDense l
-      allPositive = all (> 0) (toListSV diag)
+      allPositive = all (\(_, x) -> x > 0) (toListSV diag)
   return allPositive
 
 -- | Test that L L^H = A for Hermitian positive definite matrices (Complex)
-prop_Cholesky_reconstruction_complex :: (MonadThrow m, MonadWriter [String] m) =>
+prop_Cholesky_reconstruction_complex :: (MonadThrow m) =>
      SpMatrix (Complex Double) -> m Bool
 prop_Cholesky_reconstruction_complex a = do
   l <- chol a
@@ -458,19 +502,19 @@ prop_Cholesky_reconstruction_complex a = do
   return $ nearZero residual
 
 -- | Test that L is lower triangular (Complex)
-prop_Cholesky_lower_triangular_complex :: (MonadThrow m, MonadWriter [String] m) =>
+prop_Cholesky_lower_triangular_complex :: (MonadThrow m) =>
      SpMatrix (Complex Double) -> m Bool
 prop_Cholesky_lower_triangular_complex a = do
   l <- chol a
   return $ isLowerTriSM l
 
 -- | Test that diagonal elements have positive real parts (Complex)
-prop_Cholesky_positive_diagonal_complex :: (MonadThrow m, MonadWriter [String] m) =>
+prop_Cholesky_positive_diagonal_complex :: (MonadThrow m) =>
      SpMatrix (Complex Double) -> m Bool
 prop_Cholesky_positive_diagonal_complex a = do
   l <- chol a
   let diag = extractDiagDense l
-      allPositiveReal = all (\x -> realPart x > 0) (toListSV diag)
+      allPositiveReal = all (\(_, x) -> realPart x > 0) (toListSV diag)
   return allPositiveReal
 
 
@@ -479,7 +523,7 @@ prop_Cholesky_positive_diagonal_complex a = do
 -- checkLuSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
 --       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t),
 --       PrintDense (SpVector t),      
---       Epsilon t, MonadThrow m, MonadWriter [String] m) =>
+--       Epsilon t, MonadThrow m) =>
 --      SpMatrix t -> SpVector t -> m (Bool, Bool, Bool)
 -- checkLuSolve amat rhs = do
 --   (lmat, umat) <- lu amat
@@ -505,7 +549,7 @@ prop_Cholesky_positive_diagonal_complex a = do
 -- checkTriUpperSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
 --       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
 --       PrintDense (SpVector t),
---       MonadThrow m, MonadWriter [String] m) =>
+--       MonadThrow m) =>
 --      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 -- checkTriUpperSolve umat rhs = do
 --   xhat <- triUpperSolve umat rhs
@@ -516,7 +560,7 @@ prop_Cholesky_positive_diagonal_complex a = do
 -- checkTriLowerSolve :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
 --       Elt t, Normed (SpVector t), LinearVectorSpace (SpVector t), Epsilon t,
 --       PrintDense (SpVector t),      
---       MonadThrow m, MonadWriter [String] m) =>
+--       MonadThrow m) =>
 --      SpMatrix t -> SpVector t -> m (SpVector t, Bool)
 -- checkTriLowerSolve lmat rhs = do
 --   xhat <- triLowerSolve lmat rhs
@@ -532,7 +576,7 @@ prop_Cholesky_positive_diagonal_complex a = do
 
 checkArnoldi :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       Normed (SpVector t), MatrixRing (SpMatrix t),
-      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m, MonadWriter [String] m) =>
+      LinearVectorSpace (SpVector t), Epsilon t, MonadThrow m) =>
      SpMatrix t -> Int -> m Bool
 checkArnoldi aa kn = do -- nearZero (normFrobenius $ lhs ^-^ rhs) where
   let b = onesSV (nrows aa)
@@ -724,6 +768,12 @@ instance Show a => Show (PropMatI a) where show = show . unPropMatI
 instance Arbitrary (PropMatI Double) where
   arbitrary = sized (\m -> PropMatI <$> genSpMI m) `suchThat` ((> 2) . nrows . unPropMatI)
 
+-- | An arbitrary complex SpMatrix with identity diagonal 
+newtype PropMatIC a = PropMatIC {unPropMatIC :: SpMatrix a} deriving (Eq)
+instance Show a => Show (PropMatIC a) where show = show . unPropMatIC
+instance Arbitrary (PropMatIC (Complex Double)) where
+  arbitrary = sized (\m -> PropMatIC <$> genSpMI m) `suchThat` ((> 2) . nrows . unPropMatIC)
+
 genSpMI :: (AdditiveGroup a, Num a, Arbitrary a) => Int -> Gen (SpMatrix a)
 genSpMI m = do
   mm <- genSpM m m
@@ -885,15 +935,20 @@ prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 -- prop_Cholesky (PropMatSPD m) = checkChol m
 
 
--- -- | QR decomposition
+-- | QR decomposition property tests
+prop_QR :: (MonadThrow m) => PropMatI Double -> m Bool
+prop_QR (PropMatI m) = checkQr0 qr m
+
+prop_QR_complex :: (MonadThrow m) => PropMatIC (Complex Double) -> m Bool
+prop_QR_complex (PropMatIC m) = checkQr0 qr m
 -- prop_QR :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a), Epsilon a,
---             MonadThrow m, MonadWriter [String] m) =>
+--             MonadThrow m) =>
 --      PropMatI a -> m Bool
 -- prop_QR (PropMatI m) = checkQr m
 
 
 -- -- | check a random linear system
--- prop_linSolve :: (MonadWriter [String] m, MonadCatch m) => LinSolveMethod -> PropMatVec Double -> m Bool
+-- prop_linSolve :: (MonadCatch m) => LinSolveMethod -> PropMatVec Double -> m Bool
 -- prop_linSolve method (PropMatVec aa x) = do
 --   let
 --     aai = aa ^+^ eye (nrows aa) -- for invertibility
@@ -1426,3 +1481,9 @@ y42 = fromListSV 4 [(0,3)]
 
 m42 :: SpMatrix Double
 m42 = fromListSM (2, 4) [(1,0,3), (0,2,3)]
+
+-- | Test matrix from eigsQR issue
+-- Matrix: [0,1,1,0; 1,0,0,0; 1,0,0,1; 0,0,1,0]
+-- This matrix caused the "Givens : no compatible rows" error
+issueMatrix :: SpMatrix Double
+issueMatrix = sparsifySM $ fromListDenseSM 4 [0,1,1,0, 1,0,0,0, 1,0,0,1, 0,0,1,0]
