@@ -27,10 +27,6 @@ import Test.Hspec.QuickCheck
 import Test.QuickCheck
 import Test.QuickCheck.Monadic (monadicIO, run, assert)
 
--- Helper is just id for IO
-runTest :: IO a -> IO a
-runTest = id
-
 
 main :: IO ()
 main = hspec spec
@@ -97,11 +93,11 @@ spec = do
       \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
     prop "prop_QR: Q R = A, Q is orthogonal, R is upper triangular (Real)" $
       \p@(PropMatI (m :: SpMatrix Double)) -> monadicIO $ do
-        result <- run $ runTest (prop_QR p)
+        result <- run $ prop_QR p
         assert result
     prop "prop_QR_complex: Q R = A, Q is orthogonal, R is upper triangular (Complex)" $
       \p@(PropMatIC (m :: SpMatrix (Complex Double))) -> monadicIO $ do
-        result <- run $ runTest (prop_QR_complex p)
+        result <- run $ prop_QR_complex p
         assert result
   specLu
   specTriangularSolve
@@ -151,120 +147,120 @@ specQR :: Spec
 specQR = do       
   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
     it "qr (3 x 3 dense)" $ 
-      runTest (checkQr0 qr tm2) >>= (`shouldBe` True)
+      checkQr0 qr tm2 >>= (`shouldBe` True)
     it "qr (4 x 4 sparse)" $
-      runTest (checkQr0 qr tm4) >>= (`shouldBe` True)
+      checkQr0 qr tm4 >>= (`shouldBe` True)
     it "qr (4 x 4 dense)" $
-      runTest (checkQr0 qr tm6) >>= (`shouldBe` True)
+      checkQr0 qr tm6 >>= (`shouldBe` True)
     it "qr (issue test case: 4x4 matrix)" $
-      runTest (checkQr0 qr issueMatrix) >>= (`shouldBe` True)
+      checkQr0 qr issueMatrix >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
     it "qr (2 x 2 dense)" $
-      runTest (checkQr0 qr aa3cx) >>= (`shouldBe` True)
+      checkQr0 qr aa3cx >>= (`shouldBe` True)
     it "qr (3 x 3 dense)" $
-      runTest (checkQr0 qr tmc4) >>= (`shouldBe` True)
+      checkQr0 qr tmc4 >>= (`shouldBe` True)
 
 specEigsQR :: Spec
 specEigsQR = do
   describe "Numeric.LinearAlgebra.Sparse : QR eigenvalue algorithm (Real)" $ do
     it "eigsQR (3 x 3 matrix with known eigenvalues)" $
-      runTest (checkEigsQR aa4 100) >>= (`shouldBe` True)
+      checkEigsQR aa4 100 >>= (`shouldBe` True)
     it "eigsQR (4 x 4 issue test case)" $
-      runTest (checkEigsQR issueMatrix 100) >>= (`shouldBe` True)
+      checkEigsQR issueMatrix 100 >>= (`shouldBe` True)
     it "eigsQR (2 x 2 dense)" $
-      runTest (checkEigsQR aa0 50) >>= (`shouldBe` True)
+      checkEigsQR aa0 50 >>= (`shouldBe` True)
     it "eigsQR (3 x 3 dense)" $
-      runTest (checkEigsQR tm2 100) >>= (`shouldBe` True)
+      checkEigsQR tm2 100 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : QR eigenvalue algorithm (Complex)" $ do
     it "eigsQR (2 x 2 dense)" $
-      runTest (checkEigsQR aa3cx 50) >>= (`shouldBe` True)
+      checkEigsQR aa3cx 50 >>= (`shouldBe` True)
       
 specLu :: Spec
 specLu = do       
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Real)" $ do
     it "lu (2 x 2 dense)" $
-      runTest (checkLu aa0) >>= (`shouldBe` True)
+      checkLu aa0 >>= (`shouldBe` True)
     it "lu (2 x 2 sparse)" $
-      runTest (checkLu tm0) >>= (`shouldBe` True)
+      checkLu tm0 >>= (`shouldBe` True)
     it "lu (3 x 3 dense)" $
-      runTest (checkLu tm2) >>= (`shouldBe` True) 
+      checkLu tm2 >>= (`shouldBe` True) 
     it "lu (4 x 4 dense)" $
-      runTest (checkLu tm6) >>= (`shouldBe` True)
+      checkLu tm6 >>= (`shouldBe` True)
     it "lu (5 x 5 sparse)" $
-      runTest (checkLu tm7) >>= (`shouldBe` True)
+      checkLu tm7 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : LU factorization (Complex)" $ do
     it "lu (2 x 2 dense, type 1)" $
-      runTest (checkLu aa0c) >>= (`shouldBe` True)
+      checkLu aa0c >>= (`shouldBe` True)
     it "lu (2 x 2 dense, type 2)" $
-      runTest (checkLu aa3c) >>= (`shouldBe` True)
+      checkLu aa3c >>= (`shouldBe` True)
     it "lu (3 x 3 dense)" $
-      runTest (checkLu tmc4) >>= (`shouldBe` True)
+      checkLu tmc4 >>= (`shouldBe` True)
 
 specTriangularSolve :: Spec
 specTriangularSolve = do
   describe "Numeric.LinearAlgebra.Sparse : Triangular solvers (Real)" $ do
     it "triLowerSolve (2 x 2 dense)" $
-      runTest (checkTriLowerSolve ltri0 b_ltri0) >>= (`shouldBe` True)
+      checkTriLowerSolve ltri0 b_ltri0 >>= (`shouldBe` True)
     it "triUpperSolve (2 x 2 dense)" $
-      runTest (checkTriUpperSolve utri0 b_utri0) >>= (`shouldBe` True)
+      checkTriUpperSolve utri0 b_utri0 >>= (`shouldBe` True)
     it "triLowerSolve (3 x 3 sparse)" $
-      runTest (checkTriLowerSolve ltri1 b_ltri1) >>= (`shouldBe` True)
+      checkTriLowerSolve ltri1 b_ltri1 >>= (`shouldBe` True)
     it "triUpperSolve (3 x 3 sparse)" $
-      runTest (checkTriUpperSolve utri1 b_utri1) >>= (`shouldBe` True)
+      checkTriUpperSolve utri1 b_utri1 >>= (`shouldBe` True)
   describe "Numeric.LinearAlgebra.Sparse : Triangular solvers (Complex)" $ do
     it "triLowerSolve (2 x 2 dense)" $
-      runTest (checkTriLowerSolveC ltri0c b_ltri0c) >>= (`shouldBe` True)
+      checkTriLowerSolveC ltri0c b_ltri0c >>= (`shouldBe` True)
     it "triUpperSolve (2 x 2 dense)" $
-      runTest (checkTriUpperSolveC utri0c b_utri0c) >>= (`shouldBe` True)
+      checkTriUpperSolveC utri0c b_utri0c >>= (`shouldBe` True)
     it "triLowerSolve (3 x 3 dense)" $
-      runTest (checkTriLowerSolveC ltri1c b_ltri1c) >>= (`shouldBe` True)
+      checkTriLowerSolveC ltri1c b_ltri1c >>= (`shouldBe` True)
     it "triUpperSolve (3 x 3 dense)" $
-      runTest (checkTriUpperSolveC utri1c b_utri1c) >>= (`shouldBe` True)
+      checkTriUpperSolveC utri1c b_utri1c >>= (`shouldBe` True)
 
 specChol :: Spec
 specChol = do
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization properties (Real)" $ do
     it "chol: specific test case (3x3 SPD matrix)" $
-      runTest (checkChol testSPD3x3) >>= (`shouldBe` True)
+      checkChol testSPD3x3 >>= (`shouldBe` True)
     it "chol: specific test case (5x5 sparse tridiagonal)" $
-      runTest (checkChol tm7spd) >>= (`shouldBe` True)
+      checkChol tm7spd >>= (`shouldBe` True)
     prop "chol: L L^T = A for symmetric positive definite matrices (Real)" $
       \(PropMatSPD m) -> monadicIO $ do
-        result <- run $ runTest (prop_Cholesky_reconstruction m)
+        result <- run $ prop_Cholesky_reconstruction m
         assert result
     prop "chol: L is lower triangular (Real)" $
       \(PropMatSPD m) -> monadicIO $ do
-        result <- run $ runTest (prop_Cholesky_lower_triangular m)
+        result <- run $ prop_Cholesky_lower_triangular m
         assert result
     prop "chol: diagonal elements are positive (Real)" $
       \(PropMatSPD m) -> monadicIO $ do
-        result <- run $ runTest (prop_Cholesky_positive_diagonal m)
+        result <- run $ prop_Cholesky_positive_diagonal m
         assert result
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization properties (Complex)" $ do
     it "chol: specific test case (2x2 HPD matrix)" $
-      runTest (checkChol testHPD2x2) >>= (`shouldBe` True)
+      checkChol testHPD2x2 >>= (`shouldBe` True)
     it "chol: specific test case (3x3 HPD matrix)" $
-      runTest (checkChol testHPD3x3) >>= (`shouldBe` True)
+      checkChol testHPD3x3 >>= (`shouldBe` True)
     prop "chol: L L^H = A for Hermitian positive definite matrices (Complex)" $
       \(PropMatHPD m) -> monadicIO $ do
-        result <- run $ runTest (prop_Cholesky_reconstruction_complex m)
+        result <- run $ prop_Cholesky_reconstruction_complex m
         assert result
     prop "chol: L is lower triangular (Complex)" $
       \(PropMatHPD m) -> monadicIO $ do
-        result <- run $ runTest (prop_Cholesky_lower_triangular_complex m)
+        result <- run $ prop_Cholesky_lower_triangular_complex m
         assert result
     prop "chol: diagonal elements have positive real parts (Complex)" $
       \(PropMatHPD m) -> monadicIO $ do
-        result <- run $ runTest (prop_Cholesky_positive_diagonal_complex m)
+        result <- run $ prop_Cholesky_positive_diagonal_complex m
         assert result
   
 specArnoldi :: Spec
 specArnoldi =       
   describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Real)" $ do      
     it "arnoldi (4 x 4 dense)" $
-      runTest (checkArnoldi aa4 3) >>= (`shouldBe` True)
+      checkArnoldi aa4 3 >>= (`shouldBe` True)
     it "arnoldi (5 x 5 sparse)" $
-      runTest (checkArnoldi tm7 4) >>= (`shouldBe` True)
+      checkArnoldi tm7 4 >>= (`shouldBe` True)
 --   -- -- describe "Numeric.LinearAlgebra.Sparse : Arnoldi iteration (Complex)" $ do      
 --   -- --   it "arnoldi (4 x 4 dense)" $
 --   -- --     checkArnoldi tmc4 4 >>= (`shouldBe` True)      
