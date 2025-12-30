@@ -40,11 +40,6 @@ data PPrintOptions =
      pprintLen, pprintDec, pprintColWidth :: Int
      } deriving (Eq, Show)
 
--- | Some defaults
-prdefR, prdefC :: PPrintOptions
-prdefR = PPOpts 4 2 7   -- reals
-prdefC = PPOpts 4 2 16  -- complex values
-
 
 -- | Pretty print an array of real numbers
 printDN :: (PrintfArg a, Epsilon a, Ord a) =>

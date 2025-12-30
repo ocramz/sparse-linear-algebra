@@ -3,7 +3,6 @@ module Data.Sparse.Internal.SVector where
 
 import Control.Arrow
 import Control.Monad (unless)
-import Control.Monad.IO.Class
 import qualified Data.Foldable as F -- (foldl')
 -- import Data.List (group, groupBy)
 
@@ -13,14 +12,11 @@ import qualified Data.Vector.Mutable as VM
 -- import qualified Data.Vector.Algorithms.Merge as VA (sortBy)
 -- import qualified Data.Vector.Generic as VG (convert)
 
-import Data.Complex
-import Foreign.C.Types (CSChar, CInt, CShort, CLong, CLLong, CIntMax, CFloat, CDouble)
 import Control.Monad.Primitive
 
 -- import Data.Sparse.Utils
 -- import Data.Sparse.Types
 import Data.Sparse.Internal.SVector.Mutable hiding (fromList)
-import qualified Data.Sparse.Internal.SVector.Mutable as SMV (fromList)
 
 
 import Numeric.LinearAlgebra.Class
@@ -47,8 +43,9 @@ instance Traversable SVector where
   traverse f (SV n ix v) = SV n ix <$> traverse f v
 
 instance HasData (SVector a) where
+  type HDData (SVector a) = V.Vector a
   nnz = length . svIx
-  -- dat (SV _ _ x) = x
+  dat (SV _ _ x) = x
 
 
 
@@ -95,17 +92,17 @@ intersectWithM g (SV n1 ixu u) (SV n2 ixv v) = do
   return $ VM.take nfin vm'
   where
     n = min n1 n2
-    go ixu_ u_ ixv_ v_ i vm
-      | V.null u_ || V.null v_ || i == n = return (vm, i)
+    go ixu0 u0 ixv0 v0 i vm0
+      | V.null u0 || V.null v0 || i == n = return (vm0, i)
       | otherwise =  do
-           let (u, us) = headTail u_ 
-               (v, vs) = headTail v_ 
-               (ix1, ix1s) = headTail ixu_
-               (ix2, ix2s) = headTail ixv_
-           if ix1 == ix2 then do VM.write vm i (ix1, g u v)
-                                 go ix1s us ix2s vs (i + 1) vm
-                     else if ix1 < ix2 then go ix1s us ixv  v_ i vm
-                                       else go ixu  u_ ix2s vs i vm
+           let (u', us) = headTail u0 
+               (v', vs) = headTail v0 
+               (ix1, ix1s) = headTail ixu0
+               (ix2, ix2s) = headTail ixv0
+           if ix1 == ix2 then do VM.write vm0 i (ix1, g u' v')
+                                 go ix1s us ix2s vs (i + 1) vm0
+                     else if ix1 < ix2 then go ix1s us ixv0 v0 i vm0
+                                       else go ixu0 u0 ix2s vs i vm0
 
       
 -- | O(N) : Applies a function to the index _union_ of two CsrVector s. Useful e.g. to compute the vector sum of two sparse vectors.
@@ -127,25 +124,25 @@ unionWithM g z (SV n1 ixu u) (SV n2 ixv v) = do
   return vm''
   where
     n = min n1 n2
-    go iu u_ iv v_ i vm
-          | (V.null u_ && V.null v_) || i == n = return (vm , i)
-          | V.null u_ = do
-                 VM.write vm i (V.head iv, g z (V.head v_))
-                 go iu u_ (V.tail iv) (V.tail v_) (i + 1) vm
-          | V.null v_ = do
-                 VM.write vm i (V.head iu, g (V.head u_) z)
-                 go (V.tail iu) (V.tail u_) iv v_ (i + 1) vm
+    go iu0 u0 iv0 v0 i vm0
+          | (V.null u0 && V.null v0) || i == n = return (vm0 , i)
+          | V.null u0 = do
+                 VM.write vm0 i (V.head iv0, g z (V.head v0))
+                 go iu0 u0 (V.tail iv0) (V.tail v0) (i + 1) vm0
+          | V.null v0 = do
+                 VM.write vm0 i (V.head iu0, g (V.head u0) z)
+                 go (V.tail iu0) (V.tail u0) iv0 v0 (i + 1) vm0
           | otherwise =  do
-           let (u, us) = headTail u_
-               (v, vs) = headTail v_
-               (iu1, ius) = headTail iu
-               (iv1, ivs) = headTail iv
-           if iu1 == iv1 then do VM.write vm i (iu1, g u v)
-                                 go ius us ivs vs (i + 1) vm
-                         else if iu1 < iv1 then do VM.write vm i (iu1, g u z)
-                                                   go ius us iv v_ (i + 1) vm
-                                           else do VM.write vm i (iv1, g z v)
-                                                   go iu u_ ivs vs (i + 1) vm
+           let (u', us) = headTail u0
+               (v', vs) = headTail v0
+               (iu1, ius) = headTail iu0
+               (iv1, ivs) = headTail iv0
+           if iu1 == iv1 then do VM.write vm0 i (iu1, g u' v')
+                                 go ius us ivs vs (i + 1) vm0
+                         else if iu1 < iv1 then do VM.write vm0 i (iu1, g u' z)
+                                                   go ius us iv0 v0 (i + 1) vm0
+                                           else do VM.write vm0 i (iv1, g z v')
+                                                   go iu0 u0 ivs vs (i + 1) vm0
   
 
 

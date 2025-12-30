@@ -78,14 +78,14 @@ intersectWithCompare ::
 intersectWithCompare fcomp g u_ v_ = V.create $ do
   let n = min (V.length u_) (V.length v_)
   vm <- VM.new n
-  let go u_ v_ i vm | V.null u_ || V.null v_ || i == n = return (vm, i)
-                    | otherwise =  do
-         let (u,us) = (V.head u_, V.tail u_)
-             (v,vs) = (V.head v_, V.tail v_)
-         case fcomp u v of EQ -> do VM.write vm i (g u v)
-                                    go us vs (i + 1) vm
-                           LT -> go us v_ i vm
-                           GT -> go u_ vs i vm
+  let go u0 v0 i vm0 | V.null u0 || V.null v0 || i == n = return (vm0, i)
+                     | otherwise =  do
+         let (u,us) = (V.head u0, V.tail u0)
+             (v,vs) = (V.head v0, V.tail v0)
+         case fcomp u v of EQ -> do VM.write vm0 i (g u v)
+                                    go us vs (i + 1) vm0
+                           LT -> go us v0 i vm0
+                           GT -> go u0 vs i vm0
   (vm', i') <- go u_ v_ 0 vm
   let vm'' = VM.take i' vm'
   return vm''
@@ -107,23 +107,23 @@ unionWithCompare ::
 unionWithCompare fcomp g z u_ v_ = V.create $ do
   let n = (V.length u_) + (V.length v_)
   vm <- VM.new n
-  let go u_ v_ i vm
-        | (V.null u_ && V.null v_) || i==n = return (vm, i)
-        | V.null u_ = do
-            VM.write vm i (g z (V.head v_))
-            go u_ (V.tail v_) (i+1) vm
-        | V.null v_ = do
-            VM.write vm i (g (V.head u_) z)
-            go (V.tail u_) v_ (i+1) vm
+  let go u0 v0 i vm0
+        | (V.null u0 && V.null v0) || i==n = return (vm0, i)
+        | V.null u0 = do
+            VM.write vm0 i (g z (V.head v0))
+            go u0 (V.tail v0) (i+1) vm0
+        | V.null v0 = do
+            VM.write vm0 i (g (V.head u0) z)
+            go (V.tail u0) v0 (i+1) vm0
         | otherwise =  do
-           let (u,us) = (V.head u_, V.tail u_)
-               (v,vs) = (V.head v_, V.tail v_)
-           case fcomp u v of EQ -> do VM.write vm i (g u v)
-                                      go us vs (i + 1) vm
-                             LT -> do VM.write vm i (g u z)
-                                      go us v_ (i + 1) vm
-                             GT -> do VM.write vm i (g z v)
-                                      go u_ vs (i + 1) vm
+           let (u,us) = (V.head u0, V.tail u0)
+               (v,vs) = (V.head v0, V.tail v0)
+           case fcomp u v of EQ -> do VM.write vm0 i (g u v)
+                                      go us vs (i + 1) vm0
+                             LT -> do VM.write vm0 i (g u z)
+                                      go us v0 (i + 1) vm0
+                             GT -> do VM.write vm0 i (g z v)
+                                      go u0 vs (i + 1) vm0
   (vm', nfin) <- go u_ v_ 0 vm
   let vm'' = VM.take nfin vm'
   return vm''

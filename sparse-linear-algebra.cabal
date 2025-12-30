@@ -40,7 +40,7 @@ flag dump
 library
   default-language:    Haskell2010
   ghc-options:
-              -O2 -Wall
+              -O2 -Wall -Werror
 
   if flag(dump)
     ghc-options: -ddump-simpl -ddump-stg -ddump-to-file

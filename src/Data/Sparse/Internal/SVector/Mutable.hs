@@ -1,12 +1,8 @@
 {-# language FlexibleContexts, TypeFamilies #-}
 module Data.Sparse.Internal.SVector.Mutable where
 
-import Data.Foldable
-import qualified Data.Vector as V 
 import qualified Data.Vector.Mutable as VM
-import qualified Data.Vector.Generic as VG
 
-import Control.Arrow ((&&&))
 import Control.Monad.Primitive
 
 data SMVector m a = SMV { smvDim :: {-# UNPACK #-} !Int,
@@ -43,12 +39,6 @@ fromListOverwrite ixm vm n ixv = go ixm vm ixv 0
 
 -- instance Traversable (SMVector m) where
 --   traverse f (SMV n ix v) = SMV n ix <$> traverse f v
-
-
-
--- | traverse the sparse mutable vector and operate on the union set between the indices of the immutable vector `v` and those of the mutable one `vm`, _overwriting_ the values in vm.
--- Invariant: the index set of `v` is a strict subset of that of `vm` (i.e. we assume that `vm` is preallocated properly, or, we assume there won't be any out-of-bound writes attempted)
-unionWithM_prealloc g z v vm@(SMV nvm vmix vmv) = undefined
 
 
 

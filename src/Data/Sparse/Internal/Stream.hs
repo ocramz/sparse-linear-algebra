@@ -2,7 +2,6 @@
 module Data.Sparse.Internal.Stream where
 
 import Data.Vector.Fusion.Stream.Monadic (Stream(..), Step(..))
-import Data.Vector.Fusion.Bundle.Size (Size(..))
 
 -- from Data.Vector.Fusion.Stream.Monadic
 
@@ -36,6 +35,9 @@ data MergeState sa sb i a
   | MergeRightEnded sa
   | MergeStart sa sb
 
+mergeStreamsWith0 :: (Monad m, Ord i) =>
+                     (t -> t -> Maybe t)
+                     -> Stream m (i, t) -> Stream m (i, t) -> Stream m (i, t)
 mergeStreamsWith0 f (Stream stepa sa0) (Stream stepb sb0) =
   Stream step (MergeStart sa0 sb0) -- (toMax na + toMax nb)
   where
@@ -55,4 +57,27 @@ mergeStreamsWith0 f (Stream stepa sa0) (Stream stepb sb0) =
             Nothing -> Skip (MergeStart sa sb')
           GT -> Yield (j, b)     (MergeL sa sb' i a)
         Skip sb' -> Skip (MergeL sa sb' i a)
-        Done     -> Yield (i, a) (MergeRightEnded sa)          
+        Done     -> Yield (i, a) (MergeRightEnded sa)
+    step (MergeR sa sb j b) = do
+      r <- stepa sa
+      return $ case r of
+        Yield (i, a) sa' -> case compare i j of
+          LT -> Yield (i, a)     (MergeR sa' sb j b)
+          EQ -> case f a b of
+            Just c  -> Yield (i, c) (MergeStart sa' sb)
+            Nothing -> Skip (MergeStart sa' sb)
+          GT -> Yield (j, b)     (MergeL sa' sb i a)
+        Skip sa' -> Skip (MergeR sa' sb j b)
+        Done     -> Yield (j, b) (MergeLeftEnded sb)
+    step (MergeLeftEnded sb) = do
+      r <- stepb sb
+      return $ case r of
+        Yield (j, b) sb' -> Yield (j, b) (MergeLeftEnded sb')
+        Skip sb'         -> Skip (MergeLeftEnded sb')
+        Done             -> Done
+    step (MergeRightEnded sa) = do
+      r <- stepa sa
+      return $ case r of
+        Yield (i, a) sa' -> Yield (i, a) (MergeRightEnded sa')
+        Skip sa'         -> Skip (MergeRightEnded sa')
+        Done             -> Done          
