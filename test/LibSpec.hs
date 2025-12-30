@@ -1105,7 +1105,10 @@ prop_eigsQR_complex (PropMatIC m) = checkEigsQR m 50
 
 -- | eigsArnoldi property tests  
 prop_eigsArnoldi :: (MonadThrow m) => PropMatI Double -> m Bool
-prop_eigsArnoldi (PropMatI m) = checkEigsArnoldi m (min 5 (nrows m - 1))
+prop_eigsArnoldi (PropMatI m) = 
+  let n = nrows m
+      niter = max 1 (min 5 (n - 1))  -- Ensure at least 1 iteration, at most 5 or n-1
+  in checkEigsArnoldi m niter
 -- prop_QR :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a), Epsilon a,
 --             MonadThrow m) =>
 --      PropMatI a -> m Bool
