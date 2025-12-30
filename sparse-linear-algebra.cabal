@@ -40,8 +40,7 @@ flag dump
 library
   default-language:    Haskell2010
   ghc-options:
-              -- -O2 -Wall
-              -O2 -Wno-name-shadowing -Wno-unused-top-binds -Wno-unused-local-binds -Wno-missing-signatures -Wno-unused-imports
+              -O2 -Wall
 
   if flag(dump)
     ghc-options: -ddump-simpl -ddump-stg -ddump-to-file
