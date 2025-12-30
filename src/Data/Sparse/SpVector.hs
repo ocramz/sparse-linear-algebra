@@ -1,4 +1,4 @@
-{-# language FlexibleContexts, TypeFamilies #-}
+{-# language FlexibleContexts, TypeFamilies, TypeOperators #-}
 {-# language DeriveFunctor, DeriveFoldable #-}
 -----------------------------------------------------------------------------
 -- |
