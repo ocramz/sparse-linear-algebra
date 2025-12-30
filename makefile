@@ -63,7 +63,7 @@ bench:
 
 lint:
 	@command -v hlint >/dev/null 2>&1 || { echo >&2 "hlint is not installed. Installing via stack..."; stack install hlint; }
-	hlint src test
+	stack exec hlint -- src test
 
 haddock:
 	stack haddock

@@ -76,4 +76,4 @@ jobs:
 
     - name: Run HLint
       run: |
-        ~/.local/bin/hlint src test
+        stack exec hlint -- src test
