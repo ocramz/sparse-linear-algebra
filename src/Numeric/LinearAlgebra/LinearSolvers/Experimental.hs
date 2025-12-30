@@ -1,4 +1,5 @@
 {-# language TypeFamilies, FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-missing-signatures #-}
 module Numeric.LinearAlgebra.LinearSolvers.Experimental where
 
 import Control.Exception.Common

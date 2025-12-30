@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# language TypeFamilies, FlexibleInstances, DeriveFunctor #-}
 {-# language DeriveFoldable, DeriveTraversable #-}
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-missing-signatures #-}
 module Data.Sparse.Internal.TriMatrix where
 
 -- import qualified Data.Map.Strict as M
