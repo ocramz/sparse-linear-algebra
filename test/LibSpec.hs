@@ -253,6 +253,34 @@ specChol = do
       \(PropMatHPD m) -> monadicIO $ do
         result <- run $ prop_Cholesky_positive_diagonal_complex m
         assert result
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky arrowhead matrices (Real)" $ do
+    it "chol: Rails example from gist (8x8 arrowhead)" $
+      checkChol railsMatrix >>= (`shouldBe` True)
+    prop "chol: L L^T = A for arrowhead SPD matrices (Real)" $
+      \(PropMatArrowheadSPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_reconstruction m
+        assert result
+    prop "chol: L is lower triangular for arrowhead matrices (Real)" $
+      \(PropMatArrowheadSPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_lower_triangular m
+        assert result
+    prop "chol: diagonal elements are positive for arrowhead matrices (Real)" $
+      \(PropMatArrowheadSPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_positive_diagonal m
+        assert result
+  describe "Numeric.LinearAlgebra.Sparse : Cholesky arrowhead matrices (Complex)" $ do
+    prop "chol: L L^H = A for arrowhead HPD matrices (Complex)" $
+      \(PropMatArrowheadHPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_reconstruction_complex m
+        assert result
+    prop "chol: L is lower triangular for arrowhead matrices (Complex)" $
+      \(PropMatArrowheadHPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_lower_triangular_complex m
+        assert result
+    prop "chol: diagonal elements have positive real parts for arrowhead matrices (Complex)" $
+      \(PropMatArrowheadHPD m) -> monadicIO $ do
+        result <- run $ prop_Cholesky_positive_diagonal_complex m
+        assert result
   
 specArnoldi :: Spec
 specArnoldi =       
@@ -846,6 +874,78 @@ genSpM_HPD n = do
       hpd = (m #^# m) ^+^ (epsilon .* eye n)
   return $ PropMatHPD hpd
 
+-- | A lower arrowhead matrix (Real): nonzero diagonal, nonzero last row and column
+-- This structure is common in mixed model problems and can expose numerical issues
+newtype PropMatArrowheadSPD a = PropMatArrowheadSPD {unPropMatArrowheadSPD :: SpMatrix a} deriving (Show)
+
+instance Arbitrary (PropMatArrowheadSPD Double) where
+  arbitrary = sized genSpM_ArrowheadSPD `suchThat` ((>= 3) . nrows . unPropMatArrowheadSPD)
+
+-- | Generate a lower arrowhead SPD matrix
+genSpM_ArrowheadSPD :: Int -> Gen (PropMatArrowheadSPD Double)
+genSpM_ArrowheadSPD n = do
+  -- Generate positive diagonal elements
+  diagElems <- vectorOf n (choose (1.0, 10.0))
+  -- Generate last row/column elements (off-diagonal)
+  lastRowElems <- vectorOf (n-1) (choose (-5.0, 5.0))
+  
+  -- Construct arrowhead matrix
+  let diagEntries = zip3 [0..n-1] [0..n-1] diagElems
+      -- Add last row (below diagonal)
+      lastRowEntries = [(n-1, j, lastRowElems !! j) | j <- [0..n-2]]
+      -- Add last column (below diagonal) - symmetric
+      lastColEntries = [(i, n-1, lastRowElems !! i) | i <- [0..n-2]]
+      allEntries = diagEntries ++ lastRowEntries ++ lastColEntries
+      arrowMat = fromListSM (n, n) allEntries
+  
+  -- Ensure positive definiteness by adding to diagonal if needed
+  let largestOffDiag = maximum (map abs lastRowElems)
+      -- For diagonal dominance: diagonal > sum of absolute values in row
+      minDiagForPD = largestOffDiag * fromIntegral (n-1) + 1.0
+      adjustedDiag = [max d minDiagForPD | d <- diagElems]
+      finalDiagEntries = zip3 [0..n-1] [0..n-1] adjustedDiag
+      finalEntries = finalDiagEntries ++ lastRowEntries ++ lastColEntries
+      spdArrowMat = fromListSM (n, n) finalEntries
+  
+  return $ PropMatArrowheadSPD spdArrowMat
+
+-- | A lower arrowhead matrix (Complex): nonzero diagonal, nonzero last row and column
+newtype PropMatArrowheadHPD a = PropMatArrowheadHPD {unPropMatArrowheadHPD :: SpMatrix a} deriving (Show)
+
+instance Arbitrary (PropMatArrowheadHPD (Complex Double)) where
+  arbitrary = sized genSpM_ArrowheadHPD `suchThat` ((>= 3) . nrows . unPropMatArrowheadHPD)
+
+-- | Generate a lower arrowhead HPD matrix
+genSpM_ArrowheadHPD :: Int -> Gen (PropMatArrowheadHPD (Complex Double))
+genSpM_ArrowheadHPD n = do
+  -- Generate positive real diagonal elements
+  diagElems <- vectorOf n (choose (1.0, 10.0))
+  let diagComplex = map (:+ 0) diagElems
+  
+  -- Generate last row/column elements (complex)
+  lastRowReal <- vectorOf (n-1) (choose (-5.0, 5.0))
+  lastRowImag <- vectorOf (n-1) (choose (-5.0, 5.0))
+  let lastRowElems = zipWith (:+) lastRowReal lastRowImag
+  
+  -- Construct arrowhead matrix
+  let diagEntries = zip3 [0..n-1] [0..n-1] diagComplex
+      -- Add last row (below diagonal)
+      lastRowEntries = [(n-1, j, lastRowElems !! j) | j <- [0..n-2]]
+      -- Add last column (Hermitian conjugate)
+      lastColEntries = [(i, n-1, conjugate (lastRowElems !! i)) | i <- [0..n-2]]
+      allEntries = diagEntries ++ lastRowEntries ++ lastColEntries
+      arrowMat = fromListSM (n, n) allEntries
+  
+  -- Ensure positive definiteness by diagonal dominance
+  let largestOffDiag = maximum (map magnitude lastRowElems)
+      minDiagForPD = largestOffDiag * fromIntegral (n-1) + 1.0
+      adjustedDiag = [max (realPart d) minDiagForPD :+ 0 | d <- diagComplex]
+      finalDiagEntries = zip3 [0..n-1] [0..n-1] adjustedDiag
+      finalEntries = finalDiagEntries ++ lastRowEntries ++ lastColEntries
+      hpdArrowMat = fromListSM (n, n) finalEntries
+  
+  return $ PropMatArrowheadHPD hpdArrowMat
+
 
 
 
@@ -1432,6 +1532,20 @@ testHPD3x3 = fromListDenseSM 3 [
   4:+0,     1:+1,     0:+(-1),
   1:+(-1),  5:+0,     1:+2,
   0:+1,     1:+(-2),  6:+0
+  ]
+
+-- | Rails example matrix from the gist (8x8 arrowhead matrix from R mixed model)
+-- This is the matrix that caused NaN results in the original bug report
+railsMatrix :: SpMatrix Double
+railsMatrix = fromListDenseSM 8 [
+  95.08,  0,      0,      0,      0,      0,      16.80,  -908,
+  0,      95.08,  0,      0,      0,      0,      16.80,  -532,
+  0,      0,      95.08,  0,      0,      0,      16.80,  -1422,
+  0,      0,      0,      95.08,  0,      0,      16.80,  -1612,
+  0,      0,      0,      0,      95.08,  0,      16.80,  -840,
+  0,      0,      0,      0,      0,      95.08,  16.80,  -1389,
+  16.80,  16.80,  16.80,  16.80,  16.80,  16.80,  18,     -1197,
+  -908,   -532,   -1422,  -1612,  -840,   -1389,  -1197,  89105
   ]
 
 -- | Example 5.4.2 from G & VL
