@@ -484,6 +484,7 @@ checkTriLowerSolveC lmat rhs = do
 
 -- | Generic Cholesky check function
 checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a,
+              InnerSpace a, Scalar a ~ a,
               MonadThrow m) =>
      SpMatrix a -> m Bool
 checkChol a = do
@@ -883,7 +884,8 @@ instance Arbitrary (PropMatArrowheadSPD Double) where
 
 -- | Generate a lower arrowhead SPD matrix
 genSpM_ArrowheadSPD :: Int -> Gen (PropMatArrowheadSPD Double)
-genSpM_ArrowheadSPD n = do
+genSpM_ArrowheadSPD n | n < 3 = error "Arrowhead matrix requires at least 3x3"
+                      | otherwise = do
   -- Generate positive diagonal elements
   diagElems <- vectorOf n (choose (1.0, 10.0))
   -- Generate last row/column elements (off-diagonal)
@@ -899,7 +901,7 @@ genSpM_ArrowheadSPD n = do
       arrowMat = fromListSM (n, n) allEntries
   
   -- Ensure positive definiteness by adding to diagonal if needed
-  let largestOffDiag = maximum (map abs lastRowElems)
+  let largestOffDiag = if null lastRowElems then 0 else maximum (map abs lastRowElems)
       -- For diagonal dominance: diagonal > sum of absolute values in row
       minDiagForPD = largestOffDiag * fromIntegral (n-1) + 1.0
       adjustedDiag = [max d minDiagForPD | d <- diagElems]
@@ -917,7 +919,8 @@ instance Arbitrary (PropMatArrowheadHPD (Complex Double)) where
 
 -- | Generate a lower arrowhead HPD matrix
 genSpM_ArrowheadHPD :: Int -> Gen (PropMatArrowheadHPD (Complex Double))
-genSpM_ArrowheadHPD n = do
+genSpM_ArrowheadHPD n | n < 3 = error "Arrowhead matrix requires at least 3x3"
+                      | otherwise = do
   -- Generate positive real diagonal elements
   diagElems <- vectorOf n (choose (1.0, 10.0))
   let diagComplex = map (:+ 0) diagElems
@@ -937,7 +940,7 @@ genSpM_ArrowheadHPD n = do
       arrowMat = fromListSM (n, n) allEntries
   
   -- Ensure positive definiteness by diagonal dominance
-  let largestOffDiag = maximum (map magnitude lastRowElems)
+  let largestOffDiag = if null lastRowElems then 0 else maximum (map magnitude lastRowElems)
       minDiagForPD = largestOffDiag * fromIntegral (n-1) + 1.0
       adjustedDiag = [max (realPart d) minDiagForPD :+ 0 | d <- diagComplex]
       finalDiagEntries = zip3 [0..n-1] [0..n-1] adjustedDiag

@@ -419,7 +419,7 @@ SVD of A, Golub-Kahan method
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
 -- | NB: The algorithm throws an exception if some diagonal element of A is zero.
 
-chol :: (Elt a, Epsilon a, MonadThrow m) =>
+chol :: (Elt a, Epsilon a, InnerSpace a, Scalar a ~ a, MonadThrow m) =>
         SpMatrix a
      -> m (SpMatrix a)  -- ^ L
 chol aa = do
@@ -442,7 +442,11 @@ chol aa = do
         where
           ljj = ll @@! (j, j)
           aij = aa @@! (i, j)
-          inn = contractSub ll ll i j (j - 1)
+          -- For Cholesky: compute sum_{k=0}^{j-1} L_{i,k} * conj(L_{j,k})
+          -- Extract subrows and use inner product (which handles conjugation)
+          lrow_i = ifilterSV (\k _ -> k <= j - 1) (extractRow ll i)
+          lrow_j = ifilterSV (\k _ -> k <= j - 1) (extractRow ll j)
+          inn = lrow_i <.> lrow_j
    cholDiagUpd aa ll i = do
      cd <- cholDiag 
      return $ insertSpMatrix i i cd ll where
