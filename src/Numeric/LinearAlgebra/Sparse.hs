@@ -34,7 +34,7 @@ module Numeric.LinearAlgebra.Sparse
          -- ** LU
          lu,
          -- ** Cholesky
-         -- chol, 
+         chol, 
          -- ** Arnoldi iteration
          arnoldi,    
          -- * Utilities
@@ -412,45 +412,46 @@ SVD of A, Golub-Kahan method
 -- | Given a positive semidefinite matrix A, returns a lower-triangular matrix L such that L L^T = A . This is an implementation of the Cholesky–Banachiewicz algorithm, i.e. proceeding row by row from the upper-left corner.
 -- | NB: The algorithm throws an exception if some diagonal element of A is zero.
 
--- chol :: (Elt a, Epsilon a, MonadThrow m, MonadLog String m, PrintDense (SpMatrix a)) =>
---         SpMatrix a
---      -> m (SpMatrix a)  -- ^ L
--- chol aa = do
---   let n = nrows aa
---       q (i, _) = i == n
---       config = IterConf 0 False snd prd0
---   l0 <- cholUpd aa (0, zeroSM n n)
---   (_, lfin) <- modifyUntilM' config q (cholUpd aa) l0
---   return lfin
---   where
---    oops i = throwM (NeedsPivoting "chol" (unwords ["L", show (i,i)]) :: MatrixException Double)
---    cholUpd aa (i, ll) = do 
---      sd <- cholSDRowUpd aa ll i  -- update subdiagonal entries
---      ll' <- cholDiagUpd aa sd i  -- update diagonal entries
---      return (i + 1, ll')
---    cholSDRowUpd aa ll i = do 
---      lrs <- fromListSV (i + 1) <$> onRangeSparseM cholSubDiag [0 .. i-1]
---      return $ insertRow ll lrs i where
---        cholSubDiag j | isNz ljj = return $ 1/ljj*(aij - inn)
---                      | otherwise = oops j
---         where
---           ljj = ll @@! (j, j)
---           aij = aa @@! (i, j)
---           inn = contractSub ll ll i j (j - 1)
---    cholDiagUpd aa ll i = do
---      cd <- cholDiag 
---      return $ insertSpMatrix i i cd ll where
---        cholDiag | i == 0 = sqrt <$> aai
---                 | otherwise = do
---                     a <- aai
---                     let l = sum (fmap (**2) lrow)
---                     return $ sqrt (a - l)
---          where
---           lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
---           aai | isNz aaii = return aaii
---               | otherwise = oops i
---             where
---              aaii = aa @@! (i,i)
+chol :: (Elt a, Epsilon a, MonadThrow m) =>
+        SpMatrix a
+     -> m (SpMatrix a)  -- ^ L
+chol aa = do
+  let n = nrows aa
+      q (i, _) = i == n
+  l0 <- cholUpd aa (0, zeroSM n n)
+  (_, lfin) <- modifyUntilM' () q (cholUpd aa) l0
+  return lfin
+  where
+   oops i = throwM (NeedsPivoting "chol" (unwords ["L", show (i,i)]) :: MatrixException Double)
+   cholUpd aa (i, ll) = do 
+     sd <- cholSDRowUpd aa ll i  -- update subdiagonal entries
+     ll' <- cholDiagUpd aa sd i  -- update diagonal entries
+     return (i + 1, ll')
+   cholSDRowUpd aa ll i = do 
+     lrs <- fromListSV (i + 1) <$> onRangeSparseM cholSubDiag [0 .. i-1]
+     return $ insertRow ll lrs i where
+       cholSubDiag j | isNz ljj = return $ 1/ljj*(aij - inn)
+                     | otherwise = oops j
+        where
+          ljj = ll @@! (j, j)
+          aij = aa @@! (i, j)
+          inn = contractSub ll ll i j (j - 1)
+   cholDiagUpd aa ll i = do
+     cd <- cholDiag 
+     return $ insertSpMatrix i i cd ll where
+       cholDiag | i == 0 = sqrt <$> aai
+                | otherwise = do
+                    a <- aai
+                    -- For complex numbers, we need |z|^2 = z * conj(z), not z^2
+                    -- This fix enables Cholesky factorization for complex-valued matrices
+                    let l = sum (fmap (\x -> x * conj x) lrow)
+                    return $ sqrt (a - l)
+         where
+          lrow = ifilterSV (\j _ -> j < i) (extractRow ll i) -- sub-diagonal elems of L
+          aai | isNz aaii = return aaii
+              | otherwise = oops i
+            where
+             aaii = aa @@! (i,i)
                  
 
 
