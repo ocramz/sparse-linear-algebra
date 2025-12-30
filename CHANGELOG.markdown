@@ -57,6 +57,11 @@
   - Added check for already-zero elements before attempting Givens rotation
   - QR algorithm now gracefully skips elements that cannot be rotated or are already zero
   - Fixes issue where eigsQR failed on sparse matrices like `[0,1,1,0; 1,0,0,0; 1,0,0,1; 0,0,1,0]`
+- **Fixed Cholesky decomposition for complex Hermitian matrices**: Corrected missing conjugation operations that caused NaN results for complex matrices and certain structured matrices (arrowhead matrices)
+  - Fixed subdiagonal computation to use conjugated inner product (`<.>`) instead of regular matrix multiplication
+  - Added `InnerSpace a, Scalar a ~ a` type constraints to `chol` function
+  - Ensures `L L^H = A` for Hermitian matrices and `L L^T = A` for symmetric matrices
+  - Fixes issue with "Rails" example matrix from R mixed models and other arrowhead matrices
 
 ### Migration Guide
 
