@@ -1,9 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TypeOperators,  FlexibleContexts, TypeFamilies, MultiParamTypeClasses, FlexibleInstances  #-}
 {-# language RankNTypes #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds -Wno-name-shadowing -Wno-x-partial -Wno-unused-matches -Wno-missing-signatures #-}
--- {-# language ApplicativeDo #-}
--- {-# OPTIONS_GHC -O2 -rtsopts -with-rtsopts=-K32m -prof#-}
+{-# OPTIONS_GHC -Wno-unused-top-binds -Wno-name-shadowing  -Wno-unused-matches -Wno-missing-signatures #-}
 {-|
 
 This module exposes the user interface to the library.
