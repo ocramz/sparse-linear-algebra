@@ -302,7 +302,7 @@ However, we must also accumulate the `G_i` in order to build `Q`, and the presen
 -}
 
 {-# inline qr #-}
-qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+qr :: (Elt a, AdditiveGroup a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
      SpMatrix a
      -> m (SpMatrix a, SpMatrix a) -- ^ Q, R
 qr mm = do 
@@ -311,16 +311,18 @@ qr mm = do
   where
     gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
     haltf (_, _, iis) = null iis
-    qrstepf (qmatt, m, iis) = do
-        let (i, j) = head iis
-        mg <- givens m i j
-        case mg of
-          Nothing -> return (qmatt, m, tail iis)  -- Skip if no rotation needed/possible
-          Just g -> do
-            let
-              qmatt' = g #~# qmatt  -- update Q'
-              m' = g #~# m          -- update R
-            return (qmatt', m', tail iis)    
+    qrstepf (qmatt, m, iis)
+        | null iis = return (qmatt, m, iis)  -- Safety check
+        | otherwise = do
+            let (i, j) = head iis
+            mg <- givens m i j
+            case mg of
+              Nothing -> return (qmatt, m, tail iis)  -- Skip if no rotation needed/possible
+              Just g -> do
+                let
+                  qmatt' = g #~# qmatt  -- update Q'
+                  m' = g #~# m          -- update R
+                return (qmatt', m', tail iis)    
 
 
 
@@ -333,7 +335,7 @@ qr mm = do
 -- ** QR algorithm
 
 -- | @eigsQR n debq mm@ performs at most @n@ iterations of the QR algorithm on matrix @mm@, and returns a 'SpVector' containing all eigenvalues.
-eigsQR :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+eigsQR :: (Elt a, AdditiveGroup a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
      Int -> Bool -> SpMatrix a -> m (SpVector a)
 eigsQR nitermax _debq m = pf <$> eigsQRLoop nitermax m
   where

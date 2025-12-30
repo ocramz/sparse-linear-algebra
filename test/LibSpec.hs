@@ -27,7 +27,8 @@ import Data.Complex
 import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck
-import Control.Monad.Writer.Class (tell)
+import Test.QuickCheck.Monadic (monadicIO, run, assert)
+import Control.Monad.Writer.Class (MonadWriter, tell)
 
 -- Helper to wrap IO computations with logging for tests
 runWithLogs :: WriterT [String] IO a -> IO a
@@ -98,9 +99,13 @@ spec = do
     prop "prop_matMat2 : M^T ##^ M == M #^# M^T" $
       \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
     prop "prop_QR: Q R = A, Q is orthogonal, R is upper triangular (Real)" $
-      \(PropMatI m) -> runWithLogs (prop_QR m)
+      \p@(PropMatI (m :: SpMatrix Double)) -> monadicIO $ do
+        result <- run $ runWithLogs (prop_QR p)
+        assert result
     prop "prop_QR_complex: Q R = A, Q is orthogonal, R is upper triangular (Complex)" $
-      \(PropMatIC m) -> runWithLogs (prop_QR_complex m)
+      \p@(PropMatIC (m :: SpMatrix (Complex Double))) -> monadicIO $ do
+        result <- run $ runWithLogs (prop_QR_complex p)
+        assert result
   specLu
   specTriangularSolve
   specArnoldi
@@ -227,22 +232,34 @@ specChol = do
     it "chol: specific test case (5x5 sparse tridiagonal)" $
       runWithLogs (checkChol tm7spd) >>= (`shouldBe` True)
     prop "chol: L L^T = A for symmetric positive definite matrices (Real)" $
-      \(PropMatSPD m) -> runWithLogs (prop_Cholesky_reconstruction m)
+      \(PropMatSPD m) -> monadicIO $ do
+        result <- run $ runWithLogs (prop_Cholesky_reconstruction m)
+        assert result
     prop "chol: L is lower triangular (Real)" $
-      \(PropMatSPD m) -> runWithLogs (prop_Cholesky_lower_triangular m)
+      \(PropMatSPD m) -> monadicIO $ do
+        result <- run $ runWithLogs (prop_Cholesky_lower_triangular m)
+        assert result
     prop "chol: diagonal elements are positive (Real)" $
-      \(PropMatSPD m) -> runWithLogs (prop_Cholesky_positive_diagonal m)
+      \(PropMatSPD m) -> monadicIO $ do
+        result <- run $ runWithLogs (prop_Cholesky_positive_diagonal m)
+        assert result
   describe "Numeric.LinearAlgebra.Sparse : Cholesky factorization properties (Complex)" $ do
     it "chol: specific test case (2x2 HPD matrix)" $
       runWithLogs (checkChol testHPD2x2) >>= (`shouldBe` True)
     it "chol: specific test case (3x3 HPD matrix)" $
       runWithLogs (checkChol testHPD3x3) >>= (`shouldBe` True)
     prop "chol: L L^H = A for Hermitian positive definite matrices (Complex)" $
-      \(PropMatHPD m) -> runWithLogs (prop_Cholesky_reconstruction_complex m)
+      \(PropMatHPD m) -> monadicIO $ do
+        result <- run $ runWithLogs (prop_Cholesky_reconstruction_complex m)
+        assert result
     prop "chol: L is lower triangular (Complex)" $
-      \(PropMatHPD m) -> runWithLogs (prop_Cholesky_lower_triangular_complex m)
+      \(PropMatHPD m) -> monadicIO $ do
+        result <- run $ runWithLogs (prop_Cholesky_lower_triangular_complex m)
+        assert result
     prop "chol: diagonal elements have positive real parts (Complex)" $
-      \(PropMatHPD m) -> runWithLogs (prop_Cholesky_positive_diagonal_complex m)
+      \(PropMatHPD m) -> monadicIO $ do
+        result <- run $ runWithLogs (prop_Cholesky_positive_diagonal_complex m)
+        assert result
   
 specArnoldi :: Spec
 specArnoldi =       
@@ -318,13 +335,16 @@ checkPinv aa b x = do
 
 
 -- {- Givens rotation-}
-checkGivens1 :: (MonadThrow m, Elt a, MatrixRing (SpMatrix a), Epsilon a) =>
+checkGivens1 :: (MonadThrow m, Elt a, AdditiveGroup a, MatrixRing (SpMatrix a), Epsilon a) =>
      SpMatrix a -> IxRow -> IxCol -> m (a, Bool)
-checkGivens1 tm i j = do -- (rij, nearZero rij) where
-  g <- givens tm i j
-  let r = g ## tm
-      rij = r @@ (i, j)
-  return (rij, nearZero rij)
+checkGivens1 tm i j = do
+  mg <- givens tm i j
+  case mg of
+    Nothing -> return (zeroV, True)  -- No rotation needed/possible, element is already zero
+    Just g -> do
+      let r = g ## tm
+          rij = r @@ (i, j)
+      return (rij, nearZero rij)
 
 
 -- | QR
@@ -355,7 +375,7 @@ checkQr0 mfqr a = do
   return $ c1 && c2 && c3
 
 -- | Check that eigsQR runs without throwing an exception and produces output
-checkEigsQR :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m, MonadWriter [String] m) =>
+checkEigsQR :: (Elt a, AdditiveGroup a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m, MonadWriter [String] m) =>
      SpMatrix a -> Int -> m Bool
 checkEigsQR mat niter = do
   eigs <- eigsQR niter False mat
@@ -476,7 +496,7 @@ prop_Cholesky_positive_diagonal :: (MonadThrow m, MonadWriter [String] m) =>
 prop_Cholesky_positive_diagonal a = do
   l <- chol a
   let diag = extractDiagDense l
-      allPositive = all (> 0) (toListSV diag)
+      allPositive = all (\(_, x) -> x > 0) (toListSV diag)
   return allPositive
 
 -- | Test that L L^H = A for Hermitian positive definite matrices (Complex)
@@ -501,7 +521,7 @@ prop_Cholesky_positive_diagonal_complex :: (MonadThrow m, MonadWriter [String] m
 prop_Cholesky_positive_diagonal_complex a = do
   l <- chol a
   let diag = extractDiagDense l
-      allPositiveReal = all (\x -> realPart x > 0) (toListSV diag)
+      allPositiveReal = all (\(_, x) -> realPart x > 0) (toListSV diag)
   return allPositiveReal
 
 
