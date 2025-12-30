@@ -32,7 +32,6 @@ import Data.Sparse.PPrint as X
 import Data.Sparse.Types as X
 import Data.Sparse.Internal.IntMap2 -- as X
 import qualified Data.Sparse.Internal.IntM as I
-import Data.Sparse.Internal.IntM (IntM(..))
 import Data.Sparse.SpMatrix as X
 import Data.Sparse.SpVector as X
 -- import Data.Sparse.Internal.CSR as X

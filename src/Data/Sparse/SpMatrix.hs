@@ -29,7 +29,6 @@ import Text.Printf
 import qualified Data.IntMap.Strict as IM
 
 import Data.Complex
-import Data.Foldable (foldl')
 import Data.Maybe
 
 -- import Data.VectorSpace hiding (magnitude)
@@ -106,6 +105,7 @@ instance Num a => SpContainer (SpMatrix a) where
   type ScElem (SpMatrix a) = a
   scInsert (i,j) = insertSpMatrix i j
   scLookup m (i, j) = lookupSM m i j
+  scToList m = [((i,j), x) | (i, j, x) <- toListSM m]
   m @@ d | isValidIxSM m d = m @@! d
          | otherwise = error $ "@@ : incompatible indices : matrix size is " ++ show (dim m) ++ ", but user looked up " ++ show d
 
@@ -441,6 +441,7 @@ isOrthogonalSM sm@(SM (_,n) _) = rsm == eye n where
 
 -- | Data in internal representation (do not export)
 -- immSM :: SpMatrix t -> IM.IntMap (IM.IntMap t)
+immSM :: SpMatrix a -> IntM (IntM a)
 immSM (SM _ imm) = imm
 
 -- | (Number of rows, Number of columns)
@@ -479,7 +480,7 @@ nzRow :: SpMatrix a -> IM.Key -> Int
 nzRow s i | inBounds0 (nrows s) i = nzRowU s i
           | otherwise = error "nzRow : index out of bounds" where
               nzRowU :: SpMatrix a -> IM.Key -> Int
-              nzRowU s i = maybe 0 I.size (I.lookup i $ immSM s)
+              nzRowU s_param i_param = maybe 0 I.size (I.lookup i_param $ immSM s_param)
 
 
 
@@ -783,6 +784,7 @@ instance MatrixRing (SpMatrix (Complex Double)) where
 data MatProd_ = AB | ABt deriving (Eq, Show)
 
 {-# INLINE matMat_ #-}
+matMat_ :: Num a => MatProd_ -> SpMatrix a -> SpMatrix a -> SpMatrix a
 matMat_ pt mm1 mm2 =
   case pt of AB -> matMatCheck (matMatUnsafeWith transposeIM2) mm1 mm2
              ABt -> matMatCheck (matMatUnsafeWith id) mm1 (trDim mm2)
@@ -803,6 +805,7 @@ matMat_ pt mm1 mm2 =
 --    SpMatrix a ->
 --    SpMatrix a ->
 --    SpMatrix a
+matMatUnsafeWith :: Num a1 => (IntM (IntM a2) -> IntM (IntM a1)) -> SpMatrix a1 -> SpMatrix a2 -> SpMatrix a1
 matMatUnsafeWith ff2 m1 m2 = SM (nrows m1, ncols m2) (overRows2 <$> immSM m1) where
           overRows2 vm1 = (`dott` vm1) <$> ff2 (immSM m2)
           dott x y = sum $ liftI2 (*) x y    -- NB !! no complex conjugation

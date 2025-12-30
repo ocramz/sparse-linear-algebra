@@ -8,7 +8,6 @@ import qualified Data.Sparse.Internal.IntM as I
 import qualified Data.IntMap.Strict as IM
 import Data.Sparse.Types
 
-import Data.List (foldl')
 import Data.Maybe
 import GHC.Exts
 
