@@ -34,6 +34,7 @@ insertIM2 i j x (I.IntM imm) = I.IntM $ IM.alter ro i imm where
 -- |Lookup a key
 -- lookupIM2 ::
 --   IM.Key -> IM.Key -> IM.IntMap (IM.IntMap a) -> Maybe a
+lookupIM2 :: IM.Key -> IM.Key -> I.IntM (I.IntM b) -> Maybe b
 lookupIM2 i j imm = I.lookup i imm >>= I.lookup j
 {-# inline lookupIM2 #-}  
 
@@ -48,6 +49,7 @@ lookupWD_IM im (i,j) = fromMaybe 0 (IM.lookup i im >>= IM.lookup j)
 -- fromListIM2 ::
 --   Foldable t =>
 --      t (IM.Key, IM.Key, a) -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+fromListIM2 :: Foldable t => t (IM.Key, IM.Key, a) -> I.IntM (I.IntM a) -> I.IntM (I.IntM a)
 fromListIM2 iix sm = foldl ins sm iix where
   ins t (i,j,x) = insertIM2 i j x t
 
@@ -56,6 +58,7 @@ fromListIM2 iix sm = foldl ins sm iix where
 
 -- |Indexed left fold over an IM2, with general accumulator
 -- ifoldlIM2' :: (IM.Key -> IM.Key -> a -> b -> b) -> b -> IM.IntMap (IM.IntMap a) -> b
+ifoldlIM2' :: (IM.Key -> IM.Key -> t -> a -> a) -> a -> I.IntM (I.IntM t) -> a
 ifoldlIM2' f empty mm = I.foldlWithKey' accRow empty mm where
   accRow acc i r = I.foldlWithKey' (accElem i) acc r
   accElem i acc j x = f i j x acc
@@ -66,6 +69,7 @@ ifoldlIM2' f empty mm = I.foldlWithKey' accRow empty mm where
 --   (IM.Key -> IM.Key -> t -> IM.IntMap a -> IM.IntMap a) ->
 --   IM.IntMap (IM.IntMap t) ->  
 --   IM.IntMap a
+ifoldlIM2 :: (IM.Key -> IM.Key -> t -> I.IntM a -> I.IntM a) -> I.IntM (I.IntM t) -> I.IntM a
 ifoldlIM2 f m         = I.foldlWithKey' accRow I.empty m where
   accRow    !acc !i !row = I.foldlWithKey' (accElem i) acc row
   accElem !i !acc !j !x   = f i j x acc
@@ -73,14 +77,16 @@ ifoldlIM2 f m         = I.foldlWithKey' accRow I.empty m where
 
 -- |Left fold over an IM2, with general accumulator
 -- foldlIM2 :: (a -> b -> b) -> b -> IM.IntMap (IM.IntMap a) -> b
-foldlIM2 f empty mm = foldl' accRow empty mm where
-  accRow acc r = foldl' accElem acc r
+foldlIM2 :: (Foldable t1, Foldable t2) => (a -> b -> b) -> b -> t1 (t2 a) -> b
+foldlIM2 f empty mm = foldl accRow empty mm where
+  accRow acc r = foldl accElem acc r
   accElem acc x = f x acc
 {-# inline foldlIM2 #-}
 
 
 -- | Inner indices become outer ones and vice versa. No loss of information because both inner and outer IntMaps are nubbed.
 -- transposeIM2 :: IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+transposeIM2 :: I.IntM (I.IntM t) -> I.IntM (I.IntM t)
 transposeIM2 = ifoldlIM2 (flip insertIM2)
 {-# inline transposeIM2 #-}
 
@@ -100,20 +106,24 @@ transposeIM2 = ifoldlIM2 (flip insertIM2)
 --   (IM.Key -> IM.Key -> a -> Bool) ->
 --   IM.IntMap (IM.IntMap a) ->
 --   IM.IntMap (IM.IntMap a)
+ifilterIM2 :: (IM.Key -> IM.Key -> a -> Bool) -> I.IntM (I.IntM a) -> I.IntM (I.IntM a)
 ifilterIM2 f  =
   I.mapWithKey (\irow row -> I.filterWithKey (f irow) row)
 {-# inline ifilterIM2 #-}
 
 -- |Specialized filtering : keep only sub-diagonal elements
 -- filterSubdiag :: IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+filterSubdiag :: I.IntM (I.IntM a) -> I.IntM (I.IntM a)
 filterSubdiag = ifilterIM2 (\i j _ -> i>j)
 
 -- countSubdiagonalNZ :: IM.IntMap (IM.IntMap a) -> Int
+countSubdiagonalNZ :: I.IntM (I.IntM a) -> Int
 countSubdiagonalNZ im =
   I.size $ I.filterI (not . null) (filterSubdiag im)
 
 -- |List of (row, col) indices of (nonzero) subdiagonal elements
 -- subdiagIndices :: IM.IntMap (IM.IntMap a) -> [(IM.Key, IM.Key)]
+subdiagIndices :: I.IntM (I.IntM a) -> [(Int, IM.Key)]
 subdiagIndices im = concatMap rpairs $ toList (I.keys <$> im') where
   im' = filterSubdiag im
 
@@ -145,6 +155,7 @@ mapIM2 = fmap . fmap
 --   (IM.Key -> IM.Key -> a -> b) ->
 --   IM.IntMap (IM.IntMap a) ->
 --   IM.IntMap (IM.IntMap b)
+imapIM2 :: (IM.Key -> IM.Key -> a1 -> a2) -> I.IntM (I.IntM a1) -> I.IntM (I.IntM a2)
 imapIM2 f im = I.mapWithKey ff im where
   ff i x = I.mapWithKey (\j -> f i j) x
 
@@ -153,6 +164,7 @@ imapIM2 f im = I.mapWithKey ff im where
 -- |Mapping keys
 -- mapKeysIM2 ::
 --   (IM.Key -> IM.Key) -> (IM.Key -> IM.Key) -> IM.IntMap (IM.IntMap a) -> IM.IntMap (IM.IntMap a)
+mapKeysIM2 :: (IM.Key -> IM.Key) -> (IM.Key -> IM.Key) -> I.IntM (I.IntM a) -> I.IntM (I.IntM a)
 mapKeysIM2 fi fj im = adjCols <$> adjRows where
   adjRows = I.mapKeys fi im
   adjCols = I.mapKeys fj
@@ -163,7 +175,8 @@ mapKeysIM2 fi fj im = adjCols <$> adjRows where
 -- map over a single `column`
 
 -- mapColumnIM2 :: (b -> b) -> IM.IntMap (IM.IntMap b) -> Int -> IM.IntMap (IM.IntMap b)
-mapColumnIM2 f im jj = imapIM2 (\i j x -> if j == jj then f x else x) im
+mapColumnIM2 :: (a2 -> a2) -> I.IntM (I.IntM a2) -> IM.Key -> I.IntM (I.IntM a2)
+mapColumnIM2 f im jj = imapIM2 (\_ j x -> if j == jj then f x else x) im
 
 
 

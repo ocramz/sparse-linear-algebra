@@ -29,25 +29,15 @@ module Control.Iterative (
   sqDiffPairs, sqDiff, relRes, diffSqL, relTol, norm2Diff
 ) where
 
-import Control.Applicative
-
-import Control.Monad (when, replicateM)
-import Control.Monad.Reader (MonadReader(..), asks)
-import Control.Monad.State.Strict (MonadState(..), get, put, gets)
+import Control.Monad.State.Strict (MonadState(..), get, put)
 import Control.Monad.Writer.Class (MonadWriter)
 import Control.Monad.Writer.Strict (WriterT, runWriterT)
 import Control.Monad.Trans.Class (MonadTrans(..), lift)
-import Control.Monad.Trans.State.Strict (StateT(..), runStateT, execStateT)
-import Control.Monad.Trans.Reader (ReaderT(..), runReaderT)
-import Control.Monad.Catch (Exception(..), MonadThrow(..), throwM)
+import Control.Monad.Trans.State.Strict (execStateT)
+import Control.Monad.Catch (MonadThrow(..), throwM)
 
 -- import Data.Bool (bool)
-import Data.Char (toUpper)
-import Data.Semigroup
-import Data.Monoid (Sum(..), Product(..))
-
 import Data.Typeable
-import qualified Control.Exception as E (Exception, Handler)
 
 import Data.Foldable (foldrM)
 
@@ -150,7 +140,11 @@ initStateBuffer = StateBuffer []
 --   | otherwise = Just $ StateBuffer (take n ls) s
 
   
--- | A record to keep track of the current iteration, a list of the prior states and the current state.
+-- StateBuffer removed - unused code
+
+-- instance Semigroup (StateBuffer s) where
+
+-- instance Semigroup (StateBuffer s) where
 data LoopState s = LoopState { lsCounter :: !Int
                              , lsPrevStates :: [s]
                              , lsCurrentState :: s } deriving (Eq, Show)
@@ -271,7 +265,8 @@ modifyUntilM_ q f = do
 
 -- modifyUntilM' :: MonadLog String m =>
 --    IterationConfig a b -> (a -> Bool) -> (a -> m a) -> a -> m a
-modifyUntilM' config q f x0 = execStateT (go 0) x0 where
+modifyUntilM' :: Monad m => p -> (a -> Bool) -> (a -> m a) -> a -> m a
+modifyUntilM' _ q f x0 = execStateT (go (0 :: Int)) x0 where
   -- logf ii = (Informational, unwords ["Iteration", show ii, "\n"])
   go i = do
    x <- get
