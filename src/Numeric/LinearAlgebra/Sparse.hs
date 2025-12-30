@@ -443,10 +443,17 @@ chol aa = do
           ljj = ll @@! (j, j)
           aij = aa @@! (i, j)
           -- For Cholesky: compute sum_{k=0}^{j-1} L_{i,k} * conj(L_{j,k})
-          -- Extract subrows and use inner product (which handles conjugation)
-          lrow_i = ifilterSV (\k _ -> k <= j - 1) (extractRow ll i)
-          lrow_j = ifilterSV (\k _ -> k <= j - 1) (extractRow ll j)
-          inn = lrow_i <.> lrow_j
+          -- Row i doesn't exist yet in ll, so inn = 0 (row hasn't been built)
+          -- This is the same behavior as the original contractSub
+          inn = case I.lookup i (smData ll) of
+                  Nothing -> 0  -- Row i not yet in matrix, sum is 0
+                  Just row_i ->  
+                    -- Manually compute inner product with conjugation
+                    I.foldlWithKey' (\acc k xik -> 
+                      if k <= j - 1 
+                      then acc + xik * conj (ll @@! (j, k))
+                      else acc
+                    ) 0 row_i
    cholDiagUpd aa ll i = do
      cd <- cholDiag 
      return $ insertSpMatrix i i cd ll where

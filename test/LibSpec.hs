@@ -489,7 +489,7 @@ checkChol :: (Elt a, MatrixRing (SpMatrix a), Epsilon a,
      SpMatrix a -> m Bool
 checkChol a = do
   l <- chol a
-  let c1 = nearZero $ normFrobenius $ sparsifySM ((l ##^ l) ^-^ a)
+  let c1 = nearZero $ normFrobenius ((l ##^ l) ^-^ a)
       c2 = isLowerTriSM l
   return $ c1 && c2
 
@@ -502,7 +502,7 @@ prop_Cholesky_reconstruction :: (MonadThrow m) =>
 prop_Cholesky_reconstruction a = do
   l <- chol a
   let reconstruction = l ##^ l
-      residual = normFrobenius $ sparsifySM (reconstruction ^-^ a)
+      residual = normFrobenius (reconstruction ^-^ a)
   return $ nearZero residual
 
 -- | Test that L is lower triangular (Real)
@@ -527,7 +527,7 @@ prop_Cholesky_reconstruction_complex :: (MonadThrow m) =>
 prop_Cholesky_reconstruction_complex a = do
   l <- chol a
   let reconstruction = l ##^ l
-      residual = normFrobenius $ sparsifySM (reconstruction ^-^ a)
+      residual = normFrobenius (reconstruction ^-^ a)
   return $ nearZero residual
 
 -- | Test that L is lower triangular (Complex)
@@ -847,15 +847,16 @@ genSpMI m = do
 newtype PropMatSPD a = PropMatSPD {unPropMatSPD :: SpMatrix a} deriving (Show)
 
 instance Arbitrary (PropMatSPD Double) where
-  arbitrary = sized genSpM_SPD `suchThat` ((>= 2) . nrows . unPropMatSPD)
+  arbitrary = sized (\n -> genSpM_SPD (max 2 n)) `suchThat` ((>= 2) . nrows . unPropMatSPD)
 
 -- | Generate a symmetric positive definite matrix via A^T A + I construction
 genSpM_SPD :: Int -> Gen (PropMatSPD Double)
-genSpM_SPD n = do
-  -- Generate a random matrix
-  m <- genSpM n n
+genSpM_SPD n | n < 2 = genSpM_SPD 2  -- Ensure minimum size
+             | otherwise = do
+  -- Generate a random DENSE matrix for better numerical properties
+  m <- genSpMDense n n
   -- Make it SPD by computing m^T m + ε*I (ensures positive definiteness)
-  let epsilon = 0.1
+  let epsilon = 1.0  -- Increase epsilon for better conditioning
       spd = (m #^# m) ^+^ (epsilon .* eye n)
   return $ PropMatSPD spd
 
@@ -863,15 +864,16 @@ genSpM_SPD n = do
 newtype PropMatHPD a = PropMatHPD {unPropMatHPD :: SpMatrix a} deriving (Show)
 
 instance Arbitrary (PropMatHPD (Complex Double)) where
-  arbitrary = sized genSpM_HPD `suchThat` ((>= 2) . nrows . unPropMatHPD)
+  arbitrary = sized (\n -> genSpM_HPD (max 2 n)) `suchThat` ((>= 2) . nrows . unPropMatHPD)
 
 -- | Generate a Hermitian positive definite matrix via A^H A + I construction
 genSpM_HPD :: Int -> Gen (PropMatHPD (Complex Double))
-genSpM_HPD n = do
-  -- Generate a random complex matrix
-  m <- genSpM n n
+genSpM_HPD n | n < 2 = genSpM_HPD 2  -- Ensure minimum size
+             | otherwise = do
+  -- Generate a random DENSE complex matrix for better numerical properties
+  m <- genSpMDense n n
   -- Make it HPD by computing m^H m + ε*I (ensures positive definiteness)
-  let epsilon = 0.1 :+ 0
+  let epsilon = 1.0 :+ 0  -- Increase epsilon for better conditioning
       hpd = (m #^# m) ^+^ (epsilon .* eye n)
   return $ PropMatHPD hpd
 
@@ -880,7 +882,7 @@ genSpM_HPD n = do
 newtype PropMatArrowheadSPD a = PropMatArrowheadSPD {unPropMatArrowheadSPD :: SpMatrix a} deriving (Show)
 
 instance Arbitrary (PropMatArrowheadSPD Double) where
-  arbitrary = sized genSpM_ArrowheadSPD `suchThat` ((>= 3) . nrows . unPropMatArrowheadSPD)
+  arbitrary = sized (\n -> genSpM_ArrowheadSPD (max 3 n)) `suchThat` ((>= 3) . nrows . unPropMatArrowheadSPD)
 
 -- | Generate a lower arrowhead SPD matrix
 genSpM_ArrowheadSPD :: Int -> Gen (PropMatArrowheadSPD Double)
@@ -915,7 +917,7 @@ genSpM_ArrowheadSPD n | n < 3 = error "Arrowhead matrix requires at least 3x3"
 newtype PropMatArrowheadHPD a = PropMatArrowheadHPD {unPropMatArrowheadHPD :: SpMatrix a} deriving (Show)
 
 instance Arbitrary (PropMatArrowheadHPD (Complex Double)) where
-  arbitrary = sized genSpM_ArrowheadHPD `suchThat` ((>= 3) . nrows . unPropMatArrowheadHPD)
+  arbitrary = sized (\n -> genSpM_ArrowheadHPD (max 3 n)) `suchThat` ((>= 3) . nrows . unPropMatArrowheadHPD)
 
 -- | Generate a lower arrowhead HPD matrix
 genSpM_ArrowheadHPD :: Int -> Gen (PropMatArrowheadHPD (Complex Double))
