@@ -442,6 +442,8 @@ chol aa = do
        cholDiag | i == 0 = sqrt <$> aai
                 | otherwise = do
                     a <- aai
+                    -- For complex numbers, we need |z|^2 = z * conj(z), not z^2
+                    -- This fix enables Cholesky factorization for complex-valued matrices
                     let l = sum (fmap (\x -> x * conj x) lrow)
                     return $ sqrt (a - l)
          where
