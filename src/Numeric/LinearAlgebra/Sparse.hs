@@ -25,12 +25,12 @@ module Numeric.LinearAlgebra.Sparse
          -- *** Backward substitution
          triUpperSolve,
          -- * Eigensolvers
-         -- eigsQR,
+         eigsQR,
          -- eigRayleigh,
          -- eigsArnoldi,
          -- * Matrix factorization algorithms
          -- ** QR
-         -- qr, 
+         qr, 
          -- ** LU
          lu,
          -- ** Cholesky
@@ -243,12 +243,16 @@ hhRefl = hhMat 2
 --     ( -s*  c*)
 -- @
 {-# inline givens #-}
-givens :: (Elt a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (SpMatrix a)
+givens :: (Elt a, Epsilon a, MonadThrow m) => SpMatrix a -> IxRow -> IxCol -> m (Maybe (SpMatrix a))
 givens aa i j 
-  | isValidIxSM aa (i,j) && nrows aa >= ncols aa = do
-      i' <- candidateRows' (immSM aa) i j
-      return $ givensMat aa i i' j
-  | otherwise = throwM (OOBIxsError "Givens" [i, j])
+  | not (isValidIxSM aa (i,j)) = throwM (OOBIxsError "Givens" [i, j])
+  | nrows aa < ncols aa = throwM (OOBIxsError "Givens: matrix must have rows >= cols" [i, j])
+  | nearZero (aa @@ (i, j)) = return Nothing  -- Element already zero, no rotation needed
+  | otherwise = do
+      mi' <- candidateRows' (immSM aa) i j
+      case mi' of
+        Nothing -> return Nothing  -- No compatible row found, skip this element
+        Just i' -> return $ Just $ givensMat aa i i' j
   where
   givensMat mm i i' j =
     fromListSM'
@@ -259,8 +263,10 @@ givens aa i j
              (c, s, _) = givensCoef a b
              a = mm @@ (i', j)
              b = mm @@ (i, j)   -- element to zero out
-  candidateRows' mm i j | null u = throwM (OOBNoCompatRows "Givens" (i,j))
-                        | otherwise = return $ head (I.keys u) where
+  candidateRows' mm i j 
+    | null u = return Nothing  -- No compatible row found
+    | otherwise = return $ Just $ head (I.keys u) 
+    where
     u = I.filterWithKey (\irow row -> irow /= i &&
                                       firstNZColumn row j) mm
     firstNZColumn m k = isJust (I.lookup k m) &&
@@ -295,29 +301,26 @@ NB: at each iteration `i` we multiply the Givens matrix `G_i` by the previous pa
 However, we must also accumulate the `G_i` in order to build `Q`, and the present formulation follows this definition closely.
 -}
 
--- {-# inline qr #-}
--- qr :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a),
---       Epsilon a, MonadThrow m, MonadLog String m) =>
---      SpMatrix a
---      -> m (SpMatrix a, SpMatrix a) -- ^ Q, R
--- qr mm = do 
---      (qt, r, _) <- modifyUntilM' config haltf qrstepf gminit
---      return (transpose qt, r) 
---   where
---     gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
---     haltf (_, _, iis) = null iis
---     config = IterConf 0 False fst2 prd2 where
---       fst2 (x,y,_) = (x,y)
---       prd2 (x,y) = do
---         prd0 x
---         prd0 y
---     qrstepf (qmatt, m, iis) = do
---         let (i, j) = head iis
---         g <- givens m i j
---         let
---           qmatt' = g #~# qmatt  -- update Q'
---           m' = g #~# m          -- update R
---         return (qmatt', m', tail iis)    
+{-# inline qr #-}
+qr :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     SpMatrix a
+     -> m (SpMatrix a, SpMatrix a) -- ^ Q, R
+qr mm = do 
+     (qt, r, _) <- modifyUntilM' () haltf qrstepf gminit
+     return (transpose qt, r) 
+  where
+    gminit = (eye (nrows mm), mm, subdiagIndicesSM mm)
+    haltf (_, _, iis) = null iis
+    qrstepf (qmatt, m, iis) = do
+        let (i, j) = head iis
+        mg <- givens m i j
+        case mg of
+          Nothing -> return (qmatt, m, tail iis)  -- Skip if no rotation needed/possible
+          Just g -> do
+            let
+              qmatt' = g #~# qmatt  -- update Q'
+              m' = g #~# m          -- update R
+            return (qmatt', m', tail iis)    
 
 
 
@@ -329,15 +332,17 @@ However, we must also accumulate the `G_i` in order to build `Q`, and the presen
 
 -- ** QR algorithm
 
--- | @eigsQR n mm@ performs at most @n@ iterations of the QR algorithm on matrix @mm@, and returns a 'SpVector' containing all eigenvalues.
-
--- eigsQR nitermax debq m = pf <$> untilConvergedGM "eigsQR" c (const True) stepf m
---   where
---     pf = extractDiagDense
---     c = IterConf nitermax debq pf prd
---     stepf mm = do
---       (q, _) <- qr mm
---       return $ q #~^# (m ## q) -- r #~# q
+-- | @eigsQR n debq mm@ performs at most @n@ iterations of the QR algorithm on matrix @mm@, and returns a 'SpVector' containing all eigenvalues.
+eigsQR :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m) =>
+     Int -> Bool -> SpMatrix a -> m (SpVector a)
+eigsQR nitermax _debq m = pf <$> eigsQRLoop nitermax m
+  where
+    pf = extractDiagDense
+    eigsQRLoop 0 mm = return mm
+    eigsQRLoop n mm = do
+      (q, r) <- qr mm
+      let mm' = r #~# q
+      eigsQRLoop (n - 1) mm'
 
 
 
