@@ -97,10 +97,15 @@ spec = do
       \p@(PropMatMat (_ :: SpMatrix Double) _) -> prop_matMat1 p
     prop "prop_matMat2 : M^T ##^ M == M #^# M^T" $
       \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
+    prop "prop_QR: Q R = A, Q is orthogonal, R is upper triangular (Real)" $
+      \(PropMatI m) -> runWithLogs (prop_QR m)
+    prop "prop_QR_complex: Q R = A, Q is orthogonal, R is upper triangular (Complex)" $
+      \(PropMatIC m) -> runWithLogs (prop_QR_complex m)
   specLu
   specTriangularSolve
   specArnoldi
-  -- specQR -- QR functions not yet implemented
+  specQR
+  specEigsQR
   specChol  -- Cholesky property tests
 
 -- specLinSolve = 
@@ -140,21 +145,37 @@ spec = do
 --   -- --   it "luSolve (3 x 3 dense)" $ 
 --   -- --     checkLuSolve tmc4 tvc4 >>= (`shouldBe` (True, True, True)) 
 
--- specQR and specChol commented out - QR and Cholesky not yet implemented
--- specQR :: Spec
--- specQR = do       
---   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
---     it "qr (3 x 3 dense)" $ 
---       checkQr0 qr tm2 >>= (`shouldBe` True)
---     it "qr (4 x 4 sparse)" $
---       checkQr0 qr tm4 >>= (`shouldBe` True)
---     it "qr (5 x 5 sparse)" $
---       checkQr0 qr tm7 >>= (`shouldBe` True)
---   describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
---     it "qr (2 x 2 dense)" $
---       checkQr0 qr aa3cx >>= (`shouldBe` True)
---     it "qr (3 x 3 dense)" $
---       checkQr0 qr tmc4 >>= (`shouldBe` True)
+specQR :: Spec
+specQR = do       
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Real)" $ do
+    it "qr (3 x 3 dense)" $ 
+      runWithLogs (checkQr0 qr tm2) >>= (`shouldBe` True)
+    it "qr (4 x 4 sparse)" $
+      runWithLogs (checkQr0 qr tm4) >>= (`shouldBe` True)
+    it "qr (4 x 4 dense)" $
+      runWithLogs (checkQr0 qr tm6) >>= (`shouldBe` True)
+    it "qr (issue test case: 4x4 matrix)" $
+      runWithLogs (checkQr0 qr issueMatrix) >>= (`shouldBe` True)
+  describe "Numeric.LinearAlgebra.Sparse : QR factorization (Complex)" $ do
+    it "qr (2 x 2 dense)" $
+      runWithLogs (checkQr0 qr aa3cx) >>= (`shouldBe` True)
+    it "qr (3 x 3 dense)" $
+      runWithLogs (checkQr0 qr tmc4) >>= (`shouldBe` True)
+
+specEigsQR :: Spec
+specEigsQR = do
+  describe "Numeric.LinearAlgebra.Sparse : QR eigenvalue algorithm (Real)" $ do
+    it "eigsQR (3 x 3 matrix with known eigenvalues)" $
+      runWithLogs (checkEigsQR aa4 100) >>= (`shouldBe` True)
+    it "eigsQR (4 x 4 issue test case)" $
+      runWithLogs (checkEigsQR issueMatrix 100) >>= (`shouldBe` True)
+    it "eigsQR (2 x 2 dense)" $
+      runWithLogs (checkEigsQR aa0 50) >>= (`shouldBe` True)
+    it "eigsQR (3 x 3 dense)" $
+      runWithLogs (checkEigsQR tm2 100) >>= (`shouldBe` True)
+  describe "Numeric.LinearAlgebra.Sparse : QR eigenvalue algorithm (Complex)" $ do
+    it "eigsQR (2 x 2 dense)" $
+      runWithLogs (checkEigsQR aa3cx 50) >>= (`shouldBe` True)
       
 specLu :: Spec
 specLu = do       
@@ -332,6 +353,16 @@ checkQr0 mfqr a = do
       c2 = isOrthogonalSM q
       c3 = isUpperTriSM r
   return $ c1 && c2 && c3
+
+-- | Check that eigsQR runs without throwing an exception and produces output
+checkEigsQR :: (Elt a, MatrixRing (SpMatrix a), Epsilon a, MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix a -> Int -> m Bool
+checkEigsQR mat niter = do
+  eigs <- eigsQR niter False mat
+  -- Just check that it completes and produces the right dimension
+  let n = nrows mat
+      eigsDim = dim eigs
+  return $ eigsDim == n
 
 -- stepQR a = do
 --   (q, r) <- qr a
@@ -724,6 +755,12 @@ instance Show a => Show (PropMatI a) where show = show . unPropMatI
 instance Arbitrary (PropMatI Double) where
   arbitrary = sized (\m -> PropMatI <$> genSpMI m) `suchThat` ((> 2) . nrows . unPropMatI)
 
+-- | An arbitrary complex SpMatrix with identity diagonal 
+newtype PropMatIC a = PropMatIC {unPropMatIC :: SpMatrix a} deriving (Eq)
+instance Show a => Show (PropMatIC a) where show = show . unPropMatIC
+instance Arbitrary (PropMatIC (Complex Double)) where
+  arbitrary = sized (\m -> PropMatIC <$> genSpMI m) `suchThat` ((> 2) . nrows . unPropMatIC)
+
 genSpMI :: (AdditiveGroup a, Num a, Arbitrary a) => Int -> Gen (SpMatrix a)
 genSpMI m = do
   mm <- genSpM m m
@@ -885,7 +922,12 @@ prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 -- prop_Cholesky (PropMatSPD m) = checkChol m
 
 
--- -- | QR decomposition
+-- | QR decomposition property tests
+prop_QR :: (MonadThrow m, MonadWriter [String] m) => PropMatI Double -> m Bool
+prop_QR (PropMatI m) = checkQr0 qr m
+
+prop_QR_complex :: (MonadThrow m, MonadWriter [String] m) => PropMatIC (Complex Double) -> m Bool
+prop_QR_complex (PropMatIC m) = checkQr0 qr m
 -- prop_QR :: (Elt a, MatrixRing (SpMatrix a), PrintDense (SpMatrix a), Epsilon a,
 --             MonadThrow m, MonadWriter [String] m) =>
 --      PropMatI a -> m Bool
@@ -1426,3 +1468,9 @@ y42 = fromListSV 4 [(0,3)]
 
 m42 :: SpMatrix Double
 m42 = fromListSM (2, 4) [(1,0,3), (0,2,3)]
+
+-- | Test matrix from eigsQR issue
+-- Matrix: [0,1,1,0; 1,0,0,0; 1,0,0,1; 0,0,1,0]
+-- This matrix caused the "Givens : no compatible rows" error
+issueMatrix :: SpMatrix Double
+issueMatrix = sparsifySM $ fromListDenseSM 4 [0,1,1,0, 1,0,0,0, 1,0,0,1, 0,0,1,0]
