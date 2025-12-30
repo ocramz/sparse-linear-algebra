@@ -98,6 +98,7 @@ spec = do
     prop "prop_matMat2 : M^T ##^ M == M #^# M^T" $
       \p@(PropMat (_ :: SpMatrix Double)) -> prop_matMat2 p
   specLu
+  specTriangularSolve
   specArnoldi
   -- specQR -- QR functions not yet implemented
   -- specChol  -- Cholesky functions not yet implemented
@@ -175,6 +176,27 @@ specLu = do
       runWithLogs (checkLu aa3c) >>= (`shouldBe` True)
     it "lu (3 x 3 dense)" $
       runWithLogs (checkLu tmc4) >>= (`shouldBe` True)
+
+specTriangularSolve :: Spec
+specTriangularSolve = do
+  describe "Numeric.LinearAlgebra.Sparse : Triangular solvers (Real)" $ do
+    it "triLowerSolve (2 x 2 dense)" $
+      runWithLogs (checkTriLowerSolve ltri0 b_ltri0) >>= (`shouldBe` True)
+    it "triUpperSolve (2 x 2 dense)" $
+      runWithLogs (checkTriUpperSolve utri0 b_utri0) >>= (`shouldBe` True)
+    it "triLowerSolve (3 x 3 sparse)" $
+      runWithLogs (checkTriLowerSolve ltri1 b_ltri1) >>= (`shouldBe` True)
+    it "triUpperSolve (3 x 3 sparse)" $
+      runWithLogs (checkTriUpperSolve utri1 b_utri1) >>= (`shouldBe` True)
+  describe "Numeric.LinearAlgebra.Sparse : Triangular solvers (Complex)" $ do
+    it "triLowerSolve (2 x 2 dense)" $
+      runWithLogs (checkTriLowerSolveC ltri0c b_ltri0c) >>= (`shouldBe` True)
+    it "triUpperSolve (2 x 2 dense)" $
+      runWithLogs (checkTriUpperSolveC utri0c b_utri0c) >>= (`shouldBe` True)
+    it "triLowerSolve (3 x 3 dense)" $
+      runWithLogs (checkTriLowerSolveC ltri1c b_ltri1c) >>= (`shouldBe` True)
+    it "triUpperSolve (3 x 3 dense)" $
+      runWithLogs (checkTriUpperSolveC utri1c b_utri1c) >>= (`shouldBe` True)
 
 -- specChol commented out - Cholesky not yet implemented
 -- specChol :: Spec
@@ -316,6 +338,49 @@ checkLu a = do
   let c1 = nearZero $ normFrobenius $ sparsifySM ((l ## u) ^-^ a)
       c2 = isUpperTriSM u && isLowerTriSM l
   return (c1 && c2)
+
+
+-- | Triangular solvers
+
+checkTriUpperSolve :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
+      Normed (SpVector t), InnerSpace (SpVector t), InnerSpace t,
+      VectorSpace (SpVector t), Epsilon t,
+      MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix t -> SpVector t -> m Bool
+checkTriUpperSolve umat rhs = do
+  xhat <- triUpperSolve umat rhs
+  let r = (umat #> xhat) ^-^ rhs
+      flag = nearZero $ norm2 r
+  return flag
+
+checkTriLowerSolve :: (Scalar (SpVector t) ~ t, Elt t, MatrixRing (SpMatrix t),
+      Normed (SpVector t), InnerSpace (SpVector t), InnerSpace t,
+      VectorSpace (SpVector t), Epsilon t,
+      MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix t -> SpVector t -> m Bool
+checkTriLowerSolve lmat rhs = do
+  xhat <- triLowerSolve lmat rhs
+  let r = (lmat #> xhat) ^-^ rhs
+      flag = nearZero $ norm2 r
+  return flag
+
+checkTriUpperSolveC :: (MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix (Complex Double) -> SpVector (Complex Double) -> m Bool
+checkTriUpperSolveC umat rhs = do
+  xhat <- triUpperSolve umat rhs
+  let r = (umat #> xhat) ^-^ rhs
+      normSq = mag (r <.> r)
+      flag = nearZero normSq
+  return flag
+
+checkTriLowerSolveC :: (MonadThrow m, MonadWriter [String] m) =>
+     SpMatrix (Complex Double) -> SpVector (Complex Double) -> m Bool
+checkTriLowerSolveC lmat rhs = do
+  xhat <- triLowerSolve lmat rhs
+  let r = (lmat #> xhat) ^-^ rhs
+      normSq = mag (r <.> r)
+      flag = nearZero normSq
+  return flag
 
 
 
@@ -1127,6 +1192,64 @@ x10 = fromListDenseSV 2 [2,3]
 b10 = aa10 #> x10
 
 --
+
+-- | Test data for triangular solvers
+
+-- Lower triangular 2x2 Real
+ltri0 :: SpMatrix Double
+ltri0 = fromListSM (2,2) [(0,0,2), (1,0,1), (1,1,3)]
+
+b_ltri0 :: SpVector Double
+b_ltri0 = fromListDenseSV 2 [4, 11]  -- ltri0 #> [2, 3] = [4, 11]
+
+-- Upper triangular 2x2 Real
+utri0 :: SpMatrix Double
+utri0 = fromListSM (2,2) [(0,0,2), (0,1,1), (1,1,3)]
+
+b_utri0 :: SpVector Double
+b_utri0 = fromListDenseSV 2 [7, 9]  -- utri0 #> [2, 3] = [7, 9]
+
+-- Lower triangular 3x3 Real (sparse)
+ltri1 :: SpMatrix Double
+ltri1 = fromListSM (3,3) [(0,0,2), (1,0,1), (1,1,4), (2,1,2), (2,2,3)]
+
+b_ltri1 :: SpVector Double
+b_ltri1 = fromListDenseSV 3 [4, 10, 17]  -- ltri1 #> [2, 2, 3] = [4, 10, 17]
+
+-- Upper triangular 3x3 Real (sparse)
+utri1 :: SpMatrix Double
+utri1 = fromListSM (3,3) [(0,0,2), (0,1,1), (0,2,1), (1,1,4), (1,2,2), (2,2,3)]
+
+b_utri1 :: SpVector Double
+b_utri1 = fromListDenseSV 3 [9, 14, 9]  -- utri1 #> [2, 2, 3] = [9, 14, 9]
+
+-- Lower triangular 2x2 Complex
+ltri0c :: SpMatrix (Complex Double)
+ltri0c = fromListSM (2,2) [(0,0,2:+1), (1,0,1:+0), (1,1,3:+(-1))]
+
+b_ltri0c :: SpVector (Complex Double)
+b_ltri0c = fromListDenseSV 2 [2:+1, 5:+0]  -- ltri0c #> [1, 1] ~= [2+i, 5]
+
+-- Upper triangular 2x2 Complex
+utri0c :: SpMatrix (Complex Double)
+utri0c = fromListSM (2,2) [(0,0,2:+1), (0,1,1:+0), (1,1,3:+(-1))]
+
+b_utri0c :: SpVector (Complex Double)
+b_utri0c = fromListDenseSV 2 [3:+1, 3:+(-1)]  -- utri0c #> [1, 1] = [3+i, 3-i]
+
+-- Lower triangular 3x3 Complex
+ltri1c :: SpMatrix (Complex Double)
+ltri1c = fromListSM (3,3) [(0,0,2:+0), (1,0,1:+1), (1,1,3:+0), (2,1,1:+(-1)), (2,2,2:+1)]
+
+b_ltri1c :: SpVector (Complex Double)
+b_ltri1c = fromListDenseSV 3 [2:+0, 4:+1, 5:+0]  -- ltri1c #> [1, 1, 1]
+
+-- Upper triangular 3x3 Complex
+utri1c :: SpMatrix (Complex Double)
+utri1c = fromListSM (3,3) [(0,0,2:+0), (0,1,1:+1), (0,2,1:+0), (1,1,3:+0), (1,2,1:+(-1)), (2,2,2:+1)]
+
+b_utri1c :: SpVector (Complex Double)
+b_utri1c = fromListDenseSV 3 [5:+1, 5:+(-1), 2:+1]  -- utri1c #> [1, 1, 1]
 
 -- | Example 5.4.2 from G & VL
 -- aa1 :: SpMatrix Double
