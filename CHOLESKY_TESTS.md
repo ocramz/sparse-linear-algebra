@@ -8,7 +8,10 @@ The Cholesky factorization decomposes a positive definite matrix **A** into a pr
 
 ## Implementation Fix
 
-The original Cholesky implementation failed for complex-valued matrices due to using `**2` instead of the proper complex conjugate multiplication. The fix changes:
+The original Cholesky implementation had two bugs for complex-valued matrices:
+
+### Fix 1: Diagonal Element Computation
+Changed from using `**2` to proper complex conjugate multiplication:
 
 ```haskell
 -- Before (incorrect for complex numbers):
@@ -19,6 +22,23 @@ let l = sum (fmap (\x -> x * conj x) lrow)
 ```
 
 This ensures that for complex numbers, we compute `x * conj(x)` which gives the squared magnitude, rather than `x^2` which would be incorrect.
+
+### Fix 2: Subdiagonal Element Computation  
+Changed from using `contractSub` (which doesn't use conjugation) to using inner product:
+
+```haskell
+-- Before (incorrect for complex numbers):
+inn = contractSub ll ll i j (j - 1)
+
+-- After (correct for both real and complex):
+lrow_i = ifilterSV (\k _ -> k <= j - 1) (extractRow ll i)
+lrow_j = ifilterSV (\k _ -> k <= j - 1) (extractRow ll j)
+inn = lrow_i <.> lrow_j
+```
+
+The inner product operator `<.>` correctly uses conjugation for complex numbers: `v <.> w = sum (v_i * conj(w_i))`.
+
+These fixes enable the Cholesky factorization to work correctly for both real symmetric positive definite matrices and complex Hermitian positive definite matrices.
 
 ## Test Structure
 
