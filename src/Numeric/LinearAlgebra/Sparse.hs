@@ -21,9 +21,9 @@ module Numeric.LinearAlgebra.Sparse
          -- ** Direct methods
          -- luSolve,
          -- *** Forward substitution
-         -- triLowerSolve,
+         triLowerSolve,
          -- *** Backward substitution
-         -- triUpperSolve,
+         triUpperSolve,
          -- * Eigensolvers
          -- eigsQR,
          -- eigRayleigh,
@@ -722,68 +722,69 @@ mSsorPre aa omega = (l, r) where
 --       triUpperSolve0 luSolveConfig uu w
 --   | otherwise = throwM (NonTriangularException "luSolve")
 
--- | Forward substitution solver
-
--- triLowerSolve = triLowerSolve0 luSolveConfig
-
-
-
-
--- triLowerSolve0 config ll b = do
---   let q (_, i) = i == nb
---       nb = svDim b
---       oops i = throwM (NeedsPivoting "triLowerSolve" (unwords ["L", show (i, i)]) :: MatrixException Double)
---       lStep (ww, i) = do -- (ww', i + 1) where
---         let
---           lii = ll @@ (i, i)
---           bi = b @@ i
---           wi = (bi - r)/lii where
---             r = extractSubRow ll i (0, i-1) `dot` takeSV i ww
---         if isNz lii
---           then return (insertSpVector i wi ww, i + 1)
---           else oops i
---       lInit = do -- (ww0, 1) where
---         let
---           l00 = ll @@ (0, 0)
---           b0 = b @@ 0
---           w0 = b0 / l00
---         if isNz l00
---           then return (insertSpVector 0 w0 $ zeroSV (dim b), 1)
---           else oops (0 :: Int)
---   l0 <- lInit             
---   (v, _) <- modifyUntilM' config q lStep l0
---   return $ sparsifySV v
+-- | Forward substitution solver for lower triangular matrices
+triLowerSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+                  Epsilon t, MonadThrow m) =>
+     SpMatrix t    -- ^ Lower triangular matrix
+     -> SpVector t -- ^ Right-hand side vector
+     -> m (SpVector t)
+triLowerSolve ll b = do
+  let q (_, i) = i == nb
+      nb = svDim b
+      oops i = throwM (NeedsPivoting "triLowerSolve" (unwords ["L", show (i, i)]) :: MatrixException ())
+      lStep (ww, i) = do
+        let
+          lii = ll @@ (i, i)
+          bi = b @@ i
+          wi = (bi - r)/lii where
+            r = extractSubRow ll i (0, i-1) `dot` takeSV i ww
+        if isNz lii
+          then return (insertSpVector i wi ww, i + 1)
+          else oops i
+      lInit = do
+        let
+          l00 = ll @@ (0, 0)
+          b0 = b @@ 0
+          w0 = b0 / l00
+        if isNz l00
+          then return (insertSpVector 0 w0 $ zeroSV (dim b), 1)
+          else oops (0 :: Int)
+  l0 <- lInit             
+  (v, _) <- modifyUntilM' () q lStep l0
+  return $ sparsifySV v
 
 
 
 -- NB in the computation of `xi` we must rebalance the subrow indices (extractSubRow_RK) because `dropSV` does that too, in order to take the inner product with consistent index pairs
--- | Backward substitution solver
-
--- triUpperSolve = triUpperSolve0 luSolveConfig
-
--- triUpperSolve0 conf uu w = do 
---   let q (_, i) = i == (- 1)
---       nw = svDim w
---       oops i = throwM (NeedsPivoting "triUpperSolve" (unwords ["U", show (i, i)]) :: MatrixException Double)
---       uStep (xx, i) = do
---         let uii = uu @@ (i, i) 
---             wi = w @@ i
---             r = extractSubRow_RK uu i (i + 1, nw - 1) `dot` dropSV (i + 1) xx  
---             xi = (wi - r) / uii
---         if isNz uii
---           then return (insertSpVector i xi xx, i - 1)
---           else oops i 
---       uInit = do 
---         let i = nw - 1
---             u00 = uu @@! (i, i)
---             w0 = w @@ i
---             x0 = w0 / u00
---         if isNz u00
---           then return (insertSpVector i x0 (zeroSV nw), i - 1)
---           else oops (0 :: Int)
---   u0 <- uInit             
---   (x, _) <- modifyUntilM' conf q uStep u0
---   return $ sparsifySV x      
+-- | Backward substitution solver for upper triangular matrices
+triUpperSolve :: (Scalar (SpVector t) ~ t, Elt t, InnerSpace (SpVector t),
+                  Epsilon t, MonadThrow m) =>
+     SpMatrix t    -- ^ Upper triangular matrix
+     -> SpVector t -- ^ Right-hand side vector
+     -> m (SpVector t)
+triUpperSolve uu w = do
+  let q (_, i) = i == (- 1)
+      nw = svDim w
+      oops i = throwM (NeedsPivoting "triUpperSolve" (unwords ["U", show (i, i)]) :: MatrixException ())
+      uStep (xx, i) = do
+        let uii = uu @@ (i, i) 
+            wi = w @@ i
+            r = extractSubRow_RK uu i (i + 1, nw - 1) `dot` dropSV (i + 1) xx  
+            xi = (wi - r) / uii
+        if isNz uii
+          then return (insertSpVector i xi xx, i - 1)
+          else oops i 
+      uInit = do 
+        let i = nw - 1
+            u00 = uu @@! (i, i)
+            w0 = w @@ i
+            x0 = w0 / u00
+        if isNz u00
+          then return (insertSpVector i x0 (zeroSV nw), i - 1)
+          else oops (0 :: Int)
+  u0 <- uInit             
+  (x, _) <- modifyUntilM' () q uStep u0
+  return $ sparsifySV x      
 
 
 
