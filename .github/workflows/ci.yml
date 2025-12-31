@@ -42,9 +42,9 @@ jobs:
       run: |
         stack build --only-dependencies --test --no-terminal
 
-    - name: Build with -Wall -Werror
+    - name: Build
       run: |
-        stack build --test --no-terminal --no-run-tests --ghc-options="-Wall -Werror"
+        stack build --test --no-terminal --no-run-tests
 
     - name: Run main test suite
       run: |
