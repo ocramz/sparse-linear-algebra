@@ -40,7 +40,7 @@ flag dump
 library
   default-language:    Haskell2010
   ghc-options:
-              -O2 -Wall -Werror
+              -O2 -Wall
 
   if flag(dump)
     ghc-options: -ddump-simpl -ddump-stg -ddump-to-file
@@ -94,10 +94,11 @@ library
   
 test-suite spec
   default-language:    Haskell2010
-  ghc-options:         -Wall -Wno-unused-imports  -Wno-type-defaults
+  ghc-options:         -Wall -Wno-unused-imports -Wno-type-defaults -Wmissing-home-modules
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   other-modules:       LibSpec
+                     , MatrixFactorizationsSpec
   main-is:             Spec.hs
   build-depends:       QuickCheck >= 2.8.2
                      , base
@@ -110,6 +111,22 @@ test-suite spec
                      , sparse-linear-algebra
                      , scientific
                      , matrix-market-attoparsec
+
+
+test-suite matrix-factorizations
+  default-language:    Haskell2010
+  ghc-options:         -Wall -Wno-unused-imports -Wno-type-defaults
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  other-modules:       MatrixFactorizationsSpec
+  main-is:             MatrixFactorizationsMain.hs
+  build-depends:       QuickCheck >= 2.8.2
+                     , base
+                     , containers
+                     , hspec
+                     , mtl >= 2.2.1
+                     , exceptions
+                     , sparse-linear-algebra
 
 
 

@@ -131,6 +131,7 @@ mkDiagonal n = mkSubDiagonal n 0
 -- *** Identity matrix
 -- | `eye n` : identity matrix of rank `n`
 eye :: Num a => Int -> SpMatrix a
+eye 0 = zeroSM 0 0
 eye n = mkDiagonal n (replicate n 1)
 
 
