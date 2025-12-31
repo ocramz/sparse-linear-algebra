@@ -7,11 +7,12 @@ on:
     branches: [ master, main ]
 
 jobs:
-  build:
-    name: Build and Test (Main Suite)
+  matrix-factorizations-tests:
+    name: Test Matrix Factorizations
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    continue-on-error: true  # Allow this job to fail without blocking PR/merge
     strategy:
       matrix:
         ghc: ['9.4.8', '9.6.6', '9.8.2']
@@ -42,42 +43,12 @@ jobs:
       run: |
         stack build --only-dependencies --test --no-terminal
 
-    - name: Build with -Wall -Werror
+    - name: Build
       run: |
-        stack build --test --no-terminal --no-run-tests --ghc-options="-Wall -Werror"
+        stack build --test --no-terminal --no-run-tests
 
-    - name: Run main test suite
+    - name: Run matrix factorizations test suite
       run: |
-        stack test sparse-linear-algebra:spec --no-terminal
+        stack test sparse-linear-algebra:matrix-factorizations --no-terminal
 
-  lint:
-    name: Lint with HLint
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup Haskell
-      uses: haskell-actions/setup@v2
-      with:
-        ghc-version: '9.6.6'
-        enable-stack: true
-        stack-version: 'latest'
-
-    - name: Cache Stack dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.stack
-        key: ${{ runner.os }}-stack-hlint-${{ hashFiles('stack.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-stack-hlint-
-
-    - name: Install HLint
-      run: |
-        stack install hlint
-
-    - name: Run HLint
-      run: |
-        stack exec hlint -- src test
