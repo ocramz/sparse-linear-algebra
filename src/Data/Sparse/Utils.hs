@@ -2,7 +2,6 @@ module Data.Sparse.Utils (unionWithD, intersectWithD, indexed, indexed2, minTup,
 
 -- import Control.Arrow (first, second)
 import Data.Ord
-import qualified Data.Vector as V
 
 import Data.Sparse.Internal.Utils
 
@@ -14,14 +13,6 @@ import Data.Sparse.Internal.Utils
 
 
 -- | Intersection and union of sparse lists having indices in _ascending_ order
-intersectWith :: Ord i => (a -> a -> b) -> [(i, a)] -> [(i, a)] -> [b]
-intersectWith f = intersectWith0 (comparing fst) (lift2snd f)
-
-unionWith :: Ord i =>
-     (a -> a -> a) -> a -> [(i, a)] -> [(i, a)] -> [(i, a)]
-unionWith = unionWith0 compare
-
-
 
 -- | Intersection of sparse lists having indices in _descending_ order
 intersectWithD :: Ord i => (a -> a -> b) -> [(i, a)] -> [(i, a)] -> [b]
@@ -69,17 +60,6 @@ lift2snd :: (t -> t1 -> t2) -> (a, t) -> (a1, t1) -> t2
 lift2snd f a b = f (snd a) (snd b)
 
 
-
-
-
-
-
--- | Wrap a function with a null check, returning in Maybe
-safe :: (t -> Bool) -> (t -> a) -> t -> Maybe a
-safe q f v | q v = Nothing
-              | otherwise = Just $ f v
-
-
 -- | Componentwise tuple operations
 -- TODO : use semilattice properties instead
 maxTup, minTup :: Ord t => (t, t) -> (t, t) -> (t, t)
@@ -114,23 +94,6 @@ indexed2 m xs = zip3 (concat $ replicate n ii_) jj_ xs where
 
 -- folds
 
--- | foldr over the results of a fmap
-foldrMap :: (Foldable t, Functor t) => (a -> b) -> (b -> c -> c) -> c -> t a -> c
-foldrMap ff gg x0 = foldr gg x0 . fmap ff
-
--- | strict left fold
-foldlStrict :: (a -> b -> a) -> a -> [b] -> a
-foldlStrict f = go
-  where
-    go z []     = z
-    go z (x:xs) = let z' = f z x in z' `seq` go z' xs
-
--- | indexed right fold
-ifoldr :: Num i =>
-     (a -> b -> b) -> b -> (i -> c -> d -> a) -> c -> [d] -> b  
-ifoldr mjoin mneutral f  = go 0 where
-  go i z (x:xs) = mjoin (f i z x) (go (i+1) z xs)
-  go _ _ [] = mneutral
 
 
 -- ** Bounds checking
@@ -140,33 +103,11 @@ type UB = Int
 inBounds :: LB -> UB -> Int -> Bool
 inBounds ibl ibu i = i>= ibl && i<ibu
 
-inBounds2 :: (LB, UB) -> (Int, Int) -> Bool
-inBounds2 (ibl,ibu) (ix,iy) = inBounds ibl ibu ix && inBounds ibl ibu iy
-
-
--- ", lower bound = 0
 inBounds0 :: UB -> Int -> Bool
 inBounds0 = inBounds 0
 
 inBounds02 :: (UB, UB) -> (Int, Int) -> Bool
 inBounds02 (bx,by) (i,j) = inBounds0 bx i && inBounds0 by j
-
-
-
-
--- ** Safe indexing
-
-
-
-head' :: V.Vector a -> Maybe a
-head' = safe V.null V.head
-
-tail' :: V.Vector a -> Maybe (V.Vector a)
-tail' = safe V.null V.tail
-
-
-
-
 
 
 

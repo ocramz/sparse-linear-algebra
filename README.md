@@ -2,7 +2,8 @@
 
 Numerical computation in native Haskell
 
-[![CI](https://github.com/ocramz/sparse-linear-algebra/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/ocramz/sparse-linear-algebra/actions/workflows/ci.yml)
+[![CI-library](https://github.com/ocramz/sparse-linear-algebra/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/ocramz/sparse-linear-algebra/actions/workflows/ci.yml)
+[![CI-matrix-factorizations](https://github.com/ocramz/sparse-linear-algebra/actions/workflows/matrix_factorizations.yml/badge.svg)](https://github.com/ocramz/sparse-linear-algebra/actions/workflows/matrix_factorizations.yml)
 [![Hackage](https://img.shields.io/hackage/v/sparse-linear-algebra.svg)](https://hackage.haskell.org/package/sparse-linear-algebra)  
 [![sparse-linear-algebra](http://stackage.org/package/sparse-linear-algebra/badge/lts)](http://stackage.org/lts/package/sparse-linear-algebra)
 [![sparse-linear-algebra](http://stackage.org/package/sparse-linear-algebra/badge/nightly)](http://stackage.org/nightly/package/sparse-linear-algebra)
@@ -10,56 +11,47 @@ Numerical computation in native Haskell
 This library provides common numerical analysis functionality, without requiring any external bindings. It aims to serve as an experimental platform for scientific computation in a purely functional setting.
 
 
-## State of the library 
+## Project status
 
-Mar 14, 2018: Mostly functional, but there are still a few (documented) bugs. Complex number support is still incomplete, so the users are advised to not rely on that for the time being. The issues related to Complex number handling are tracked in #51, #12, #30.
+December 2025: The project sat unmaintained for a few years but I'm not comfortable with leaving projects incomplete. The problem is that there are some hard design problems under the hood (inefficient data transformations with lots of memory copies, incorrect algorithms, numerical instability) that make progress a slog.
+Mar 14, 2018: The core linear algebra operations work, but there are still a few (documented) bugs such as in the matrix factorizations department. Complex number support is still incomplete, so the users are advised to not rely on that for the time being. The issues related to Complex number handling are tracked in #51, #12, #30.
 
-
-## News
-
-Oct 7, 2017: The library is evolving in a number of ways, to reflect performance observations and user requests:
-
-* typeclasses and instances for primitive types will become `sparse-linear-algebra-core`, along with a typeclass-oriented reformulation of the numerical algorithms that used to depend on the nested IntMap representation.
-This will let other developers build on top of this library, in the spirit of `vector-space` and `linear`.
-
-* The `vector`-based backend is being reworked.
-
-* An `accelerate`-based backend is under development [6, 7].
-
+Refer to the Changelog for detailed status updates.
 
 ## Contents
 
+* "BLAS" levels 1 to 3 : vector, matrix operations including matrix products etc.
+
 * Iterative linear solvers (`<\>`)
 
-    * Generalized Minimal Residual (GMRES) (non-Hermitian systems) 
+    * Generalized Minimal Residual (GMRES) (non-Hermitian systems) 🚧
 
-    * BiConjugate Gradient (BCG)
+    * BiConjugate Gradient (BCG) 🚧
 
-    * Conjugate Gradient Squared (CGS)
+    * Conjugate Gradient Squared (CGS) 🚧
 
-    * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems)
+    * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems) 🚧
+
+    * Transpose-Free Quasi-Minimal Residual (TFQMR) 🚧
 
     * Moore-Penrose pseudoinverse (`pinv`) (rectangular systems)
 
 * Direct linear solvers
-
     * LU-based (`luSolve`); forward and backward substitution (`triLowerSolve`, `triUpperSolve`)
     
+ 
 * Matrix factorization algorithms
+    * QR (`qr`) 🚧
+    * LU (`lu`) 🚧
+    * Cholesky (`chol`) 🚧
+    * Arnoldi iteration (`arnoldi`) 🚧
+    * Golub-Kahan-Lanczos bidiagonalization (`gklBidiag`) 🚧
+    * Singular value decomposition (SVD) 🚧
 
-    * QR (`qr`)
-
-    * LU (`lu`)
-
-    * Cholesky (`chol`)
-
-    * Arnoldi iteration (`arnoldi`)
-
-* Eigenvalue algorithms
-
-    * QR (`eigsQR`)
-
-    * QR-Arnoldi (`eigsArnoldi`) 
+* Eigenvalue algorithms 
+    * QR (`eigsQR`) 🚧
+    * QR-Arnoldi (`eigsArnoldi`) 🚧
+    * Rayleigh quotient iteration (`eigRayleigh`) 🚧
 
 
 
@@ -69,21 +61,8 @@ This will let other developers build on top of this library, in the spirit of `v
 
 
 
-### Under development
 
-* Eigenvalue algorithms
-
-    * Rayleigh quotient iteration (`eigRayleigh`)
-
-* Matrix factorization algorithms
-
-    * Golub-Kahan-Lanczos bidiagonalization (`gklBidiag`)
-   
-    * Singular value decomposition (SVD)
-
-* Iterative linear solvers
-
-    * Transpose-Free Quasi-Minimal Residual (TFQMR)
+    
 
 ---------
 

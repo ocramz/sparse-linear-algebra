@@ -29,25 +29,15 @@ module Control.Iterative (
   sqDiffPairs, sqDiff, relRes, diffSqL, relTol, norm2Diff
 ) where
 
-import Control.Applicative
-
-import Control.Monad (when, replicateM)
-import Control.Monad.Reader (MonadReader(..), asks)
-import Control.Monad.State.Strict (MonadState(..), get, put, gets)
+import Control.Monad.State.Strict (MonadState(..), get, put)
 import Control.Monad.Writer.Class (MonadWriter)
 import Control.Monad.Writer.Strict (WriterT, runWriterT)
 import Control.Monad.Trans.Class (MonadTrans(..), lift)
-import Control.Monad.Trans.State.Strict (StateT(..), runStateT, execStateT)
-import Control.Monad.Trans.Reader (ReaderT(..), runReaderT)
-import Control.Monad.Catch (Exception(..), MonadThrow(..), throwM)
+import Control.Monad.Trans.State.Strict (execStateT)
+import Control.Monad.Catch (MonadThrow(..), throwM)
 
 -- import Data.Bool (bool)
-import Data.Char (toUpper)
-import Data.Semigroup
-import Data.Monoid (Sum(..), Product(..))
-
 import Data.Typeable
-import qualified Control.Exception as E (Exception, Handler)
 
 import Data.Foldable (foldrM)
 
@@ -125,18 +115,19 @@ convergenceL2 = ConvergConfig norm2Diff nearZero (>)
 
 
 
-updBuffer n snew (LoopState i ls s)
-  | n <= 0 = Nothing
-  | length ls < n = Just $ LoopState (i+1) (s : ls) snew
-  | otherwise = Just $ LoopState (i+1) (s : take n ls) snew
+-- updBuffer :: Int -> s -> LoopState s -> Maybe (LoopState s)
+-- updBuffer n snew (LoopState i ls s)
+--   | n <= 0 = Nothing
+--   | length ls < n = Just $ LoopState (i+1) (s : ls) snew
+--   | otherwise = Just $ LoopState (i+1) (s : take n ls) snew
 
 data StateBuffer s = StateBuffer { sbPrevStates :: [s]
                                  , sbCurrentState :: s } deriving (Eq, Show)
 
 -- instance Semigroup (StateBuffer s) where
 
-initStateBuffer :: s -> StateBuffer s
-initStateBuffer = StateBuffer []
+-- initStateBuffer :: s -> StateBuffer s
+-- initStateBuffer = StateBuffer []
 
 -- reconstructStateBuffer n (StateBuffer _ ls s)
 --   | length ls < n || n <= 0 = Nothing
@@ -150,7 +141,11 @@ initStateBuffer = StateBuffer []
 --   | otherwise = Just $ StateBuffer (take n ls) s
 
   
--- | A record to keep track of the current iteration, a list of the prior states and the current state.
+-- StateBuffer removed - unused code
+
+-- instance Semigroup (StateBuffer s) where
+
+-- instance Semigroup (StateBuffer s) where
 data LoopState s = LoopState { lsCounter :: !Int
                              , lsPrevStates :: [s]
                              , lsCurrentState :: s } deriving (Eq, Show)
@@ -192,6 +187,9 @@ modifyInspectGuardedM (ConvergConfig sf qconverg qdiverg qfinal) r f x0
       case aLast of
         Left (NotConverged y) -> throwM $ NotConvergedE fname nitermax (pf y)
         Left (Diverging qi qt) -> throwM $ DivergingE fname i qi qt
+        Left BufferNotReady -> pure (lsCurrentState sLast)  -- shouldn't happen
+        Left Converging -> pure (lsCurrentState sLast)  -- shouldn't happen
+        Left (Converged y) -> pure y  -- unexpected but valid
         Right x -> pure x
         -- _ -> throwM $ IterE fname "asdf"
     loop :: IterativeT (IterConfig s t) (LoopState s) (WriterT w m) (Either (ConvergenceStatus s a) s)
@@ -206,7 +204,7 @@ modifyInspectGuardedM (ConvergConfig sf qconverg qdiverg qfinal) r f x0
             where
               llf = pf `map` buffer
               qi = sf $ init llf  -- summary of [lwindow + 1 .. 0] states
-              qt = sf $ tail llf  -- "       "  [lwindow     .. 1] states
+              qt = sf $ drop 1 llf  -- "       "  [lwindow     .. 1] states
               stat | qdiverg qi qt && not (qconverg qi) = Diverging qi qt
                    | qconverg qi || qfinal (pf y) =       Converged y
                    | i == nitermax - 1 =                  NotConverged y
@@ -271,7 +269,8 @@ modifyUntilM_ q f = do
 
 -- modifyUntilM' :: MonadLog String m =>
 --    IterationConfig a b -> (a -> Bool) -> (a -> m a) -> a -> m a
-modifyUntilM' config q f x0 = execStateT (go 0) x0 where
+modifyUntilM' :: Monad m => p -> (a -> Bool) -> (a -> m a) -> a -> m a
+modifyUntilM' _ q f x0 = execStateT (go (0 :: Int)) x0 where
   -- logf ii = (Informational, unwords ["Iteration", show ii, "\n"])
   go i = do
    x <- get
@@ -407,7 +406,7 @@ combx g f x = g <$> f x
 -- | Helpers
 
 sqDiffPairs :: Num a => (v -> v -> a) -> [v] -> a
-sqDiffPairs f uu = sqDiff f (init uu) (tail uu)
+sqDiffPairs f uu = sqDiff f (init uu) (drop 1 uu)
 
 sqDiff :: Num a => (u -> v -> a) -> [u] -> [v] -> a
 sqDiff f uu vv = sum $ zipWith f uu vv
@@ -431,7 +430,8 @@ relRes aa b x = n / d where
 -- | Squared difference of a 2-element list.
 -- | NB: unsafe !
 diffSqL :: Floating a => [a] -> a
-diffSqL xx = (x1 - x2)**2 where [x1, x2] = [head xx, xx!!1]
+diffSqL (x1:x2:_) = (x1 - x2)**2
+diffSqL _ = 0  -- fallback for lists with fewer than 2 elements
 
 
 -- | Relative tolerance :
@@ -447,5 +447,5 @@ norm2Diff :: Normed v => [v] -> Magnitude v
 norm2Diff v = sum $ zipWith f va vb where
   f v1 v2 = norm2 $ v1 ^-^ v2
   va = init v
-  vb = tail v
+  vb = drop 1 v
 

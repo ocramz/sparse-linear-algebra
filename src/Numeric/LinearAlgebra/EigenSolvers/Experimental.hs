@@ -1,4 +1,5 @@
 {-# language TypeFamilies, FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-missing-signatures -Wno-unused-local-binds -Wno-name-shadowing #-}
 module Numeric.LinearAlgebra.EigenSolvers.Experimental where
 
 import Control.Exception.Common

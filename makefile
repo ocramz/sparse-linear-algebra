@@ -10,6 +10,9 @@ help:
 	@echo "  build-profile  (`stack build --profile`)"
 	@echo "  test           (`stack test`)"
 	@echo "  test-profile   (`stack test --profile`)"
+	@echo "  bench          run benchmarks (`stack bench`)"
+	@echo "  lint           run hlint on source files"
+	@echo "  haddock        build documentation (`stack haddock`)"
 
 
 clean:
@@ -54,3 +57,13 @@ profile:
 threaded:
 	make build-threaded
 	make test-threaded
+
+bench:
+	stack bench
+
+lint:
+	@command -v hlint >/dev/null 2>&1 || { echo >&2 "hlint is not installed. Installing via stack..."; stack install hlint; }
+	stack exec hlint -- src test
+
+haddock:
+	stack haddock

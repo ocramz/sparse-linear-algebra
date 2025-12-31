@@ -1,6 +1,7 @@
 {-# language TypeFamilies #-}
 {-# language TypeOperators, GADTs #-}
 {-# language FlexibleInstances, FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (C) 2016 Marco Zocca
@@ -32,7 +33,6 @@ import Data.Sparse.PPrint as X
 import Data.Sparse.Types as X
 import Data.Sparse.Internal.IntMap2 -- as X
 import qualified Data.Sparse.Internal.IntM as I
-import Data.Sparse.Internal.IntM (IntM(..))
 import Data.Sparse.SpMatrix as X
 import Data.Sparse.SpVector as X
 -- import Data.Sparse.Internal.CSR as X
@@ -48,7 +48,7 @@ import Data.Complex
 -- import Control.Applicative
 -- import Data.Traversable
 
-import Data.Maybe (fromMaybe, maybe)
+import Data.Maybe (fromMaybe)
 import qualified Data.Vector as V
 
 
@@ -78,7 +78,7 @@ insertRowWith fj (SM (m, n) im) (SV d sv) i
   | n >= d = SM (m,n) $ I.insert i (insertOrUnion i sv' im) im
   | otherwise = error $ "insertRowWith : incompatible dimensions " ++ show (n, d)
     where sv' = I.mapKeys fj sv
-          insertOrUnion i' sv' im' = maybe sv' (I.union sv') (I.lookup i' im')
+          insertOrUnion i' sv'' im' = maybe sv'' (I.union sv'') (I.lookup i' im')
 
 -- | Insert row          
 insertRow :: SpMatrix a -> SpVector a -> IM.Key -> SpMatrix a
@@ -134,9 +134,13 @@ svToSM (SV n d) = SM (n, 1) $ I.singleton 0 d
 -- |Demote (n x 1) or (1 x n) SpMatrix to SpVector
 toSV :: SpMatrix a -> SpVector a
 toSV (SM (m, n) im) = SV d im' where
-  im' | m < n = snd . head . toList $ im
-      | otherwise = fmap g im
-  g = snd . head . toList 
+  im' | m < n = case toList im of
+                  ((_,sv):_) -> sv
+                  [] -> I.empty
+      | otherwise = fmap extractFirst im
+  extractFirst imInner = case toList imInner of
+                           ((_,v):_) -> v
+                           [] -> error "toSV: empty inner map"
   d | m==1 && n==1 = 1
     | m==1 && n>1 = n 
     | n==1 && m>1 = m
@@ -303,12 +307,12 @@ fromColsL = fromColsV . V.fromList
 -- | Unpack the rows of an SpMatrix into a list of SpVectors
 toRowsL :: SpMatrix a -> [SpVector a]
 toRowsL aa = map (extractRow aa) [0 .. m-1] where
-  (m,n) = dim aa
+  (m,_) = dim aa
 
 -- | Unpack the columns of an SpMatrix into a list of SpVectors
 toColsL :: SpMatrix a -> [SpVector a]
 toColsL aa = map (extractCol aa) [0 .. n-1] where
-  (m,n) = dim aa
+  (_,n) = dim aa
 
 
 
@@ -335,9 +339,9 @@ fromRowsV qv = V.ifoldl' ins (zeroSM m n) qv where
 -- * Pretty printing
 
 
-showNz :: (Epsilon a, Show a) => a -> String
-showNz x | nearZero x = " _ "
-         | otherwise = show x
+-- showNz :: (Epsilon a, Show a) => a -> String
+-- showNz x | nearZero x = " _ "
+--          | otherwise = show x
 
 toDenseRow :: Num a => SpMatrix a -> IM.Key -> [a]
 toDenseRow sm irow =
@@ -353,6 +357,7 @@ prdC = PPOpts 4 2 16  -- complex values
 
 -- -- printDenseSM :: (Show t, Num t) => SpMatrix t -> IO ()
 -- printDenseSM :: (ScIx c ~ (Int, Int), FDSize c ~ (Int, Int), SpContainer c a, Show a, Epsilon a) => c a -> IO ()
+printDenseSM :: (PrintDense (SpMatrix a), Show a, Epsilon a) => SpMatrix a -> IO ()
 printDenseSM sm = do
   newline
   putStrLn $ sizeStrSM sm

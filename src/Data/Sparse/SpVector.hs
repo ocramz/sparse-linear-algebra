@@ -1,4 +1,4 @@
-{-# language FlexibleContexts, TypeFamilies #-}
+{-# language FlexibleContexts, TypeFamilies, TypeOperators #-}
 {-# language DeriveFunctor, DeriveFoldable #-}
 -----------------------------------------------------------------------------
 -- |
@@ -11,7 +11,6 @@
 -----------------------------------------------------------------------------
 module Data.Sparse.SpVector where
 
-import Control.Exception
 import Control.Monad.Catch (MonadThrow (..))
 import Control.Exception.Common
 
@@ -30,7 +29,6 @@ import Data.Maybe
 import Text.Printf
 
 import qualified Data.IntMap.Strict as IM
-import qualified Data.Foldable as F
 import qualified Data.Vector as V
 
 
@@ -261,6 +259,7 @@ toVectorDense = V.fromList . toDenseListSV
 -- |insert element `x` at index `i` in a preexisting SpVector; discards out-of-bounds entries
 insertSpVector :: IM.Key -> a -> SpVector a -> SpVector a
 insertSpVector i x (SV d xim) | inBounds0 d i = SV d (insert i x xim)
+                               | otherwise = SV d xim  -- silently ignore out-of-bounds
 
 insertSpVectorSafe :: MonadThrow m => Int -> a -> SpVector a -> m (SpVector a)
 insertSpVectorSafe i x (SV d xim)

@@ -1,4 +1,4 @@
-{-# language DeriveFunctor, DeriveFoldable, TypeFamilies #-}
+{-# language DeriveFunctor, DeriveFoldable, TypeFamilies, TypeOperators #-}
 module Data.Sparse.Internal.IntM where
 
 import Data.Sparse.Utils
@@ -25,6 +25,7 @@ size (IntM x) = IM.size x
 singleton :: IM.Key -> a -> IntM a
 singleton i x = IntM $ IM.singleton i x
 
+filterWithKey :: (IM.Key -> a -> Bool) -> IntM a -> IntM a
 filterWithKey f im = IntM $ IM.filterWithKey f (unIM im)
 
 insert :: IM.Key -> a -> IntM a -> IntM a
@@ -36,6 +37,7 @@ filterI f (IntM im) = IntM $ IM.filter f im
 lookup :: IM.Key -> IntM a -> Maybe a
 lookup i (IntM im) = IM.lookup i im
 
+lookupLT :: IM.Key -> IntM a -> Maybe (IM.Key, a)
 lookupLT x (IntM im) = IM.lookupLT x im
 
 foldlWithKey :: (a -> IM.Key -> b -> a) -> a -> IntM b -> a
@@ -44,17 +46,22 @@ foldlWithKey f z (IntM im) = IM.foldlWithKey f z im
 foldlWithKey' :: (a -> IM.Key -> b -> a) -> a -> IntM b -> a
 foldlWithKey' f z (IntM im) = IM.foldlWithKey' f z im
 
+mapWithKey :: (IM.Key -> a1 -> a2) -> IntM a1 -> IntM a2
 mapWithKey f (IntM im) = IntM $ IM.mapWithKey f im
 
 keys :: IntM a -> [IM.Key]
 keys (IntM im) = IM.keys im
 
+mapKeys :: (IM.Key -> IM.Key) -> IntM a -> IntM a
 mapKeys f (IntM im) = IntM $ IM.mapKeys f im
 
 union :: IntM a -> IntM a -> IntM a
 union (IntM a) (IntM b) = IntM $ IM.union a b
 
+findMin :: IntM a -> (IM.Key, a)
 findMin (IntM im) = IM.findMin im
+
+findMax :: IntM a -> (IM.Key, a)
 findMax (IntM im) = IM.findMax im
 
 (!) :: IntM a -> IM.Key -> a
@@ -104,7 +111,9 @@ instance (Normed a, Magnitude a ~ RealScalar a, RealScalar a ~ Scalar a) => Norm
 
 -- -- | list to IntMap
 -- mkIm :: [Double] -> IM.IntMap Double
+mkIm :: [Double] -> IntM Double
 mkIm xs = fromList $ indexed xs :: IntM Double
 
 -- mkImC :: [Complex Double] -> IM.IntMap (Complex Double)
+mkImC :: [Complex Double] -> IntM (Complex Double)
 mkImC xs = fromList $ indexed xs :: IntM (Complex Double)

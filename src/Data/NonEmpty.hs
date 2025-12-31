@@ -33,31 +33,3 @@ getNE n (NE sc scs lbuf)
   | lbuf == n = Just (sc : scs)
   | otherwise = Just (sc : init scs)
 
-
-
--- | Record-of-functions
-
-data NEFun a = NEFun
-                 { neFunUpdate :: a -> NonEmpty a -> NonEmpty a
-                 , neFunGet :: NonEmpty a -> Maybe [a]} 
-
-mkNEfun :: Int -> NEFun a
-mkNEfun n = NEFun (updNE n) (getNE n)
-
-
--- | Typeclass
-
-class NEClass ne where
-  neUpd :: Int -> x -> ne x -> ne x
-  neGet :: Int -> ne x -> Maybe [x]
-
-instance NEClass NonEmpty where
-  neUpd = updNE
-  neGet = getNE
-
-
-
--- | Tests
-
-buf3 :: a -> NonEmpty a -> NonEmpty a
-buf3 = updNE 3    

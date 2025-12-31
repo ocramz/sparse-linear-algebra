@@ -1,1 +1,7 @@
-{-# OPTIONS_GHC -F -pgmF hspec-discover #-}
+module Main (main) where
+
+import Test.Hspec
+import qualified LibSpec
+
+main :: IO ()
+main = hspec LibSpec.spec

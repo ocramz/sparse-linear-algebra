@@ -1,0 +1,54 @@
+name: CI-matrix-factorizations
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  matrix-factorizations-tests:
+    name: Test Matrix Factorizations
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true  # Allow this job to fail without blocking PR/merge
+    strategy:
+      matrix:
+        ghc: ['9.4.8', '9.6.6', '9.8.2']
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Haskell
+      uses: haskell-actions/setup@v2
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        enable-stack: true
+        stack-version: 'latest'
+
+    - name: Cache Stack dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.stack
+          .stack-work
+        key: ${{ runner.os }}-stack-${{ matrix.ghc }}-${{ hashFiles('stack.yaml', 'sparse-linear-algebra.cabal') }}
+        restore-keys: |
+          ${{ runner.os }}-stack-${{ matrix.ghc }}-
+          ${{ runner.os }}-stack-
+
+    - name: Install dependencies
+      run: |
+        stack build --only-dependencies --test --no-terminal
+
+    - name: Build
+      run: |
+        stack build --test --no-terminal --no-run-tests
+
+    - name: Run matrix factorizations test suite
+      run: |
+        stack test sparse-linear-algebra:matrix-factorizations --no-terminal
+
+

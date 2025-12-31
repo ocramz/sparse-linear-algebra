@@ -2,7 +2,7 @@
 module Control.Iterative.Internal (IterativeT(..), runIterativeT) where
 
 import Control.Monad.Reader (MonadReader(..))
-import Control.Monad.State.Strict (MonadState(..), get, put)
+import Control.Monad.State.Strict (MonadState(..))
 import Control.Monad.Trans.Class (MonadTrans(..), lift)
 import Control.Monad.Trans.State.Strict (StateT(..), runStateT)
 import Control.Monad.Trans.Reader (ReaderT(..), runReaderT)
@@ -60,13 +60,6 @@ runIterativeT :: (Monad m, MonadWriter w m)
               -> m (a, s) -- ^ (result, final state) - logs are accumulated via MonadWriter
 runIterativeT c x0 m =
   runStateT (runReaderT (unIterativeT m) c) x0
-
-execIterativeT :: (Monad m, Functor m, MonadWriter w m) =>
-                  r
-               -> s
-               -> IterativeT r s m a
-               -> m s
-execIterativeT c x0 m = snd <$> runIterativeT c x0 m
 
 
       

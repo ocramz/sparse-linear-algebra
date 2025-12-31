@@ -1,5 +1,6 @@
 {-# language TypeFamilies, MultiParamTypeClasses, KindSignatures, FlexibleContexts, FlexibleInstances, ConstraintKinds #-}
 {-# language AllowAmbiguousTypes #-}
+{-# language TypeOperators #-}
 {-# language CPP #-}
 -----------------------------------------------------------------------------
 -- |
@@ -18,11 +19,11 @@ module Numeric.LinearAlgebra.Class where
 
 -- import Control.Applicative
 import Data.Complex
+import Data.Kind (Type)
 
 -- import Control.Exception
 -- import Control.Exception.Common
 import Control.Monad.Catch
-import Control.Monad.IO.Class
 import Control.Monad.Writer.Class (MonadWriter)
 
 -- import Data.Typeable (Typeable)
@@ -36,7 +37,7 @@ import Numeric.Eps
 
 -- * Matrix and vector elements (optionally Complex)
 class (Eq e , Fractional e, Floating e, Num (EltMag e), Ord (EltMag e)) => Elt e where
-  type EltMag e :: *
+  type EltMag e :: Type
   -- | Complex conjugate, or identity function if its input is real-valued
   conj :: e -> e
   conj = id
@@ -72,7 +73,7 @@ infixr 7 .*
 
 -- * Vector space @v@.
 class (AdditiveGroup v, Num (Scalar v)) => VectorSpace v where
-  type Scalar v :: *
+  type Scalar v :: Type
   -- | Scale a vector
   (.*) :: Scalar v -> v -> v
 
@@ -123,8 +124,8 @@ hilbertDistSq x y = t <.> t where
 -- * Normed vector spaces
 
 class (InnerSpace v, Num (RealScalar v), Eq (RealScalar v), Epsilon (Magnitude v), Show (Magnitude v), Ord (Magnitude v)) => Normed v where
-  type Magnitude v :: *
-  type RealScalar v :: *
+  type Magnitude v :: Type
+  type RealScalar v :: Type
   -- | L1 norm
   norm1 :: v -> Magnitude v
   -- | Euclidean (L2) norm squared
@@ -192,7 +193,7 @@ scale n = fmap (* n)
 -- | A matrix ring is any collection of matrices over some ring R that form a ring under matrix addition and matrix multiplication
 
 class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
-  type MatrixNorm m :: *
+  type MatrixNorm m :: Type
   -- | Matrix-matrix product
   (##) :: m -> m -> m
   -- | Matrix times matrix transpose (A B^T)
@@ -221,7 +222,7 @@ class (AdditiveGroup m, Epsilon (MatrixNorm m)) => MatrixRing m where
 -- * Linear vector space
 
 class (VectorSpace v {-, MatrixRing (MatrixType v)-}) => LinearVectorSpace v where
-  type MatrixType v :: *
+  type MatrixType v :: Type
   -- | Matrix-vector action
   (#>) :: MatrixType v -> v -> v
   -- | Dual matrix-vector action
@@ -298,7 +299,7 @@ class Functor f => Set f where
 
 -- * SpContainer : sparse container datastructures. Insertion, lookup, toList, lookup with 0 default
 class Sparse c => SpContainer c where
-  type ScIx c :: *
+  type ScIx c :: Type
   type ScElem c
   scInsert :: ScIx c -> ScElem c -> c -> c
   scLookup :: c -> ScIx c -> Maybe (ScElem c)
@@ -315,7 +316,7 @@ class Sparse c => SpContainer c where
 -- * SparseVector
 
 class SpContainer v => SparseVector v where
-  type SpvIx v :: *
+  type SpvIx v :: Type
   svFromList :: Int -> [(SpvIx v, ScElem v)] -> v
   svFromListDense :: Int -> [ScElem v] -> v
   svConcat :: Foldable t => t v -> v
