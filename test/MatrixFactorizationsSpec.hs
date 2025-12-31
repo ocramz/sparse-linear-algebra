@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts, TypeFamilies #-}
-{-# language ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses #-}
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# language ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, TypeOperators #-}
+{-# OPTIONS_GHC -Wno-missing-signatures -Wno-name-shadowing #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  MatrixFactorizationsSpec
