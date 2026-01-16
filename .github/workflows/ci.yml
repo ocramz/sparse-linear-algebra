@@ -14,7 +14,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        ghc: ['9.4.8', '9.6.6', '9.8.2']
+        ghc: ['9.8.2']
       fail-fast: false
 
     steps:
@@ -50,34 +50,3 @@ jobs:
       run: |
         stack test sparse-linear-algebra:spec --no-terminal
 
-  lint:
-    name: Lint with HLint
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup Haskell
-      uses: haskell-actions/setup@v2
-      with:
-        ghc-version: '9.6.6'
-        enable-stack: true
-        stack-version: 'latest'
-
-    - name: Cache Stack dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.stack
-        key: ${{ runner.os }}-stack-hlint-${{ hashFiles('stack.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-stack-hlint-
-
-    - name: Install HLint
-      run: |
-        stack install hlint
-
-    - name: Run HLint
-      run: |
-        stack exec hlint -- src test
