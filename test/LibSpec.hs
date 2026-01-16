@@ -833,7 +833,8 @@ prop_matMat2 :: (MatrixRing (SpMatrix t), Eq t) => PropMat t -> Bool
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 -- | CGS converges for SPD systems
-prop_cgs :: (V (SpVector t), Epsilon t, Fractional t) =>
+prop_cgs :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      V (SpVector t), Elt t, Epsilon t, Fractional t) =>
      SpMatrix t -> SpVector t -> IO Bool
 prop_cgs mm x = do
   let b = mm #> x  -- Create RHS from true solution
