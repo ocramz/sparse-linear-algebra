@@ -513,7 +513,7 @@ checkCGS :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       V (SpVector t), Elt t, Epsilon t, Fractional t, MonadThrow m) =>
      SpMatrix t -> SpVector t -> SpVector t -> Int -> m Bool
 checkCGS aa b xTrue niter = do
-  let x0 = zeroV (dim b)  -- initial guess
+  let x0 = fromListSV (dim b) []  -- initial guess (zero vector)
       rhat = b ^-^ (aa #> x0)  -- use initial residual r0 as the fixed rhat vector for CGS
       initState = cgsInit aa b x0
       -- Run niter iterations
