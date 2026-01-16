@@ -512,7 +512,7 @@ checkCGS :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
      SpMatrix t -> SpVector t -> SpVector t -> Int -> m Bool
 checkCGS aa b xTrue niter = do
   let x0 = zeroV (dim b)  -- initial guess
-      rhat = b ^-^ (aa #> x0)  -- initial residual for rhat (fixed throughout)
+      rhat = b ^-^ (aa #> x0)  -- use initial residual r0 as the fixed rhat vector for CGS
       initState = cgsInit aa b x0
       -- Run niter iterations
       finalState = iterate (cgsStep aa rhat) initState !! niter
@@ -831,7 +831,7 @@ prop_matMat2 :: (MatrixRing (SpMatrix t), Eq t) => PropMat t -> Bool
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 -- | CGS converges for SPD systems
-prop_cgs :: (V (SpVector t), Epsilon t, Fractional t, MonadThrow m, MonadIO m) =>
+prop_cgs :: (V (SpVector t), Epsilon t, Fractional t, MonadThrow m) =>
      SpMatrix t -> SpVector t -> m Bool
 prop_cgs mm x = do
   let b = mm #> x  -- Create RHS from true solution
