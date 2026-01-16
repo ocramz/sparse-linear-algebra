@@ -1026,7 +1026,7 @@ linSolve0 method aa b x0
        BICGSTAB_ -> solver _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
        CGS_ -> solver _x  (cgsStep aa r0hat) (cgsInit aa b x0)
        CGNE_ -> solver _xCgne (cgneStep aa) (cgneInit aa b x0)
-       _ -> throwM (IterE "linSolve0" ("Solver method not implemented: " ++ show method))
+       _ -> throwM (IterE "linSolve0" ("Only BICGSTAB_, CGS_, and CGNE_ are implemented, got: " ++ show method))
      r0hat = b ^-^ (aa #> x0)
      nits = 200
      dm@(m, _) = dim aa

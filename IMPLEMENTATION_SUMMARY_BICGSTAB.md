@@ -176,7 +176,7 @@ Following the successful pattern from CGS re-enablement:
 
 ## Known Limitations
 
-1. **Fixed Iterations**: linSolve0 uses fixed 200 iterations without early termination
+1. **Fixed Iterations in linSolve0**: The `linSolve0` interface uses fixed 200 iterations without early termination. However, the test helper functions (`checkBiCGSTAB`, `checkCGS`) do implement early termination when convergence is achieved.
 2. **No Preconditioning**: Currently no preconditioner support
 3. **SPD Focus**: Tests primarily focus on symmetric positive definite systems
 4. **Limited Solver Methods**: Only BiCGSTAB, CGS, and CGNE are implemented in linSolve0

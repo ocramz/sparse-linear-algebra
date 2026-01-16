@@ -605,7 +605,7 @@ checkBiCGSTAB :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
       V (SpVector t), Elt t, Epsilon t, Fractional t, MonadThrow m) =>
      SpMatrix t -> SpVector t -> SpVector t -> Int -> m Bool
 checkBiCGSTAB aa b xTrue niter = do
-  let x0 = fromListSV (dim b) []  -- initial guess (zero vector)
+  let x0 = fromListSV (dim b) []  -- initial guess (zero vector - empty list creates sparse zero)
       r0hat = b ^-^ (aa #> x0)  -- use initial residual r0 as the fixed r0hat vector for BiCGSTAB
       initState = bicgsInit aa b x0
       r0norm = norm2 (_rBicgstab initState)  -- initial residual norm
