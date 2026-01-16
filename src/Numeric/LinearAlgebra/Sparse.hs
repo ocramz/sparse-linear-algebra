@@ -1016,7 +1016,7 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
 linSolve0 :: (MatrixType (SpVector a) ~ SpMatrix a, V (SpVector a),
               LinearVectorSpace (SpVector a), InnerSpace (SpVector a),
               MatrixRing (SpMatrix a), Fractional (Scalar (SpVector a)), 
-              MonadThrow m, Epsilon a) =>
+              MonadThrow m, Monad m, Epsilon a) =>
      LinSolveMethod -> SpMatrix a -> SpVector a -> SpVector a -> m (SpVector a)
 linSolve0 method aa b x0
   | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
@@ -1028,7 +1028,7 @@ linSolve0 method aa b x0
        BICGSTAB_ -> runSolver _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
        CGS_ -> runSolver _x  (cgsStep aa r0hat) (cgsInit aa b x0)
        CGNE_ -> runSolver _xCgne (cgneStep aa) (cgneInit aa b x0)
-       _ -> throwM (IterE "linSolve0" ("Only BICGSTAB_, CGS_, and CGNE_ are implemented, got: " ++ show method))
+       _ -> throwM (IterE "linSolve0" ("Only BICGSTAB_, CGS_, and CGNE_ are implemented, got: " ++ show method) :: IterationException ())
      r0hat = b ^-^ (aa #> x0)
      nits = 200
      dm@(m, _) = dim aa
