@@ -116,6 +116,8 @@ module Numeric.LinearAlgebra.Sparse
          -- * Internal
          linSolve0,
          LinSolveMethod(..),
+         -- ** CGNE (Conjugate Gradient on the Normal Equations)
+         CGNE(..), cgneInit, cgneStep,
          -- ** CGS (Conjugate Gradient Squared)
          CGS(..), cgsInit, cgsStep, cgsStepDebug,
          -- ** BiCGSTAB (Biconjugate Gradient Stabilized)
@@ -873,7 +875,7 @@ cgneStep aa (CGNE x r p) = CGNE x1 r1 p1 where
     x1 = x ^+^ (alphai .* p)
     r1 = r ^-^ (alphai .* (aa #> p))
     beta = (r1 `dot` r1) / (r `dot` r)
-    p1 = transpose aa #> r ^+^ (beta .* p)
+    p1 = transpose aa #> r1 ^+^ (beta .* p)
 
 
 

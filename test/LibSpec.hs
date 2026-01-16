@@ -317,9 +317,6 @@ checkLinSolveR :: (MonadThrow m) =>
 checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
   x0r = mkSpVR n $ replicate n 0.1
   n = ncols aa
--- checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
---   x0r = mkSpVR n $ replicate n 0.1
---   n = ncols aa
 
 -- checkLinSolveC
 --   :: (MonadIO m, MonadCatch m) =>
