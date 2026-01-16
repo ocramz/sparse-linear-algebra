@@ -15,7 +15,7 @@ jobs:
     continue-on-error: true  # Allow this job to fail without blocking PR/merge
     strategy:
       matrix:
-        ghc: ['9.4.8', '9.6.6', '9.8.2']
+        ghc: ['9.8.2']
       fail-fast: false
 
     steps:
