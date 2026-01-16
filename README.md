@@ -13,7 +13,10 @@ This library provides common numerical analysis functionality, without requiring
 
 ## Project status
 
+January 2026: Fixed CGS (Conjugate Gradient Squared) numerical convergence issues. The solver now properly handles early termination and uses appropriate tolerances for iterative methods.
+
 December 2025: The project sat unmaintained for a few years but I'm not comfortable with leaving projects incomplete. There are some hard design problems under the hood (inefficient data representation with lots of memory copies, incorrect algorithms, numerical instability) that make progress a slog.
+
 Mar 14, 2018: The core linear algebra operations work, but there are still a few (documented) bugs such as in the matrix factorizations department. Complex number support is still incomplete, so the users are advised to not rely on that for the time being. The issues related to Complex number handling are tracked in #51, #12, #30.
 
 Refer to the Changelog for detailed status updates.
@@ -28,7 +31,12 @@ Refer to the Changelog for detailed status updates.
 
     * BiConjugate Gradient (BCG) 🚧
 
-    * Conjugate Gradient Squared (CGS) 🚧
+    * Conjugate Gradient Squared (CGS) ✅
+      - Suitable for non-Hermitian systems
+      - Fast convergence for well-conditioned problems
+      - May exhibit irregular convergence on ill-conditioned systems
+      - Use `cgsInit` and `cgsStep` for manual iteration control
+      - Supports debug tracing with `cgsStepDebug`
 
     * BiConjugate Gradient Stabilized (BiCGSTAB) (non-Hermitian systems) 🚧
 
@@ -181,6 +189,25 @@ The result can be verified by computing the matrix-vector action `amat #> x`, wh
 
     3.00   , 2.00   , 5.00       
     
+
+#### Using CGS (Conjugate Gradient Squared)
+
+For more control over the iterative solution process, you can use the CGS solver directly:
+
+    λ> let x0 = fromListSV 3 []  -- initial guess (zero vector)
+    λ> let rhat = b ^-^ (amat #> x0)  -- shadow residual
+    λ> let initState = cgsInit amat b x0
+    λ> let finalState = iterate (cgsStep amat rhat) initState !! 20  -- 20 iterations
+    λ> prd $ _x finalState
+
+    ( 3 elements ) ,  3 NZ ( density 100.000 % )
+
+    1.50   , -2.00  , 1.00
+
+**Note**: CGS can converge quickly but may become numerically unstable if iterations continue past convergence. For production use, implement convergence monitoring and early termination when the residual norm is sufficiently small.
+
+
+#### Direct solvers
 
 The library also provides a forward-backward substitution solver (`luSolve`) based on a triangular factorization of the system matrix (usually LU). This should be the preferred for solving smaller, dense systems. Using the LU factors defined previously we can cross-verify the two solution methods:
 
