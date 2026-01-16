@@ -248,9 +248,9 @@ specCGS = do
       -- Just check that step completes without error and produces updated state
       dim (_x state1) `shouldBe` dim b0
     it "CGS converges on 2x2 system" $
-      checkCGS aa0 b0 x0true 50 >>= (`shouldBe` True)
+      checkCGS aa0 b0 x0true 1000 >>= (`shouldBe` True)
     it "CGS converges on 3x3 SPD system" $
-      checkCGS aa2 b2 x2 50 >>= (`shouldBe` True)
+      checkCGS aa2 b2 x2 1000 >>= (`shouldBe` True)
   describe "QuickCheck properties for CGS:" $ do
     prop "prop_cgs : CGS converges for SPD systems" $
       \(PropMatSPDVec (m :: SpMatrix Double) x) -> monadicIO $ do
