@@ -253,7 +253,9 @@ specCGS = do
       checkCGS aa2 b2 x2 50 >>= (`shouldBe` True)
   describe "QuickCheck properties for CGS:" $ do
     prop "prop_cgs : CGS converges for SPD systems" $
-      \(PropMatSPDVec (m :: SpMatrix Double) x) -> prop_cgs m x
+      \(PropMatSPDVec (m :: SpMatrix Double) x) -> monadicIO $ do
+        result <- run $ prop_cgs m x
+        assert result
 
 -- * Linear systems
 
@@ -831,8 +833,8 @@ prop_matMat2 :: (MatrixRing (SpMatrix t), Eq t) => PropMat t -> Bool
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
 
 -- | CGS converges for SPD systems
-prop_cgs :: (V (SpVector t), Epsilon t, Fractional t, MonadThrow m) =>
-     SpMatrix t -> SpVector t -> m Bool
+prop_cgs :: (V (SpVector t), Epsilon t, Fractional t) =>
+     SpMatrix t -> SpVector t -> IO Bool
 prop_cgs mm x = do
   let b = mm #> x  -- Create RHS from true solution
       n = dim x
