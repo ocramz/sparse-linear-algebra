@@ -13,7 +13,7 @@ This library provides common numerical analysis functionality, without requiring
 
 ## Project status
 
-December 2025: The project sat unmaintained for a few years but I'm not comfortable with leaving projects incomplete. The problem is that there are some hard design problems under the hood (inefficient data transformations with lots of memory copies, incorrect algorithms, numerical instability) that make progress a slog.
+December 2025: The project sat unmaintained for a few years but I'm not comfortable with leaving projects incomplete. There are some hard design problems under the hood (inefficient data representation with lots of memory copies, incorrect algorithms, numerical instability) that make progress a slog.
 Mar 14, 2018: The core linear algebra operations work, but there are still a few (documented) bugs such as in the matrix factorizations department. Complex number support is still incomplete, so the users are advised to not rely on that for the time being. The issues related to Complex number handling are tracked in #51, #12, #30.
 
 Refer to the Changelog for detailed status updates.
