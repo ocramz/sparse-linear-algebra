@@ -1012,11 +1012,11 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
                     deriving (Eq, Show)
 
 -- | Interface method to individual linear solvers
--- Simplified version that runs a fixed number of iterations and checks convergence
+-- Simplified version that runs iterations and checks convergence
 linSolve0 :: (MatrixType (SpVector a) ~ SpMatrix a, V (SpVector a),
               LinearVectorSpace (SpVector a), InnerSpace (SpVector a),
               MatrixRing (SpMatrix a), Fractional (Scalar (SpVector a)), 
-              MonadThrow m, Monad m, Epsilon a) =>
+              Normed (SpVector a), MonadThrow m, Monad m, Epsilon a) =>
      LinSolveMethod -> SpMatrix a -> SpVector a -> SpVector a -> m (SpVector a)
 linSolve0 method aa b x0
   | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
@@ -1025,21 +1025,50 @@ linSolve0 method aa b x0
                         return $ reciprocal aa' #> b' -- diagonal solve
                   | otherwise = xHat
      xHat = case method of
-       BICGSTAB_ -> runSolver _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
-       CGS_ -> runSolver _x  (cgsStep aa r0hat) (cgsInit aa b x0)
-       CGNE_ -> runSolver _xCgne (cgneStep aa) (cgneInit aa b x0)
+       BICGSTAB_ -> runSolverBicgstab _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
+       CGS_ -> runSolverCgs _x  (cgsStep aa r0hat) (cgsInit aa b x0)
+       CGNE_ -> runSolverCgne _xCgne (cgneStep aa) (cgneInit aa b x0)
        _ -> throwM (IterE "linSolve0" ("Only BICGSTAB_, CGS_, and CGNE_ are implemented, got: " ++ show method) :: IterationException ())
      r0hat = b ^-^ (aa #> x0)
+     r0norm = norm2 r0hat
      nits = 200
+     tolAbs = 1e-6
+     tolRel = 1e-4
+     tol = max tolAbs (tolRel * r0norm)
      dm@(m, _) = dim aa
      nb = dim b
-     -- Polymorphic helper that works with any solver state type
-     runSolver fproj stepf initf = do
+     -- Compute true residual norm for a given solution vector
+     trueResidualNorm x = norm2 ((aa #> x) ^-^ b)
+     -- Helper functions for different solver state types with convergence checking
+     runSolverBicgstab fproj stepf initf = do
        let runIter n state
              | n >= nits = return $ fproj state
              | otherwise = do
                  let state' = stepf state
-                 runIter (n + 1) state'
+                     resNorm = trueResidualNorm (fproj state')
+                 if resNorm <= tol
+                   then return $ fproj state'
+                   else runIter (n + 1) state'
+       runIter 0 initf
+     runSolverCgs fproj stepf initf = do
+       let runIter n state
+             | n >= nits = return $ fproj state
+             | otherwise = do
+                 let state' = stepf state
+                     resNorm = trueResidualNorm (fproj state')
+                 if resNorm <= tol
+                   then return $ fproj state'
+                   else runIter (n + 1) state'
+       runIter 0 initf
+     runSolverCgne fproj stepf initf = do
+       let runIter n state
+             | n >= nits = return $ fproj state
+             | otherwise = do
+                 let state' = stepf state
+                     resNorm = trueResidualNorm (fproj state')
+                 if resNorm <= tol
+                   then return $ fproj state'
+                   else runIter (n + 1) state'
        runIter 0 initf
 
 -- class IterativeSolver s where

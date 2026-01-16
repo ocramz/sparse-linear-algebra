@@ -301,7 +301,9 @@ specLinSolve =
 
 -- * Linear systems
 
-checkLinSolve :: (V (SpVector t), Fractional (Scalar (SpVector t)), 
+checkLinSolve :: (MatrixType (SpVector t) ~ SpMatrix t, V (SpVector t),
+                  LinearVectorSpace (SpVector t), InnerSpace (SpVector t),
+                  MatrixRing (SpMatrix t), Fractional (Scalar (SpVector t)), 
                   Epsilon t, Normed (SpVector t), MonadThrow m) =>
      LinSolveMethod -> SpMatrix t -> SpVector t -> SpVector t -> SpVector t -> m Bool
 checkLinSolve method aa b x x0r = do
@@ -895,11 +897,29 @@ instance Arbitrary (PropMatVec Double) where
 
 
 -- | A symmetric positive definite matrix and vector of compatible size
+-- | Generator for symmetric positive definite (SPD) matrices paired with vectors
+-- 
+-- Generates strictly positive definite matrices using the formula: A = M^T M + 2I
+-- where M is a random sparse matrix.
+--
+-- Key properties:
+-- - Symmetric: (M^T M)^T = M^T M
+-- - Strictly positive definite: all eigenvalues λ >= 2 (never singular)
+-- - The regularization term 2I prevents singularity when M is rank-deficient
+-- - Better conditioned than M^T M alone, though can still have high condition numbers
+--   when M has rows with vastly different norms
+--
+-- This ensures iterative linear solvers can converge on the generated test cases,
+-- though extremely ill-conditioned matrices may still cause convergence issues.
 data PropMatSPDVec a = PropMatSPDVec (SpMatrix a) (SpVector a) deriving (Eq, Show)
 instance Arbitrary (PropMatSPDVec Double) where
   arbitrary = do
     PropMatVec m v <- arbitrary -- :: Gen (PropMatVec Double)
-    return $ PropMatSPDVec (m #^# m) v
+    let n = nrows m
+        -- Add diagonal regularization to ensure strict positive definiteness
+        -- M^T M + 2I guarantees all eigenvalues >= 2 (strictly positive definite)
+        spd = (m #^# m) ^+^ (2.0 .* eye n)
+    return $ PropMatSPDVec spd v
 
 
     
