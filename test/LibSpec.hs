@@ -524,22 +524,21 @@ checkCGS aa b xTrue niter = do
       tolRel = 1e-4  -- Relative tolerance (relative to initial residual)
       tol = max tolAbs (tolRel * r0norm)  -- Use the larger of absolute and relative tolerance
       
+      -- Helper function to compute residual norm
+      residualNorm state' = norm2 ((aa #> _x state') ^-^ b)
+      
       -- Run CGS iterations until convergence or max iterations
       runCGS n state
         | n >= niter = state
         | otherwise =
             let state' = cgsStep aa rhat state
-                residual = (aa #> _x state') ^-^ b
-                resNorm = norm2 residual
+                resNorm = residualNorm state'
             in if resNorm <= tol
                then state'
                else runCGS (n + 1) state'
       
       finalState = runCGS 0 initState
-      xhat = _x finalState
-      residual = (aa #> xhat) ^-^ b
-      resNorm = norm2 residual
-  return $ resNorm <= tol
+  return $ residualNorm finalState <= tol
 
 -- | CGS solver check with debug output
 -- Shows residual norm at each iteration
@@ -551,13 +550,19 @@ checkCGSDebug aa b xTrue niter = do
   let x0 = fromListSV (dim b) []  -- initial guess (zero vector)
       rhat = b ^-^ (aa #> x0)  -- use initial residual r0 as the fixed rhat vector for CGS
       initState = cgsInit aa b x0
-      -- Run niter iterations with debug output
-      states = take (niter + 1) $ iterate (cgsStepDebug aa rhat 0) initState
-      finalState = last states
+      tolerance = 1e-6
+      
+      -- Run niter iterations with debug output using indexed fold
+      runWithDebug n state
+        | n >= niter = state
+        | otherwise = 
+            let state' = cgsStepDebug aa rhat n state
+            in runWithDebug (n + 1) state'
+      
+      finalState = runWithDebug 0 initState
       xhat = _x finalState
       residual = (aa #> xhat) ^-^ b
       resNorm = norm2 residual
-      tolerance = 1e-6
   return $ resNorm <= tolerance
 
     
