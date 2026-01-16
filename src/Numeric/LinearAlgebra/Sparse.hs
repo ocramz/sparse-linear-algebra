@@ -1023,15 +1023,16 @@ linSolve0 method aa b x0
                         return $ reciprocal aa' #> b' -- diagonal solve
                   | otherwise = xHat
      xHat = case method of
-       BICGSTAB_ -> solver _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
-       CGS_ -> solver _x  (cgsStep aa r0hat) (cgsInit aa b x0)
-       CGNE_ -> solver _xCgne (cgneStep aa) (cgneInit aa b x0)
+       BICGSTAB_ -> runSolver _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
+       CGS_ -> runSolver _x  (cgsStep aa r0hat) (cgsInit aa b x0)
+       CGNE_ -> runSolver _xCgne (cgneStep aa) (cgneInit aa b x0)
        _ -> throwM (IterE "linSolve0" ("Only BICGSTAB_, CGS_, and CGNE_ are implemented, got: " ++ show method))
      r0hat = b ^-^ (aa #> x0)
      nits = 200
      dm@(m, _) = dim aa
      nb = dim b
-     solver fproj stepf initf = do
+     runSolver :: (s -> SpVector a) -> (s -> s) -> s -> m (SpVector a)
+     runSolver fproj stepf initf = do
        let runIter n state
              | n >= nits = return $ fproj state
              | otherwise = do
