@@ -117,7 +117,7 @@ module Numeric.LinearAlgebra.Sparse
          -- linSolve0,
          LinSolveMethod(..),
          -- ** CGS (Conjugate Gradient Squared)
-         CGS(..), cgsInit, cgsStep,
+         CGS(..), cgsInit, cgsStep, cgsStepDebug,
          -- * Exceptions
          PartialFunctionError,InputError, OutOfBoundsIndexError,
          OperandSizeMismatch, MatrixException, IterationException
@@ -138,6 +138,8 @@ import Data.Typeable
 import Control.Monad.State.Strict
 import qualified Control.Monad.Trans.State  as MTS 
 import Data.Complex
+
+import qualified Debug.Trace as DT
 
 import qualified Data.Sparse.Internal.IntM as I
 
@@ -931,6 +933,15 @@ cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
     betaj = (rj1 `dot` rhat) / (r `dot` rhat)
     uj1 = rj1 ^+^ (betaj .* q)
     pj1 = uj1 ^+^ (betaj .* (q ^+^ (betaj .* p)))
+
+-- | CGS step with debug tracing (residual norm output)
+cgsStepDebug :: (V (SpVector a), Fractional (Scalar (SpVector a)), 
+                 Normed (SpVector a), Show (RealScalar (SpVector a))) =>
+     MatrixType (SpVector a) -> SpVector a -> Int -> CGS a -> CGS a
+cgsStepDebug aa rhat iter state = 
+    let state' = cgsStep aa rhat state
+        rnorm = norm2 (_r state')
+    in DT.trace ("CGS iter " ++ show iter ++ ": ||r|| = " ++ show rnorm) state'
 
 
 instance (Show a) => Show (CGS a) where
