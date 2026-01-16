@@ -4,6 +4,7 @@ This document lists all the functions that were commented out during the process
 
 **Status Updates:**
 - ✅ **CGS (Conjugate Gradient Squared)**: Re-enabled with comprehensive tests (see issue/PR for re-enabling CGS)
+- ✅ **BiCGSTAB (Biconjugate Gradient Stabilized)**: Re-enabled with comprehensive tests
 
 ## File: src/Numeric/LinearAlgebra/Sparse.hs
 
@@ -83,10 +84,12 @@ cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
 
 ---
 
-### 3. BiCGSTAB (Biconjugate Gradient Stabilized) Solver Functions
+### 3. ✅ BiCGSTAB (Biconjugate Gradient Stabilized) Solver Functions - **RE-ENABLED**
+
+**Status**: Functions have been uncommented, exported from the module, and comprehensive tests added.
 
 #### `bicgsInit`
-**Lines**: 950-954 (commented)
+**Status**: ✅ Active (lines 961-964)
 ```haskell
 bicgsInit :: LinearVectorSpace (SpVector a) =>
      MatrixType (SpVector a) -> SpVector a -> SpVector a -> BICGSTAB a
@@ -96,7 +99,7 @@ bicgsInit aa b x0 = BICGSTAB x0 r0 r0 where
 **Purpose**: Initializes the BiCGSTAB solver state
 
 #### `bicgstabStep`
-**Lines**: 956-971 (commented)
+**Status**: ✅ Active (lines 966-977)
 ```haskell
 bicgstabStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
      MatrixType (SpVector a) -> SpVector a -> BICGSTAB a -> BICGSTAB a
@@ -112,6 +115,12 @@ bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
      pj1 = rj1 ^+^ (betaj .* (p ^-^ (omegaj .* aap)))
 ```
 **Purpose**: Performs one iteration step of the BiCGSTAB algorithm
+
+**Tests Added**:
+- Unit tests for `bicgsInit` (verifies initial state)
+- Unit tests for `bicgstabStep` (verifies iteration works)
+- Integration tests on 2x2 and 3x3 systems
+- Property-based test for SPD (symmetric positive definite) systems
 
 ---
 
@@ -145,13 +154,12 @@ class IterativeSolver s where
 ## Summary Statistics
 
 - **Total functions originally commented out**: 10
-- **Re-enabled**: 2 (CGS)
-- **Still commented out**: 8
+- **Re-enabled**: 4 (CGS + BiCGSTAB)
+- **Still commented out**: 6
   - BCG-related: 2 functions
-  - BiCGSTAB-related: 2 functions
   - Pseudoinverse: 1 function
   - Typeclass: 1 class definition
-  - Show instances: 3 instances (for BCG, CGS, BICGSTAB)
+  - Show instances: 1 instance (for BCG)
 
 ## Reason for Commenting Out
 
