@@ -1013,7 +1013,9 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
 
 -- | Interface method to individual linear solvers
 -- Simplified version that runs a fixed number of iterations and checks convergence
-linSolve0 :: (V (SpVector a), Fractional (Scalar (SpVector a)), 
+linSolve0 :: (MatrixType (SpVector a) ~ SpMatrix a, V (SpVector a),
+              LinearVectorSpace (SpVector a), InnerSpace (SpVector a),
+              MatrixRing (SpMatrix a), Fractional (Scalar (SpVector a)), 
               MonadThrow m, Epsilon a) =>
      LinSolveMethod -> SpMatrix a -> SpVector a -> SpVector a -> m (SpVector a)
 linSolve0 method aa b x0
