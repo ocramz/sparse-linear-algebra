@@ -518,27 +518,27 @@ checkCGS aa b xTrue niter = do
   let x0 = fromListSV (dim b) []  -- initial guess (zero vector)
       rhat = b ^-^ (aa #> x0)  -- use initial residual r0 as the fixed rhat vector for CGS
       initState = cgsInit aa b x0
-      r0norm = norm2 (b ^-^ (aa #> x0))
-      bnorm = norm2 b
+      r0norm = norm2 (_r initState)  -- initial residual norm
       tolAbs = 1e-6  -- Absolute tolerance
       tolRel = 1e-4  -- Relative tolerance (relative to initial residual)
       tol = max tolAbs (tolRel * r0norm)  -- Use the larger of absolute and relative tolerance
       
-      -- Helper function to compute residual norm
-      residualNorm state' = norm2 ((aa #> _x state') ^-^ b)
+      -- Helper function to compute true residual norm (recomputed to avoid error accumulation)
+      -- The CGS state's _r field uses an efficient update but may accumulate roundoff errors
+      trueResidualNorm state' = norm2 ((aa #> _x state') ^-^ b)
       
       -- Run CGS iterations until convergence or max iterations
       runCGS n state
         | n >= niter = state
         | otherwise =
             let state' = cgsStep aa rhat state
-                resNorm = residualNorm state'
+                resNorm = trueResidualNorm state'
             in if resNorm <= tol
                then state'
                else runCGS (n + 1) state'
       
       finalState = runCGS 0 initState
-  return $ residualNorm finalState <= tol
+  return $ trueResidualNorm finalState <= tol
 
 -- | CGS solver check with debug output
 -- Shows residual norm at each iteration
