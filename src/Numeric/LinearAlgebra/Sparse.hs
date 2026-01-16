@@ -1033,7 +1033,7 @@ linSolve0 method aa b x0
      nits = 200
      dm@(m, _) = dim aa
      nb = dim b
-     runSolver :: (s -> SpVector a) -> (s -> s) -> s -> m (SpVector a)
+     -- Polymorphic helper that works with any solver state type
      runSolver fproj stepf initf = do
        let runIter n state
              | n >= nits = return $ fproj state
