@@ -116,6 +116,8 @@ module Numeric.LinearAlgebra.Sparse
          -- * Internal
          -- linSolve0,
          LinSolveMethod(..),
+         -- ** CGS (Conjugate Gradient Squared)
+         CGS(..), cgsInit, cgsStep,
          -- * Exceptions
          PartialFunctionError,InputError, OutOfBoundsIndexError,
          OperandSizeMismatch, MatrixException, IterationException
@@ -912,31 +914,31 @@ data BCG a =
 
 data CGS a = CGS { _x, _r, _p, _u :: SpVector a} deriving Eq
 
--- cgsInit :: LinearVectorSpace (SpVector a) =>
--- --      MatrixType (SpVector a) -> SpVector a -> SpVector a -> CGS a
--- -- cgsInit aa b x0 = CGS x0 r0 r0 r0 where
--- --   r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
--- -- 
--- -- cgsStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
--- --      MatrixType (SpVector a) -> SpVector a -> CGS a -> CGS a
--- -- cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
--- --     where
--- --     aap = aa #> p
--- --     alphaj = (r `dot` rhat) / (aap `dot` rhat)
--- --     q = u ^-^ (alphaj .* aap)
--- --     xj1 = x ^+^ (alphaj .* (u ^+^ q))         -- updated solution
---     rj1 = r ^-^ (alphaj .* (aa #> (u ^+^ q))) -- updated residual
---     betaj = (rj1 `dot` rhat) / (r `dot` rhat)
---     uj1 = rj1 ^+^ (betaj .* q)
---     pj1 = uj1 ^+^ (betaj .* (q ^+^ (betaj .* p)))
--- 
--- 
--- instance (Show a) => Show (CGS a) where
---   show (CGS x r p u) = "x = " ++ show x ++ "\n" ++
---                                 "r = " ++ show r ++ "\n" ++
---                                 "p = " ++ show p ++ "\n" ++
---                                 "u = " ++ show u ++ "\n"
--- 
+cgsInit :: LinearVectorSpace (SpVector a) =>
+     MatrixType (SpVector a) -> SpVector a -> SpVector a -> CGS a
+cgsInit aa b x0 = CGS x0 r0 r0 r0 where
+  r0 = b ^-^ (aa #> x0)    -- residual of initial guess solution
+
+cgsStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
+     MatrixType (SpVector a) -> SpVector a -> CGS a -> CGS a
+cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
+    where
+    aap = aa #> p
+    alphaj = (r `dot` rhat) / (aap `dot` rhat)
+    q = u ^-^ (alphaj .* aap)
+    xj1 = x ^+^ (alphaj .* (u ^+^ q))         -- updated solution
+    rj1 = r ^-^ (alphaj .* (aa #> (u ^+^ q))) -- updated residual
+    betaj = (rj1 `dot` rhat) / (r `dot` rhat)
+    uj1 = rj1 ^+^ (betaj .* q)
+    pj1 = uj1 ^+^ (betaj .* (q ^+^ (betaj .* p)))
+
+
+instance (Show a) => Show (CGS a) where
+  show (CGS x r p u) = "x = " ++ show x ++ "\n" ++
+                                "r = " ++ show r ++ "\n" ++
+                                "p = " ++ show p ++ "\n" ++
+                                "u = " ++ show u ++ "\n"
+
 -- 
 -- 
 -- 

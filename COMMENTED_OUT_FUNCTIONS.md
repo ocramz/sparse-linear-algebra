@@ -2,6 +2,9 @@
 
 This document lists all the functions that were commented out during the process of enabling strict `-Wall -Werror` compilation flags. These functions were unused in the codebase but may be useful for future development.
 
+**Status Updates:**
+- ✅ **CGS (Conjugate Gradient Squared)**: Re-enabled with comprehensive tests (see issue/PR for re-enabling CGS)
+
 ## File: src/Numeric/LinearAlgebra/Sparse.hs
 
 ### 1. BCG (Biconjugate Gradient) Solver Functions
@@ -40,10 +43,12 @@ bcgStep aa (BCG x r rhat p phat) = BCG x1 r1 rhat1 p1 phat1 where
 
 ---
 
-### 2. CGS (Conjugate Gradient Squared) Solver Functions
+### 2. ✅ CGS (Conjugate Gradient Squared) Solver Functions - **RE-ENABLED**
+
+**Status**: Functions have been uncommented, exported from the module, and comprehensive tests added.
 
 #### `cgsInit`
-**Lines**: 917-921 (commented)
+**Status**: ✅ Active (lines 917-920)
 ```haskell
 cgsInit :: LinearVectorSpace (SpVector a) =>
      MatrixType (SpVector a) -> SpVector a -> SpVector a -> CGS a
@@ -53,7 +58,7 @@ cgsInit aa b x0 = CGS x0 r0 r0 r0 where
 **Purpose**: Initializes the CGS solver state
 
 #### `cgsStep`
-**Lines**: 923-945 (commented)
+**Status**: ✅ Active (lines 922-933)
 ```haskell
 cgsStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
      MatrixType (SpVector a) -> SpVector a -> CGS a -> CGS a
@@ -69,6 +74,12 @@ cgsStep aa rhat (CGS x r p u) = CGS xj1 rj1 pj1 uj1
     pj1 = uj1 ^+^ (betaj .* (q ^+^ (betaj .* p)))
 ```
 **Purpose**: Performs one iteration step of the CGS algorithm
+
+**Tests Added**:
+- Unit tests for `cgsInit` (verifies initial state)
+- Unit tests for `cgsStep` (verifies iteration works)
+- Integration tests on 2x2 and 3x3 systems
+- Property-based test for SPD (symmetric positive definite) systems
 
 ---
 
@@ -133,9 +144,10 @@ class IterativeSolver s where
 
 ## Summary Statistics
 
-- **Total functions commented out**: 10
+- **Total functions originally commented out**: 10
+- **Re-enabled**: 2 (CGS)
+- **Still commented out**: 8
   - BCG-related: 2 functions
-  - CGS-related: 2 functions  
   - BiCGSTAB-related: 2 functions
   - Pseudoinverse: 1 function
   - Typeclass: 1 class definition

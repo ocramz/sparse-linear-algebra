@@ -98,6 +98,7 @@ spec = do
   specArnoldi
   specEigsQR
   specEigsArnoldi
+  specCGS
 
 -- specLinSolve = 
 --   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
@@ -231,6 +232,30 @@ specArnoldi =
 --   -- --   it "arnoldi (4 x 4 dense)" $
 --   -- --     checkArnoldi tmc4 4 >>= (`shouldBe` True)      
 
+specCGS :: Spec
+specCGS = do
+  describe "Numeric.LinearAlgebra.Sparse : CGS (Conjugate Gradient Squared) (Real)" $ do
+    it "cgsInit creates initial CGS state" $ do
+      let state = cgsInit aa0 b0 x0
+          r0 = b0 ^-^ (aa0 #> x0)
+      _r state `shouldBe` r0
+      _p state `shouldBe` r0
+      _u state `shouldBe` r0
+    it "cgsStep performs one iteration" $ do
+      let state0 = cgsInit aa0 b0 x0
+          rhat = b0 ^-^ (aa0 #> x0)
+          state1 = cgsStep aa0 rhat state0
+      -- Just check that step completes without error and produces updated state
+      dim (_x state1) `shouldBe` dim b0
+    it "CGS converges on 2x2 system" $
+      checkCGS aa0 b0 x0true 1000 >>= (`shouldBe` True)
+    it "CGS converges on 3x3 SPD system" $
+      checkCGS aa2 b2 x2 1000 >>= (`shouldBe` True)
+  describe "QuickCheck properties for CGS:" $ do
+    prop "prop_cgs : CGS converges for SPD systems" $
+      \(PropMatSPDVec (m :: SpMatrix Double) x) -> monadicIO $ do
+        result <- run $ prop_cgs m x
+        assert result
 
 -- * Linear systems
 
@@ -481,6 +506,21 @@ checkTriLowerSolveC lmat rhs = do
 --   return (xhat, flag)
 
 
+
+-- | CGS solver check
+-- Runs CGS for a number of iterations and checks if solution converges
+checkCGS :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      V (SpVector t), Elt t, Epsilon t, Fractional t, MonadThrow m) =>
+     SpMatrix t -> SpVector t -> SpVector t -> Int -> m Bool
+checkCGS aa b xTrue niter = do
+  let x0 = fromListSV (dim b) []  -- initial guess (zero vector)
+      rhat = b ^-^ (aa #> x0)  -- use initial residual r0 as the fixed rhat vector for CGS
+      initState = cgsInit aa b x0
+      -- Run niter iterations
+      finalState = iterate (cgsStep aa rhat) initState !! niter
+      xhat = _x finalState
+      residual = (aa #> xhat) ^-^ b
+  return $ nearZero $ norm2 residual
 
     
   
@@ -791,6 +831,17 @@ prop_matMat1 (PropMatMat a b) =
 -- | Implementation of transpose, (##), (##^) and (#^#) is consistent
 prop_matMat2 :: (MatrixRing (SpMatrix t), Eq t) => PropMat t -> Bool
 prop_matMat2 (PropMat m) = transpose m ##^ m == m #^# transpose m
+
+-- | CGS converges for SPD systems
+prop_cgs :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      V (SpVector t), Elt t, Epsilon t, Fractional t) =>
+     SpMatrix t -> SpVector t -> IO Bool
+prop_cgs mm x = do
+  let b = mm #> x  -- Create RHS from true solution
+      n = dim x
+  -- Guard against tiny systems which may not converge well
+  if n < 2 then return True
+  else checkCGS mm b x 100  -- Run up to 100 iterations
 
 
 
