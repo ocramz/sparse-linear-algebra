@@ -99,6 +99,8 @@ spec = do
   specEigsQR
   specEigsArnoldi
   specCGS
+  specBiCGSTAB
+  specLinSolve
 
 -- specLinSolve = 
 --   describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers (Real)" $ do
@@ -257,31 +259,64 @@ specCGS = do
         result <- run $ prop_cgs m x
         assert result
 
+specBiCGSTAB :: Spec
+specBiCGSTAB = do
+  describe "Numeric.LinearAlgebra.Sparse : BiCGSTAB (Biconjugate Gradient Stabilized) (Real)" $ do
+    it "bicgsInit creates initial BiCGSTAB state" $ do
+      let state = bicgsInit aa0 b0 x0
+          r0 = b0 ^-^ (aa0 #> x0)
+      _rBicgstab state `shouldBe` r0
+      _pBicgstab state `shouldBe` r0
+    it "bicgstabStep performs one iteration" $ do
+      let state0 = bicgsInit aa0 b0 x0
+          r0hat = b0 ^-^ (aa0 #> x0)
+          state1 = bicgstabStep aa0 r0hat state0
+      -- Just check that step completes without error and produces updated state
+      dim (_xBicgstab state1) `shouldBe` dim b0
+    it "BiCGSTAB converges on 2x2 system" $
+      checkBiCGSTAB aa0 b0 x0true 50 >>= (`shouldBe` True)
+    it "BiCGSTAB converges on 3x3 SPD system" $
+      checkBiCGSTAB aa2 b2 x2 50 >>= (`shouldBe` True)
+  describe "QuickCheck properties for BiCGSTAB:" $ do
+    prop "prop_bicgstab : BiCGSTAB converges for SPD systems" $
+      \(PropMatSPDVec (m :: SpMatrix Double) x) -> monadicIO $ do
+        result <- run $ prop_bicgstab m x
+        assert result
+
+specLinSolve :: Spec
+specLinSolve = 
+  describe "Numeric.LinearAlgebra.Sparse : Iterative linear solvers via linSolve0 (Real)" $ do
+    it "BiCGSTAB (2 x 2 dense)" $ 
+      checkLinSolveR BICGSTAB_ aa0 b0 x0true >>= (`shouldBe` True)
+    it "BiCGSTAB (3 x 3 sparse, symmetric pos.def.)" $ 
+      checkLinSolveR BICGSTAB_ aa2 b2 x2 >>= (`shouldBe` True)
+    it "CGS (2 x 2 dense)" $ 
+      checkLinSolveR CGS_ aa0 b0 x0true >>= (`shouldBe` True)
+    it "CGS (3 x 3 sparse, SPD)" $ 
+      checkLinSolveR CGS_ aa2 b2 x2 >>= (`shouldBe` True)
+    it "CGNE (2 x 2 dense)" $ 
+      checkLinSolveR CGNE_ aa0 b0 x0true >>= (`shouldBe` True)
+    it "CGNE (3 x 3 sparse, SPD)" $ 
+      checkLinSolveR CGNE_ aa2 b2 x2 >>= (`shouldBe` True)
+
 -- * Linear systems
 
--- -- checkLinSolve method aa b x x0r =
--- --   either
--- --     (error . show)
--- --     (\xhat -> nearZero (norm2Sq (x ^-^ xhat)))
--- --     (linSolve0 method aa b x0r)
+checkLinSolve :: (V (SpVector t), Fractional (Scalar (SpVector t)), 
+                  Epsilon t, Normed (SpVector t), MonadThrow m) =>
+     LinSolveMethod -> SpMatrix t -> SpVector t -> SpVector t -> SpVector t -> m Bool
+checkLinSolve method aa b x x0r = do
+  xhat <- linSolve0 method aa b x0r
+  return $ nearZero $ norm2 (x ^-^ xhat)
 
--- checkLinSolve' method aa b x x0r =
---   nearZero . norm2 <$> linSolve0 method aa b x0r -- `catch` eh
---   -- where
---   --   eh (NotConvergedE _ i xhat) = return $ xhat ^-^ x
-
--- checkLinSolve method aa b x x0r = do
---   xhat <- linSolve0 method aa b x0r
---   return $ nearZero $ norm2 (x ^-^ xhat)
-  
-
--- checkLinSolveR
---   :: (MonadCatch m) =>
---      LinSolveMethod 
---      -> SpMatrix Double        -- ^ operator
---      -> SpVector Double        -- ^ r.h.s
---      -> SpVector Double        -- ^ candidate solution
---      -> m Bool
+checkLinSolveR :: (MonadThrow m) =>
+     LinSolveMethod 
+     -> SpMatrix Double        -- ^ operator
+     -> SpVector Double        -- ^ r.h.s
+     -> SpVector Double        -- ^ candidate solution
+     -> m Bool
+checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
+  x0r = mkSpVR n $ replicate n 0.1
+  n = ncols aa
 -- checkLinSolveR method aa b x = checkLinSolve method aa b x x0r where
 --   x0r = mkSpVR n $ replicate n 0.1
 --   n = ncols aa
@@ -564,6 +599,38 @@ checkCGSDebug aa b xTrue niter = do
       residual = (aa #> xhat) ^-^ b
       resNorm = norm2 residual
   return $ resNorm <= tolerance
+
+-- | BiCGSTAB solver check
+-- Runs BiCGSTAB for a number of iterations and checks if solution converges
+-- Uses a lenient tolerance appropriate for iterative solvers (1e-4 relative, 1e-6 absolute)
+-- Terminates early if convergence is achieved to avoid numerical instability
+checkBiCGSTAB :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      V (SpVector t), Elt t, Epsilon t, Fractional t, MonadThrow m) =>
+     SpMatrix t -> SpVector t -> SpVector t -> Int -> m Bool
+checkBiCGSTAB aa b xTrue niter = do
+  let x0 = fromListSV (dim b) []  -- initial guess (zero vector)
+      r0hat = b ^-^ (aa #> x0)  -- use initial residual r0 as the fixed r0hat vector for BiCGSTAB
+      initState = bicgsInit aa b x0
+      r0norm = norm2 (_rBicgstab initState)  -- initial residual norm
+      tolAbs = 1e-6  -- Absolute tolerance
+      tolRel = 1e-4  -- Relative tolerance (relative to initial residual)
+      tol = max tolAbs (tolRel * r0norm)  -- Use the larger of absolute and relative tolerance
+      
+      -- Helper function to compute true residual norm (recomputed to avoid error accumulation)
+      trueResidualNorm state' = norm2 ((aa #> _xBicgstab state') ^-^ b)
+      
+      -- Run BiCGSTAB iterations until convergence or max iterations
+      runBiCGSTAB n state
+        | n >= niter = state
+        | otherwise =
+            let state' = bicgstabStep aa r0hat state
+                resNorm = trueResidualNorm state'
+            in if resNorm <= tol
+               then state'
+               else runBiCGSTAB (n + 1) state'
+      
+      finalState = runBiCGSTAB 0 initState
+  return $ trueResidualNorm finalState <= tol
 
     
   
@@ -899,6 +966,30 @@ prop_cgs mm x = do
   if n < 3 || bnorm < 1e-10 || xnorm < 1e-10 || nnzMat < n || (n > 20 && density < 0.1)
     then return True
     else checkCGS mm b x 100  -- Run up to 100 iterations
+
+-- | BiCGSTAB converges for SPD systems
+-- Guards against degenerate cases (small systems, nearly zero RHS, nearly singular matrices)
+-- NOTE: BiCGSTAB is generally more stable than CGS and should converge better for difficult systems
+prop_bicgstab :: (Scalar (SpVector t) ~ t, MatrixType (SpVector t) ~ SpMatrix t,
+      V (SpVector t), Elt t, Epsilon t, Fractional t) =>
+     SpMatrix t -> SpVector t -> IO Bool
+prop_bicgstab mm x = do
+  let b = mm #> x  -- Create RHS from true solution
+      n = dim x
+      bnorm = norm2 b
+      xnorm = norm2 x
+      nnzMat = nnz mm
+      (nrows', ncols') = dim mm
+      density = fromIntegral nnzMat / fromIntegral (nrows' * ncols') :: Double
+  -- Guard against degenerate cases:
+  -- - tiny systems (n < 3)
+  -- - nearly zero RHS (||b|| < 1e-10)
+  -- - nearly zero solution (||x|| < 1e-10)
+  -- - very sparse matrices with few non-zeros (nnz < n)
+  -- - large systems that are very sparse (n > 20 && density < 0.1)
+  if n < 3 || bnorm < 1e-10 || xnorm < 1e-10 || nnzMat < n || (n > 20 && density < 0.1)
+    then return True
+    else checkBiCGSTAB mm b x 100  -- Run up to 100 iterations
 
 
 

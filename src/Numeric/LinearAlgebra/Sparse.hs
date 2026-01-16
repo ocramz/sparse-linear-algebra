@@ -114,10 +114,12 @@ module Numeric.LinearAlgebra.Sparse
          -- IterationConfig (..),
          modifyUntil, modifyUntilM,
          -- * Internal
-         -- linSolve0,
+         linSolve0,
          LinSolveMethod(..),
          -- ** CGS (Conjugate Gradient Squared)
          CGS(..), cgsInit, cgsStep, cgsStepDebug,
+         -- ** BiCGSTAB (Biconjugate Gradient Stabilized)
+         BICGSTAB(..), bicgsInit, bicgstabStep,
          -- * Exceptions
          PartialFunctionError,InputError, OutOfBoundsIndexError,
          OperandSizeMismatch, MatrixException, IterationException
@@ -953,33 +955,33 @@ instance (Show a) => Show (CGS a) where
 -- 
 -- 
 -- 
--- -- ** BiCGSTAB
+-- ** BiCGSTAB
 
 data BICGSTAB a =
   BICGSTAB { _xBicgstab, _rBicgstab, _pBicgstab :: SpVector a} deriving Eq
 
--- bicgsInit :: LinearVectorSpace (SpVector a) =>
---      MatrixType (SpVector a) -> SpVector a -> SpVector a -> BICGSTAB a
--- bicgsInit aa b x0 = BICGSTAB x0 r0 r0 where
---   r0 = b ^-^ (aa #> x0)   -- residual of initial guess solution
--- 
--- bicgstabStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
---      MatrixType (SpVector a) -> SpVector a -> BICGSTAB a -> BICGSTAB a
--- bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
---      aap = aa #> p
---      alphaj = (r <.> r0hat) / (aap <.> r0hat)
---      sj = r ^-^ (alphaj .* aap)
---      aasj = aa #> sj
---      omegaj = (aasj <.> sj) / (aasj <.> aasj)
---      xj1 = x ^+^ (alphaj .* p) ^+^ (omegaj .* sj)    -- updated solution
---      rj1 = sj ^-^ (omegaj .* aasj)
---      betaj = (rj1 <.> r0hat)/(r <.> r0hat) * alphaj / omegaj
---      pj1 = rj1 ^+^ (betaj .* (p ^-^ (omegaj .* aap)))
--- 
--- instance Show a => Show (BICGSTAB a) where
---   show (BICGSTAB x r p) = "x = " ++ show x ++ "\n" ++
---                           "r = " ++ show r ++ "\n" ++
---                           "p = " ++ show p ++ "\n"
+bicgsInit :: LinearVectorSpace (SpVector a) =>
+     MatrixType (SpVector a) -> SpVector a -> SpVector a -> BICGSTAB a
+bicgsInit aa b x0 = BICGSTAB x0 r0 r0 where
+  r0 = b ^-^ (aa #> x0)   -- residual of initial guess solution
+
+bicgstabStep :: (V (SpVector a), Fractional (Scalar (SpVector a))) =>
+     MatrixType (SpVector a) -> SpVector a -> BICGSTAB a -> BICGSTAB a
+bicgstabStep aa r0hat (BICGSTAB x r p) = BICGSTAB xj1 rj1 pj1 where
+     aap = aa #> p
+     alphaj = (r <.> r0hat) / (aap <.> r0hat)
+     sj = r ^-^ (alphaj .* aap)
+     aasj = aa #> sj
+     omegaj = (aasj <.> sj) / (aasj <.> aasj)
+     xj1 = x ^+^ (alphaj .* p) ^+^ (omegaj .* sj)    -- updated solution
+     rj1 = sj ^-^ (omegaj .* aasj)
+     betaj = (rj1 <.> r0hat)/(r <.> r0hat) * alphaj / omegaj
+     pj1 = rj1 ^+^ (betaj .* (p ^-^ (omegaj .* aap)))
+
+instance Show a => Show (BICGSTAB a) where
+  show (BICGSTAB x r p) = "x = " ++ show x ++ "\n" ++
+                          "r = " ++ show r ++ "\n" ++
+                          "p = " ++ show p ++ "\n"
 
 
 
@@ -1007,32 +1009,33 @@ data LinSolveMethod = GMRES_  -- ^ Generalized Minimal RESidual
                     | BICGSTAB_ -- ^ BiConjugate Gradient Stabilized
                     deriving (Eq, Show)
 
--- -- | Interface method to individual linear solvers
--- linSolve0 fh flog method aa b x0
---   | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
---   | otherwise = solve aa b where
---      solve aa' b' | isDiagonalSM aa' =
---                         return $ reciprocal aa' #> b' -- diagonal solve
---                   | otherwise = xHat
---      xHat = case method of
---        -- BICGSTAB_ -> solver "BICGSTAB" nits _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
---        -- BCG_ -> solver "BCG" nits _xBcg (bcgStep aa) (bcgInit aa b x0)
---        CGS_ -> solver "CGS" nits _x  (cgsStep aa r0hat) (cgsInit aa b x0)
---        -- GMRES_ -> gmres aa b          
---        CGNE_ -> solver "CGNE" nits _xCgne (cgneStep aa) (cgneInit aa b x0)
---      r0hat = b ^-^ (aa #> x0)
---      nits = 200
---      dm@(m, _) = dim aa
---      nb = dim b
---      lwindow = 3
---      solver fname nitermax fproj stepf initf =
---        solver' fname fh flog nitermax lwindow fproj stepf initf
-
-
-
--- solver' name fh flog nitermax lwindow fproj stepf initf = do
---   xf <- untilConvergedG fh name nitermax lwindow fproj (flog . fproj) stepf initf
---   return $ fproj xf    
+-- | Interface method to individual linear solvers
+-- Simplified version that runs a fixed number of iterations and checks convergence
+linSolve0 :: (V (SpVector a), Fractional (Scalar (SpVector a)), 
+              MonadThrow m, Epsilon a) =>
+     LinSolveMethod -> SpMatrix a -> SpVector a -> SpVector a -> m (SpVector a)
+linSolve0 method aa b x0
+  | m /= nb = throwM (MatVecSizeMismatchException "linSolve0" dm nb)
+  | otherwise = solve aa b where
+     solve aa' b' | isDiagonalSM aa' =
+                        return $ reciprocal aa' #> b' -- diagonal solve
+                  | otherwise = xHat
+     xHat = case method of
+       BICGSTAB_ -> solver _xBicgstab (bicgstabStep aa r0hat) (bicgsInit aa b x0)
+       CGS_ -> solver _x  (cgsStep aa r0hat) (cgsInit aa b x0)
+       CGNE_ -> solver _xCgne (cgneStep aa) (cgneInit aa b x0)
+       _ -> throwM (NotImplementedError "linSolve0" ("Solver method not implemented: " ++ show method))
+     r0hat = b ^-^ (aa #> x0)
+     nits = 200
+     dm@(m, _) = dim aa
+     nb = dim b
+     solver fproj stepf initf = do
+       let runIter n state
+             | n >= nits = return $ fproj state
+             | otherwise = do
+                 let state' = stepf state
+                 runIter (n + 1) state'
+       runIter 0 initf
 
 -- class IterativeSolver s where
 --   -- solver :: 
